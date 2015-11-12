@@ -1,0 +1,8 @@
+THIS VERSION GENERATES WAVEFORMS USING MODEL WITH PARAMETERS FOUND BY PREVIOUS RESEARCH.
+
+an example successful command line would be:
+generate_run.exe 1 6 1000 10000 test1 stimuli5.dat sigma2.dat 0.1 0 0
+
+Note: This version  (v6_f) is attempting to fit 19 parameters and hance works only with stimuli5.dat.
+For the noise control, either sigma1 or sigma2 are fine.
+

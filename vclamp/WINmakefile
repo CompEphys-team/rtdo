@@ -1,0 +1,20 @@
+#--------------------------------------------------------------------------
+#   Author: Thomas Nowotny
+#  
+#   Institute: Informatics
+#              University of Sussex 
+#              Brighton BN1 9QJ, UK
+#  
+#   email to:  t.nowotny@sussex.ac.uk
+#  
+#   initial version: 2014-06-26
+#  
+#--------------------------------------------------------------------------
+
+INCLUDE_FLAGS = /I $(GENN_PATH)/lib/include
+CFLAGS		=/nologo /EHsc $(INCLUDE_FLAGS)
+
+all: generate.exe run.exe
+
+clean:
+	-del generate.exe generate.obj run.exe run.obj 2>nul 

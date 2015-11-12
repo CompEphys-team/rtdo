@@ -1,0 +1,10 @@
+% we put stimuli in the order 
+% pgNa pENa pgK pEK pgl pEl pCmem baseV time0 level0 time1 level1 time2 level2 time3 level3 totalT observationT observationDur
+% Na highlight stimulus
+1 1 0 0 0 0 0  80 38.5 2 -60 3 0 -100 38 50 40 -60  
+% Kd highlight stimulus
+0 0 1 1 0 0 0  80 20 20 -60 3 0 50 40 -60 50 -60  
+% leak highlight stimulus
+0 0 0 0 1 1 0  80 20 20 -60 3 0 -100 40 -60 50 -60  
+% C highlighting stimulus
+0 0 0 0 0 0 1  80 38 2 -60 3 38 -100 39 50 40 -60  
