@@ -18,6 +18,7 @@ initial version: 2015-11-17
 
 #include "rt_helper.h"
 #include "converter.h"
+#include "options.h"
 
 #include "HHVClampParameters.h"
 
@@ -71,12 +72,12 @@ void rtdo_init(void) {
         printf("Failed to load comedilib module. Is libcomedi installed in an accessible path?\n");
         exit(EXIT_FAILURE);
     }
-    if ( ! (dev = comedi_open(DO_DEV)) ) {
-        printf("Failed to open comedi device %s.\n", DO_DEV);
+    if ( ! (dev = comedi_open(daqopts.device)) ) {
+        printf("Failed to open comedi device %s.\n", daqopts.device);
         cleanup(init_level);
         exit(EXIT_FAILURE);
     }
-    aodev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, 0);
+    aodev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, daqopts.ao_subdev_offset);
     rtdo_set_Vout(0.0);
     printf("Done.\n");
 
@@ -182,7 +183,7 @@ void rtdo_set_Vout(float V) {
     if ( V == Vset )
         return;
     comedi_data_write(dev, aodev,
-                      DO_AOCHAN, DO_AORANGE, AREF_GROUND,
+                      daqopts.vc_out_chan, daqopts.vc_out_range, AREF_GROUND,
                       rtdo_convert_ao_sample((double) V) );
     Vset = V;
 }
@@ -193,7 +194,7 @@ void *ai_fun(void *unused) {
     RTIME now, expected;
 
     // Open subdevice
-    aidev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, 0);
+    aidev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, daqopts.ai_subdev_offset);
     if (aidev < 0) {
         printf("Analog in subdevice not found. Is the rtai_comedi module installed?\n");
         cleanup(4);
@@ -205,6 +206,7 @@ void *ai_fun(void *unused) {
     task = rt_thread_init(nam2num("AIFUN"), 0, 5000, SCHED_FIFO, DO_AI_CPUS);
     if (!task) {
         printf("AI RT setup failed.\n");
+        cleanup(4);
         exit(EXIT_FAILURE);
     }
     mlockall(MCL_CURRENT | MCL_FUTURE);
@@ -216,7 +218,7 @@ void *ai_fun(void *unused) {
     expected = rt_get_time_ns() + DO_SAMP_NS;
     while ( !end ) {
         // Read sample to buffer
-        ret = comedi_data_read(dev, aidev, DO_AICHAN, DO_AIRANGE, AREF_DIFF, &(ai_buffer[i]));
+        ret = comedi_data_read(dev, aidev, daqopts.vc_in_chan, daqopts.vc_in_range, daqopts.vc_in_ref, &(ai_buffer[i]));
         if ( ! ret ) {
             rt_printk("Error reading from AI, exiting.\n");
             break;

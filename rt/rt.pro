@@ -10,11 +10,13 @@ SOURCES += \
     ../vclamp/run.cc \
     ../vclamp/model/VClampGA.cu \
     converter.c \
-    ../vclamp/generate.cc
+    ../vclamp/generate.cc \
+    options.c
 
 HEADERS += \
     rt_helper.h \
-    converter.h
+    converter.h \
+    options.h
 
 INCLUDEPATH += \
     /usr/realtime/include \

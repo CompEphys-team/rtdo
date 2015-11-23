@@ -21,7 +21,7 @@ COMEDI_PATH     ?= /usr/src/comedi
 RTDIR	        = ../../rt
 
 ifeq ($(RTDO),y)
-    SOURCES	    += $(RTDIR)/rt.c $(RTDIR)/converter.c
+    SOURCES	    += $(RTDIR)/rt.c $(RTDIR)/converter.c $(RTDIR)/options.c
     INCLUDE_FLAGS   += -I. \
 			-I$(RTDIR) \
 			-I$(RTAI_PATH)/include \

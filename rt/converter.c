@@ -15,6 +15,7 @@ initial version: 2015-11-17
 #include <dlfcn.h>
 #include <comedilib.h>
 #include "converter.h"
+#include "options.h"
 
 comedi_polynomial_t ai_poly, ao_poly;
 int calibrated;
@@ -57,7 +58,7 @@ double rtdo_convert_ai_sample(lsampl_t in) {
 
 
 lsampl_t rtdo_convert_ao_sample(double out) {
-    double Vcmd = out / DO_COMMAND_MV_PER_V;
+    double Vcmd = out / daqopts.vc_out_mV_per_V;
     if ( Vcmd > ao_range->max || Vcmd < ao_range->min ) {
         rt_printk("Warning: Desired command voltage %.1f V (%.2f mV) is outside the channel range [%.1f V, %.1f V]\n",
                   Vcmd, out, ao_range->min, ao_range->max );
@@ -93,22 +94,23 @@ int rtdo_converter_init() {
     DLSYM(lc_from_physical, libcomedi, "comedi_from_physical");
     DLSYM(lc_from_phys, libcomedi, "comedi_from_phys");
 
-    if ( !(dev = lc_open(DO_DEV)) )
+    if ( !(dev = lc_open(daqopts.device)) )
         return DOE_OPEN_DEV;
-    aidev = lc_find_subdevice_by_type(dev, COMEDI_SUBD_AI, 0);
-    aodev = lc_find_subdevice_by_type(dev, COMEDI_SUBD_AO, 0);
+    aidev = lc_find_subdevice_by_type(dev, COMEDI_SUBD_AI, daqopts.ai_subdev_offset);
+    aodev = lc_find_subdevice_by_type(dev, COMEDI_SUBD_AO, daqopts.ao_subdev_offset);
     if ( aidev < 0 || aodev < 0 ) {
         lc_close(dev);
         return DOE_FIND_SUBDEV;
     }
 
-    ai_range = lc_get_range(dev, aidev, DO_AICHAN, DO_AIRANGE);
-    ai_maxdata = lc_get_maxdata(dev, aidev, DO_AICHAN);
-    ao_range = lc_get_range(dev, aodev, DO_AOCHAN, DO_AORANGE);
-    ao_maxdata = lc_get_maxdata(dev, aodev, DO_AOCHAN);
-    if ( !access(DO_CALIBRATION_FILE, F_OK) && (cal = lc_parse_calibration_file(DO_CALIBRATION_FILE)) ) {
-        lc_get_softcal_converter(aidev, DO_AICHAN, DO_AIRANGE, COMEDI_TO_PHYSICAL, cal, &ai_poly);
-        lc_get_softcal_converter(aodev, DO_AOCHAN, DO_AORANGE, COMEDI_FROM_PHYSICAL, cal, &ao_poly);
+    ai_range = lc_get_range(dev, aidev, daqopts.vc_in_chan, daqopts.vc_in_range);
+    ai_maxdata = lc_get_maxdata(dev, aidev, daqopts.vc_in_chan);
+    ao_range = lc_get_range(dev, aodev, daqopts.vc_out_chan, daqopts.vc_out_range);
+    ao_maxdata = lc_get_maxdata(dev, aodev, daqopts.vc_out_chan);
+
+    if ( !access(daqopts.calibration_file, F_OK) && (cal = lc_parse_calibration_file(daqopts.calibration_file)) ) {
+        lc_get_softcal_converter(aidev, daqopts.vc_in_chan, daqopts.vc_in_range, COMEDI_TO_PHYSICAL, cal, &ai_poly);
+        lc_get_softcal_converter(aodev, daqopts.vc_out_chan, daqopts.vc_out_range, COMEDI_FROM_PHYSICAL, cal, &ao_poly);
         lc_cleanup_calibration(cal);
         calibrated = 1;
         ret = 0;
