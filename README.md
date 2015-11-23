@@ -31,7 +31,9 @@ mkdir wave_output
 
 ./run 1 0 1000 200000 wave wave2.dat sigma2.dat -1 0 0
 
+If running in RT mode with a live neuron hooked up, use instead:
 
+./run 2 0 1000 200000 wave wave2.dat sigma2.dat -1 0 0
 
 
 'Real neuron' method is in helper.h:
