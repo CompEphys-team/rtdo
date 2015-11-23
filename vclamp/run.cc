@@ -47,10 +47,10 @@ int main( int argc, char *argv[] )
 	std::cerr << "Starting" << std::endl;
 	if (argc != 11)
 	{
-		cerr << "usage: generate_run <CPU=0, GPU=1> <protocol> <nPop> <totalT> <outdir> <stimulus file> <sigma file> <noise amplitude (STD)> <debug mode? (0/1)> <GPU choice>" << endl;
+        cerr << "usage: generate_run <CPU=0, GPU=1, RT=2> <protocol> <nPop> <totalT> <outdir> <stimulus file> <sigma file> <noise amplitude (STD)> <debug mode? (0/1)> <GPU choice>" << endl;
 		exit( 1 );
-	}
-	int which = atoi( argv[1] );
+    }
+    int which = atoi( argv[1] );
 	int protocol = atoi( argv[2] );
 	int nPop = atoi( argv[3] );
 	double totalT = atof( argv[4] );
@@ -60,6 +60,17 @@ int main( int argc, char *argv[] )
 	int GPU = atoi( argv[10] );
 	int retval;
 	string cmd;
+
+    if ( which == 2 ) {
+#ifdef _WIN32
+        cerr << "Real time mode is only supported on Linux." << endl;
+        exit(1);
+#endif
+        if (protocol >= 0) {
+            cerr << "Disabling unsupported protocol in real time mode." << endl;
+            protocol = -1;
+        }
+    }
 
         string instanceDir = "model."  + std::to_string(protocol);
         system( std::string("cp -R model " + instanceDir).c_str() );
@@ -79,7 +90,14 @@ int main( int argc, char *argv[] )
 		os << "#define TOTALT " << totalT << endl;
 		os << "#define fixGPU " << GPU << endl;
 		os << "#define INoiseSTD " << INoiseSTD << endl;
-		os.close();
+        os << "#define DT 0.25" << endl;
+
+        if ( which == 2 ) {
+            os << "#define RTDO" << endl;
+            setenv("RTDO", "y", true);
+        }
+
+        os.close();
 
 
 		// build it
@@ -100,6 +118,11 @@ int main( int argc, char *argv[] )
 #endif
 		cerr << cmd << endl;
 		retval = system( cmd.c_str() );
+
+        if ( which == 2 ) {
+            setenv("RTDO", "n", true);
+        }
+
 	if (retval != 0){
 		cerr << "ERROR: Following call failed with status " << retval << ":" << endl << cmd << endl;
 		cerr << "Exiting..." << endl;

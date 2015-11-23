@@ -72,6 +72,7 @@ int main( int argc, char *argv[] )
 #endif // _WAVE
 	os << endl;
 	os << "#define fixGPU " << GPU << endl;
+    os << "#define DT 0.25" << endl;
 	os.close();
 	
 	// build it

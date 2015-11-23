@@ -221,6 +221,7 @@ int main( int argc, char *argv[] )
 		cerr << "% " << t << endl;
 		done = (t >= TOTALT);
 	}
+    endexpHH();
 	timer.stopTimer();
 	fprintf( timef, "%f \n", timer.getElapsedTime() );
 	// close files 

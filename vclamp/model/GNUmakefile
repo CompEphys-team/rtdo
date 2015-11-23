@@ -13,5 +13,96 @@
 
 EXECUTABLE	:= VClampGA
 SOURCES		:= VClampGA.cu
+NVCCFLAGS	+= --std c++11
 
-include	$(GENN_PATH)/userproject/include/makefile_common_gnu.mk
+RTAI_PATH       ?= /usr/realtime
+COMEDI_PATH     ?= /usr/src/comedi
+
+RTDIR	        = ../../rt
+
+ifeq ($(RTDO),y)
+    SOURCES	    += $(RTDIR)/rt.c $(RTDIR)/converter.c
+    INCLUDE_FLAGS   += -I. \
+			-I$(RTDIR) \
+			-I$(RTAI_PATH)/include \
+			-I$(COMEDI_PATH)/inc-wrap
+    LINK_FLAGS	    := -L$(RTAI_PATH)/lib -lkcomedilxrt \
+			-pthread \
+			-rdynamic -ldl
+endif
+
+# OS name (Linux or Darwin) and architecture (32 bit or 64 bit).
+OS_SIZE		:=$(shell uname -m | sed -e "s/i.86/32/" -e "s/x86_64/64/")
+OS_UPPER 	:=$(shell uname -s 2>/dev/null | tr [:lower:] [:upper:])
+OS_LOWER 	:=$(shell uname -s 2>/dev/null | tr [:upper:] [:lower:])
+DARWIN  	:=$(strip $(findstring DARWIN, $(OS_UPPER)))
+
+# Global C++ and CUDA compiler settings.
+CUDA_PATH	?=/usr/local/cuda
+NVCC		:=$(CUDA_PATH)/bin/nvcc
+NVCCFLAGS	+=
+CXXFLAGS	+=-std=c++11
+ifeq ($(DARWIN),DARWIN)
+   CXX		:=clang++
+endif
+
+# Global include flags and link flags.
+INCLUDE_FLAGS	+=-I$(CUDA_PATH)/include -I$(CUDA_PATH)/samples/common/inc \
+		  -I$(GENN_PATH)/lib/include -I$(GENN_PATH)/userproject/include
+ifeq ($(DARWIN),DARWIN)
+  LINK_FLAGS	+=-L$(CUDA_PATH)/lib -lcudart -stdlib=libstdc++ -lc++
+else
+  ifeq ($(OS_SIZE),32)
+    LINK_FLAGS	+=-L$(CUDA_PATH)/lib -lcudart
+  else
+    LINK_FLAGS	+=-L$(CUDA_PATH)/lib64 -lcudart
+  endif
+endif
+
+# An auto-generated file containing your cuda device's compute capability.
+include sm_version.mk
+
+# Enumerate all source and object files (if they have not already been listed).
+SOURCES		?=$(wildcard *.cc *.cpp *.cu)
+OBJECTS		:=$(foreach obj,$(basename $(SOURCES)),$(obj).o)
+
+# Target rules.
+.PHONY: all
+all: release
+
+%.o: %.cc
+	$(CXX) $(CXXFLAGS) $(INCLUDE_FLAGS) $< -o $@ -c
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE_FLAGS) $< -o $@ -c
+
+%.o: %.cu
+	$(NVCC) $(NVCCFLAGS) $(INCLUDE_FLAGS) $(GENCODE_FLAGS) $< -o $@ -c
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDE_FLAGS) $< -o $@ -c
+
+$(EXECUTABLE): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(OBJECTS) -o $@ $(LINK_FLAGS)
+
+
+.PHONY: release
+# use --compiler-options "-Wconversion" for silent type conversions
+release: NVCCFLAGS	+=--compiler-options "-O3"
+release: CXXFLAGS	+=-O3
+release: CFLAGS		+=-O3
+release: $(EXECUTABLE)
+
+.PHONY: debug
+debug: NVCCFLAGS	+=-g -G
+debug: CXXFLAGS		+=-g
+debug: CFLAGS		+=-g
+debug: $(EXECUTABLE)
+
+.PHONY: clean
+clean:
+	rm -rf $(EXECUTABLE) *.o $(RTDIR)/*.o
+
+.PHONY: purge
+purge: clean
+	rm -rf *_CODE sm_version.mk

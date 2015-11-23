@@ -18,11 +18,10 @@
 */
 //--------------------------------------------------------------------------
 
-#define DT 0.25  //!< This defines the global time step at which the simulation will run
+#include "HHVClampParameters.h"
 #define Npara 19
 #include "modelSpec.h"
 #include "modelSpec.cc"
-#include "HHVClampParameters.h"
 
 double myHH_ini[Npara+5]= {
   -60.0,         // 0 - membrane potential E

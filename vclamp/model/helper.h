@@ -295,6 +295,11 @@ double glexp;
 double Elexp;
 double Cexp;
 
+#ifdef RTDO
+#include "rt_helper.h"
+#else
+void endexpHH(){}
+
 void initexpHH()
 {
   Vexp= myHH_ini[0];
@@ -356,7 +361,9 @@ void runexpHH(float t)
   }
   IsynGHH+= INoiseSTD*RG.n();
 }
-#endif
+#endif // _WAVE
+
+#endif // RTDO
 
 void initI(inputSpec &I) 
 {
