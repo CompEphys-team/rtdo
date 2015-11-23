@@ -20,7 +20,7 @@ extern "C" {
 
 void rtdo_init();
 void rtdo_sync();
-float rtdo_get_Vm(float t);
+float rtdo_get_Im(float t);
 void rtdo_set_Vout(float V);
 void rtdo_stop(int unused);
 
@@ -44,7 +44,7 @@ void runexpHH(float t)
 {
     // Read/Write
     rtdo_set_Vout(stepVGHH);
-    IsynGHH = rtdo_get_Vm(t);
+    IsynGHH = rtdo_get_Im(t);
 }
 #endif // _WAVE
 

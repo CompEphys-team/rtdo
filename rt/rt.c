@@ -172,7 +172,7 @@ void rtdo_sync() {
     }
 }
 
-float rtdo_get_Vm(float t) {
+float rtdo_get_Im(float t) {
     lsampl_t sample;
     rt_mbx_receive(ai_mbx, &sample, ai_msg_size);
     return (float)rtdo_convert_ai_sample(sample);
