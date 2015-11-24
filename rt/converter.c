@@ -13,14 +13,20 @@ initial version: 2015-11-17
 
 #include <unistd.h>
 #include <dlfcn.h>
+#include <stdlib.h>
+#include <rtai_lxrt.h>
 #include <comedilib.h>
 #include "converter.h"
 #include "options.h"
 
-comedi_polynomial_t ai_poly, ao_poly;
-int calibrated;
-lsampl_t ai_maxdata, ao_maxdata;
-comedi_range *ai_range, *ao_range;
+struct rtdo_converter_struct {
+    lsampl_t maxdata;
+    comedi_range range;
+    comedi_polynomial_t polynomial;
+    double conversion_factor;
+};
+
+static comedi_calibration_t *calibration;
 
 // dlsym'ed functions. Check comedilib.h for s/lc_/comedi_/ signatures.
 void *libcomedi;
@@ -49,38 +55,37 @@ lsampl_t (*lc_from_phys)(double, comedi_range *, lsampl_t);
     }
 
 
-double rtdo_convert_ai_sample(lsampl_t in) {
-    if ( calibrated )
-        return lc_to_physical(in, &ai_poly);
+double rtdo_convert_to_physical(lsampl_t in, rtdo_converter_type *converter) {
+    double out;
+    if ( calibration )
+        out = lc_to_physical(in, &(converter->polynomial));
     else
-        return lc_to_phys(in, ai_range, ai_maxdata);
+        out = lc_to_phys(in, &(converter->range), converter->maxdata);
+    return out * converter->conversion_factor;
 }
 
 
-lsampl_t rtdo_convert_ao_sample(double out) {
-    double Vcmd = out / daqopts.vc_out_mV_per_V;
-    if ( Vcmd > ao_range->max || Vcmd < ao_range->min ) {
-        rt_printk("Warning: Desired command voltage %.1f V (%.2f mV) is outside the channel range [%.1f V, %.1f V]\n",
-                  Vcmd, out, ao_range->min, ao_range->max );
+lsampl_t rtdo_convert_from_physical(double out, rtdo_converter_type *converter) {
+    double Vcmd = out / converter->conversion_factor;
+    if ( Vcmd > converter->range.max || Vcmd < converter->range.min ) {
+        rt_printk("Warning: Desired command voltage %.1f V (%.2f mV or nA) is outside the channel range [%.1f V, %.1f V]\n",
+                  Vcmd, out, converter->range.min, converter->range.max );
     }
-    if ( calibrated )
-        return lc_from_physical(Vcmd, &ao_poly);
+    if ( calibration )
+        return lc_from_physical(Vcmd, &(converter->polynomial));
     else
-        return lc_from_phys(Vcmd, ao_range, ao_maxdata);
+        return lc_from_phys(Vcmd, &(converter->range), converter->maxdata);
 }
 
 
-int rtdo_converter_init() {
-    comedi_t *dev;
-    comedi_calibration_t *cal;
-    int aidev, aodev, ret=0;
+int rtdo_converter_init(char *calibration_file) {
+    char *dlerr;
 
     dlerror();
     if ( ! (libcomedi = dlopen("libcomedi.so", RTLD_NOW | RTLD_DEEPBIND)) ) {
         printf(dlerror());
         return DOE_LOAD_LIBRARY;
     }
-    char *dlerr;
     DLSYM(lc_open, libcomedi, "comedi_open");
     DLSYM(lc_close, libcomedi, "comedi_close");
     DLSYM(lc_find_subdevice_by_type, libcomedi, "comedi_find_subdevice_by_type");
@@ -94,36 +99,67 @@ int rtdo_converter_init() {
     DLSYM(lc_from_physical, libcomedi, "comedi_from_physical");
     DLSYM(lc_from_phys, libcomedi, "comedi_from_phys");
 
-    if ( !(dev = lc_open(daqopts.device)) )
-        return DOE_OPEN_DEV;
-    aidev = lc_find_subdevice_by_type(dev, COMEDI_SUBD_AI, daqopts.ai_subdev_offset);
-    aodev = lc_find_subdevice_by_type(dev, COMEDI_SUBD_AO, daqopts.ao_subdev_offset);
-    if ( aidev < 0 || aodev < 0 ) {
-        lc_close(dev);
-        return DOE_FIND_SUBDEV;
+    if ( calibration_file
+         && !access(calibration_file, F_OK)
+         && (calibration = lc_parse_calibration_file(calibration_file)) ) {
+        return 0;
+    } else {
+        calibration = 0;
+        return DOE_LOAD_CALIBRATION;
+    }
+}
+
+
+rtdo_converter_type *rtdo_converter_create(char *device, const rtdo_channel_options *chan, int *err) {
+    comedi_t *dev;
+    int subdev;
+    enum comedi_conversion_direction direction;
+    enum comedi_subdevice_type subdev_type;
+    rtdo_converter_type *converter;
+    comedi_range *range_p;
+
+    if ( chan->type == DO_CHANNEL_AO ) {
+        direction = COMEDI_FROM_PHYSICAL;
+        subdev_type = COMEDI_SUBD_AO;
+    } else if ( chan->type == DO_CHANNEL_AI ) {
+        direction = COMEDI_TO_PHYSICAL;
+        subdev_type = COMEDI_SUBD_AI;
     }
 
-    ai_range = lc_get_range(dev, aidev, daqopts.vc_in_chan, daqopts.vc_in_range);
-    ai_maxdata = lc_get_maxdata(dev, aidev, daqopts.vc_in_chan);
-    ao_range = lc_get_range(dev, aodev, daqopts.vc_out_chan, daqopts.vc_out_range);
-    ao_maxdata = lc_get_maxdata(dev, aodev, daqopts.vc_out_chan);
+    if ( !(dev = lc_open(device)) ) {
+        *err = DOE_OPEN_DEV;
+        return 0;
+    }
+    subdev = lc_find_subdevice_by_type(dev, subdev_type, chan->subdevice_offset);
+    if ( subdev < 0 ) {
+        lc_close(dev);
+        *err = DOE_FIND_SUBDEV;
+        return 0;
+    }
 
-    if ( !access(daqopts.calibration_file, F_OK) && (cal = lc_parse_calibration_file(daqopts.calibration_file)) ) {
-        lc_get_softcal_converter(aidev, daqopts.vc_in_chan, daqopts.vc_in_range, COMEDI_TO_PHYSICAL, cal, &ai_poly);
-        lc_get_softcal_converter(aodev, daqopts.vc_out_chan, daqopts.vc_out_range, COMEDI_FROM_PHYSICAL, cal, &ao_poly);
-        lc_cleanup_calibration(cal);
-        calibrated = 1;
-        ret = 0;
-    } else {
-        calibrated = 0;
-        ret = DOE_LOAD_CALIBRATION;
+    if ( ! (converter = malloc(sizeof(*converter))) ) {
+        *err = DOE_MEMORY;
+        return 0;
+    } /* TODO: keep track of these pointers */
+
+    range_p = lc_get_range(dev, subdev, chan->channel, chan->range);
+    memcpy(&converter->range, range_p, sizeof(*range_p)); // Need to copy because comedi_close discards ranges.
+
+    converter->maxdata = lc_get_maxdata(dev, subdev, chan->channel);
+    converter->conversion_factor = chan->conversion_factor;
+
+    if ( calibration ) {
+        lc_get_softcal_converter(subdev, chan->channel, chan->range,
+                                 direction, calibration, &(converter->polynomial));
     }
 
     lc_close(dev);
-    return ret;
+    return converter;
 }
 
 
 void rtdo_converter_exit() {
+    if ( calibration )
+        lc_cleanup_calibration(calibration);
     dlclose(libcomedi);
 }

@@ -34,6 +34,9 @@ initial version: 2015-11-17
 comedi_t *dev;
 int aodev;
 
+static rtdo_converter_type *outchan_vclamp_Vc_converter;
+static rtdo_converter_type *inchan_vclamp_Im_converter;
+
 lsampl_t ai_buffer[DO_BUFSZ];
 float Vset; // Command voltage in mV
 
@@ -51,33 +54,52 @@ int ai_msg_size;
 //------------------------------------
 // Functions
 void cleanup(int init_level);
-void *ai_fun(void *);
+void *ai_fun(void *init_level);
 
 void rtdo_init(void) {
     int ret = 0, init_level = 0;
 
     // Set up comedi
     printf("Setting up comedi...\n");
+
+    // Load converters
     init_level++;
-    ret = rtdo_converter_init();
-    if ( ret == DOE_OPEN_DEV ) {
-        printf("Failed to open device in non-realtime mode. Is the driver running?\n");
-        exit(EXIT_FAILURE);
-    } else if ( ret == DOE_FIND_SUBDEV ) {
-        printf("Failed to find subdevices. Is the rtai_comedi module installed?\n");
-        exit(EXIT_FAILURE);
-    } else if ( ret == DOE_LOAD_CALIBRATION ) {
+    ret = rtdo_converter_init(daqopts.calibration_file);
+    if ( ret == DOE_LOAD_CALIBRATION ) {
         printf("Warning: Calibration could not be read. Conversion may be imprecise.\n");
     } else if ( ret == DOE_LOAD_LIBRARY || ret == DOE_LOAD_FUNC ) {
         printf("Failed to load comedilib module. Is libcomedi installed in an accessible path?\n");
         exit(EXIT_FAILURE);
     }
+    inchan_vclamp_Im_converter = rtdo_converter_create(daqopts.device, &inchan_vclamp_Im, &ret);
+    if ( ret == DOE_OPEN_DEV ) {
+        printf("Failed to open comedi device in non-realtime mode. Is the driver running?\n");
+        cleanup(init_level);
+        exit(EXIT_FAILURE);
+    } else if ( ret == DOE_FIND_SUBDEV ) {
+        printf("Failed to find AI subdevice at offset %d.\n", inchan_vclamp_Im.subdevice_offset);
+        cleanup(init_level);
+        exit(EXIT_FAILURE);
+    }
+    outchan_vclamp_Vc_converter = rtdo_converter_create(daqopts.device, &outchan_vclamp_Vc, &ret);
+    if ( ret == DOE_OPEN_DEV ) {
+        printf("Failed to open comedi device in non-realtime mode. Is the driver running?\n");
+        cleanup(init_level);
+        exit(EXIT_FAILURE);
+    } else if ( ret == DOE_FIND_SUBDEV ) {
+        printf("Failed to find AO subdevice at offset %d.\n", outchan_vclamp_Vc.subdevice_offset);
+        cleanup(init_level);
+        exit(EXIT_FAILURE);
+    }
+
+    // Open in real time
+    init_level++;
     if ( ! (dev = comedi_open(daqopts.device)) ) {
         printf("Failed to open comedi device %s.\n", daqopts.device);
         cleanup(init_level);
         exit(EXIT_FAILURE);
     }
-    aodev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, daqopts.ao_subdev_offset);
+    aodev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, outchan_vclamp_Vc.subdevice_offset);
     rtdo_set_Vout(0.0);
     printf("Done.\n");
 
@@ -121,8 +143,7 @@ void rtdo_init(void) {
 
     // Start subordinates
     printf("Launching AI thread.\n");
-    init_level++;
-    ai_thread = rt_thread_create(ai_fun, NULL, 1000);
+    ai_thread = rt_thread_create(ai_fun, (void *)(unsigned long)(init_level++), 1000);
 }
 
 void rtdo_stop(int unused) {
@@ -134,27 +155,29 @@ void cleanup( int init_level ) {
     switch(init_level) {
         default:
         case 0:
-        case 5:
+        case 6:
             end = 1;
             printf("Waiting for threads to exit, please wait...\n");
             if (ai_thread) rt_thread_join(ai_thread);
             printf("All threads complete.\n");
 
-        case 4:
+        case 5:
             rt_mbx_delete(ai_mbx);
             printf("Mailboxes deleted.\n");
 
-        case 3:
+        case 4:
             rt_sem_delete(ai_sem);
             printf("Semaphores released.\n");
 
-        case 2:
+        case 3:
             rt_thread_delete(maintask);
             stop_rt_timer();
             printf("RT stopped.\n");
 
-        case 1:
+        case 2:
             comedi_close(dev);
+
+        case 1:
             rtdo_converter_exit();
             printf("Comedi closed.\n");
     }
@@ -176,28 +199,28 @@ void rtdo_sync() {
 float rtdo_get_Im(float t) {
     lsampl_t sample;
     rt_mbx_receive(ai_mbx, &sample, ai_msg_size);
-    return (float)rtdo_convert_ai_sample(sample);
+    return (float)rtdo_convert_to_physical(sample, inchan_vclamp_Im_converter);
 }
 
 void rtdo_set_Vout(float V) {
     if ( V == Vset )
         return;
     comedi_data_write(dev, aodev,
-                      daqopts.vc_out_chan, daqopts.vc_out_range, AREF_GROUND,
-                      rtdo_convert_ao_sample((double) V) );
+                      outchan_vclamp_Vc.channel, outchan_vclamp_Vc.range, outchan_vclamp_Vc.reference,
+                      rtdo_convert_from_physical((double) V, outchan_vclamp_Vc_converter) );
     Vset = V;
 }
 
-void *ai_fun(void *unused) {
+void *ai_fun(void *init_level) {
     RT_TASK *task;
     int aidev, ret, i = 0;
     RTIME now, expected;
 
     // Open subdevice
-    aidev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, daqopts.ai_subdev_offset);
+    aidev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, inchan_vclamp_Im.subdevice_offset);
     if (aidev < 0) {
         printf("Analog in subdevice not found. Is the rtai_comedi module installed?\n");
-        cleanup(4);
+        cleanup((unsigned long) init_level);
         exit(EXIT_FAILURE);
     }
 
@@ -206,7 +229,7 @@ void *ai_fun(void *unused) {
     task = rt_thread_init(nam2num("AIFUN"), 0, 5000, SCHED_FIFO, DO_AI_CPUS);
     if (!task) {
         printf("AI RT setup failed.\n");
-        cleanup(4);
+        cleanup((unsigned long) init_level);
         exit(EXIT_FAILURE);
     }
     mlockall(MCL_CURRENT | MCL_FUTURE);
@@ -218,7 +241,8 @@ void *ai_fun(void *unused) {
     expected = rt_get_time_ns() + DO_SAMP_NS;
     while ( !end ) {
         // Read sample to buffer
-        ret = comedi_data_read(dev, aidev, daqopts.vc_in_chan, daqopts.vc_in_range, daqopts.vc_in_ref, &(ai_buffer[i]));
+        ret = comedi_data_read(dev, aidev, inchan_vclamp_Im.channel, inchan_vclamp_Im.range,
+                               inchan_vclamp_Im.reference, &(ai_buffer[i]));
         if ( ! ret ) {
             rt_printk("Error reading from AI, exiting.\n");
             break;
