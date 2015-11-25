@@ -22,7 +22,7 @@ initial version: 2015-11-17
 
 #include "HHVClampParameters.h"
 
-#define DO_AI_CPUS 0xF000
+#define DO_RT_CPUS 0xF000
 #define DO_MAX_RT_THREADS 32
 
 //-------------------------------------
@@ -55,8 +55,8 @@ int ai_msg_size;
 // Functions
 void cleanup(int init_level);
 void *rtdo_thread_base(void *channel);
-void ao_fun(rtdo_channel_options *chan);
-void ai_fun(rtdo_channel_options *chan);
+void ao_fun(rtdo_channel_options *chan, int subdev);
+void ai_fun(rtdo_channel_options *chan, int subdev);
 
 void rtdo_init(void) {
     int ret = 0, init_level = 0;
@@ -215,44 +215,54 @@ void rtdo_channel_set(rtdo_channel_options *chan, float V) {
 
 void *rtdo_thread_base(void *channel) {
     rtdo_channel_options *chan = (rtdo_channel_options *)channel;
+    void (*fun)(rtdo_channel_options*, int);
+    RT_TASK *task;
+    int subdev;
+    enum comedi_subdevice_type subdev_type;
+
+    if ( chan->type == DO_CHANNEL_AI ) {
+        subdev_type = COMEDI_SUBD_AI;
+        fun =& ai_fun;
+    } else if ( chan->type == DO_CHANNEL_AO ) {
+        subdev_type = COMEDI_SUBD_AO;
+        fun =& ao_fun;
+    }
+
+    // Open subdevice
+    subdev = comedi_find_subdevice_by_type(dev, subdev_type, chan->subdevice_offset);
+    if (subdev < 0) {
+        printf("Subdevice not found. Is the rtai_comedi module installed?\n");
+        cleanup(0);
+        exit(EXIT_FAILURE);
+    }
+
+    // Set up realtime
+    task = rt_thread_init((unsigned long)chan, 0, 5000, SCHED_FIFO, DO_RT_CPUS);
+    if (!task) {
+        printf("Channel RT setup failed.\n");
+        cleanup(0);
+        exit(EXIT_FAILURE);
+    }
+
+    // Go!
     if ( chan->type == DO_CHANNEL_AI )
-        ai_fun(chan);
+        ai_fun(chan, subdev);
     else if ( chan->type == DO_CHANNEL_AO )
-        ao_fun(chan);
+        ao_fun(chan, subdev);
+
+    rt_thread_delete(task);
     return 0;
 }
 
-void ao_fun(rtdo_channel_options *chan) {
-    aodev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, chan->subdevice_offset);
-    if (aodev < 0) {
-        printf("Analog out subdevice not found. Is the rtai_comedi module installed?\n");
-        cleanup((unsigned long) chan);
-        exit(EXIT_FAILURE);
-    }
+void ao_fun(rtdo_channel_options *chan, int subdev) {
+    aodev = subdev;
     rtdo_channel_set(chan, 0.0);
 }
 
-void ai_fun(rtdo_channel_options *chan) {
-    RT_TASK *task;
-    int aidev, ret, i = 0;
+void ai_fun(rtdo_channel_options *chan, int subdev) {
+    int ret, i = 0;
     RTIME now, expected;
 
-    // Open subdevice
-    aidev = comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, chan->subdevice_offset);
-    if (aidev < 0) {
-        printf("Analog in subdevice not found. Is the rtai_comedi module installed?\n");
-        cleanup(0);
-        exit(EXIT_FAILURE);
-    }
-
-    // Enter realtime
-    printf("AI entering realtime!\n");
-    task = rt_thread_init(nam2num("AIFUN"), 0, 5000, SCHED_FIFO, DO_AI_CPUS);
-    if (!task) {
-        printf("AI RT setup failed.\n");
-        cleanup(0);
-        exit(EXIT_FAILURE);
-    }
     mlockall(MCL_CURRENT | MCL_FUTURE);
     rt_make_hard_real_time();
 
@@ -262,7 +272,7 @@ void ai_fun(rtdo_channel_options *chan) {
     expected = rt_get_time_ns() + DO_SAMP_NS;
     while ( !end ) {
         // Read sample to buffer
-        ret = comedi_data_read(dev, aidev, chan->channel, chan->range,
+        ret = comedi_data_read(dev, subdev, chan->channel, chan->range,
                                chan->reference, &(ai_buffer[i]));
         if ( ! ret ) {
             rt_printk("Error reading from AI, exiting.\n");
@@ -272,8 +282,7 @@ void ai_fun(rtdo_channel_options *chan) {
         rt_mbx_send(ai_mbx, &(ai_buffer[i]), ai_msg_size);
 
         // Move to next entry
-        if ( i == DO_BUFSZ )
-            i = 0;
+        i = (i+1) % DO_BUFSZ;
 
         // Wait period
         now = rt_get_time_ns();
@@ -285,5 +294,4 @@ void ai_fun(rtdo_channel_options *chan) {
 
     end = 1;
     rt_make_soft_real_time();
-    rt_thread_delete(task);
 }
