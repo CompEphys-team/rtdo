@@ -110,7 +110,7 @@ int rtdo_converter_init(char *calibration_file) {
 }
 
 
-rtdo_converter_type *rtdo_converter_create(char *device, const rtdo_channel_options *chan, int *err) {
+int rtdo_converter_create(char *device, rtdo_channel_options *chan) {
     comedi_t *dev;
     int subdev;
     enum comedi_conversion_direction direction;
@@ -127,19 +127,16 @@ rtdo_converter_type *rtdo_converter_create(char *device, const rtdo_channel_opti
     }
 
     if ( !(dev = lc_open(device)) ) {
-        *err = DOE_OPEN_DEV;
-        return 0;
+        return DOE_OPEN_DEV;
     }
     subdev = lc_find_subdevice_by_type(dev, subdev_type, chan->subdevice_offset);
     if ( subdev < 0 ) {
         lc_close(dev);
-        *err = DOE_FIND_SUBDEV;
-        return 0;
+        return DOE_FIND_SUBDEV;
     }
 
     if ( ! (converter = malloc(sizeof(*converter))) ) {
-        *err = DOE_MEMORY;
-        return 0;
+        return DOE_MEMORY;
     } /* TODO: keep track of these pointers */
 
     range_p = lc_get_range(dev, subdev, chan->channel, chan->range);
@@ -154,7 +151,8 @@ rtdo_converter_type *rtdo_converter_create(char *device, const rtdo_channel_opti
     }
 
     lc_close(dev);
-    return converter;
+    chan->converter = (void *)converter;
+    return 0;
 }
 
 

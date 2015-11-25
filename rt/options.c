@@ -26,7 +26,8 @@ rtdo_channel_options inchan_vclamp_Im = {
     0,
     0,
     AREF_DIFF,
-    100 /* nA/V */
+    100, /* nA/V */
+    0
 };
 
 rtdo_channel_options outchan_vclamp_Vc = {
@@ -35,5 +36,6 @@ rtdo_channel_options outchan_vclamp_Vc = {
     0,
     0,
     AREF_GROUND,
-    20
+    20, /* mV/V */
+    0
 };

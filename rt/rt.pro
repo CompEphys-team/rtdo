@@ -11,7 +11,8 @@ SOURCES += \
     ../vclamp/model/VClampGA.cu \
     converter.c \
     ../vclamp/generate.cc \
-    options.c
+    options.c \
+    rt.c
 
 HEADERS += \
     rt_helper.h \

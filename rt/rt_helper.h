@@ -18,10 +18,13 @@ initial version: 2015-11-17
 extern "C" {
 #endif
 
+#include "options.h"
+
 void rtdo_init();
+void rtdo_create_channel(rtdo_channel_options *);
 void rtdo_sync();
-float rtdo_get_Im(float t);
-void rtdo_set_Vout(float V);
+float rtdo_channel_get(rtdo_channel_options *chan);
+void rtdo_channel_set(rtdo_channel_options *chan, float V);
 void rtdo_stop(int unused);
 
 #ifdef __cplusplus
@@ -31,6 +34,8 @@ void initexpHH()
 {
     // Initialise
     rtdo_init();
+    rtdo_create_channel(&inchan_vclamp_Im);
+    rtdo_create_channel(&outchan_vclamp_Vc);
 }
 
 void truevar_initexpHH()
@@ -43,8 +48,8 @@ void truevar_initexpHH()
 void runexpHH(float t)
 {
     // Read/Write
-    rtdo_set_Vout(stepVGHH);
-    IsynGHH = rtdo_get_Im(t);
+    rtdo_channel_set(&outchan_vclamp_Vc, stepVGHH);
+    IsynGHH = rtdo_channel_get(&inchan_vclamp_Im);
 }
 #endif // _WAVE
 

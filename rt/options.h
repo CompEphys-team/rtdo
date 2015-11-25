@@ -33,6 +33,8 @@ typedef struct {
     unsigned short reference; // One of: AREF_GROUND, AREF_COMMON, AREF_DIFF, AREF_OTHER
 
     double conversion_factor; // in [mV | nA]/V
+
+    void *converter; // Set through rtdo_converter_create
 } rtdo_channel_options;
 
 extern rtdo_daq_options daqopts;

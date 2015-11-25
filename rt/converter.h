@@ -31,7 +31,7 @@ typedef struct rtdo_converter_struct rtdo_converter_type;
 int rtdo_converter_init(char *calibration_file);
 void rtdo_converter_exit();
 
-rtdo_converter_type *rtdo_converter_create(char *device, const rtdo_channel_options *chan, int *err);
+int rtdo_converter_create(char *device, rtdo_channel_options *chan);
 
 double rtdo_convert_to_physical(lsampl_t, rtdo_converter_type *);
 lsampl_t rtdo_convert_from_physical(double, rtdo_converter_type *);
