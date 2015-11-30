@@ -171,6 +171,10 @@ int main( int argc, char *argv[] )
 			oteHH = t + I.t + I.dur;
 			lt = 0.0;
 			sn = 0;
+#ifdef RTDO
+            expHH_setstimulus(I);
+            rtdo_sync();
+#endif
 			for (int iT = 0; iT < iTN; iT++) {
 				oldt = lt;
 				runexpHH( t );

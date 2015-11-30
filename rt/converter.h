@@ -15,25 +15,22 @@ initial version: 2015-11-18
 #define COMEDISOFT_H
 
 #include <comedi.h>
-#include "options.h"
+#include "rtdo_types.h"
 
 enum {
     DOE_OPEN_DEV = 1,
-    DOE_FIND_SUBDEV,
     DOE_LOAD_CALIBRATION,
     DOE_LOAD_LIBRARY,
     DOE_LOAD_FUNC,
     DOE_MEMORY
 };
 
-typedef struct rtdo_converter_struct rtdo_converter_type;
-
-int rtdo_converter_init(char *calibration_file);
+int rtdo_converter_init(const char *calibration_file);
 void rtdo_converter_exit();
 
-int rtdo_converter_create(char *device, rtdo_channel_options *chan);
+int rtdo_converter_create(char *device, rtdo_channel *chan, double conversion_factor);
 
-double rtdo_convert_to_physical(lsampl_t, rtdo_converter_type *);
-lsampl_t rtdo_convert_from_physical(double, rtdo_converter_type *);
+double rtdo_convert_to_physical(lsampl_t, rtdo_converter *);
+lsampl_t rtdo_convert_from_physical(double, rtdo_converter *);
 
 #endif // COMEDISOFT_H

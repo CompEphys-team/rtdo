@@ -17,7 +17,6 @@ initial version: 2015-11-17
 #include <rtai_lxrt.h>
 #include <comedilib.h>
 #include "converter.h"
-#include "options.h"
 
 struct rtdo_converter_struct {
     lsampl_t maxdata;
@@ -55,7 +54,7 @@ lsampl_t (*lc_from_phys)(double, comedi_range *, lsampl_t);
     }
 
 
-double rtdo_convert_to_physical(lsampl_t in, rtdo_converter_type *converter) {
+double rtdo_convert_to_physical(lsampl_t in, rtdo_converter *converter) {
     double out;
     if ( calibration )
         out = lc_to_physical(in, &(converter->polynomial));
@@ -65,7 +64,7 @@ double rtdo_convert_to_physical(lsampl_t in, rtdo_converter_type *converter) {
 }
 
 
-lsampl_t rtdo_convert_from_physical(double out, rtdo_converter_type *converter) {
+lsampl_t rtdo_convert_from_physical(double out, rtdo_converter *converter) {
     double Vcmd = out / converter->conversion_factor;
     if ( Vcmd > converter->range.max || Vcmd < converter->range.min ) {
         rt_printk("Warning: Desired command voltage %.1f V (%.2f mV or nA) is outside the channel range [%.1f V, %.1f V]\n",
@@ -78,7 +77,7 @@ lsampl_t rtdo_convert_from_physical(double out, rtdo_converter_type *converter) 
 }
 
 
-int rtdo_converter_init(char *calibration_file) {
+int rtdo_converter_init(const char *calibration_file) {
     char *dlerr;
 
     dlerror();
@@ -110,12 +109,11 @@ int rtdo_converter_init(char *calibration_file) {
 }
 
 
-int rtdo_converter_create(char *device, rtdo_channel_options *chan) {
+int rtdo_converter_create(char *device, rtdo_channel *chan, double conversion_factor) {
     comedi_t *dev;
-    int subdev;
     enum comedi_conversion_direction direction;
     enum comedi_subdevice_type subdev_type;
-    rtdo_converter_type *converter;
+    rtdo_converter *converter;
     comedi_range *range_p;
 
     if ( chan->type == DO_CHANNEL_AO ) {
@@ -129,29 +127,24 @@ int rtdo_converter_create(char *device, rtdo_channel_options *chan) {
     if ( !(dev = lc_open(device)) ) {
         return DOE_OPEN_DEV;
     }
-    subdev = lc_find_subdevice_by_type(dev, subdev_type, chan->subdevice_offset);
-    if ( subdev < 0 ) {
-        lc_close(dev);
-        return DOE_FIND_SUBDEV;
-    }
 
     if ( ! (converter = malloc(sizeof(*converter))) ) {
         return DOE_MEMORY;
     } /* TODO: keep track of these pointers */
 
-    range_p = lc_get_range(dev, subdev, chan->channel, chan->range);
+    range_p = lc_get_range(dev, chan->subdevice, chan->channel, chan->range);
     memcpy(&converter->range, range_p, sizeof(*range_p)); // Need to copy because comedi_close discards ranges.
 
-    converter->maxdata = lc_get_maxdata(dev, subdev, chan->channel);
-    converter->conversion_factor = chan->conversion_factor;
+    converter->maxdata = lc_get_maxdata(dev, chan->subdevice, chan->channel);
+    converter->conversion_factor = conversion_factor;
 
     if ( calibration ) {
-        lc_get_softcal_converter(subdev, chan->channel, chan->range,
+        int foo = lc_get_softcal_converter(chan->subdevice, chan->channel, chan->range,
                                  direction, calibration, &(converter->polynomial));
     }
 
     lc_close(dev);
-    chan->converter = (void *)converter;
+    chan->converter = converter;
     return 0;
 }
 

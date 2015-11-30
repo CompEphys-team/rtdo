@@ -11,13 +11,18 @@ SOURCES += \
     ../vclamp/model/VClampGA.cu \
     converter.c \
     ../vclamp/generate.cc \
-    options.c \
-    rt.c
+    rt.c \
+    ../vclamp/model/HHVClamp_CODE/neuronFnct.cc \
+    ../vclamp/model/HHVClamp_CODE/neuronKrnl.cc \
+    ../vclamp/model/HHVClamp_CODE/runner.cc \
+    ../vclamp/model/HHVClamp_CODE/runnerGPU.cc
 
 HEADERS += \
     rt_helper.h \
     converter.h \
-    options.h
+    rtdo_types.h \
+    ../vclamp/model/helper.h \
+    ../vclamp/model/HHVClamp_CODE/definitions.h
 
 INCLUDEPATH += \
     /usr/realtime/include \
