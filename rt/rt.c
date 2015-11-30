@@ -494,7 +494,10 @@ void *ai_fun(void *unused) {
         while ( ai_runinfo.running ) {
             // Read samples
             for ( i = 0; i < nchans; i++ ) {
-                // TODO: Check settling times, read_delayed if reading from multiple channels
+                if ( nchans > 1 ) {
+                    comedi_data_read_hint(dev, chans[i]->subdevice, chans[i]->channel,
+                                          chans[i]->range, chans[i]->aref);
+                }
                 ret = comedi_data_read(dev, chans[i]->subdevice, chans[i]->channel, chans[i]->range,
                                        chans[i]->aref, &sample);
                 if ( ! ret ) { // Fatal: Read failed.
