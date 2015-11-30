@@ -28,7 +28,7 @@ enum {
 int rtdo_converter_init(const char *calibration_file);
 void rtdo_converter_exit();
 
-int rtdo_converter_create(char *device, rtdo_channel *chan, double conversion_factor);
+int rtdo_converter_create(char *device, rtdo_channel *chan, double conversion_factor, double offset);
 
 double rtdo_convert_to_physical(lsampl_t, rtdo_converter *);
 lsampl_t rtdo_convert_from_physical(double, rtdo_converter *);

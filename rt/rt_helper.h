@@ -33,6 +33,7 @@ void rtdo_init(const char *device_file, const char *calibration_file);
  * @param range
  * @param reference is one of AREF_GROUND, AREF_COMMON, AREF_DIFF, AREF_OTHER.
  * @param conversion_factor is either nA/V or mV/V and depends on headstage and amplifier gain.
+ * @param offset is in physical units (mV/nA); use to normalise command output
  * @param buffer_size Number of input or output samples in buffer.
  * @return Returns a handle to the channel created, or 0 on failure.
  */
@@ -42,6 +43,7 @@ int rtdo_create_channel(enum rtdo_channel_type type,
                          unsigned int range,
                          unsigned int reference,
                          double conversion_factor,
+                        double offset,
                         int buffer_size);
 
 /**
@@ -78,9 +80,10 @@ int inchan_vc_I, outchan_vc_V;
 void initexpHH()
 {
     // Initialise
+    double clamp_voltage = -60.0; // Must match the Axoclamp's RMP balance value!
     rtdo_init("/dev/comedi0", "/home/felix/projects/rtdo/ni6251.calibrate");
-    inchan_vc_I = rtdo_create_channel(DO_CHANNEL_AI, 0, 0, 0, AREF_DIFF, 100, 1024);
-    outchan_vc_V = rtdo_create_channel(DO_CHANNEL_AO, 0, 0, 0, AREF_GROUND, 20, 10);
+    inchan_vc_I = rtdo_create_channel(DO_CHANNEL_AI, 0, 0, 0, AREF_DIFF, 100.0, 0.0, 1024);
+    outchan_vc_V = rtdo_create_channel(DO_CHANNEL_AO, 0, 0, 0, AREF_GROUND, 20, -clamp_voltage, 10);
 }
 
 void truevar_initexpHH()

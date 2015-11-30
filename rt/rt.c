@@ -143,6 +143,7 @@ int rtdo_create_channel(enum rtdo_channel_type type,
                         unsigned int range,
                         unsigned int reference,
                         double conversion_factor,
+                        double offset,
                         int buffer_size) {
     enum comedi_subdevice_type subdev_type;
     int subdev, ret;
@@ -197,7 +198,7 @@ int rtdo_create_channel(enum rtdo_channel_type type,
     chan->bufsz = buffer_size;
 
     // Load converter
-    ret = rtdo_converter_create(device, chan, conversion_factor);
+    ret = rtdo_converter_create(device, chan, conversion_factor, offset);
     if ( ret == DOE_OPEN_DEV ) {
         printf("Failed to open comedi device in non-realtime mode.\n");
         return 0;

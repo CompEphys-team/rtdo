@@ -23,6 +23,7 @@ struct rtdo_converter_struct {
     comedi_range range;
     comedi_polynomial_t polynomial;
     double conversion_factor;
+    double offset;
 };
 
 static comedi_calibration_t *calibration;
@@ -60,12 +61,12 @@ double rtdo_convert_to_physical(lsampl_t in, rtdo_converter *converter) {
         out = lc_to_physical(in, &(converter->polynomial));
     else
         out = lc_to_phys(in, &(converter->range), converter->maxdata);
-    return out * converter->conversion_factor;
+    return (out * converter->conversion_factor) + converter->offset;
 }
 
 
 lsampl_t rtdo_convert_from_physical(double out, rtdo_converter *converter) {
-    double Vcmd = out / converter->conversion_factor;
+    double Vcmd = (out + converter->offset) / converter->conversion_factor;
     if ( Vcmd > converter->range.max || Vcmd < converter->range.min ) {
         rt_printk("Warning: Desired command voltage %.1f V (%.2f mV or nA) is outside the channel range [%.1f V, %.1f V]\n",
                   Vcmd, out, converter->range.min, converter->range.max );
@@ -109,7 +110,7 @@ int rtdo_converter_init(const char *calibration_file) {
 }
 
 
-int rtdo_converter_create(char *device, rtdo_channel *chan, double conversion_factor) {
+int rtdo_converter_create(char *device, rtdo_channel *chan, double conversion_factor, double offset) {
     comedi_t *dev;
     enum comedi_conversion_direction direction;
     enum comedi_subdevice_type subdev_type;
@@ -137,6 +138,7 @@ int rtdo_converter_create(char *device, rtdo_channel *chan, double conversion_fa
 
     converter->maxdata = lc_get_maxdata(dev, chan->subdevice, chan->channel);
     converter->conversion_factor = conversion_factor;
+    converter->offset = offset;
 
     if ( calibration ) {
         int foo = lc_get_softcal_converter(chan->subdevice, chan->channel, chan->range,
