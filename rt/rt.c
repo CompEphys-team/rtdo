@@ -47,6 +47,7 @@ int end = 0;
 SEM *sync_sem;
 
 int max_ai_bufsz;
+static int ai_supersampling = 1;
 
 //------------------------------------
 // Channel specification
@@ -234,6 +235,13 @@ int rtdo_set_channel_active(int handle, int active) {
         }
     }
     return ret;
+}
+
+void rtdo_set_supersampling(int multiplier) {
+    if ( multiplier < 1 )
+        multiplier = 1;
+    ai_supersampling = multiplier;
+    ai_runinfo.dirty = 1;
 }
 
 void rtdo_stop(int unused) {
@@ -459,10 +467,10 @@ void *ao_fun(void *unused) {
 
 void *ai_fun(void *unused) {
     RT_TASK *task;
-    int ret = 1, i, nchans;
+    int ret = 1, i, nchans, iter;
     rtdo_channel *chans[DO_MAX_CHANNELS];
     RTIME now, expected, samp_ticks = nano2count(DO_SAMP_NS);
-    lsampl_t sample;
+    lsampl_t sample, sums[DO_MAX_CHANNELS];
 
     task = rt_thread_init(nam2num("AIFUN"), DO_AI_PRIO, 5000, SCHED_FIFO, DO_RT_CPUS);
     if (!task) {
@@ -483,8 +491,13 @@ void *ai_fun(void *unused) {
                     chans[nchans++] = channels[i];
                 }
             }
+            samp_ticks = nano2count(DO_SAMP_NS / ai_supersampling);
             ai_runinfo.dirty = 0;
         }
+
+        iter = 0;
+        for ( i = 0; i < nchans; i++ )
+            sums[i] = 0;
 
         // Wait for sync
         rt_sem_signal(ai_runinfo.presync);
@@ -505,10 +518,20 @@ void *ai_fun(void *unused) {
                     ai_runinfo.running = 0;
                     break;
                 }
-                rt_mbx_send(chans[i]->mbx, &sample, sizeof(lsampl_t));
+                if ( ai_supersampling > 1 ) {
+                    sums[i] += sample;
+                    if ( (iter+1) % ai_supersampling == 0 ) {
+                        sample = sums[i] / ai_supersampling;
+                        sums[i] = 0;
+                        rt_mbx_send(chans[i]->mbx, &sample, sizeof(lsampl_t));
+                    }
+                } else {
+                    rt_mbx_send(chans[i]->mbx, &sample, sizeof(lsampl_t));
+                }
             }
 
             // Wait period
+            iter++;
             now = rt_get_time();
             if ( now < expected ) {
                 rt_sleep(expected-now);

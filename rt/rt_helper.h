@@ -26,6 +26,13 @@ extern "C" {
 void rtdo_init(const char *device_file, const char *calibration_file);
 
 /**
+ * @brief Sets the input sampling frequency to a multiple of 1/DT.
+ *  Output of rtdo_channel_get is downsampled to 1/DT with a linear mean.
+ * @param multiplier Number of samples per DT step
+ */
+void rtdo_set_supersampling(int multiplier);
+
+/**
  * @brief Set up an AI/AO channel, active from the next rtdo_sync call.
  * @param type
  * @param subdevice_offset
@@ -82,6 +89,7 @@ void initexpHH()
     // Initialise
     double clamp_voltage = -60.0; // Must match the Axoclamp's RMP balance value!
     rtdo_init("/dev/comedi0", "/home/felix/projects/rtdo/ni6251.calibrate");
+    rtdo_set_supersampling(10);
     inchan_vc_I = rtdo_create_channel(DO_CHANNEL_AI, 0, 0, 0, AREF_DIFF, 100.0, 0.0, 1024);
     outchan_vc_V = rtdo_create_channel(DO_CHANNEL_AO, 0, 0, 0, AREF_GROUND, 20, -clamp_voltage, 10);
 }
