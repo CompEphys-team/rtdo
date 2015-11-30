@@ -25,6 +25,9 @@ initial version: 2015-11-17
 #include "HHVClampParameters.h"
 
 #define DO_RT_CPUS 0xF000
+#define DO_MAIN_PRIO 5
+#define DO_AO_PRIO 0
+#define DO_AI_PRIO 0
 #define DO_MAX_CHANNELS 32
 #define DO_MIN_AI_BUFSZ 100
 
@@ -85,7 +88,7 @@ void rtdo_init(const char *device_file, const char *calibration_file) {
     // Set up RT
     init_level++;
     rt_allow_nonroot_hrt();
-    maintask = rt_task_init(nam2num("MAIN"), 0, 5000, 0);
+    maintask = rt_task_init(nam2num("MAIN"), DO_MAIN_PRIO, 5000, 0);
     if (!maintask) {
         printf("Main RT setup failed. Is the rtai_sched module installed?\n");
         return cleanup(init_level);
@@ -135,6 +138,8 @@ void rtdo_init(const char *device_file, const char *calibration_file) {
         cleanup(init_level);
         exit(EXIT_FAILURE);
     }
+
+    rt_make_soft_real_time();
 }
 
 int rtdo_create_channel(enum rtdo_channel_type type,
@@ -184,7 +189,7 @@ int rtdo_create_channel(enum rtdo_channel_type type,
         chan->t = 0;
         chan->buffer = 0;
         chan->numsteps = 0;
-        chan->mbx = rt_typed_mbx_init(0, buffer_size * sizeof(lsampl_t), FIFO_Q);
+        chan->mbx = rt_typed_mbx_init(0, buffer_size * sizeof(lsampl_t), PRIO_Q);
         if ( buffer_size > max_ai_bufsz )
             max_ai_bufsz = buffer_size;
     }
@@ -282,6 +287,8 @@ void cleanup( int init_level ) {
 }
 
 void rtdo_sync() {
+    rt_make_hard_real_time();
+
     // Stop threads
     ao_runinfo.running = 0;
     ai_runinfo.running = 0;
@@ -307,6 +314,8 @@ void rtdo_sync() {
     ao_runinfo.running = 1;
     ai_runinfo.running = 1;
     rt_sem_broadcast(sync_sem);
+
+    rt_make_soft_real_time();
 }
 
 float rtdo_channel_get(int handle) {
@@ -366,7 +375,7 @@ void *ao_fun(void *unused) {
     RTIME now, expected, *t=0;
     lsampl_t *buffer=0;
 
-    task = rt_thread_init(nam2num("AOFUN"), 0, 5000, SCHED_FIFO, DO_RT_CPUS);
+    task = rt_thread_init(nam2num("AOFUN"), DO_AO_PRIO, 5000, SCHED_FIFO, DO_RT_CPUS);
     if (!task) {
         printf("AO RT setup failed.\n");
         return (void *)EXIT_FAILURE;
@@ -379,6 +388,7 @@ void *ao_fun(void *unused) {
         // Load new channel config
         if ( ao_runinfo.dirty ) {
             rt_sem_wait(ao_runinfo.load);
+            rt_make_soft_real_time();
             chan = 0;
             for ( i = 1; i < num_channels; i++ ) {
                 if ( channels[i]->type == DO_CHANNEL_AO && channels[i]->active ) {
@@ -401,6 +411,7 @@ void *ao_fun(void *unused) {
                     break;
                 }
             }
+            rt_make_hard_real_time();
             ao_runinfo.dirty = 0;
         }
 
@@ -453,7 +464,7 @@ void *ai_fun(void *unused) {
     RTIME now, expected, samp_ticks = nano2count(DO_SAMP_NS);
     lsampl_t sample;
 
-    task = rt_thread_init(nam2num("AIFUN"), 0, 5000, SCHED_FIFO, DO_RT_CPUS);
+    task = rt_thread_init(nam2num("AIFUN"), DO_AI_PRIO, 5000, SCHED_FIFO, DO_RT_CPUS);
     if (!task) {
         printf("AI RT setup failed.\n");
         return (void *)EXIT_FAILURE;
