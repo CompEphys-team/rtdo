@@ -439,16 +439,21 @@ void *ao_fun(void *unused) {
                 break;
             }
 
-            if ( ++step == steps ) {
-                ao_runinfo.running = 0;
-                break;
-            }
-
             // Wait period
             now = rt_get_time();
             if ( now < expected ) {
                 rt_sleep(expected-now);
             }
+
+            if ( ++step == steps ) { // Return to base value before leaving
+                ret = comedi_data_write(dev, chan->subdevice, chan->channel, chan->range, chan->aref, buffer[0]);
+                if ( ! ret ) {
+                    end = 0;
+                }
+                ao_runinfo.running = 0;
+                break;
+            }
+
             expected += t[step];
         }
     }
