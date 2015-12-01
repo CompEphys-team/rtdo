@@ -472,7 +472,7 @@ void *ao_fun(void *unused) {
 
 void *ai_fun(void *unused) {
     RT_TASK *task;
-    int ret = 1, i, nchans, iter;
+    int ret = 1, i, nchans, iter, nsum;
     rtdo_channel *chans[DO_MAX_CHANNELS];
     RTIME now, expected, samp_ticks = nano2count(DO_SAMP_NS);
     lsampl_t sample, sums[DO_MAX_CHANNELS];
@@ -497,6 +497,7 @@ void *ai_fun(void *unused) {
                 }
             }
             samp_ticks = nano2count(DO_SAMP_NS / ai_supersampling);
+            nsum = ai_supersampling;
             ai_runinfo.dirty = 0;
         }
 
@@ -523,10 +524,10 @@ void *ai_fun(void *unused) {
                     ai_runinfo.running = 0;
                     break;
                 }
-                if ( ai_supersampling > 1 ) {
+                if ( nsum > 1 ) {
                     sums[i] += sample;
-                    if ( (iter+1) % ai_supersampling == 0 ) {
-                        sample = sums[i] / ai_supersampling;
+                    if ( (iter+1) % nsum == 0 ) {
+                        sample = sums[i] / nsum;
                         sums[i] = 0;
                         rt_mbx_send(chans[i]->mbx, &sample, sizeof(lsampl_t));
                     }
