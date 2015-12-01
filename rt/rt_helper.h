@@ -44,7 +44,7 @@ void rtdo_set_supersampling(int multiplier);
  * @param buffer_size Number of input or output samples in buffer.
  * @return Returns a handle to the channel created, or 0 on failure.
  */
-int rtdo_create_channel(enum rtdo_channel_type type,
+int rtdo_create_channel(comedi_subdevice_type type,
                          unsigned int subdevice_offset,
                          unsigned int channel,
                          unsigned int range,
@@ -90,8 +90,8 @@ void initexpHH()
     double clamp_voltage = -60.0; // Must match the Axoclamp's RMP balance value!
     rtdo_init("/dev/comedi0", "/home/felix/projects/rtdo/ni6251.calibrate");
     rtdo_set_supersampling(10);
-    inchan_vc_I = rtdo_create_channel(DO_CHANNEL_AI, 0, 0, 0, AREF_DIFF, 100.0, 0.0, 1024);
-    outchan_vc_V = rtdo_create_channel(DO_CHANNEL_AO, 0, 0, 0, AREF_GROUND, 20, -clamp_voltage, 10);
+    inchan_vc_I = rtdo_create_channel(COMEDI_SUBD_AI, 0, 0, 0, AREF_DIFF, 100.0, 0.0, 1024);
+    outchan_vc_V = rtdo_create_channel(COMEDI_SUBD_AO, 0, 0, 0, AREF_GROUND, 20, -clamp_voltage, 10);
 }
 
 void truevar_initexpHH()

@@ -143,7 +143,7 @@ void rtdo_init(const char *device_file, const char *calibration_file) {
     rt_make_soft_real_time();
 }
 
-int rtdo_create_channel(enum rtdo_channel_type type,
+int rtdo_create_channel(enum comedi_subdevice_type type,
                         unsigned int subdevice_offset,
                         unsigned int channel,
                         unsigned int range,
@@ -151,7 +151,6 @@ int rtdo_create_channel(enum rtdo_channel_type type,
                         double conversion_factor,
                         double offset,
                         int buffer_size) {
-    enum comedi_subdevice_type subdev_type;
     int subdev, ret;
     rtdo_channel *chan;
 
@@ -161,12 +160,7 @@ int rtdo_create_channel(enum rtdo_channel_type type,
     }
 
     // Find subdevice
-    if ( type == DO_CHANNEL_AI ) {
-        subdev_type = COMEDI_SUBD_AI;
-    } else if ( type == DO_CHANNEL_AO ) {
-        subdev_type = COMEDI_SUBD_AO;
-    }
-    subdev = comedi_find_subdevice_by_type(dev, subdev_type, subdevice_offset);
+    subdev = comedi_find_subdevice_by_type(dev, type, subdevice_offset);
     if (subdev < 0) {
         printf("Subdevice not found. Is the rtai_comedi module installed?\n");
         return 0;
@@ -175,7 +169,7 @@ int rtdo_create_channel(enum rtdo_channel_type type,
     if ( (chan = malloc(sizeof(rtdo_channel))) == NULL )
         return 0;
 
-    if ( type == DO_CHANNEL_AO ) {
+    if ( type == COMEDI_SUBD_AO ) {
         if ( buffer_size < 1 )
             buffer_size = 1;
         if ( (chan->t = malloc(buffer_size * sizeof(RTIME))) == NULL )
@@ -184,7 +178,7 @@ int rtdo_create_channel(enum rtdo_channel_type type,
             return 0;
         chan->numsteps = 0;
         chan->mbx = 0;
-    } else if ( type == DO_CHANNEL_AI ) {
+    } else if ( type == COMEDI_SUBD_AI ) {
         if ( buffer_size < DO_MIN_AI_BUFSZ )
             buffer_size = DO_MIN_AI_BUFSZ;
         chan->t = 0;
@@ -228,9 +222,9 @@ int rtdo_set_channel_active(int handle, int active) {
     if ( active >= 0 ) {
         channels[handle]->active = !!active;
         if ( channels[handle]->active != ret ) {
-            if ( channels[handle]->type == DO_CHANNEL_AI )
+            if ( channels[handle]->type == COMEDI_SUBD_AI )
                 ai_runinfo.dirty = 1;
-            else if ( channels[handle]->type == DO_CHANNEL_AO )
+            else if ( channels[handle]->type == COMEDI_SUBD_AO )
                 ao_runinfo.dirty = 1;
         }
     }
@@ -331,7 +325,7 @@ float rtdo_channel_get(int handle) {
         printf("Error: Invalid channel handle.\n");
         return 0.0;
     }
-    if ( channels[handle]->type != DO_CHANNEL_AI ) {
+    if ( channels[handle]->type != COMEDI_SUBD_AI ) {
         printf("Error: Data acquisition is only supported for AI channels.\n");
         return 0.0;
     }
@@ -346,7 +340,7 @@ int rtdo_set_stimulus(int handle, double baseVal, int numsteps, double *values, 
         printf("Error: Invalid channel handle.\n");
         return EINVAL;
     }
-    if ( channels[handle]->type != DO_CHANNEL_AO ) {
+    if ( channels[handle]->type != COMEDI_SUBD_AO ) {
         printf("Error: Stimulus output is only supported for AO channels.\n");
         return EINVAL;
     }
@@ -399,7 +393,7 @@ void *ao_fun(void *unused) {
             rt_make_soft_real_time();
             chan = 0;
             for ( i = 1; i < num_channels; i++ ) {
-                if ( channels[i]->type == DO_CHANNEL_AO && channels[i]->active ) {
+                if ( channels[i]->type == COMEDI_SUBD_AO && channels[i]->active ) {
                     chan = channels[i];
                     if ( chan->numsteps > bufsz ) {
                         free(buffer);
@@ -492,7 +486,7 @@ void *ai_fun(void *unused) {
             rt_sem_wait(ai_runinfo.load);
             nchans = 0;
             for ( i = 1; i < num_channels; i++ ) {
-                if ( channels[i]->type == DO_CHANNEL_AI && channels[i]->active ) {
+                if ( channels[i]->type == COMEDI_SUBD_AI && channels[i]->active ) {
                     chans[nchans++] = channels[i];
                 }
             }

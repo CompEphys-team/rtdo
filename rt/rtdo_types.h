@@ -4,16 +4,10 @@
 #include <rtai_sem.h>
 #include <rtai_mbx.h>
 #include <comedi.h>
-
-enum rtdo_channel_type {
-    DO_CHANNEL_AI,
-    DO_CHANNEL_AO
-};
-
 typedef struct rtdo_converter_struct rtdo_converter;
 
 typedef struct {
-    enum rtdo_channel_type type;
+    enum comedi_subdevice_type type;
     int subdevice;
     unsigned short channel;
     unsigned short range;
