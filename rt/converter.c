@@ -113,16 +113,13 @@ int rtdo_converter_init(const char *calibration_file) {
 int rtdo_converter_create(char *device, rtdo_channel *chan, double conversion_factor, double offset) {
     comedi_t *dev;
     enum comedi_conversion_direction direction;
-    enum comedi_subdevice_type subdev_type;
     rtdo_converter *converter;
     comedi_range *range_p;
 
-    if ( chan->type == DO_CHANNEL_AO ) {
+    if ( chan->type == COMEDI_SUBD_AO ) {
         direction = COMEDI_FROM_PHYSICAL;
-        subdev_type = COMEDI_SUBD_AO;
-    } else if ( chan->type == DO_CHANNEL_AI ) {
+    } else if ( chan->type == COMEDI_SUBD_AI ) {
         direction = COMEDI_TO_PHYSICAL;
-        subdev_type = COMEDI_SUBD_AI;
     }
 
     if ( !(dev = lc_open(device)) ) {
@@ -141,7 +138,7 @@ int rtdo_converter_create(char *device, rtdo_channel *chan, double conversion_fa
     converter->offset = offset;
 
     if ( calibration ) {
-        int foo = lc_get_softcal_converter(chan->subdevice, chan->channel, chan->range,
+        lc_get_softcal_converter(chan->subdevice, chan->channel, chan->range,
                                  direction, calibration, &(converter->polynomial));
     }
 

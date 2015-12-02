@@ -44,7 +44,7 @@ void rtdo_set_supersampling(int multiplier);
  * @param buffer_size Number of input or output samples in buffer.
  * @return Returns a handle to the channel created, or 0 on failure.
  */
-int rtdo_create_channel(comedi_subdevice_type type,
+int rtdo_create_channel(enum comedi_subdevice_type type,
                          unsigned int subdevice_offset,
                          unsigned int channel,
                          unsigned int range,
