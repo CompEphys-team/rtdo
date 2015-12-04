@@ -3,5 +3,5 @@ vclamp/generate
 vclamp/run
 vclamp/model/HHVClamp_CODE/
 vclamp/wave_output
-rt/rt.pro.user
+*.pro.user
 *.o
