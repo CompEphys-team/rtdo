@@ -20,12 +20,16 @@ daq_channel daqchan_vout = DAQ_CHANNEL_INIT;
 daq_channel daqchan_cout = DAQ_CHANNEL_INIT;
 daq_channel daqchan_vin = DAQ_CHANNEL_INIT;
 daq_channel daqchan_cin = DAQ_CHANNEL_INIT;
+struct _sim_params sim_params = SIMPARAM_DEFAULT;
 
 int main(int argc, char *argv[])
 {
     int ret=0, have_calibration;
     std::string device = "/dev/comedi0";
     std::string cal = "/home/felix/projects/rtdo/ni6251.calibrate";
+    sim_params.outdir = "/home/felix/projects/build/rtdo/output";
+    sim_params.sigfile = "/home/felix/projects/rtdo/vclamp/sigma2.dat";
+    sim_params.vc_wavefile = "/home/felix/projects/rtdo/vclamp/wave2.dat";
 
     //--------------------------------------------------------------
     // Set up softrt-daq and channels

@@ -44,6 +44,16 @@ private slots:
 
     void on_vout_offset_read_clicked();
 
+    void on_vc_waveforms_browse_clicked();
+
+    void on_sigfile_browse_clicked();
+
+    void on_outdir_browse_clicked();
+
+    void on_simparams_reset_clicked();
+
+    void on_simparams_apply_clicked();
+
 private:
     Ui::MainWindow *ui;
 
