@@ -376,14 +376,9 @@ int rtdo_set_stimulus(int handle, double baseVal, int numsteps, double *values, 
             return ENOMEM;
     }
 
-    int err=0;
-    chan->buffer[0] = daq_convert_from_physical(baseVal, chan->chan, &err);
-    if ( err )
-        return err;
+    chan->buffer[0] = daq_convert_from_physical(baseVal, chan->chan);
     for ( i = 0; i < numsteps; i++ ) {
-        chan->buffer[i+1] = daq_convert_from_physical(values[i], chan->chan, &err);
-        if ( err )
-            return err;
+        chan->buffer[i+1] = daq_convert_from_physical(values[i], chan->chan);
         chan->t[i] = nano2count((RTIME)(ms[i]*1e6)) - t;
         t += chan->t[i];
     }

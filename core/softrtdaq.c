@@ -222,10 +222,11 @@ double daq_convert_to_physical(lsampl_t in, daq_channel *chan) {
 }
 
 
-lsampl_t daq_convert_from_physical(double out, daq_channel *chan, int *err) {
+lsampl_t daq_convert_from_physical(double out, daq_channel *chan) {
     double Vcmd = (out + chan->offset) / chan->gain;
     if ( Vcmd > chan->converter->range.max || Vcmd < chan->converter->range.min ) {
-        *err = ERANGE;
+        fprintf(stderr, "Warning: Value out of range: %f not in [%f, %f]\n", Vcmd,
+                chan->converter->range.min, chan->converter->range.max);
     }
     if ( chan->converter->cal )
         return from_physical(Vcmd, &(chan->converter->polynomial));
