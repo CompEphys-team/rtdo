@@ -68,6 +68,8 @@ typedef struct {
     rtdo_channel **chans;
     int *num_chans;
     void *dev;
+
+    RTIME samp_ticks;
     int supersampling;
 } rtdo_thread_runinfo;
 

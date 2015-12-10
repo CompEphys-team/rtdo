@@ -16,15 +16,13 @@ initial version: 2015-11-17
 
 #include "types.h"
 
-#include "vclamp/model/HHVClampParameters.h"
-
 #define DO_RT_CPUS 0xF000
 #define DO_MAIN_PRIO 5
 #define DO_AO_PRIO 0
 #define DO_AI_PRIO 0
 #define DO_MAX_CHANNELS 32
 #define DO_MIN_AI_BUFSZ 100
-#define DO_SAMP_NS ((RTIME)(DT * 1e6))
+#define DO_SAMP_NS_DEFAULT ((RTIME)(0.25 * 1e6))
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,11 +54,16 @@ int rtdo_add_channel(daq_channel *dchan, int buffer_size);
 int rtdo_set_channel_active(int handle, int active);
 
 /**
- * @brief Sets the input sampling frequency to a multiple of 1/DT, asynchronously.
- *  Output of rtdo_channel_get is downsampled to 1/DT with a linear mean over the past n=supersampling samples.
- * @param multiplier Number of samples per DT step
+ * @brief Deprecated, use rtdo_set_sampling_rate(DT, multiplier) instead.
  */
 void rtdo_set_supersampling(int multiplier);
+
+/**
+ * @brief Set input sampling rate and supersampling rate asynchronously
+ * @param ms_per_sample is the interval between samples reported through rtdo_get_data
+ * @param acquisitions_per_sample is the number of actual data points read and averaged to produce a reported sample
+ */
+void rtdo_set_sampling_rate(double ms_per_sample, int acquisitions_per_sample);
 
 /**
  * @brief Interrupts I/O, returning immediately.

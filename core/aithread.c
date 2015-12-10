@@ -20,7 +20,7 @@ void *ai_fun(void *runinfo) {
     int ret = 1, i, nchans, iter, nsum;
     rtdo_channel *chans[DO_MAX_CHANNELS];
     daq_channel dchans[DO_MAX_CHANNELS];
-    RTIME now, expected, samp_ticks = nano2count(DO_SAMP_NS);
+    RTIME now, expected, samp_ticks;
     lsampl_t sample, sums[DO_MAX_CHANNELS];
     rtdo_thread_runinfo *run = (rtdo_thread_runinfo *)runinfo;
 
@@ -46,7 +46,7 @@ void *ai_fun(void *runinfo) {
                 }
             }
             nsum = run->supersampling;
-            samp_ticks = nano2count(DO_SAMP_NS / nsum);
+            samp_ticks = (RTIME)(run->samp_ticks / nsum);
             run->dirty = 0;
         }
 

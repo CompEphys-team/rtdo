@@ -107,6 +107,7 @@ int rtdo_init(const char *device) {
     ai_runinfo.chans = channels;
     ai_runinfo.num_chans =& num_channels;
     ai_runinfo.dev = dev;
+    ai_runinfo.samp_ticks = nano2count(DO_SAMP_NS_DEFAULT);
     ai_runinfo.supersampling = 1;
     ai_runinfo.thread = rt_thread_create(ai_fun, &ai_runinfo, 1000);
 
@@ -259,6 +260,14 @@ void rtdo_set_supersampling(int multiplier) {
     ai_runinfo.supersampling = multiplier;
     ai_runinfo.dirty = 1;
 }
+void rtdo_set_sampling_rate(double ms_per_sample, int acquisitions_per_sample) {
+    if (acquisitions_per_sample < 1)
+        acquisitions_per_sample = 1;
+    RTIME ticks = nano2count((RTIME)(ms_per_sample * 1e6));
+    ai_runinfo.samp_ticks = ticks;
+    ai_runinfo.supersampling = acquisitions_per_sample;
+    ai_runinfo.dirty = 1;
+}
 
 void rtdo_stop() {
     ai_runinfo.running = 0;
@@ -310,7 +319,7 @@ float rtdo_get_data(int handle, int *err) {
     }
 
     lsampl_t sample;
-    RTIME delay = nano2count(100 * DO_SAMP_NS);
+    RTIME delay = 100 * ai_runinfo.samp_ticks;
     if ( rt_mbx_receive_timed(channels[handle]->mbx, &sample, sizeof(lsampl_t), delay) ) {
         perror("Read from queue timed out");
         *err = EBUSY;
