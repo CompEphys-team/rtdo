@@ -18,11 +18,11 @@ initial version: 2015-12-03
 void *ao_fun(void *runinfo) {
     RT_TASK *task;
     int ret = 1, i, step, steps=0, bufsz=0;
-    rtdo_channel *chan;
+    rtdo_channel *chan=0;
     daq_channel dchan;
     RTIME now, expected, *t=0;
     lsampl_t *buffer=0;
-    rtdo_thread_runinfo *run= (rtdo_thread_runinfo *)runinfo;
+    rtdo_thread_runinfo *run = (rtdo_thread_runinfo *)runinfo;
 
     task = rt_thread_init(nam2num("AOFUN"), DO_AO_PRIO, 5000, SCHED_FIFO, DO_RT_CPUS);
     if (!task) {
@@ -35,8 +35,8 @@ void *ao_fun(void *runinfo) {
 
     while ( !run->exit ) {
         // Load new channel config
+        rt_sem_wait(run->load);
         if ( run->dirty ) {
-            rt_sem_wait(run->load);
             rt_make_soft_real_time();
             chan = 0;
             for ( i = 1; i < *(run->num_chans); i++ ) {

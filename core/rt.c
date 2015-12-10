@@ -282,8 +282,7 @@ void rtdo_sync() {
     ai_runinfo.running = 0;
 
     // Load new assignments, if any
-    if ( ao_runinfo.dirty )
-        rt_sem_signal(ao_runinfo.load);
+    rt_sem_signal(ao_runinfo.load);
     if ( ai_runinfo.dirty )
         rt_sem_signal(ai_runinfo.load);
 
@@ -384,6 +383,7 @@ int rtdo_set_stimulus(int handle, double baseVal, int numsteps, double *values, 
     }
     chan->t[numsteps] = nano2count((RTIME)(ms_total*1e6)) - t;
     chan->numsteps = numsteps+1;
+    ao_runinfo.dirty = 1;
 
     return 0;
 }
