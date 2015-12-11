@@ -296,7 +296,7 @@ double Elexp;
 double Cexp;
 
 #ifdef RTDO
-#include "rt_helper.h"
+#include "run.h"
 #else
 void endexpHH(){}
 

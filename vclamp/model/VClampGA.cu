@@ -38,33 +38,42 @@ inline bool file_exists( const std::string& name )
 	}
 }
 
+extern "C" int vclamp(const char *basename, const char *outdir, const char *stimFName,
+           const char *sigFName, int which, int protocol);
+
 int main( int argc, char *argv[] )
 {
 	if (argc != 6)
 	{
 		fprintf( stderr, "usage: VClampGA <basename> <stimulus file> <sigma file> <CPU=0, GPU=1> <protocol> \n" );
 		return 1;
-	}
-	int which = atoi( argv[4] );
-	int protocol = atoi( argv[5] );
-	string stimFName = toString( argv[2] );
-	ifstream is( stimFName.c_str() );
-	ifstream sis( argv[3] );
+    }
+    return vclamp(argv[1], argv[1], argv[2], argv[3], atoi(argv[4]), atoi(argv[5]));
+}
+
+int vclamp(const char *basename, const char *outdir, const char *stimFName,
+           const char *sigFName, int which, int protocol) {
+    ifstream is( stimFName );
+    ifstream sis( sigFName );
 	loadSig( sis );
 
 	char buf[BUFSZ];
 	int experimentNo = 0;
-	string OutDir = toString( argv[1] ) + "_output";
-	while (file_exists( OutDir + "/" + toString( argv[1] ) + "_" + std::to_string( experimentNo ) + toString( ".time" ) )) { ++experimentNo; }
+#ifdef RTDO
+    string OutDir = toString(outdir);
+#else
+    string OutDir = toString( basename ) + "_output";
+#endif
+    while (file_exists( OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".time" ) )) { ++experimentNo; }
 	string name;
-	name = OutDir + "/" + toString( argv[1] ) + "_" + std::to_string( experimentNo ) + toString( ".time" );
+    name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".time" );
 	FILE *timef = fopen( name.c_str(), "a" );
 
-	write_para();
+    write_para();
 
-	name = OutDir + "/" + toString( argv[1] ) + "_" + std::to_string( experimentNo ) + toString( ".out.I" );
+    name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".out.I" );
 	FILE *osf = fopen( name.c_str(), "w" );
-	name = OutDir + "/" + toString( argv[1] ) + "_" + std::to_string( experimentNo ) + toString( ".out.best" );
+    name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".out.best" );
 	FILE *osb = fopen( name.c_str(), "w" );
 
 
@@ -134,7 +143,7 @@ int main( int argc, char *argv[] )
 	initialize();
 	var_init_fullrange(); // initialize uniformly on large range
 	initexpHH();
-	fprintf( stderr, "# neuronal circuitery built, start computation ... \n\n" );
+    fprintf( stderr, "# neuronal circuitery built, start computation ... \n\n" );
 
 	double *theExp_p[Npara];
 	theExp_p[0] = &gNaexp;
@@ -160,45 +169,50 @@ int main( int argc, char *argv[] )
 	t = 0.0; cerr << pperturb.size() << " iterations" << endl;
 	int nextS = 0;
 	while (!done)
-	{
+    {
 		truevar_init();
-		truevar_initexpHH();
-		for (int s = 0, k = pperturb.size(); s < k; s++) {
+        truevar_initexpHH();
+        for (int s = 0, k = pperturb.size(); s < k; s++) {
 			I = stims[nextS];
 			iTN = (int)(I.t / DT);
 			stepVGHH = I.baseV;
 			otHH = t + I.ot;
 			oteHH = t + I.t + I.dur;
 			lt = 0.0;
-			sn = 0;
+            sn = 0;
 #ifdef RTDO
             expHH_setstimulus(I);
             rtdo_sync();
 #endif
-			for (int iT = 0; iT < iTN; iT++) {
+            for (int iT = 0; iT < iTN; iT++) {
 				oldt = lt;
-				runexpHH( t );
+                runexpHH( t );
 				if (which == GPU) {
 					stepTimeGPU( t );
 				}
 				else {
 					stepTimeCPU( t );
-				}
+                }
 				t += DT;
 				lt += DT;
 				if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
 					stepVGHH = I.V[sn];
 					sn++;
 					fprintf( osf, "%f %f \n", t, stepVGHH );
-				}
-			}
+                }
+            }
 			if (which == 1) {
 				CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
 			}
-			// output the best values, which input was used and the resulting error
-			fprintf( osb, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d ", t, gNaexp, ENaexp, maoffexp, maslopeexp, mboffexp, mbslopeexp, haoffexp, haslopeexp, hboffexp, hbslopeexp, gKexp, EKexp, naoffexp, naslopeexp, nboffexp, nbslopeexp, glexp, Elexp, Cexp, nextS );
+            // output the best values, which input was used and the resulting error
+            fprintf( osb, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d ", t, gNaexp, ENaexp, maoffexp, maslopeexp, mboffexp, mbslopeexp, haoffexp, haslopeexp, hboffexp, hbslopeexp, gKexp, EKexp, naoffexp, naslopeexp, nboffexp, nbslopeexp, glexp, Elexp, Cexp, nextS );
+#ifdef RTDO
+            if ( (done = run_check_break()) )
+                break;
+#endif
 			procreatePopPperturb( osb, pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim ); //perturb for next step
 		}
+#ifndef RTDO
 		if (protocol >= 0) {
 			if (protocol < Npara) {
 				if (protocol % 2 == 0) {
@@ -221,9 +235,10 @@ int main( int argc, char *argv[] )
 					}
 				}
 			}
-		}
+        }
 		cerr << "% " << t << endl;
 		done = (t >= TOTALT);
+#endif
 	}
     endexpHH();
 	timer.stopTimer();

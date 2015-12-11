@@ -24,14 +24,21 @@ SOURCES += core/main.cpp \
     core/softrtdaq.c \
     core/rt.c \
     core/aothread.c \
-    core/aithread.c
+    core/aithread.c \
+    core/run.cc
+
+OTHER_FILES += vclamp/model/GNUmakefile \
+    vclamp/model/*.cc \
+    vclamp/model/*.cu \
+    vclamp/model/*.h
 
 HEADERS  += \
     include/mainwindow.h \
     include/softrtdaq.h \
     include/types.h \
     include/globals.h \
-    include/rt.h
+    include/rt.h \
+    include/run.h
 
 FORMS    += \
     gui/mainwindow.ui

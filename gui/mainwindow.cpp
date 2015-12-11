@@ -15,6 +15,7 @@ initial version: 2015-12-03
 #include "softrtdaq.h"
 #include "globals.h"
 #include "rt.h"
+#include "run.h"
 #include <QFileDialog>
 
 #define AREF_TEXT_GROUND "Ground"
@@ -315,4 +316,14 @@ void MainWindow::on_simparams_apply_clicked()
     sim_params.vc_wavefile = ui->vc_waveforms->text().toStdString();
     sim_params.dt = ui->dt->value();
     sim_params.nPop = ui->npop->value();
+}
+
+void MainWindow::on_vclamp_start_clicked()
+{
+    run_vclamp_start();
+}
+
+void MainWindow::on_vclamp_stop_clicked()
+{
+    run_vclamp_stop();
 }

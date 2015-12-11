@@ -54,6 +54,10 @@ private slots:
 
     void on_simparams_apply_clicked();
 
+    void on_vclamp_start_clicked();
+
+    void on_vclamp_stop_clicked();
+
 private:
     Ui::MainWindow *ui;
 

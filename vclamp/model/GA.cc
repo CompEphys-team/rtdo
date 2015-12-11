@@ -14,6 +14,10 @@ initial version: 2014-06-25
 #include <algorithm>
 #include <cmath>
 
+#ifdef RTDO
+#include "../../include/run.h"
+#endif
+
 typedef struct
 {
 	unsigned int id;
@@ -67,6 +71,9 @@ void procreatePopPperturb( FILE *osb, double amplitude, vector<vector<double> > 
 		// we are getting better on this one -> adjust a different parameter combination
 		nextS = (nextS + 1) % Nstim;
 	}
+#ifdef RTDO
+    run_digest(errs[0].err, tmavg, nextS);
+#else
 	cout << errs[0].err << " " << tmavg << " " << nextS << "     ";
 
 
@@ -74,6 +81,7 @@ void procreatePopPperturb( FILE *osb, double amplitude, vector<vector<double> > 
 		cout << initial[i] << " " << epos[i] << " " << mavg[i] << "   ";
 	}
 	cout << endl;
+#endif
 	// mutate the second half of the instances
 	int k = NPOP / 3;
 	for (int i = k; i < 2 * k; i++) {

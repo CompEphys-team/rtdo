@@ -22,10 +22,11 @@ extern struct _sim_params {
     std::string vc_wavefile;
     std::string sigfile;
     std::string outdir;
+    std::string modeldir;
     int nPop;
     double dt;
 } sim_params;
-#define SIMPARAM_DEFAULT {"", "", "", 1000, 0.25}
+#define SIMPARAM_DEFAULT {"", "", "", "", 1000, 0.25}
 
 extern "C" {
 #endif

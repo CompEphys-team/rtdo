@@ -481,7 +481,7 @@
       <x>390</x>
       <y>0</y>
       <width>331</width>
-      <height>291</height>
+      <height>241</height>
      </rect>
     </property>
     <property name="title">
@@ -513,7 +513,7 @@
       </item>
      </layout>
     </widget>
-    <widget class="QWidget" name="">
+    <widget class="QWidget" name="layoutWidget">
      <property name="geometry">
       <rect>
        <x>0</x>
@@ -639,16 +639,34 @@
       </item>
      </layout>
     </widget>
+    <zorder>layoutWidget</zorder>
     <zorder>layoutWidget_2</zorder>
-    <zorder>label</zorder>
-    <zorder>npop</zorder>
-    <zorder>label_7</zorder>
-    <zorder>vc_waveforms</zorder>
-    <zorder>label_23</zorder>
-    <zorder>sigfile</zorder>
-    <zorder>label_24</zorder>
-    <zorder>outdir</zorder>
-    <zorder>label_25</zorder>
+   </widget>
+   <widget class="QPushButton" name="vclamp_start">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>300</y>
+      <width>194</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Start voltage clamp fitting</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="vclamp_stop">
+    <property name="geometry">
+     <rect>
+      <x>220</x>
+      <y>300</y>
+      <width>98</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Stop</string>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">

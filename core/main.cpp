@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
     sim_params.outdir = "/home/felix/projects/build/rtdo/output";
     sim_params.sigfile = "/home/felix/projects/rtdo/vclamp/sigma2.dat";
     sim_params.vc_wavefile = "/home/felix/projects/rtdo/vclamp/wave2.dat";
+    sim_params.modeldir = "/home/felix/projects/rtdo/vclamp";
 
     //--------------------------------------------------------------
     // Set up softrt-daq and channels
@@ -41,6 +42,7 @@ int main(int argc, char *argv[])
 
     daqchan_vout.type = COMEDI_SUBD_AO;
     daqchan_vout.subdevice = daq_get_subdevice(daqchan_vout.type, 0);
+    daqchan_vout.gain = 20.0;
     if ( (ret = daq_create_converter(&daqchan_vout)) )
         return ret;
 
@@ -53,6 +55,7 @@ int main(int argc, char *argv[])
     daqchan_vin.type = COMEDI_SUBD_AI;
     daqchan_vin.aref = AREF_DIFF;
     daqchan_vin.subdevice = daq_get_subdevice(daqchan_vin.type, 0);
+    daqchan_vin.gain = 10.0;
     if ( (ret = daq_create_converter(&daqchan_vin)) )
         return ret;
 
@@ -60,6 +63,7 @@ int main(int argc, char *argv[])
     daqchan_cin.aref = AREF_DIFF;
     daqchan_cin.channel = 1;
     daqchan_cin.subdevice = daq_get_subdevice(daqchan_cin.type, 0);
+    daqchan_cin.gain = 10.0;
     if ( (ret = daq_create_converter(&daqchan_cin)) )
         return ret;
 
