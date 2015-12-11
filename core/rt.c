@@ -72,7 +72,6 @@ int rtdo_init(const char *device) {
     }
     rt_set_oneshot_mode();
     start_rt_timer(0);
-    signal(SIGINT | SIGKILL, cleanup);
 
     // Test semaphore function
     init_level++;
@@ -386,4 +385,35 @@ int rtdo_set_stimulus(int handle, double baseVal, int numsteps, double *values, 
     ao_runinfo.dirty = 1;
 
     return 0;
+}
+
+//******************* Threads controlled by arbitrary functions *************************
+static struct {
+    void *(*fn)(void *);
+    void *arg;
+} foreign_thread;
+
+void *foreign_thread_launch(void *t) {
+    RT_TASK *task;
+    task = rt_thread_init(0, DO_MAIN_PRIO, 5000, SCHED_FIFO, DO_RT_CPUS);
+    if (!task) {
+        perror("Thread RT setup failed");
+        return (void *)EXIT_FAILURE;
+    }
+
+    void *ret = foreign_thread.fn(foreign_thread.arg);
+
+    rt_make_soft_real_time();
+    rt_thread_delete(task);
+    return ret;
+}
+
+long rtdo_thread_create(void *(*fn)(void *), void *arg, int stacksize) {
+    foreign_thread.fn = fn;
+    foreign_thread.arg = arg;
+    return rt_thread_create(foreign_thread_launch, 0, stacksize);
+}
+
+void rtdo_thread_join(long thread) {
+    rt_thread_join(thread);
 }

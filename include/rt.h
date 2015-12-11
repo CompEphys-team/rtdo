@@ -108,6 +108,10 @@ float rtdo_get_data(int handle, int *err);
  */
 float rtdo_read_now(int handle, int *err);
 
+
+long rtdo_thread_create(void *(*fn)(void *), void *arg, int stacksize);
+void rtdo_thread_join(long thread);
+
 #ifdef __cplusplus
 }
 #endif
