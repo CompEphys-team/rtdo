@@ -34,7 +34,7 @@ void truevar_initexpHH() {}
 void runexpHH(float t) {
     daq_channel *in = run_get_active_inchan();
     int err=0;
-    IsynGHH = (double)rtdo_get_data(in->handle, &err);
+    IsynGHH = rtdo_get_data(in->handle, &err);
 }
 void expHH_setstimulus(inputSpec I) {
     daq_channel *out = run_get_active_outchan();

@@ -304,7 +304,7 @@ void rtdo_sync() {
     rt_make_soft_real_time();
 }
 
-float rtdo_get_data(int handle, int *err) {
+double rtdo_get_data(int handle, int *err) {
     if ( handle < 1 || handle >= num_channels || !channels[handle] ) {
         perror("Invalid channel handle");
         *err = EINVAL;
@@ -323,10 +323,10 @@ float rtdo_get_data(int handle, int *err) {
         *err = EBUSY;
         return 0.0;
     }
-    return (float)daq_convert_to_physical(sample, channels[handle]->chan);
+    return daq_convert_to_physical(sample, channels[handle]->chan);
 }
 
-float rtdo_read_now(int handle, int *err) {
+double rtdo_read_now(int handle, int *err) {
     if ( handle < 1 || handle >= num_channels || !channels[handle] ) {
         perror("Invalid channel handle");
         *err = EINVAL;
@@ -348,7 +348,7 @@ float rtdo_read_now(int handle, int *err) {
                           channels[handle]->chan->range, channels[handle]->chan->aref);
     comedi_data_read(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
                      channels[handle]->chan->range, channels[handle]->chan->aref, &sample);
-    return (float)daq_convert_to_physical(sample, channels[handle]->chan);
+    return daq_convert_to_physical(sample, channels[handle]->chan);
 }
 
 int rtdo_set_stimulus(int handle, double baseVal, int numsteps, double *values, double *ms, double ms_total) {

@@ -260,9 +260,9 @@ void MainWindow::channels_reset_generic(
 void MainWindow::on_vout_offset_read_clicked()
 {
     int err=0;
-    float val = rtdo_read_now(daqchan_vin.handle, &err);
+    double val = rtdo_read_now(daqchan_vin.handle, &err);
     if ( !err )
-        ui->vout_offset->setValue((double)val);
+        ui->vout_offset->setValue(val);
 }
 
 QString dirname(std::string path) {

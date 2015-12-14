@@ -96,7 +96,7 @@ int rtdo_set_stimulus(int handle, double baseVal, int numsteps, double *values, 
  * @param err Filled with a relevant error code on failure
  * @return A physical value sample
  */
-float rtdo_get_data(int handle, int *err);
+double rtdo_get_data(int handle, int *err);
 
 /**
  * @brief Immediately read a single value from the specified channel.
@@ -106,7 +106,7 @@ float rtdo_get_data(int handle, int *err);
  * @param err Filled with a relevant error code on failure
  * @return A physical value sample
  */
-float rtdo_read_now(int handle, int *err);
+double rtdo_read_now(int handle, int *err);
 
 /**
  * @brief Immediately write a single value to the specified output channel.
