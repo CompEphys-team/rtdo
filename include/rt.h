@@ -108,6 +108,16 @@ float rtdo_get_data(int handle, int *err);
  */
 float rtdo_read_now(int handle, int *err);
 
+/**
+ * @brief Immediately write a single value to the specified output channel.
+ *  It is an error to call this function while realtime output is being generated,
+ *  use rtdo_set_stimulus to write asynchronously instead.
+ * @param handle
+ * @param value The physical value to write
+ * @return 0 on success, error code on failure
+ */
+int rtdo_write_now(int handle, double value);
+
 
 long rtdo_thread_create(void *(*fn)(void *), void *arg, int stacksize);
 void rtdo_thread_join(long thread);

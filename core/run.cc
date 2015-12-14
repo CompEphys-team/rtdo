@@ -54,6 +54,7 @@ void run_vclamp_stop() {
         dlclose(lib);
         lib = 0;
     }
+    rtdo_write_now(daqchan_vout.handle, daqchan_vout.offset);
 }
 
 void *vclaunch(void *unused) {

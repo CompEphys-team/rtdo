@@ -387,6 +387,27 @@ int rtdo_set_stimulus(int handle, double baseVal, int numsteps, double *values, 
     return 0;
 }
 
+int rtdo_write_now(int handle, double value) {
+    if ( handle < 1 || handle >= num_channels || !channels[handle] ) {
+        perror("Invalid channel handle");
+        return EINVAL;
+    }
+    if ( channels[handle]->chan->type != COMEDI_SUBD_AO ) {
+        perror("Data acquisition is only supported for AO channels");
+        return EPERM;
+    }
+    if ( ao_runinfo.running ) {
+        perror("Realtime data generation is running");
+        return EBUSY;
+    }
+
+    lsampl_t sample = daq_convert_from_physical(value, channels[handle]->chan);
+    if ( !comedi_data_write(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
+                            channels[handle]->chan->range, channels[handle]->chan->aref, sample) )
+        return EBUSY;
+    return 0;
+}
+
 //******************* Threads controlled by arbitrary functions *************************
 static struct {
     void *(*fn)(void *);
