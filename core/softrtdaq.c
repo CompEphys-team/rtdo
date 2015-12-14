@@ -56,9 +56,6 @@ static double (*to_physical)(lsampl_t, const comedi_polynomial_t *);
 static double (*to_phys)(lsampl_t, comedi_range *, lsampl_t);
 static lsampl_t (*from_physical)(double, const comedi_polynomial_t *);
 static lsampl_t (*from_phys)(double, comedi_range *, lsampl_t);
-static int (*data_read_delayed)(
-        comedi_t *, unsigned int, unsigned int, unsigned int, unsigned int,
-        lsampl_t *, unsigned int);
 
 int daq_load_lib(const char *libfile_) {
     if ( libcomedi )
@@ -89,7 +86,6 @@ int daq_load_lib(const char *libfile_) {
     DLSYM(to_phys, "comedi_to_phys");
     DLSYM(from_physical, "comedi_from_physical");
     DLSYM(from_phys, "comedi_from_phys");
-    DLSYM(data_read_delayed, "comedi_data_read_delayed");
     
     return 0;
 }
@@ -232,18 +228,4 @@ lsampl_t daq_convert_from_physical(double out, daq_channel *chan) {
         return from_physical(Vcmd, &(chan->converter->polynomial));
     else
         return from_phys(Vcmd, &(chan->converter->range), chan->converter->maxdata);
-}
-
-double daq_read_value(daq_channel *chan, int *err) {
-    if ( !libcomedi && (*err = daq_load_lib(NULL)) )
-        return 0.0;
-    if ( !dev && (*err = daq_open_device(NULL)) )
-        return 0.0;
-    lsampl_t ldata;
-    if ( data_read_delayed(dev, chan->subdevice, chan->channel, chan->range, chan->aref, &ldata, 100) != 1 ) {
-        perror("Soft realtime read failed");
-        *err = EBUSY;
-        return 0.0;
-    }
-    return daq_convert_to_physical(ldata, chan);
 }

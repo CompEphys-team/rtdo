@@ -39,8 +39,6 @@ int daq_create_converter(daq_channel *chan);
 double daq_convert_to_physical(lsampl_t in, daq_channel *chan);
 lsampl_t daq_convert_from_physical(double out, daq_channel *chan);
 
-double daq_read_value(daq_channel *chan, int *err);
-
 #ifdef __cplusplus
 }
 #endif
