@@ -409,12 +409,13 @@ int rtdo_write_now(int handle, double value) {
 }
 
 //******************* Threads controlled by arbitrary functions *************************
-static struct {
+struct fthread {
     void *(*fn)(void *);
     void *arg;
-} foreign_thread;
+};
 
-void *foreign_thread_launch(void *t) {
+void *foreign_thread_launch(void *vt) {
+    struct fthread *t = (struct fthread *)vt;
     RT_TASK *task;
     task = rt_thread_init(0, DO_MAIN_PRIO, 5000, SCHED_FIFO, DO_RT_CPUS);
     if (!task) {
@@ -422,17 +423,19 @@ void *foreign_thread_launch(void *t) {
         return (void *)EXIT_FAILURE;
     }
 
-    void *ret = foreign_thread.fn(foreign_thread.arg);
+    void *ret = t->fn(t->arg);
 
     rt_make_soft_real_time();
     rt_thread_delete(task);
+    free(t);
     return ret;
 }
 
 long rtdo_thread_create(void *(*fn)(void *), void *arg, int stacksize) {
-    foreign_thread.fn = fn;
-    foreign_thread.arg = arg;
-    return rt_thread_create(foreign_thread_launch, 0, stacksize);
+    struct fthread *t = malloc(sizeof(struct fthread));
+    t->fn = fn;
+    t->arg = arg;
+    return rt_thread_create(foreign_thread_launch, t, stacksize);
 }
 
 void rtdo_thread_join(long thread) {
