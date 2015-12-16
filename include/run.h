@@ -17,6 +17,7 @@ initial version: 2015-12-08
 #include "types.h"
 #include "rt.h"
 #include <iostream>
+#include <queue>
 
 void run_vclamp_start();
 void run_vclamp_stop();
@@ -27,6 +28,8 @@ daq_channel *run_get_active_inchan();
 void run_digest(double best_err, double mavg, int nextS);
 int run_check_break();
 
+extern std::queue<double> samples_q;
+
 #ifdef RTDO // Included from within model/helper.h
 void endexpHH() {}
 void initexpHH() {}
@@ -35,6 +38,7 @@ void runexpHH(float t) {
     daq_channel *in = run_get_active_inchan();
     int err=0;
     IsynGHH = rtdo_get_data(in->handle, &err);
+    samples_q.push(IsynGHH);
 }
 void expHH_setstimulus(inputSpec I) {
     daq_channel *out = run_get_active_outchan();

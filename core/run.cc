@@ -19,13 +19,16 @@ initial version: 2015-12-08
 #include "rt.h"
 #include "globals.h"
 
-static long thread=0;
+static long thread=0, sqthread=0;
 static void *lib=0;
 static int (*libmain)(const char*, const char*, const char*, const char*, int, int);
 static int stop=0;
 static daq_channel *active_in=0, *active_out=0;
 
+std::queue<double> samples_q;
+
 void *vclaunch(void *);
+void *sqread(void *);
 
 void run_vclamp_start() {
     using std::endl;
@@ -34,19 +37,25 @@ void run_vclamp_start() {
         run_vclamp_stop();
     }
 
+    while ( !samples_q.empty() )
+        samples_q.pop();
+
     stop = 0;
     rtdo_set_sampling_rate(sim_params.dt, 1);
     active_in =& daqchan_cin;
     active_out =& daqchan_vout;
     thread = rtdo_thread_create(vclaunch, 0, 1000000);
+    sqthread = rtdo_thread_create(sqread, 0, 1000000);
 }
 
 void run_vclamp_stop() {
     stop = 1;
     if ( thread ) {
         rtdo_thread_join(thread);
+        rtdo_thread_join(sqthread);
         rtdo_stop();
         thread = 0;
+        sqthread = 0;
         active_in = 0;
         active_out = 0;
     }
@@ -94,6 +103,25 @@ void *vclaunch(void *unused) {
     }
     libmain("live", sim_params.outdir.c_str(), sim_params.vc_wavefile.c_str(),
             sim_params.sigfile.c_str(), 1, -1);
+    return 0;
+}
+
+void *sqread(void *) {
+    std::string fname = sim_params.outdir + "/samples.tmp";
+    std::ofstream os(fname.c_str());
+    RTIME delay = nano2count(0.1e6);
+
+    while( ! stop ) {
+        rt_sleep(delay);
+        rt_make_soft_real_time();
+        while( ! samples_q.empty() ) {
+            os << samples_q.front() << "\n";
+            samples_q.pop();
+        }
+        os.flush();
+    }
+
+    os.close();
     return 0;
 }
 
