@@ -50,6 +50,8 @@ private slots:
 
     void on_outdir_browse_clicked();
 
+    void on_modelfile_browse_clicked();
+
     void on_simparams_reset_clicked();
 
     void on_simparams_apply_clicked();

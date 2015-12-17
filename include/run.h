@@ -19,6 +19,8 @@ initial version: 2015-12-08
 #include <iostream>
 #include <queue>
 
+int compile_model();
+
 void run_vclamp_start();
 void run_vclamp_stop();
 

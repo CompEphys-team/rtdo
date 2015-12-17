@@ -13,6 +13,9 @@ initial version: 2015-12-03
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+#define SIMDIR "/home/felix/projects/rtdo/simulation"
+#define INSTANCEDIR "/home/felix/projects/rtdo/models"
+
 #include "types.h"
 
 #ifdef __cplusplus
@@ -22,7 +25,7 @@ extern struct _sim_params {
     std::string vc_wavefile;
     std::string sigfile;
     std::string outdir;
-    std::string modeldir;
+    std::string modelfile;
     int nPop;
     double dt;
 } sim_params;

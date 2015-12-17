@@ -27,10 +27,8 @@ SOURCES += core/main.cpp \
     core/aithread.c \
     core/run.cc
 
-OTHER_FILES += vclamp/model/GNUmakefile \
-    vclamp/model/*.cc \
-    vclamp/model/*.cu \
-    vclamp/model/*.h
+OTHER_FILES += simulation/* \
+    models/*.cc
 
 HEADERS  += \
     include/mainwindow.h \

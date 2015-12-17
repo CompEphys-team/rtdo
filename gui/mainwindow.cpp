@@ -300,6 +300,15 @@ void MainWindow::on_outdir_browse_clicked()
         ui->outdir->setText(file);
 }
 
+void MainWindow::on_modelfile_browse_clicked()
+{
+    QString file, dir;
+    dir = dirname(ui->modelfile->text().toStdString());
+    file = QFileDialog::getOpenFileName(this, QString("Select model file..."), dir, QString("C++ Files (*.cc *.cpp)"));
+    if ( !file.isEmpty() )
+        ui->modelfile->setText(file);
+}
+
 void MainWindow::on_simparams_reset_clicked()
 {
     ui->outdir->setText(QString::fromStdString(sim_params.outdir));
@@ -307,15 +316,33 @@ void MainWindow::on_simparams_reset_clicked()
     ui->vc_waveforms->setText(QString::fromStdString(sim_params.vc_wavefile));
     ui->dt->setValue(sim_params.dt);
     ui->npop->setValue(sim_params.nPop);
+    ui->modelfile->setText(QString::fromStdString(sim_params.modelfile));
 }
 
 void MainWindow::on_simparams_apply_clicked()
 {
+    std::string mfile = ui->modelfile->text().toStdString();
+    double dt = ui->dt->value();
+    int npop = ui->npop->value();
+    bool recompile = sim_params.modelfile.compare(mfile)
+            || sim_params.dt != dt
+            || sim_params.nPop != npop;
+
+    // Compile-time parameters
+    sim_params.modelfile = mfile;
+    sim_params.dt = dt;
+    sim_params.nPop = npop;
+
+    // Runtime parameters
     sim_params.outdir = ui->outdir->text().toStdString();
     sim_params.sigfile = ui->sigfile->text().toStdString();
     sim_params.vc_wavefile = ui->vc_waveforms->text().toStdString();
-    sim_params.dt = ui->dt->value();
-    sim_params.nPop = ui->npop->value();
+
+    if ( recompile ) {
+        QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
+        compile_model();
+        QApplication::restoreOverrideCursor();
+    }
 }
 
 void MainWindow::on_vclamp_start_clicked()
