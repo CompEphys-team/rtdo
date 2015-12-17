@@ -50,9 +50,6 @@ int compile_model() {
 
     modelfname = basename_nosuffix(sim_params.modelfile);
 
-    cmd = string("rm -rf ") + INSTANCEDIR + "/" + modelfname + "_CODE";
-    system(cmd.c_str());
-
     cmd = string("cp ") + sim_params.modelfile + " " + INSTANCEDIR + "/" + modelfname + ".cc";
     system(cmd.c_str());
 
