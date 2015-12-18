@@ -16,9 +16,9 @@ void rtdo_generate_bridge(const neuronModel& n, const string& pop_name, int nVar
 
     size_t i = 0;
     if ( nVars > 0 ) {
-        cout << "scalar *mvar[NVAR] = {" << endl;
+        cout << "scalar **mvar[NVAR] = {" << endl;
         for ( i = 0; i < nVars; i++ ) {
-            cout << '\t' << n.varNames[i] << pop_name << "," << endl;
+            cout << "\t&" << n.varNames[i] << pop_name << "," << endl;
         }
         cout << "};" << endl;
         cout << "double mvar_ini[NVAR] = {" << endl;
@@ -28,14 +28,15 @@ void rtdo_generate_bridge(const neuronModel& n, const string& pop_name, int nVar
         cout << "};" << endl;
     }
     if ( nParams > 0 )  {
-        cout << "scalar *mparam[NPARAM] = {" << endl;
+        cout << "scalar **mparam[NPARAM] = {" << endl;
         for ( i = nVars; i < nVars + nParams; i++ ) {
-            cout << '\t' << n.varNames[i] << pop_name << "," << endl;
+            cout << "\t&" << n.varNames[i] << pop_name << "," << endl;
         }
         cout << "};" << endl;
     }
 
-    cout << "scalar *merr = " << n.varNames.back() << pop_name << ";" << endl;
+    cout << "scalar *&err = err" << pop_name << ";" << endl;
+    cout << "scalar *&d_err = d_err" << pop_name << ";" << endl;
     cout << "scalar& ot = ot" << pop_name << ";" << endl;
     cout << "scalar& ote = ote" << pop_name << ";" << endl;
     cout << "scalar& stepVG = stepVG" << pop_name << ";" << endl;
