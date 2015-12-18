@@ -14,9 +14,10 @@
 #include "modelSpec.h"
 #include "modelSpec.cc"
 
+#define Nvar 4
 #define Npara 19
 
-double myHH_ini[Npara+5]= {
+double myHH_ini[Npara+Nvar+1]= {
   -60.0,         // 0 - membrane potential E
   0.0529324,     // 1 - prob. for Na channel activation m
   0.3176767,     // 2 - prob. for not Na channel blocking h
@@ -105,16 +106,6 @@ void modelDefinition(NNmodel &model)
   n.varTypes.push_back(tS("scalar"));
   n.varNames.push_back(tS("C"));
   n.varTypes.push_back(tS("scalar"));
-  n.varNames.push_back(tS("err"));
-  n.varTypes.push_back(tS("scalar"));
-  n.extraGlobalNeuronKernelParameters.push_back(tS("ot"));
-  n.extraGlobalNeuronKernelParameterTypes.push_back(tS("scalar"));
-  n.extraGlobalNeuronKernelParameters.push_back(tS("ote"));
-  n.extraGlobalNeuronKernelParameterTypes.push_back(tS("scalar"));
-  n.extraGlobalNeuronKernelParameters.push_back( tS( "stepVG" ) );
-  n.extraGlobalNeuronKernelParameterTypes.push_back( tS( "scalar" ) );
-  n.extraGlobalNeuronKernelParameters.push_back(tS("IsynG"));
-  n.extraGlobalNeuronKernelParameterTypes.push_back(tS("scalar"));
 
   n.simCode= tS("   scalar Imem;\n\
     unsigned int mt;\n\
@@ -134,18 +125,20 @@ void modelDefinition(NNmodel &model)
       _b= 0.125*exp(-($(V)+$(nboff))/$(nbslope));\n\
       $(n)+= (_a*(1.0-$(n))-_b*$(n))*mdt;\n\
       $(V)+= Imem/$(C)*mdt;\n\
-    }\n\
-    if ((t > $(ot)) && (t < $(ote))) {\n\
-      $(err)+= abs(Isyn-$(IsynG));\n\
     }\n");
 
   n.thresholdConditionCode = tS("$(V) > 100");
+
+  std::string popname = tS("HH");
+  rtdo_add_extra_parameters(n);
+  rtdo_generate_bridge(n, popname, Nvar, Npara, myHH_ini);
+
   int HHV= nModels.size();
   nModels.push_back(n);
 
   model.setName("Lymnaea_B1");
   model.setPrecision(GENN_FLOAT);
   model.setGPUDevice(fixGPU);
-  model.addNeuronPopulation("HH", NPOP, HHV, myHH_p, myHH_ini);
+  model.addNeuronPopulation(popname, NPOP, HHV, myHH_p, myHH_ini);
   model.finalize();
 }

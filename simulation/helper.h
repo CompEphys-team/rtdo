@@ -12,6 +12,10 @@
 --------------------------------------------------------------------------*/
 
 #include <vector>
+#include <string>
+#include <istream>
+#include <bitset>
+#include <limits>
 
 typedef struct {
   double t;
@@ -401,4 +405,30 @@ void initI(inputSpec &I)
   I.V.push_back(-60.0);
   assert((I.N == I.V.size()) && (I.N == I.st.size()));
 }
-      
+
+void load_param_values(std::istream &is, const NNmodel &model) {
+    const neuronModel& n = nModels[model.neuronType[0]];
+    std::string name, type;
+    scalar lower, upper;
+    std::bitset<NPARAM> bits;
+    int j;
+    while ( is.good() ) {
+        is >> name;
+        if ( name.c_str()[0] == '#' ) {
+            is.ignore(numeric_limits<std::streamsize>::max(), '\n');
+            continue;
+        }
+        is >> lower >> upper >> type;
+        for ( j = 0; j < NPARAM; j++ ) {
+            if ( !name.compare(n.varNames[NVAR + j]) ) {
+                mrange[j][0] = lower;
+                mrange[j][1] = upper;
+                mpertmult[j] = bool(type.compare("+"));
+                bits.set(j);
+                break;
+            }
+        }
+        is.ignore(numeric_limits<std::streamsize>::max(), '\n');
+    }
+    assert(bits.all());
+}

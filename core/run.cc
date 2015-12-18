@@ -21,6 +21,9 @@ initial version: 2015-12-08
 #include "rt.h"
 #include "globals.h"
 
+#define BRIDGE_START "Bridge code begin >>>"
+#define BRIDGE_END "<<< Bridge code end"
+
 using namespace std;
 
 static long thread=0, sqthread=0;
@@ -60,14 +63,17 @@ int compile_model() {
     os << "#define fixGPU " << 0 << endl;
     os << "#define INoiseSTD " << 0 << endl;
     os << "#define DT " << sim_params.dt << endl;
+    os << "#define BRIDGE_START \"" << BRIDGE_START << "\"" << endl;
+    os << "#define BRIDGE_END \"" << BRIDGE_END << "\"" << endl;
+    os << "#include \"" << SIMDIR << "/model_helper.cc\"" << endl;
     os.close();
 
     cmd = string("cd ") + INSTANCEDIR + " && buildmodel.sh " + modelfname + " 0 2>&1";
     cout << cmd << endl;
     FILE *is = popen(cmd.c_str(), "r");
     char buffer[1024], *p, *q;
-    bool name_found = false;
-    stringstream dump;
+    bool name_found = false, bridge_found = false;
+    stringstream dump, bridge;
     while ( fgets(buffer, 1024, is) ) {
         dump << buffer;
         if ( !name_found && strstr(buffer, "dry-run compile") ) {
@@ -82,11 +88,17 @@ int compile_model() {
             modelname = string(p, q-p);
             name_found = true;
         }
+        if ( !bridge_found && strstr(buffer, BRIDGE_START) ) {
+            while ( fgets(buffer, 1024, is) && !strstr(buffer, BRIDGE_END) ) {
+                bridge << buffer;
+            }
+            bridge_found = true;
+        }
         if ( strstr(buffer, "error") || strstr(buffer, "Error") )
             ret = 1;
     }
     pclose(is);
-    if ( !name_found || ret ) {
+    if ( !name_found || !bridge_found || ret ) {
         cerr << "Error " << ret << " building model. Build output follows:\n*********" << endl;
         cerr << dump.str();
         cerr << "**********" << endl;
@@ -97,8 +109,12 @@ int compile_model() {
 
     fname = string(SIMDIR) + "/model.h";
     os.open(fname.c_str());
+    os << "#ifndef MODEL_H" << endl;
+    os << "#define MODEL_H" << endl << endl;
     os << "#include \"" << INSTANCEDIR << "/" << modelfname << ".cc\"" << endl;
     os << "#include \"" << INSTANCEDIR << "/" << modelname << "_CODE/runner.cc\"" << endl;
+    os << bridge.str() << endl;
+    os << "#endif" << endl;
     os.close();
 
     cmd = string("cd ") + SIMDIR + " && make clean -I " + INSTANCEDIR + " && make release -I " + INSTANCEDIR;
