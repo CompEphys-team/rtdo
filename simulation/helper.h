@@ -17,6 +17,10 @@
 #include <bitset>
 #include <limits>
 
+scalar mrange[NPARAM][2];
+bool mpertmult[NPARAM];
+double msigma[NPARAM];
+
 typedef struct {
   double t;
   double ot;
@@ -410,25 +414,29 @@ void load_param_values(std::istream &is, const NNmodel &model) {
     const neuronModel& n = nModels[model.neuronType[0]];
     std::string name, type;
     scalar lower, upper;
+    double sig;
     std::bitset<NPARAM> bits;
     int j;
     while ( is.good() ) {
         is >> name;
+        cout << name << endl;
         if ( name.c_str()[0] == '#' ) {
             is.ignore(numeric_limits<std::streamsize>::max(), '\n');
             continue;
         }
-        is >> lower >> upper >> type;
+        is >> lower >> upper >> type >> sig;
         for ( j = 0; j < NPARAM; j++ ) {
             if ( !name.compare(n.varNames[NVAR + j]) ) {
                 mrange[j][0] = lower;
                 mrange[j][1] = upper;
                 mpertmult[j] = bool(type.compare("+"));
+                msigma[j] = sig;
                 bits.set(j);
+                cout << ">" << name << " " << lower << " " << upper << " " << type << " " << sig << endl;
                 break;
             }
         }
-        is.ignore(numeric_limits<std::streamsize>::max(), '\n');
+        is.ignore(numeric_limits<std::streamsize>::max(), '\n').peek();
     }
     assert(bits.all());
 }

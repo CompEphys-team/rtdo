@@ -286,7 +286,7 @@ void MainWindow::on_sigfile_browse_clicked()
 {
     QString file, dir;
     dir = dirname(ui->sigfile->text().toStdString());
-    file = QFileDialog::getOpenFileName(this, QString("Select parameter sigma file..."), dir);
+    file = QFileDialog::getOpenFileName(this, QString("Select parameter file..."), dir);
     if ( !file.isEmpty() )
         ui->sigfile->setText(file);
 }

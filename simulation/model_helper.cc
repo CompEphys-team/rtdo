@@ -41,9 +41,6 @@ void rtdo_generate_bridge(const neuronModel& n, const string& pop_name, int nVar
     cout << "scalar& stepVG = stepVG" << pop_name << ";" << endl;
     cout << "scalar& IsynG = IsynG" << pop_name << ";" << endl;
 
-    cout << "scalar mrange[NPARAM][2];" << endl;
-    cout << "bool mpertmult[NPARAM];" << endl;
-
     cout << BRIDGE_END << endl;
     printed = true;
 }
