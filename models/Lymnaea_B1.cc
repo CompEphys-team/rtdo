@@ -14,39 +14,8 @@
 #include "modelSpec.h"
 #include "modelSpec.cc"
 
-#define Nvar 4
-#define Npara 19
-
-double myHH_ini[Npara+Nvar+1]= {
-  -60.0,         // 0 - membrane potential E
-  0.0529324,     // 1 - prob. for Na channel activation m
-  0.3176767,     // 2 - prob. for not Na channel blocking h
-  0.5961207,     // 3 - prob. for K channel activation n
-  120.0,         // 4 - gNa: Na conductance in 1/(mOhms * cm^2)
-  55.0,          // 5 - ENa: Na equi potential in mV
-  3.5,           // 6 - maoff: offset of alpha_m curve Vmid*slope
-  0.1,           // 7 - maslope: slope of alpha_m curve
-  60.0,          // 8 - mboff
-  18.0,          // 9 - mbslope
-  3.0,           // 10 - haoff
-  20.0,          // 11 - haslope
-  3.0,           // 12 - hboff
-  0.1,           // 13 - hbslope
-  36.0,          // 14 - gK: K conductance in 1/(mOhms * cm^2)
-  -72.0,         // 15 - EK: K equi potential in mV
-  0.5,           // 16 - naoff
-  0.01,          // 17 - naslope
-  60.0,          // 18 - nboff
-  80.0,          // 19 - nbslope
-  0.3,           // 20 - gl: leak conductance in 1/(mOhms * cm^2)
-  -50.0,         // 21 - El: leak equi potential in mV
-  1.0,           // 22 - Cmem: membr. capacity density in muF/cm^2
-  0.0            // 23 - err
-
-};
-
-double *myHH_p= NULL;
-
+#define Nvar 4 /*!< Number of true variables (local use only) */
+#define Npara 19 /*!< Number of adjustable parameters (local use only) */
 
 //--------------------------------------------------------------------------
 /*! \brief This function defines the HH model with variable parameters.
@@ -55,11 +24,27 @@ double *myHH_p= NULL;
 
 void modelDefinition(NNmodel &model)
 {
+  /*! \brief This array sets the initial values of the model.
+   *  Its size must be at least (number of true variables) + (number of model parameters) + 1.
+   *  Only the first (Nvar) values are used, as the adjustable parameters are initialised
+   *  from the parameter file.
+   */
+  double myHH_ini[Npara+Nvar+1]= {
+    -60.0,         // 0 - membrane potential E
+    0.0529324,     // 1 - prob. for Na channel activation m
+    0.3176767,     // 2 - prob. for not Na channel blocking h
+    0.5961207,     // 3 - prob. for K channel activation n
+  };
+
+  double *myHH_p= NULL; //!< This array sets the initial values of fixed parameters, if present.
+
   neuronModel n;
   initGeNN();
   // HH neurons with adjustable parameters (introduced as variables)
   n.varNames.clear();
   n.varTypes.clear();
+
+  // Add true variables first...
   n.varNames.push_back(tS("V"));
   n.varTypes.push_back(tS("scalar"));
   n.varNames.push_back(tS("m"));
@@ -68,6 +53,8 @@ void modelDefinition(NNmodel &model)
   n.varTypes.push_back(tS("scalar"));
   n.varNames.push_back(tS("n"));
   n.varTypes.push_back(tS("scalar"));
+
+  // Add adjustable parameters second...
   n.varNames.push_back(tS("gNa"));
   n.varTypes.push_back(tS("scalar"));
   n.varNames.push_back(tS("ENa"));
@@ -129,6 +116,7 @@ void modelDefinition(NNmodel &model)
 
   n.thresholdConditionCode = tS("$(V) > 100");
 
+  // Allow RTDO to add its extra parameters and sim code and generate bridge code last.
   std::string popname = tS("HH");
   rtdo_add_extra_parameters(n);
   rtdo_generate_bridge(n, popname, Nvar, Npara, myHH_ini);
