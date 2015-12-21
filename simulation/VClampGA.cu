@@ -115,7 +115,7 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 			iTN = (int)(I.t / DT);
             stepVG = I.baseV;
             ot = t + I.ot;
-            ote = t + I.t + I.dur;
+            ote = t + I.ot + I.dur;
 			lt = 0.0;
             sn = 0;
 
