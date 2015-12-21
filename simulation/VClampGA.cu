@@ -38,39 +38,17 @@ inline bool file_exists( const std::string& name )
 	}
 }
 
-extern "C" int vclamp(const char *basename, const char *outdir, const char *stimFName,
-           const char *sigFName, int which, int protocol);
-
-int main( int argc, char *argv[] )
-{
-	if (argc != 6)
-	{
-		fprintf( stderr, "usage: VClampGA <basename> <stimulus file> <sigma file> <CPU=0, GPU=1> <protocol> \n" );
-		return 1;
-    }
-    return vclamp(argv[1], argv[1], argv[2], argv[3], atoi(argv[4]), atoi(argv[5]));
-}
-
-int vclamp(const char *basename, const char *outdir, const char *stimFName,
-           const char *sigFName, int which, int protocol) {
+extern "C" int vclamp(const char *basename, const char *outdir, const char *stimFName, const char *sigFName) {
     ifstream is( stimFName );
     ifstream sis( sigFName );
-	loadSig( sis );
 
 	char buf[BUFSZ];
 	int experimentNo = 0;
-#ifdef RTDO
     string OutDir = toString(outdir);
-#else
-    string OutDir = toString( basename ) + "_output";
-#endif
     while (file_exists( OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".time" ) )) { ++experimentNo; }
 	string name;
     name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".time" );
-	FILE *timef = fopen( name.c_str(), "a" );
-
-    write_para();
-
+    FILE *timef = fopen( name.c_str(), "a" );
     name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".out.I" );
 	FILE *osf = fopen( name.c_str(), "w" );
     name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".out.best" );
@@ -139,20 +117,12 @@ int vclamp(const char *basename, const char *outdir, const char *stimFName,
 
 	NNmodel model;
 	modelDefinition( model );
+    load_param_values(sis, model);
 	allocateMem();
-	initialize();
-	var_init_fullrange(); // initialize uniformly on large range
-	initexpHH();
+    initialize();
+    rtdo_init_bridge();
+    var_init_fullrange(); // initialize uniformly on large range
     fprintf( stderr, "# neuronal circuitery built, start computation ... \n\n" );
-
-	double *theExp_p[Npara];
-	theExp_p[0] = &gNaexp;
-	theExp_p[1] = &ENaexp;
-	theExp_p[2] = &gKexp;
-	theExp_p[3] = &EKexp;
-	theExp_p[4] = &glexp;
-	theExp_p[5] = &Elexp;
-	theExp_p[6] = &Cexp;
 
 	//------------------------------------------------------------------
 	// output general parameters to output file and start the simulation
@@ -170,78 +140,39 @@ int vclamp(const char *basename, const char *outdir, const char *stimFName,
 	int nextS = 0;
 	while (!done)
     {
-		truevar_init();
-        truevar_initexpHH();
+        truevar_init();
         for (int s = 0, k = pperturb.size(); s < k; s++) {
 			I = stims[nextS];
 			iTN = (int)(I.t / DT);
-			stepVGHH = I.baseV;
-			otHH = t + I.ot;
-			oteHH = t + I.t + I.dur;
+            stepVG = I.baseV;
+            ot = t + I.ot;
+            ote = t + I.t + I.dur;
 			lt = 0.0;
             sn = 0;
-#ifdef RTDO
-            expHH_setstimulus(I);
+
+            run_setstimulus(I);
             rtdo_sync();
-#endif
+
             for (int iT = 0; iT < iTN; iT++) {
 				oldt = lt;
-                runexpHH( t );
-				if (which == GPU) {
-					stepTimeGPU( t );
-				}
-				else {
-					stepTimeCPU( t );
-                }
+                IsynG = run_getsample( t );
+                stepTimeGPU( t );
 				t += DT;
 				lt += DT;
 				if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
-					stepVGHH = I.V[sn];
+                    stepVG = I.V[sn];
 					sn++;
-					fprintf( osf, "%f %f \n", t, stepVGHH );
+                    fprintf( osf, "%f %f \n", t, stepVG );
                 }
             }
-			if (which == 1) {
-				CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
-			}
-            // output the best values, which input was used and the resulting error
-            fprintf( osb, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %d ", t, gNaexp, ENaexp, maoffexp, maslopeexp, mboffexp, mbslopeexp, haoffexp, haslopeexp, hboffexp, hbslopeexp, gKexp, EKexp, naoffexp, naslopeexp, nboffexp, nbslopeexp, glexp, Elexp, Cexp, nextS );
-#ifdef RTDO
+            CHECK_CUDA_ERRORS( cudaMemcpy( errM, d_errM, VSize, cudaMemcpyDeviceToHost ) );
+
             if ( (done = run_check_break()) )
                 break;
-#endif
 			procreatePopPperturb( osb, pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim ); //perturb for next step
-		}
-#ifndef RTDO
-		if (protocol >= 0) {
-			if (protocol < Npara) {
-				if (protocol % 2 == 0) {
-					*(theExp_p[protocol]) = myHH_ini[protocol + 4] * (1 + 0.5*sin( 3.1415927*t / 40000 ));
-				}
-				else {
-					*(theExp_p[protocol]) = myHH_ini[protocol + 4] + 40.0*(sin( 3.1415927*t / 40000 ));
-				}
-			}
-			else {
-				for (int pn = 0; pn < Npara; pn++) {
-					double fac;
-					if (pn % 2 == 0) {
-						fac = 1 + 0.005*RG.n();
-						*(theExp_p[pn]) *= fac;
-					}
-					else {
-						fac = 0.04*RG.n();
-						*(theExp_p[pn]) += fac;
-					}
-				}
-			}
         }
-		cerr << "% " << t << endl;
-		done = (t >= TOTALT);
-#endif
 	}
-    endexpHH();
-	timer.stopTimer();
+    timer.stopTimer();
 	fprintf( timef, "%f \n", timer.getElapsedTime() );
 	// close files 
 	fclose( osf );

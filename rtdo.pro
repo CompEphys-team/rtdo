@@ -18,6 +18,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = rtdo
 TEMPLATE = app
 
+CONFIG(debug, release|debug):DEFINES += _DEBUG
 
 SOURCES += core/main.cpp \
     gui/mainwindow.cpp \

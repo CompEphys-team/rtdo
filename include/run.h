@@ -18,6 +18,18 @@ initial version: 2015-12-08
 #include "rt.h"
 #include <iostream>
 #include <queue>
+#include <vector>
+
+typedef struct {
+  double t;
+  double ot;
+  double dur;
+  double baseV;
+  int N;
+  std::vector<double> st;
+  std::vector<double> V;
+  double fit;
+} inputSpec;
 
 int compile_model();
 
@@ -30,24 +42,7 @@ daq_channel *run_get_active_inchan();
 void run_digest(double best_err, double mavg, int nextS);
 int run_check_break();
 
-extern std::queue<double> samples_q;
-
-#ifdef RTDO // Included from within model/helper.h
-void endexpHH() {}
-void initexpHH() {}
-void truevar_initexpHH() {}
-void runexpHH(float t) {
-    daq_channel *in = run_get_active_inchan();
-    int err=0;
-    IsynGHH = rtdo_get_data(in->handle, &err);
-    samples_q.push(IsynGHH);
-}
-void expHH_setstimulus(inputSpec I) {
-    daq_channel *out = run_get_active_outchan();
-    int ret = rtdo_set_stimulus(out->handle, I.baseV, I.N, I.V.data(), I.st.data(), I.t);
-    if ( ret )
-        std::cerr << "Error " << ret << " setting stimulus waveform" << std::endl;
-}
-#endif
+double run_getsample(float t);
+void run_setstimulus(inputSpec I);
 
 #endif // RUN_H

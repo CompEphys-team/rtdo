@@ -17,8 +17,8 @@ SOURCES		:= VClampGA.cu
 RTAI_PATH	?= /usr/realtime
 COMEDI_PATH	?= /usr/src/comedi
 
-CXXFLAGS	:= -DRTDO -fPIC
-NVCCFLAGS	+= -DRTDO --compiler-options "-fPIC" --std c++11
+CXXFLAGS	:= -fPIC
+NVCCFLAGS	+= --compiler-options "-fPIC" --std c++11
 LINK_FLAGS	:= -shared -lc
 INCLUDE_FLAGS   += -I../include \
 		   -I$(RTAI_PATH)/include \

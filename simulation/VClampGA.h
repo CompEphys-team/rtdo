@@ -27,16 +27,6 @@ using namespace std;
 
 #include "utils.h" // for CHECK_CUDA_ERRORS
 #include <cuda_runtime.h>
-#ifdef RTDO
-#include "model.h"
-#else
-#ifndef _WAVE
-#include "HHVClamp.cc"
-#else
-#include "Wave.cc"
-#endif
-#include "HHVClamp_CODE/runner.cc"
-#endif // RTDO
 #include "numlib/randomGen.h"
 #include "numlib/gauss.h"
 randomGen R;
@@ -47,6 +37,8 @@ randomGauss RG;
 #define BASEV -60.0
 #define MAVGBUFSZ 10
 
+#include "model.h"
+#include "run.h"
 #include "helper.h"
 
 //#define DEBUG_PROCREATE

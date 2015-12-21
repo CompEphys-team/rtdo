@@ -28,11 +28,11 @@ using namespace std;
 
 static long thread=0, sqthread=0;
 static void *lib=0;
-static int (*libmain)(const char*, const char*, const char*, const char*, int, int);
+static int (*libmain)(const char*, const char*, const char*, const char*);
 static int stop=0;
 static daq_channel *active_in=0, *active_out=0;
 
-std::queue<double> samples_q;
+static queue<double> samples_q;
 
 void *vclaunch(void *);
 void *sqread(void *);
@@ -124,7 +124,11 @@ int compile_model() {
     os << "#endif" << endl;
     os.close();
 
+#ifdef _DEBUG
+    cmd = string("cd ") + SIMDIR + " && make clean -I " + INSTANCEDIR + " && make debug -I " + INSTANCEDIR;
+#else
     cmd = string("cd ") + SIMDIR + " && make clean -I " + INSTANCEDIR + " && make release -I " + INSTANCEDIR;
+#endif
     if ( (ret = system(cmd.c_str())) ) {
         cerr << "Compilation failed." << endl;
         return 1;
@@ -181,8 +185,7 @@ void *vclaunch(void *unused) {
         std::cerr << dlerror() << endl;
         return (void *)EXIT_FAILURE;
     }
-    libmain("live", sim_params.outdir.c_str(), sim_params.vc_wavefile.c_str(),
-            sim_params.sigfile.c_str(), 1, -1);
+    libmain("live", sim_params.outdir.c_str(), sim_params.vc_wavefile.c_str(), sim_params.sigfile.c_str());
     return 0;
 }
 
@@ -219,5 +222,19 @@ void run_digest(double best_err, double mavg, int nextS) {
 
 int run_check_break() {
     return stop;
+}
+
+double run_getsample(float t) {
+    daq_channel *in = run_get_active_inchan();
+    int err=0;
+    double sample = rtdo_get_data(in->handle, &err);
+    samples_q.push(sample);
+    return sample;
+}
+void run_setstimulus(inputSpec I) {
+    daq_channel *out = run_get_active_outchan();
+    int ret = rtdo_set_stimulus(out->handle, I.baseV, I.N, I.V.data(), I.st.data(), I.t);
+    if ( ret )
+        std::cerr << "Error " << ret << " setting stimulus waveform" << std::endl;
 }
 

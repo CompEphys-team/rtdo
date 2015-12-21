@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     std::string device = "/dev/comedi0";
     std::string cal = "/home/felix/projects/rtdo/ni6251.calibrate";
     sim_params.outdir = "/home/felix/projects/build/rtdo/output";
-    sim_params.sigfile = "/home/felix/projects/rtdo/vclamp/sigma2.dat";
+    sim_params.sigfile = "/home/felix/projects/rtdo/models/Lymnaea_B1.dat";
     sim_params.vc_wavefile = "/home/felix/projects/rtdo/vclamp/wave2.dat";
     sim_params.modelfile = "/home/felix/projects/rtdo/models/Lymnaea_B1.cc";
 
