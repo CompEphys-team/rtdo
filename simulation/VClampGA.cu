@@ -56,41 +56,10 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 
 
 	//-----------------------------------------------------------------
-	// read the relevant stimulus patterns
-	double dtmp;
-	vector<double> prob;
+    // read the relevant stimulus patterns
 	vector<vector<double> > pperturb;
 	vector<inputSpec> stims;
-	inputSpec I;
-	while (is.good()) {
-		prob.clear();
-		I.st.clear();
-		I.V.clear();
-		while (((is.peek() == '%') || (is.peek() == '\n') || (is.peek() == ' ')) && is.good()) { // remove comments
-			is.getline( buf, BUFSZ );
-			cerr << "removed: " << buf << endl;
-		}
-		for (int i = 0; i < Npara; i++) {
-			is >> dtmp;
-			prob.push_back( dtmp );
-		}
-		is >> I.t;
-		is >> I.ot;
-		is >> I.dur;
-		is >> I.baseV;
-		is >> I.N;
-		for (int i = 0; i < I.N; i++) {
-			is >> dtmp;
-			I.st.push_back( dtmp );
-			is >> dtmp;
-			I.V.push_back( dtmp );
-		}
-		if (is.good()) {
-			pperturb.push_back( prob );
-			stims.push_back( I );
-		}
-	}
-
+    load_stim(is, pperturb, stims);
 	for (int i = 0, k = pperturb.size(); i < k; i++) {
 		for (int j = 0, l = pperturb[i].size(); j < l; j++) {
 			cerr << pperturb[i][j] << " ";
