@@ -105,6 +105,7 @@ void load_stim(istream &is, vector<vector<double>> &pperturb, vector<inputSpec> 
     double dtmp;
     vector<double> prob;
     inputSpec I;
+    char buf[1024];
     while (is.good()) {
         prob.clear();
         I.st.clear();

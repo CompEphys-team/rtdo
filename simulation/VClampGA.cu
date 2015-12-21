@@ -42,7 +42,6 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
     ifstream is( stimFName );
     ifstream sis( sigFName );
 
-	char buf[BUFSZ];
 	int experimentNo = 0;
     string OutDir = toString(outdir);
     while (file_exists( OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".time" ) )) { ++experimentNo; }
@@ -59,6 +58,7 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
     // read the relevant stimulus patterns
 	vector<vector<double> > pperturb;
 	vector<inputSpec> stims;
+    inputSpec I;
     load_stim(is, pperturb, stims);
 	for (int i = 0, k = pperturb.size(); i < k; i++) {
 		for (int j = 0, l = pperturb[i].size(); j < l; j++) {
