@@ -99,9 +99,16 @@ int compile_model() {
     }
     pclose(is);
     if ( !name_found || !bridge_found || ret ) {
-        cerr << "Error " << ret << " building model. Build output follows:\n*********" << endl;
+        cerr << "Error building model: ";
+        if ( ret )
+            cerr << "GeNN build failed.";
+        else if ( !name_found )
+            cerr << "Model name not found.";
+        else if ( !bridge_found )
+            cerr << "RTDO bridge code not found.";
+        cerr << endl << "Build output follows:\n*********" << endl;
         cerr << dump.str();
-        cerr << "**********" << endl;
+        cerr << "********** End build output." << endl;
         cerr << "Compilation failed." << endl;
         return 1;
     }
