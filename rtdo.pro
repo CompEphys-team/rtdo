@@ -26,7 +26,8 @@ SOURCES += core/main.cpp \
     core/rt.c \
     core/aothread.c \
     core/aithread.c \
-    core/run.cc
+    core/run.cc \
+    gui/channelsetupdialog.cpp
 
 OTHER_FILES += simulation/* \
     models/*.cc
@@ -37,14 +38,14 @@ HEADERS  += \
     include/types.h \
     include/globals.h \
     include/rt.h \
-    include/run.h
+    include/run.h \
+    gui/channelsetupdialog.h
 
 FORMS    += \
-    gui/mainwindow.ui
+    gui/mainwindow.ui \
+    gui/channelsetupdialog.ui
 
-LIBS     += -L/usr/realtime/lib -lkcomedilxrt \
-    -rdynamic -ldl \
-    -pthread
+LIBS     += -rdynamic -ldl -pthread -L. -lRC_kcomedilxrt -lcomedi
 
 INCLUDEPATH += \
     include \
@@ -53,3 +54,26 @@ INCLUDEPATH += \
 
 QMAKE_CFLAGS += -Wno-unused-parameter
 QMAKE_CXXFLAGS += -Wno-unused-parameter
+
+RTAI_LIBDIR = /usr/realtime/lib # Location of libkcomedilxrt.a
+RC_HEADER = RC_rtai_comedi.h # Header file replacing rtai_comedi.h with a prefixed version
+
+RC_syms.target = RC.syms
+RC_syms.depends = $${RTAI_LIBDIR}/libkcomedilxrt.a
+RC_syms.commands = nm $$RC_syms.depends | grep \'\\bcomedi\' | awk \'\$\$3 {print \$\$3 \" RC_\" \$\$3}\' > $$RC_syms.target
+
+RC_header.target = $${OUT_PWD}/$$RC_HEADER
+RC_header.commands = awk \'{print \"$${LITERAL_HASH}define \" \$\$0}\' $$RC_syms.target > $$RC_header.target; \
+    echo \'$${LITERAL_HASH}include <rtai_comedi.h>\' >> $$RC_header.target; \
+    awk \'{print \"$${LITERAL_HASH}undef \" \$\$1}\' $$RC_syms.target >> $$RC_header.target
+RC_header.depends = RC_syms
+
+RC_kcomedilxrt.target = libRC_kcomedilxrt.a
+RC_kcomedilxrt.commands = objcopy --redefine-syms=$$RC_syms.target $${RTAI_LIBDIR}/libkcomedilxrt.a $$RC_kcomedilxrt.target
+RC_kcomedilxrt.depends = RC_syms
+
+RC_clean.commands = rm -rf $$RC_header.target $$RC_syms.target
+
+QMAKE_EXTRA_TARGETS += RC_kcomedilxrt RC_syms RC_header RC_clean
+PRE_TARGETDEPS += $$RC_header.target $$RC_kcomedilxrt.target
+CLEAN_DEPS += RC_clean

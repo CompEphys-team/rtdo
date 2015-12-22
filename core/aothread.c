@@ -10,7 +10,7 @@ email to:  fbk21@sussex.ac.uk
 initial version: 2015-12-03
 
 --------------------------------------------------------------------------*/
-#include <rtai_comedi.h>
+#include "RC_rtai_comedi.h"
 #include <rtai_sem.h>
 #include <rtai_mbx.h>
 #include "rt.h"
@@ -74,7 +74,7 @@ void *ao_fun(void *runinfo) {
 
         expected = rt_get_time() + t[step = 0];
         while ( run->running ) {
-            ret = comedi_data_write(run->dev, dchan.subdevice, dchan.channel,
+            ret = RC_comedi_data_write(run->dev, dchan.subdevice, dchan.channel,
                                     dchan.range, dchan.aref, buffer[step]);
             if ( !ret ) { // Fatal: Write failure
                 run->running = 0;
@@ -88,7 +88,7 @@ void *ao_fun(void *runinfo) {
             }
 
             if ( ++step == steps ) { // Return to base value before leaving
-                ret = comedi_data_write(run->dev, dchan.subdevice, dchan.channel,
+                ret = RC_comedi_data_write(run->dev, dchan.subdevice, dchan.channel,
                                         dchan.range, dchan.aref, buffer[0]);
                 run->running = 0;
                 break;

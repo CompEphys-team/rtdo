@@ -14,7 +14,7 @@ initial version: 2015-11-17
 #include <math.h>
 #include <pthread.h>
 #include <signal.h>
-#include <rtai_comedi.h>
+#include "RC_rtai_comedi.h"
 #include <rtai_sem.h>
 #include <rtai_mbx.h>
 
@@ -56,7 +56,7 @@ int rtdo_init(const char *device) {
 
     // Open in real time
     init_level++;
-    if ( ! (dev = comedi_open(device)) ) {
+    if ( ! (dev = RC_comedi_open(device)) ) {
         perror("Failed to open comedi device in RT mode");
         return ENODEV;
     }
@@ -181,7 +181,7 @@ void cleanup( int init_level ) {
         stop_rt_timer();
 
     case 1:
-        comedi_close(dev);
+        RC_comedi_close(dev);
         dev = 0;
     }
 }
@@ -344,9 +344,9 @@ double rtdo_read_now(int handle, int *err) {
     }
 
     lsampl_t sample;
-    comedi_data_read_hint(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
+    RC_comedi_data_read_hint(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
                           channels[handle]->chan->range, channels[handle]->chan->aref);
-    comedi_data_read(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
+    RC_comedi_data_read(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
                      channels[handle]->chan->range, channels[handle]->chan->aref, &sample);
     return daq_convert_to_physical(sample, channels[handle]->chan);
 }
@@ -402,7 +402,7 @@ int rtdo_write_now(int handle, double value) {
     }
 
     lsampl_t sample = daq_convert_from_physical(value, channels[handle]->chan);
-    if ( !comedi_data_write(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
+    if ( !RC_comedi_data_write(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
                             channels[handle]->chan->range, channels[handle]->chan->aref, sample) )
         return EBUSY;
     return 0;

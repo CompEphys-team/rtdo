@@ -10,7 +10,7 @@ email to:  fbk21@sussex.ac.uk
 initial version: 2015-12-03
 
 --------------------------------------------------------------------------*/
-#include <rtai_comedi.h>
+#include "RC_rtai_comedi.h"
 #include <rtai_sem.h>
 #include <rtai_mbx.h>
 #include "rt.h"
@@ -63,10 +63,10 @@ void *ai_fun(void *runinfo) {
             // Read samples
             for ( i = 0; i < nchans; i++ ) {
                 if ( nchans > 1 ) {
-                    comedi_data_read_hint(run->dev, dchans[i].subdevice, dchans[i].channel,
+                    RC_comedi_data_read_hint(run->dev, dchans[i].subdevice, dchans[i].channel,
                                           dchans[i].range, dchans[i].aref);
                 }
-                ret = comedi_data_read(run->dev, dchans[i].subdevice, dchans[i].channel,
+                ret = RC_comedi_data_read(run->dev, dchans[i].subdevice, dchans[i].channel,
                                        dchans[i].range, dchans[i].aref, &sample);
                 if ( ! ret ) { // Fatal: Read failed.
                     run->running = 0;
