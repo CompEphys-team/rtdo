@@ -19,9 +19,6 @@ initial version: 2015-12-03
 extern "C" {
 #endif
 
-int daq_load_lib(const char *libfile);
-void daq_unload_lib();
-
 int daq_open_device(const char *device);
 void daq_close_device();
 

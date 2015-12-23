@@ -34,8 +34,6 @@ int main(int argc, char *argv[])
 
     //--------------------------------------------------------------
     // Set up softrt-daq and channels
-    if ( (ret = daq_load_lib("libcomedi.so")) )
-        return ret;
     if ( (ret = daq_open_device(device.c_str())) )
         return ret;
     have_calibration = !daq_load_calibration(cal.c_str());
@@ -95,7 +93,6 @@ int main(int argc, char *argv[])
     if ( have_calibration )
         daq_unload_calibration();
     daq_close_device();
-    daq_unload_lib();
 
     return ret;
 }
