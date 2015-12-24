@@ -21,9 +21,9 @@ initial version: 2015-11-17
 #include "rt.h"
 #include "types.h"
 #include "softrtdaq.h"
+#include "globals.h"
 
-static comedi_t *dev=0;
-static char *devfile = "/dev/comedi0";
+static comedi_t *devices[DO_MAX_DEVICES] = {0};
 
 static RT_TASK *maintask;
 static SEM *sync_sem;
@@ -42,24 +42,8 @@ void cleanup(int init_level);
 void *ao_fun(void *);
 void *ai_fun(void *);
 
-int rtdo_init(const char *device) {
+int rtdo_init() {
     int init_level = 0;
-
-    if ( dev ) {
-        cleanup(0);
-    }
-    
-    if ( !device )
-        device = devfile;
-    else
-        devfile = strdup(device);
-
-    // Open in real time
-    init_level++;
-    if ( ! (dev = RC_comedi_open(device)) ) {
-        perror("Failed to open comedi device in RT mode");
-        return ENODEV;
-    }
 
     // Set up RT
     init_level++;
@@ -105,7 +89,6 @@ int rtdo_init(const char *device) {
     ai_runinfo.exit = 0;
     ai_runinfo.chans = channels;
     ai_runinfo.num_chans =& num_channels;
-    ai_runinfo.dev = dev;
     ai_runinfo.samp_ticks = nano2count(DO_SAMP_NS_DEFAULT);
     ai_runinfo.supersampling = 1;
     ai_runinfo.thread = rt_thread_create(ai_fun, &ai_runinfo, 1000);
@@ -118,7 +101,6 @@ int rtdo_init(const char *device) {
     ao_runinfo.exit = 0;
     ao_runinfo.chans = channels;
     ao_runinfo.num_chans =& num_channels;
-    ao_runinfo.dev = dev;
     ao_runinfo.thread = rt_thread_create(ao_fun, &ao_runinfo, 1000);
 
     if ( !ai_runinfo.thread || !ao_runinfo.thread ) {
@@ -137,13 +119,11 @@ void rtdo_exit() {
 }
 
 void cleanup( int init_level ) {
-    if ( ! dev )
-        return;
     int i;
     switch(init_level) {
     default:
     case 0:
-    case 4:
+    case 3:
         rt_make_hard_real_time();
 
         ai_runinfo.exit = 1;
@@ -171,36 +151,47 @@ void cleanup( int init_level ) {
         }
         num_channels = 1;
 
-    case 3:
+        for ( i = 0; i < DO_MAX_DEVICES; i++ ) {
+            if ( devices[i] ) {
+                RC_comedi_close(devices[i]);
+                devices[i] = 0;
+            }
+        }
+
+    case 2:
         if ( sync_sem )
             rt_sem_delete(sync_sem);
 
-    case 2:
+    case 1:
         rt_make_soft_real_time();
         rt_thread_delete(maintask);
         stop_rt_timer();
-
-    case 1:
-        RC_comedi_close(dev);
-        dev = 0;
     }
 }
 
 int rtdo_add_channel(daq_channel *dchan, int buffer_size) {
     rtdo_channel *chan;
-    int ret, idx;
+    int idx;
     
-    if ( !dev && !(ret = rtdo_init(NULL)) )
-        return ret;
-
     if ( num_channels == DO_MAX_CHANNELS ) {
-        perror("Too many channels allocated");
         return EMLINK;
     }
 
     if ( !(chan = malloc(sizeof(rtdo_channel))) ) {
         return ENOMEM;
     }
+
+    if ( dchan->deviceno >= DO_MAX_DEVICES ) {
+        return EINVAL;
+    }
+    if ( !devices[dchan->deviceno] ) {
+        char buf[strlen(DO_DEVICE_BASE) + 5];
+        sprintf(buf, "%s%d", DO_DEVICE_BASE, dchan->deviceno);
+        if ( !(devices[dchan->deviceno] = RC_comedi_open(buf)) ) {
+            return ENODEV;
+        }
+    }
+    chan->dev = devices[dchan->deviceno];
 
     if ( dchan->type == COMEDI_SUBD_AO ) {
         if ( buffer_size < 1 )
@@ -213,7 +204,7 @@ int rtdo_add_channel(daq_channel *dchan, int buffer_size) {
         }
         chan->numsteps = 0;
         chan->mbx = 0;
-    } else if ( dchan->type == COMEDI_SUBD_AI ) {
+    } else {
         if ( buffer_size < DO_MIN_AI_BUFSZ )
             buffer_size = DO_MIN_AI_BUFSZ;
         chan->t = 0;
@@ -344,9 +335,9 @@ double rtdo_read_now(int handle, int *err) {
     }
 
     lsampl_t sample;
-    RC_comedi_data_read_hint(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
+    RC_comedi_data_read_hint(channels[handle]->dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
                           channels[handle]->chan->range, channels[handle]->chan->aref);
-    RC_comedi_data_read(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
+    RC_comedi_data_read(channels[handle]->dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
                      channels[handle]->chan->range, channels[handle]->chan->aref, &sample);
     return daq_convert_to_physical(sample, channels[handle]->chan);
 }
@@ -402,7 +393,7 @@ int rtdo_write_now(int handle, double value) {
     }
 
     lsampl_t sample = daq_convert_from_physical(value, channels[handle]->chan);
-    if ( !RC_comedi_data_write(dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
+    if ( !RC_comedi_data_write(channels[handle]->dev, channels[handle]->chan->subdevice, channels[handle]->chan->channel,
                             channels[handle]->chan->range, channels[handle]->chan->aref, sample) )
         return EBUSY;
     return 0;

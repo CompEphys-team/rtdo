@@ -14,15 +14,20 @@ initial version: 2015-12-03
 #include <rtai_sem.h>
 #include <rtai_mbx.h>
 #include "rt.h"
+#include "softrtdaq.h"
 
 void *ai_fun(void *runinfo) {
     RT_TASK *task;
-    int ret = 1, i, nchans, iter, nsum;
+    int ret = 1, i, nchans=0, iter, nsum=0;
     rtdo_channel *chans[DO_MAX_CHANNELS];
     daq_channel dchans[DO_MAX_CHANNELS];
-    RTIME now, expected, samp_ticks;
+    RTIME now, expected, samp_ticks=0;
     lsampl_t sample, sums[DO_MAX_CHANNELS];
     rtdo_thread_runinfo *run = (rtdo_thread_runinfo *)runinfo;
+
+    for ( i = 0; i < DO_MAX_CHANNELS; i++ ) {
+        daq_create_channel(&dchans[i]);
+    }
 
     task = rt_thread_init(nam2num("AIFUN"), DO_AI_PRIO, 5000, SCHED_FIFO, DO_RT_CPUS);
     if (!task) {
@@ -41,7 +46,7 @@ void *ai_fun(void *runinfo) {
             for ( i = 1; i < *(run->num_chans); i++ ) {
                 if ( run->chans[i]->chan->type == COMEDI_SUBD_AI && run->chans[i]->active ) {
                     chans[nchans] = run->chans[i];
-                    memcpy(&dchans[nchans], run->chans[i]->chan, sizeof(daq_channel));
+                    daq_copy_channel(&dchans[nchans], run->chans[i]->chan);
                     nchans++;
                 }
             }
@@ -63,10 +68,10 @@ void *ai_fun(void *runinfo) {
             // Read samples
             for ( i = 0; i < nchans; i++ ) {
                 if ( nchans > 1 ) {
-                    RC_comedi_data_read_hint(run->dev, dchans[i].subdevice, dchans[i].channel,
+                    RC_comedi_data_read_hint(chans[i]->dev, dchans[i].subdevice, dchans[i].channel,
                                           dchans[i].range, dchans[i].aref);
                 }
-                ret = RC_comedi_data_read(run->dev, dchans[i].subdevice, dchans[i].channel,
+                ret = RC_comedi_data_read(chans[i]->dev, dchans[i].subdevice, dchans[i].channel,
                                        dchans[i].range, dchans[i].aref, &sample);
                 if ( ! ret ) { // Fatal: Read failed.
                     run->running = 0;
@@ -96,6 +101,10 @@ void *ai_fun(void *runinfo) {
 
     rt_make_soft_real_time();
     rt_thread_delete(task);
+
+    for ( i = 0; i < DO_MAX_CHANNELS; i++ ) {
+        daq_delete_channel(&dchans[i]);
+    }
 
     if ( ! ret ) {
         perror("Error reading from AI, thread exited");

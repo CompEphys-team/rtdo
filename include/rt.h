@@ -31,7 +31,7 @@ extern "C" {
 /**
  * @brief Set up the basic RT machinery and launch AI/AO threads.
  */
-int rtdo_init(const char *device);
+int rtdo_init();
 void rtdo_exit();
 
 /**

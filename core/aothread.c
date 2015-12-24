@@ -14,6 +14,7 @@ initial version: 2015-12-03
 #include <rtai_sem.h>
 #include <rtai_mbx.h>
 #include "rt.h"
+#include "softrtdaq.h"
 
 void *ao_fun(void *runinfo) {
     RT_TASK *task;
@@ -23,6 +24,8 @@ void *ao_fun(void *runinfo) {
     RTIME now, expected, *t=0;
     lsampl_t *buffer=0;
     rtdo_thread_runinfo *run = (rtdo_thread_runinfo *)runinfo;
+
+    daq_create_channel(&dchan);
 
     task = rt_thread_init(nam2num("AOFUN"), DO_AO_PRIO, 5000, SCHED_FIFO, DO_RT_CPUS);
     if (!task) {
@@ -57,7 +60,7 @@ void *ao_fun(void *runinfo) {
                     steps = chan->numsteps;
                     memcpy(buffer, chan->buffer, steps*sizeof(*buffer));
                     memcpy(t, chan->t, steps*sizeof(*t));
-                    memcpy(&dchan, chan->chan, sizeof(dchan));
+                    daq_copy_channel(&dchan, chan->chan);
                     break;
                 }
             }
@@ -74,7 +77,7 @@ void *ao_fun(void *runinfo) {
 
         expected = rt_get_time() + t[step = 0];
         while ( run->running ) {
-            ret = RC_comedi_data_write(run->dev, dchan.subdevice, dchan.channel,
+            ret = RC_comedi_data_write(chan->dev, dchan.subdevice, dchan.channel,
                                     dchan.range, dchan.aref, buffer[step]);
             if ( !ret ) { // Fatal: Write failure
                 run->running = 0;
@@ -88,7 +91,7 @@ void *ao_fun(void *runinfo) {
             }
 
             if ( ++step == steps ) { // Return to base value before leaving
-                ret = RC_comedi_data_write(run->dev, dchan.subdevice, dchan.channel,
+                ret = RC_comedi_data_write(chan->dev, dchan.subdevice, dchan.channel,
                                         dchan.range, dchan.aref, buffer[0]);
                 run->running = 0;
                 break;
@@ -100,6 +103,8 @@ void *ao_fun(void *runinfo) {
 
     rt_make_soft_real_time();
     rt_thread_delete(task);
+
+    daq_delete_channel(&dchan);
 
     if ( ! ret ) {
         perror("Error writing to AO, thread exited");

@@ -30,8 +30,6 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    void lock_channels(bool lock);
-
 private slots:
     void on_vout_chan_currentIndexChanged(int index);
     void on_cout_chan_currentIndexChanged(int index);
@@ -64,14 +62,11 @@ private:
     Ui::MainWindow *ui;
 
     void load_channel_setup();
-    void reload_ranges(QComboBox *el, int channel, enum comedi_subdevice_type subdevice_type);
+    void setup_channel_tab(QComboBox *ch, QComboBox *range, QComboBox *ref, const daq_channel *chan);
+    void reload_ranges(QComboBox *el, const daq_channel *chan, unsigned int channel);
     void channels_apply_generic(daq_channel *chan, int ichan, int irange, QString aref, double gain, double offset);
     void channels_reset_generic(daq_channel *chan, QComboBox *ichan, QComboBox *range,
                                 QComboBox *aref, QDoubleSpinBox *gain, QDoubleSpinBox *offset);
-
-    bool ai_rangetype;
-    bool ao_rangetype;
-    bool channels_locked;
 };
 
 #endif // MAINWINDOW_H

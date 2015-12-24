@@ -16,58 +16,52 @@ initial version: 2015-12-03
 #include "softrtdaq.h"
 #include "rt.h"
 
-daq_channel daqchan_vout = DAQ_CHANNEL_INIT;
-daq_channel daqchan_cout = DAQ_CHANNEL_INIT;
-daq_channel daqchan_vin = DAQ_CHANNEL_INIT;
-daq_channel daqchan_cin = DAQ_CHANNEL_INIT;
+daq_channel daqchan_vout;
+daq_channel daqchan_cout;
+daq_channel daqchan_vin;
+daq_channel daqchan_cin;
 struct _sim_params sim_params = SIMPARAM_DEFAULT;
 
 int main(int argc, char *argv[])
 {
-    int ret=0, have_calibration;
-    std::string device = "/dev/comedi0";
-    std::string cal = "/home/felix/projects/rtdo/ni6251.calibrate";
+    int ret=0;
     sim_params.outdir = "/home/felix/projects/build/rtdo/output";
     sim_params.sigfile = "/home/felix/projects/rtdo/models/Lymnaea_B1.dat";
     sim_params.vc_wavefile = "/home/felix/projects/rtdo/vclamp/wave2.dat";
     sim_params.modelfile = "/home/felix/projects/rtdo/models/Lymnaea_B1.cc";
 
     //--------------------------------------------------------------
-    // Set up softrt-daq and channels
-    if ( (ret = daq_open_device(device.c_str())) )
-        return ret;
-    have_calibration = !daq_load_calibration(cal.c_str());
-
+    // Set up channels
+    daq_create_channel(&daqchan_vout);
     daqchan_vout.type = COMEDI_SUBD_AO;
-    daqchan_vout.subdevice = daq_get_subdevice(daqchan_vout.type, 0);
     daqchan_vout.gain = 20.0;
-    if ( (ret = daq_create_converter(&daqchan_vout)) )
+    if ( (ret = daq_setup_channel(&daqchan_vout)) )
         return ret;
 
+    daq_create_channel(&daqchan_cout);
     daqchan_cout.type = COMEDI_SUBD_AO;
     daqchan_cout.channel = 1;
-    daqchan_cout.subdevice = daq_get_subdevice(daqchan_cout.type, 0);
-    if ( (ret = daq_create_converter(&daqchan_cout)) )
+    if ( (ret = daq_setup_channel(&daqchan_cout)) )
         return ret;
 
+    daq_create_channel(&daqchan_vin);
     daqchan_vin.type = COMEDI_SUBD_AI;
     daqchan_vin.aref = AREF_DIFF;
-    daqchan_vin.subdevice = daq_get_subdevice(daqchan_vin.type, 0);
-    daqchan_vin.gain = 10.0;
-    if ( (ret = daq_create_converter(&daqchan_vin)) )
+    daqchan_vin.gain = 100.0;
+    if ( (ret = daq_setup_channel(&daqchan_vin)) )
         return ret;
 
+    daq_create_channel(&daqchan_cin);
     daqchan_cin.type = COMEDI_SUBD_AI;
     daqchan_cin.aref = AREF_DIFF;
     daqchan_cin.channel = 1;
-    daqchan_cin.subdevice = daq_get_subdevice(daqchan_cin.type, 0);
     daqchan_cin.gain = 10.0;
-    if ( (ret = daq_create_converter(&daqchan_cin)) )
+    if ( (ret = daq_setup_channel(&daqchan_cin)) )
         return ret;
 
     //--------------------------------------------------------------
     // Set up RT
-    if ( (ret = rtdo_init("/dev/comedi0")) )
+    if ( (ret = rtdo_init()) )
         return ret;
     if ( (ret = rtdo_add_channel(&daqchan_vout, 10)) )
         return ret;
@@ -90,9 +84,12 @@ int main(int argc, char *argv[])
 
     // Cleanup
     rtdo_exit();
-    if ( have_calibration )
-        daq_unload_calibration();
-    daq_close_device();
+
+    daq_delete_channel(&daqchan_vout);
+    daq_delete_channel(&daqchan_vin);
+    daq_delete_channel(&daqchan_cout);
+    daq_delete_channel(&daqchan_cin);
+    daq_exit();
 
     return ret;
 }

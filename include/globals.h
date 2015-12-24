@@ -15,6 +15,8 @@ initial version: 2015-12-03
 
 #define SIMDIR "/home/felix/projects/rtdo/simulation"
 #define INSTANCEDIR "/home/felix/projects/rtdo/models"
+#define DO_DEVICE_BASE "/dev/comedi"
+#define DO_MAX_DEVICES 32
 
 #include "types.h"
 

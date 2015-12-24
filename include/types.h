@@ -21,29 +21,28 @@ extern "C" {
 #include <rtai_mbx.h>
 #include <comedi.h>
 
-typedef struct rtdo_converter_struct rtdo_converter;
-
 typedef struct {
-    double min;
-    double max;
-} daq_range;
+    int handle;
 
-typedef struct {
+    unsigned int deviceno;
+    struct comedi_t_struct *device;
     enum comedi_subdevice_type type;
     int subdevice;
+
     unsigned short channel;
     unsigned short range;
     unsigned short aref;
+
     double gain;
     double offset;
-    rtdo_converter *converter;
-    int handle;
-} daq_channel;
 
-#define DAQ_CHANNEL_INIT {COMEDI_SUBD_UNUSED, 0, 0, 0, AREF_GROUND, 1.0, 0.0, NULL, 0}
+    char *softcal_file;
+    struct daq_converter *converter;
+} daq_channel;
 
 typedef struct {
     daq_channel *chan;
+    void *dev;
     int active;
 
     int bufsz;
@@ -67,7 +66,6 @@ typedef struct {
 
     rtdo_channel **chans;
     int *num_chans;
-    void *dev;
 
     RTIME samp_ticks;
     int supersampling;
