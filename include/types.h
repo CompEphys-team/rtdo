@@ -21,8 +21,11 @@ extern "C" {
 #include <rtai_mbx.h>
 #include <comedi.h>
 
+#define DAQCHAN_NAMELEN 32
+
 typedef struct {
     int handle;
+    char name[DAQCHAN_NAMELEN+1];
 
     unsigned int deviceno;
     struct comedi_t_struct *device;

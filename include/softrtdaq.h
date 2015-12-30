@@ -31,6 +31,8 @@ void daq_create_channel(daq_channel *c); //!< Allocate a new, zero-initialised c
 void daq_copy_channel(daq_channel *dest, daq_channel *src); //!< Copies data from src to dest. It is an error to pass pointers to uninitialised channels, but perfectly permissible to copy over a pre-used channel.
 void daq_delete_channel(daq_channel *c); //!< Deallocate a channel
 
+void daq_set_channel_name(daq_channel *c, const char *name); //!< Update the channel display name
+
 #ifdef __cplusplus
 }
 #endif

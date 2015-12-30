@@ -145,3 +145,7 @@ void daq_delete_channel(daq_channel *c) {
         free(c->converter);
     c->converter = 0;
 }
+
+void daq_set_channel_name(daq_channel *c, const char *name) {
+    strncpy(c->name, name, DAQCHAN_NAMELEN);
+}
