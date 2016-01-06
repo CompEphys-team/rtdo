@@ -43,7 +43,7 @@ void *ao_fun(void *runinfo) {
             rt_make_soft_real_time();
             chan = 0;
             for ( i = 1; i < *(run->num_chans); i++ ) {
-                if ( run->chans[i]->chan->type == COMEDI_SUBD_AO && run->chans[i]->active ) {
+                if ( run->chans[i] && run->chans[i]->chan->type == COMEDI_SUBD_AO && run->chans[i]->active ) {
                     chan = run->chans[i];
                     if ( chan->numsteps > bufsz ) {
                         free(buffer);

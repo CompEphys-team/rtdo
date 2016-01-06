@@ -51,6 +51,13 @@ int rtdo_add_channel(daq_channel *dchan, int buffer_size);
 int rtdo_update_channel(int handle);
 
 /**
+ * @brief Removes a channel asynchronously. The handle becomes invalid and may be reassigned.
+ * @param handle
+ * @return 0 on success, EINVAL if handle is invalid
+ */
+int rtdo_remove_channel(int handle);
+
+/**
  * @brief Puts a channel into an active or inactive state asynchronously.
  *  Note that only one AO channel can be active at a time; however, the caller is responsible for ensuring this.
  * @param handle Channel handle returned by rtdo_create_channel

@@ -44,7 +44,7 @@ void *ai_fun(void *runinfo) {
             rt_sem_wait(run->load);
             nchans = 0;
             for ( i = 1; i < *(run->num_chans); i++ ) {
-                if ( run->chans[i]->chan->type == COMEDI_SUBD_AI && run->chans[i]->active ) {
+                if ( run->chans[i] && run->chans[i]->chan->type == COMEDI_SUBD_AI && run->chans[i]->active ) {
                     chans[nchans] = run->chans[i];
                     daq_copy_channel(&dchans[nchans], run->chans[i]->chan);
                     nchans++;

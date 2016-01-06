@@ -31,6 +31,7 @@ static SEM *sync_sem;
 static int max_bufsz;
 
 static rtdo_channel *channels[DO_MAX_CHANNELS];
+static rtdo_channel *obsolete_channels[DO_MAX_CHANNELS] = {0};
 static int num_channels = 1;
 
 static rtdo_thread_runinfo ai_runinfo;
@@ -38,6 +39,7 @@ static rtdo_thread_runinfo ao_runinfo;
 
 void cleanup(int init_level);
 int open_dev(int deviceno);
+void delete_channel(rtdo_channel *chan);
 
 void *ao_fun(void *);
 void *ai_fun(void *);
@@ -142,11 +144,9 @@ void cleanup( int init_level ) {
 
         for ( i = 1; i < num_channels; i++ ) {
             if ( channels[i] ) {
-                if ( channels[i]->mbx )
-                    rt_mbx_delete(channels[i]->mbx);
-                free(channels[i]->buffer);
-                free(channels[i]->t);
-                free(channels[i]);
+                delete_channel(channels[i]);
+            } else if ( obsolete_channels[i] ) {
+                delete_channel(obsolete_channels[i]);
             }
         }
         num_channels = 1;
@@ -167,6 +167,14 @@ void cleanup( int init_level ) {
         rt_thread_delete(maintask);
         stop_rt_timer();
     }
+}
+
+void delete_channel(rtdo_channel *chan) {
+    if ( chan->mbx )
+        rt_mbx_delete(chan->mbx);
+    free(chan->buffer);
+    free(chan->t);
+    free(chan);
 }
 
 int open_dev(int deviceno) {
@@ -219,6 +227,23 @@ int rtdo_add_channel(daq_channel *dchan, int buffer_size) {
     idx = num_channels++;
     channels[idx] = chan;
     dchan->handle = idx;
+    return 0;
+}
+
+int rtdo_remove_channel(int handle) {
+    if ( handle < 1 || handle >= num_channels || !channels[handle] ) {
+        perror("Invalid channel handle");
+        return EINVAL;
+    }
+
+    obsolete_channels[handle] = channels[handle];
+    channels[handle] = 0;
+
+    if ( obsolete_channels[handle]->chan->type == COMEDI_SUBD_AI )
+        ai_runinfo.dirty = 1;
+    else
+        ao_runinfo.dirty = 1;
+
     return 0;
 }
 
@@ -304,6 +329,20 @@ void rtdo_sync() {
     ao_runinfo.running = 1;
     ai_runinfo.running = 1;
     rt_sem_broadcast(sync_sem);
+
+    // Deferred channel removal
+    for ( i = 1; i < num_channels; i++ ) {
+        if ( obsolete_channels[i] ) {
+            delete_channel(obsolete_channels[i]);
+            obsolete_channels[i] = 0;
+        }
+    }
+    for ( i = num_channels-1; i > 0; i-- ) {
+        if ( channels[i] ) {
+            break;
+        }
+        num_channels--;
+    }
 
     rt_make_soft_real_time();
 }
