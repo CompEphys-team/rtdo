@@ -35,8 +35,7 @@ int rtdo_init();
 void rtdo_exit();
 
 /**
- * @brief Set up an AI/AO channel, active from the next rtdo_sync call. The channel handle
- *  is deposited in dchan->handle.
+ * @brief Set up an inactive AI/AO channel. The channel handle is deposited in dchan->handle.
  * @param dchan Pointer to the channel to add. The channel is not copied in order
  *  to allow asynchronous changes to the channel setup.
  * @param buffer_size Number of input or output samples in buffer.

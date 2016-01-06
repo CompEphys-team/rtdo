@@ -27,11 +27,13 @@ void daq_exit();  //!< Clean up, closing all open devices. Does not deallocate a
 double daq_convert_to_physical(lsampl_t in, daq_channel *chan);
 lsampl_t daq_convert_from_physical(double out, daq_channel *chan);
 
-void daq_create_channel(daq_channel *c); //!< Allocate a new, zero-initialised channel
+void daq_create_channel(daq_channel *c); //!< Allocate a new, zero-initialised channel. Sets type to COMEDI_SUBD_AI and gain to 1.
 void daq_copy_channel(daq_channel *dest, daq_channel *src); //!< Copies data from src to dest. It is an error to pass pointers to uninitialised channels, but perfectly permissible to copy over a pre-used channel.
 void daq_delete_channel(daq_channel *c); //!< Deallocate a channel
 
 void daq_set_channel_name(daq_channel *c, const char *name); //!< Update the channel display name
+
+int daq_open_device(unsigned int deviceno, struct comedi_t_struct **device); //!< Convenience function for comedi_open
 
 #ifdef __cplusplus
 }

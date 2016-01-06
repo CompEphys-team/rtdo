@@ -222,7 +222,6 @@ int rtdo_add_channel(daq_channel *dchan, int buffer_size) {
     idx = num_channels++;
     channels[idx] = chan;
     dchan->handle = idx;
-    rtdo_set_channel_active(idx, 1);
     return 0;
 }
 

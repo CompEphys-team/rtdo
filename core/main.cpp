@@ -71,7 +71,8 @@ int main(int argc, char *argv[])
         return ret;
     if ( (ret = rtdo_add_channel(&daqchan_cin, 10000)) )
         return ret;
-    rtdo_set_channel_active(daqchan_cout.handle, 0);
+    rtdo_set_channel_active(daqchan_vout.handle, 1);
+    rtdo_set_channel_active(daqchan_cin.handle, 1);
 
     //--------------------------------------------------------------
     // Set up GUI

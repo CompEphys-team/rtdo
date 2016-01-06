@@ -91,21 +91,29 @@ lsampl_t daq_convert_from_physical(double out, daq_channel *chan) {
         return comedi_from_phys(Vcmd, chan->converter->range, chan->converter->maxdata);
 }
 
-int daq_setup_channel(daq_channel *chan) {
-    if ( chan->deviceno >= DO_MAX_DEVICES ) {
-        fprintf(stderr, "Error: Device number out of range\n");
+int daq_open_device(unsigned int deviceno, struct comedi_t_struct **device) {
+    if ( deviceno >= DO_MAX_DEVICES ) {
         return EINVAL;
     }
-    if ( !devices[chan->deviceno] ) {
+    if ( !devices[deviceno] ) {
         char buf[strlen(DO_DEVICE_BASE) + 5];
-        sprintf(buf, "%s%d", DO_DEVICE_BASE, chan->deviceno);
-        if ( !(devices[chan->deviceno] = comedi_open(buf)) ) {
-            comedi_perror("Failed to open device");
+        sprintf(buf, "%s%d", DO_DEVICE_BASE, deviceno);
+        if ( !(devices[deviceno] = comedi_open(buf)) ) {
             return ENODEV;
         }
     }
-    chan->device = devices[chan->deviceno];
-    if ( (chan->subdevice = comedi_find_subdevice_by_type(chan->device, chan->type, chan->subdevice)) == -1 ) {
+    *device = devices[deviceno];
+    return 0;
+}
+
+int daq_setup_channel(daq_channel *chan) {
+    int ret = daq_open_device(chan->deviceno, &chan->device);
+    if ( ret ) {
+        if ( ret == EINVAL ) fprintf(stderr, "Error: Device number out of range\n");
+        if ( ret == ENODEV ) comedi_perror("Failed to open device");
+        return ret;
+    }
+    if ( (chan->subdevice = comedi_find_subdevice_by_type(chan->device, chan->type, 0)) == -1 ) {
         comedi_perror("Subdevice not found");
         return ENODEV;
     }
@@ -127,6 +135,8 @@ void daq_create_channel(daq_channel *c) {
     memset(c, 0, sizeof(daq_channel));
     if ( !(c->converter = calloc(1, sizeof(struct daq_converter))) )
         exit(ENOMEM);
+    c->type = COMEDI_SUBD_AI;
+    c->gain = 1.0;
 }
 
 void daq_copy_channel(daq_channel *dest, daq_channel *src) {
