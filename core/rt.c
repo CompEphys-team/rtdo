@@ -28,7 +28,7 @@ static comedi_t *devices[DO_MAX_DEVICES] = {0};
 static RT_TASK *maintask;
 static SEM *sync_sem;
 
-static int max_ai_bufsz;
+static int max_bufsz;
 
 static rtdo_channel *channels[DO_MAX_CHANNELS];
 static int num_channels = 1;
@@ -36,8 +36,8 @@ static int num_channels = 1;
 static rtdo_thread_runinfo ai_runinfo;
 static rtdo_thread_runinfo ao_runinfo;
 
-void rtdo_sigint(int unused);
 void cleanup(int init_level);
+int open_dev(int deviceno);
 
 void *ao_fun(void *);
 void *ai_fun(void *);
@@ -169,9 +169,23 @@ void cleanup( int init_level ) {
     }
 }
 
+int open_dev(int deviceno) {
+    if ( deviceno >= DO_MAX_DEVICES ) {
+        return EINVAL;
+    }
+    if ( !devices[deviceno] ) {
+        char buf[strlen(DO_DEVICE_BASE) + 5];
+        sprintf(buf, "%s%d", DO_DEVICE_BASE, deviceno);
+        if ( !(devices[deviceno] = RC_comedi_open(buf)) ) {
+            return ENODEV;
+        }
+    }
+    return 0;
+}
+
 int rtdo_add_channel(daq_channel *dchan, int buffer_size) {
     rtdo_channel *chan;
-    int idx;
+    int idx, ret;
     
     if ( num_channels == DO_MAX_CHANNELS ) {
         return EMLINK;
@@ -181,39 +195,22 @@ int rtdo_add_channel(daq_channel *dchan, int buffer_size) {
         return ENOMEM;
     }
 
-    if ( dchan->deviceno >= DO_MAX_DEVICES ) {
-        return EINVAL;
-    }
-    if ( !devices[dchan->deviceno] ) {
-        char buf[strlen(DO_DEVICE_BASE) + 5];
-        sprintf(buf, "%s%d", DO_DEVICE_BASE, dchan->deviceno);
-        if ( !(devices[dchan->deviceno] = RC_comedi_open(buf)) ) {
-            return ENODEV;
-        }
-    }
+    if ( (ret = open_dev(dchan->deviceno)) )
+        return ret;
     chan->dev = devices[dchan->deviceno];
 
-    if ( dchan->type == COMEDI_SUBD_AO ) {
-        if ( buffer_size < 1 )
-            buffer_size = 1;
-        if ( !(chan->t = malloc(buffer_size * sizeof(RTIME))) ) {
-            return ENOMEM;
-        }
-        if ( !(chan->buffer = malloc(buffer_size * sizeof(lsampl_t))) ) {
-            return ENOMEM;
-        }
-        chan->numsteps = 0;
-        chan->mbx = 0;
-    } else {
-        if ( buffer_size < DO_MIN_AI_BUFSZ )
-            buffer_size = DO_MIN_AI_BUFSZ;
-        chan->t = 0;
-        chan->buffer = 0;
-        chan->numsteps = 0;
-        chan->mbx = rt_typed_mbx_init(0, buffer_size * sizeof(lsampl_t), PRIO_Q);
-        if ( buffer_size > max_ai_bufsz )
-            max_ai_bufsz = buffer_size;
+    if ( buffer_size < DO_MIN_BUFSZ )
+        buffer_size = DO_MIN_BUFSZ;
+    if ( !(chan->t = malloc(buffer_size * sizeof(RTIME))) ) {
+        return ENOMEM;
     }
+    if ( !(chan->buffer = malloc(buffer_size * sizeof(lsampl_t))) ) {
+        return ENOMEM;
+    }
+    chan->numsteps = 0;
+    chan->mbx = rt_typed_mbx_init(0, buffer_size * sizeof(lsampl_t), PRIO_Q);
+    if ( buffer_size > max_bufsz )
+        max_bufsz = buffer_size;
 
     chan->active = 0;
     chan->bufsz = buffer_size;
@@ -222,6 +219,23 @@ int rtdo_add_channel(daq_channel *dchan, int buffer_size) {
     idx = num_channels++;
     channels[idx] = chan;
     dchan->handle = idx;
+    return 0;
+}
+
+int rtdo_update_channel(int handle) {
+    if ( handle < 1 || handle >= num_channels || !channels[handle] ) {
+        perror("Invalid channel handle");
+        return EINVAL;
+    }
+
+    int ret;
+    if ( (ret = open_dev(channels[handle]->chan->deviceno)) )
+        return ret;
+    channels[handle]->dev = devices[channels[handle]->chan->deviceno];
+
+    ai_runinfo.dirty = 1;
+    ao_runinfo.dirty = 1;
+
     return 0;
 }
 
@@ -277,7 +291,7 @@ void rtdo_sync() {
 
     // Flush the message buffer
     int i;
-    lsampl_t buf[max_ai_bufsz];
+    lsampl_t buf[max_bufsz];
     rt_sem_wait(ai_runinfo.presync);
     for ( i = 1; i < num_channels; i++ )
         if ( channels[i] && channels[i]->active && channels[i]->mbx )

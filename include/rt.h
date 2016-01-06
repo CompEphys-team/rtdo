@@ -21,7 +21,7 @@ initial version: 2015-11-17
 #define DO_AO_PRIO 0
 #define DO_AI_PRIO 0
 #define DO_MAX_CHANNELS 32
-#define DO_MIN_AI_BUFSZ 100
+#define DO_MIN_BUFSZ 100
 #define DO_SAMP_NS_DEFAULT ((RTIME)(0.25 * 1e6))
 
 #ifdef __cplusplus
@@ -42,6 +42,13 @@ void rtdo_exit();
  * @return 0 on success, error code on failure
  */
 int rtdo_add_channel(daq_channel *dchan, int buffer_size);
+
+/**
+ * @brief Update a channel's device designation asynchronously.
+ * @param handle
+ * @return 0 on success, error code on failure
+ */
+int rtdo_update_channel(int handle);
 
 /**
  * @brief Puts a channel into an active or inactive state asynchronously.
