@@ -22,6 +22,7 @@ initial version: 2015-12-03
 
 #ifdef __cplusplus
 #include <string>
+#include <vector>
 
 extern struct _sim_params {
     std::string vc_wavefile;
@@ -32,6 +33,8 @@ extern struct _sim_params {
     double dt;
 } sim_params;
 #define SIMPARAM_DEFAULT {"", "", "", "", 1000, 0.25}
+
+extern std::vector<daq_channel *> channels;
 
 extern "C" {
 #endif

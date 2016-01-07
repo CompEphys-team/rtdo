@@ -14,9 +14,7 @@ initial version: 2015-12-03
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QComboBox>
-#include <QDoubleSpinBox>
-#include "types.h"
+#include "channelsetupdialog.h"
 
 namespace Ui {
 class MainWindow;
@@ -31,17 +29,6 @@ public:
     ~MainWindow();
 
 private slots:
-    void on_vout_chan_currentIndexChanged(int index);
-    void on_cout_chan_currentIndexChanged(int index);
-    void on_vin_chan_currentIndexChanged(int index);
-    void on_cin_chan_currentIndexChanged(int index);
-
-    void on_channels_apply_clicked();
-
-    void on_channels_reset_clicked();
-
-    void on_vout_offset_read_clicked();
-
     void on_vc_waveforms_browse_clicked();
 
     void on_sigfile_browse_clicked();
@@ -58,15 +45,11 @@ private slots:
 
     void on_vclamp_stop_clicked();
 
+    void on_actionChannel_setup_triggered();
+
 private:
     Ui::MainWindow *ui;
-
-    void load_channel_setup();
-    void setup_channel_tab(QComboBox *ch, QComboBox *range, QComboBox *ref, const daq_channel *chan);
-    void reload_ranges(QComboBox *el, const daq_channel *chan, unsigned int channel);
-    void channels_apply_generic(daq_channel *chan, int ichan, int irange, QString aref, double gain, double offset);
-    void channels_reset_generic(daq_channel *chan, QComboBox *ichan, QComboBox *range,
-                                QComboBox *aref, QDoubleSpinBox *gain, QDoubleSpinBox *offset);
+    ChannelSetupDialog *channel_setup;
 };
 
 #endif // MAINWINDOW_H

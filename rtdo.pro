@@ -27,7 +27,12 @@ SOURCES += core/main.cpp \
     core/aothread.c \
     core/aithread.c \
     core/run.cc \
-    gui/channelsetupdialog.cpp
+    gui/channelsetupdialog.cpp \
+    gui/channeleditormodel.cpp \
+    gui/devicechannelmodel.cpp \
+    gui/devicerangemodel.cpp \
+    gui/devicereferencemodel.cpp \
+    gui/channellistmodel.cpp
 
 OTHER_FILES += simulation/* \
     models/*.cc
@@ -39,7 +44,12 @@ HEADERS  += \
     include/globals.h \
     include/rt.h \
     include/run.h \
-    gui/channelsetupdialog.h
+    include/channelsetupdialog.h \
+    include/channeleditormodel.h \
+    include/devicechannelmodel.h \
+    include/devicerangemodel.h \
+    include/devicereferencemodel.h \
+    include/channellistmodel.h
 
 FORMS    += \
     gui/mainwindow.ui \

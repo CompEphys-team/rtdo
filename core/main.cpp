@@ -20,6 +20,7 @@ daq_channel daqchan_vout;
 daq_channel daqchan_cout;
 daq_channel daqchan_vin;
 daq_channel daqchan_cin;
+std::vector<daq_channel *> channels;
 struct _sim_params sim_params = SIMPARAM_DEFAULT;
 
 int main(int argc, char *argv[])
@@ -37,12 +38,14 @@ int main(int argc, char *argv[])
     daqchan_vout.gain = 20.0;
     if ( (ret = daq_setup_channel(&daqchan_vout)) )
         return ret;
+    daq_set_channel_name(&daqchan_vout, "V out");
 
     daq_create_channel(&daqchan_cout);
     daqchan_cout.type = COMEDI_SUBD_AO;
     daqchan_cout.channel = 1;
     if ( (ret = daq_setup_channel(&daqchan_cout)) )
         return ret;
+    daq_set_channel_name(&daqchan_cout, "C out");
 
     daq_create_channel(&daqchan_vin);
     daqchan_vin.type = COMEDI_SUBD_AI;
@@ -50,6 +53,7 @@ int main(int argc, char *argv[])
     daqchan_vin.gain = 100.0;
     if ( (ret = daq_setup_channel(&daqchan_vin)) )
         return ret;
+    daq_set_channel_name(&daqchan_vin, "V in");
 
     daq_create_channel(&daqchan_cin);
     daqchan_cin.type = COMEDI_SUBD_AI;
@@ -58,6 +62,13 @@ int main(int argc, char *argv[])
     daqchan_cin.gain = 10.0;
     if ( (ret = daq_setup_channel(&daqchan_cin)) )
         return ret;
+    daq_set_channel_name(&daqchan_cin, "C in");
+
+    channels.clear();
+    channels.push_back(&daqchan_vout);
+    channels.push_back(&daqchan_cout);
+    channels.push_back(&daqchan_vin);
+    channels.push_back(&daqchan_cin);
 
     //--------------------------------------------------------------
     // Set up RT

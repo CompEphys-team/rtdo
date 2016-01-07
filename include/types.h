@@ -23,7 +23,9 @@ extern "C" {
 
 #define DAQCHAN_NAMELEN 32
 
-typedef struct {
+typedef struct daq_chan_struct daq_channel;
+
+struct daq_chan_struct {
     int handle;
     char name[DAQCHAN_NAMELEN+1];
 
@@ -39,9 +41,12 @@ typedef struct {
     double gain;
     double offset;
 
+    daq_channel *read_offset_src;
+    char read_offset_later;
+
     char *softcal_file;
     struct daq_converter *converter;
-} daq_channel;
+};
 
 typedef struct {
     daq_channel *chan;
