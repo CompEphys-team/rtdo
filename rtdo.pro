@@ -32,7 +32,12 @@ SOURCES += core/main.cpp \
     gui/devicechannelmodel.cpp \
     gui/devicerangemodel.cpp \
     gui/devicereferencemodel.cpp \
-    gui/channellistmodel.cpp
+    gui/channellistmodel.cpp \
+    lib/src/tinystr.cpp \
+    lib/src/tinyxml.cpp \
+    lib/src/tinyxmlerror.cpp \
+    lib/src/tinyxmlparser.cpp \
+    core/config.cpp
 
 OTHER_FILES += simulation/* \
     models/*.cc
@@ -49,7 +54,10 @@ HEADERS  += \
     include/devicechannelmodel.h \
     include/devicerangemodel.h \
     include/devicereferencemodel.h \
-    include/channellistmodel.h
+    include/channellistmodel.h \
+    lib/include/tinystr.h \
+    lib/include/tinyxml.h \
+    include/config.h
 
 FORMS    += \
     gui/mainwindow.ui \
@@ -59,11 +67,12 @@ LIBS     += -rdynamic -ldl -pthread -L. -lRC_kcomedilxrt -lcomedi
 
 INCLUDEPATH += \
     include \
+    lib/include \
     /usr/realtime/include \
     /usr/src/comedi/inc-wrap
 
 QMAKE_CFLAGS += -Wno-unused-parameter
-QMAKE_CXXFLAGS += -Wno-unused-parameter
+QMAKE_CXXFLAGS += -Wno-unused-parameter -std=c++11
 
 RTAI_LIBDIR = /usr/realtime/lib # Location of libkcomedilxrt.a
 RC_HEADER = RC_rtai_comedi.h # Header file replacing rtai_comedi.h with a prefixed version
