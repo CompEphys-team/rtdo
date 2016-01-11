@@ -84,33 +84,6 @@
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_23">
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="text">
-           <string>Population size</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QSpinBox" name="npop">
-          <property name="minimum">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <number>100000</number>
-          </property>
-          <property name="singleStep">
-           <number>100</number>
-          </property>
-          <property name="value">
-           <number>1000</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
        <layout class="QHBoxLayout" name="horizontalLayout_27">
         <item>
          <widget class="QLabel" name="label_25">
@@ -129,48 +102,6 @@
           </property>
           <property name="value">
            <double>0.250000000000000</double>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_24">
-        <item>
-         <widget class="QLabel" name="label_7">
-          <property name="text">
-           <string>VC waveforms</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="vc_waveforms"/>
-        </item>
-        <item>
-         <widget class="QToolButton" name="vc_waveforms_browse">
-          <property name="text">
-           <string>...</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_25">
-        <item>
-         <widget class="QLabel" name="label_23">
-          <property name="text">
-           <string>Parameters</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="sigfile"/>
-        </item>
-        <item>
-         <widget class="QToolButton" name="sigfile_browse">
-          <property name="text">
-           <string>...</string>
           </property>
          </widget>
         </item>
@@ -243,6 +174,7 @@
      <string>Configure</string>
     </property>
     <addaction name="actionChannel_setup"/>
+    <addaction name="actionVoltage_clamp"/>
    </widget>
    <addaction name="menuRTDO"/>
   </widget>
@@ -255,24 +187,14 @@
    </attribute>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-  <action name="actionSave_configuration">
-   <property name="text">
-    <string>Save configuration</string>
-   </property>
-  </action>
-  <action name="actionLoad_configuration">
-   <property name="text">
-    <string>Load configuration...</string>
-   </property>
-  </action>
-  <action name="actionDevice_setup">
-   <property name="text">
-    <string>Device setup...</string>
-   </property>
-  </action>
   <action name="actionChannel_setup">
    <property name="text">
     <string>Channels...</string>
+   </property>
+  </action>
+  <action name="actionVoltage_clamp">
+   <property name="text">
+    <string>Voltage clamp...</string>
    </property>
   </action>
  </widget>

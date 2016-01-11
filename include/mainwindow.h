@@ -15,6 +15,7 @@ initial version: 2015-12-03
 
 #include <QMainWindow>
 #include "channelsetupdialog.h"
+#include "vclampsetupdialog.h"
 
 namespace Ui {
 class MainWindow;
@@ -29,10 +30,6 @@ public:
     ~MainWindow();
 
 private slots:
-    void on_vc_waveforms_browse_clicked();
-
-    void on_sigfile_browse_clicked();
-
     void on_outdir_browse_clicked();
 
     void on_modelfile_browse_clicked();
@@ -45,11 +42,10 @@ private slots:
 
     void on_vclamp_stop_clicked();
 
-    void on_actionChannel_setup_triggered();
-
 private:
     Ui::MainWindow *ui;
     ChannelSetupDialog *channel_setup;
+    VClampSetupDialog *vclamp_setup;
 };
 
 #endif // MAINWINDOW_H

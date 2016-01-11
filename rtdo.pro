@@ -33,6 +33,8 @@ SOURCES += core/main.cpp \
     gui/devicerangemodel.cpp \
     gui/devicereferencemodel.cpp \
     gui/channellistmodel.cpp \
+    gui/vclampsetupdialog.cpp \
+    core/util.cpp \
     lib/src/tinystr.cpp \
     lib/src/tinyxml.cpp \
     lib/src/tinyxmlerror.cpp \
@@ -55,13 +57,16 @@ HEADERS  += \
     include/devicerangemodel.h \
     include/devicereferencemodel.h \
     include/channellistmodel.h \
+    include/vclampsetupdialog.h \
+    include/util.h \
     lib/include/tinystr.h \
     lib/include/tinyxml.h \
     include/config.h
 
 FORMS    += \
     gui/mainwindow.ui \
-    gui/channelsetupdialog.ui
+    gui/channelsetupdialog.ui \
+    gui/vclampsetupdialog.ui
 
 LIBS     += -rdynamic -ldl -pthread -L. -lRC_kcomedilxrt -lcomedi
 
