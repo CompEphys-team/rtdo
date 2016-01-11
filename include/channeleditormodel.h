@@ -16,6 +16,7 @@ initial version: 2016-01-04
 #include <QAbstractListModel>
 #include "softrtdaq.h"
 #include "globals.h"
+#include "config.h"
 
 class ChannelEditorModel : public QAbstractListModel
 {
@@ -49,7 +50,7 @@ public:
     static int subdevice_index(comedi_subdevice_type subdev);
     static comedi_subdevice_type subdevice_type(int index);
 
-    inline daq_channel *channel(int index) const { return index >= 0 ? channels[index] : 0; }
+    inline daq_channel *channel(int index) const { return index >= 0 ? config.io.channels[index] : 0; }
 
 signals:
     void deviceChanged();

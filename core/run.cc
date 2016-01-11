@@ -20,6 +20,7 @@ initial version: 2015-12-08
 #include "run.h"
 #include "rt.h"
 #include "globals.h"
+#include "config.h"
 
 #define BRIDGE_START "Bridge code begin >>>"
 #define BRIDGE_END "<<< Bridge code end"
@@ -51,18 +52,18 @@ int compile_model() {
     string cmd, modelname, modelfname;
     int ret=0;
 
-    modelfname = basename_nosuffix(sim_params.modelfile);
+    modelfname = basename_nosuffix(config.model.deffile);
 
-    cmd = string("cp ") + sim_params.modelfile + " " + INSTANCEDIR + "/" + modelfname + ".cc";
+    cmd = string("cp ") + config.model.deffile + " " + INSTANCEDIR + "/" + modelfname + ".cc";
     system(cmd.c_str());
 
     string fname = string(INSTANCEDIR) + "/SimulationParameters.h";
     ofstream os( fname.c_str() );
-    os << "#define NPOP " << sim_params.nPop << endl;
+    os << "#define NPOP " << config.vc.popsize << endl;
     os << "#define TOTALT " << 0 << endl;
     os << "#define fixGPU " << 0 << endl;
     os << "#define INoiseSTD " << 0 << endl;
-    os << "#define DT " << sim_params.dt << endl;
+    os << "#define DT " << config.io.dt << endl;
     os << "#define BRIDGE_START \"" << BRIDGE_START << "\"" << endl;
     os << "#define BRIDGE_END \"" << BRIDGE_END << "\"" << endl;
     os << "#include \"" << SIMDIR << "/model_helper.cc\"" << endl;
@@ -149,7 +150,7 @@ void run_vclamp_start() {
         samples_q.pop();
 
     stop = 0;
-    rtdo_set_sampling_rate(sim_params.dt, 1);
+    rtdo_set_sampling_rate(config.io.dt, 1);
     active_in =& daqchan_cin;
     active_out =& daqchan_vout;
     thread = rtdo_thread_create(vclaunch, 0, 1000000);
@@ -185,12 +186,12 @@ void *vclaunch(void *unused) {
         std::cerr << dlerror() << endl;
         return (void *)EXIT_FAILURE;
     }
-    libmain("live", sim_params.outdir.c_str(), sim_params.vc_wavefile.c_str(), sim_params.sigfile.c_str());
+    libmain("live", config.output.dir.c_str(), config.vc.wavefile.c_str(), config.vc.sigfile.c_str());
     return 0;
 }
 
 void *sqread(void *) {
-    std::string fname = sim_params.outdir + "/samples.tmp";
+    std::string fname = config.output.dir + "/samples.tmp";
     std::ofstream os(fname.c_str());
     RTIME delay = nano2count(0.1e6);
 

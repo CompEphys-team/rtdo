@@ -15,6 +15,7 @@ initial version: 2015-12-03
 #include "globals.h"
 #include "run.h"
 #include <QFileDialog>
+#include "config.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -76,12 +77,12 @@ void MainWindow::on_modelfile_browse_clicked()
 
 void MainWindow::on_simparams_reset_clicked()
 {
-    ui->outdir->setText(QString::fromStdString(sim_params.outdir));
-    ui->sigfile->setText(QString::fromStdString(sim_params.sigfile));
-    ui->vc_waveforms->setText(QString::fromStdString(sim_params.vc_wavefile));
-    ui->dt->setValue(sim_params.dt);
-    ui->npop->setValue(sim_params.nPop);
-    ui->modelfile->setText(QString::fromStdString(sim_params.modelfile));
+    ui->outdir->setText(QString::fromStdString(config.output.dir));
+    ui->sigfile->setText(QString::fromStdString(config.vc.sigfile));
+    ui->vc_waveforms->setText(QString::fromStdString(config.vc.wavefile));
+    ui->dt->setValue(config.io.dt);
+    ui->npop->setValue(config.vc.popsize);
+    ui->modelfile->setText(QString::fromStdString(config.model.deffile));
 }
 
 void MainWindow::on_simparams_apply_clicked()
@@ -89,19 +90,19 @@ void MainWindow::on_simparams_apply_clicked()
     std::string mfile = ui->modelfile->text().toStdString();
     double dt = ui->dt->value();
     int npop = ui->npop->value();
-    bool recompile = sim_params.modelfile.compare(mfile)
-            || sim_params.dt != dt
-            || sim_params.nPop != npop;
+    bool recompile = config.model.deffile.compare(mfile)
+            || config.io.dt != dt
+            || config.vc.popsize != npop;
 
     // Compile-time parameters
-    sim_params.modelfile = mfile;
-    sim_params.dt = dt;
-    sim_params.nPop = npop;
+    config.model.deffile = mfile;
+    config.io.dt = dt;
+    config.vc.popsize = npop;
 
     // Runtime parameters
-    sim_params.outdir = ui->outdir->text().toStdString();
-    sim_params.sigfile = ui->sigfile->text().toStdString();
-    sim_params.vc_wavefile = ui->vc_waveforms->text().toStdString();
+    config.output.dir = ui->outdir->text().toStdString();
+    config.vc.sigfile = ui->sigfile->text().toStdString();
+    config.vc.wavefile = ui->vc_waveforms->text().toStdString();
 
     if ( recompile ) {
         QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));

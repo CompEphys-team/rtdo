@@ -21,21 +21,6 @@ initial version: 2015-12-03
 #include "types.h"
 
 #ifdef __cplusplus
-#include <string>
-#include <vector>
-
-extern struct _sim_params {
-    std::string vc_wavefile;
-    std::string sigfile;
-    std::string outdir;
-    std::string modelfile;
-    int nPop;
-    double dt;
-} sim_params;
-#define SIMPARAM_DEFAULT {"", "", "", "", 1000, 0.25}
-
-extern std::vector<daq_channel *> channels;
-
 extern "C" {
 #endif
 

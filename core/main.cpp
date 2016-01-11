@@ -15,21 +15,28 @@ initial version: 2015-12-03
 #include "globals.h"
 #include "softrtdaq.h"
 #include "rt.h"
+#include "config.h"
 
 daq_channel daqchan_vout;
 daq_channel daqchan_cout;
 daq_channel daqchan_vin;
 daq_channel daqchan_cin;
-std::vector<daq_channel *> channels;
-struct _sim_params sim_params = SIMPARAM_DEFAULT;
+
+conf::Config config;
 
 int main(int argc, char *argv[])
 {
     int ret=0;
-    sim_params.outdir = "/home/felix/projects/build/rtdo/output";
-    sim_params.sigfile = "/home/felix/projects/rtdo/models/Lymnaea_B1.dat";
-    sim_params.vc_wavefile = "/home/felix/projects/rtdo/vclamp/wave2.dat";
-    sim_params.modelfile = "/home/felix/projects/rtdo/models/Lymnaea_B1.cc";
+
+    // Stop-gap until config save/load is implemented in UI
+    config.output.dir = "/home/felix/projects/build/rtdo/output";
+    config.vc.sigfile = "/home/felix/projects/rtdo/models/Lymnaea_B1.dat";
+    config.vc.wavefile= "/home/felix/projects/rtdo/vclamp/wave2.dat";
+    config.model.deffile = "/home/felix/projects/rtdo/models/Lymnaea_B1.cc";
+    config.io.channels.push_back(&daqchan_vout);
+    config.io.channels.push_back(&daqchan_cout);
+    config.io.channels.push_back(&daqchan_vin);
+    config.io.channels.push_back(&daqchan_cin);
 
     //--------------------------------------------------------------
     // Set up channels
@@ -63,12 +70,6 @@ int main(int argc, char *argv[])
     if ( (ret = daq_setup_channel(&daqchan_cin)) )
         return ret;
     daq_set_channel_name(&daqchan_cin, "C in");
-
-    channels.clear();
-    channels.push_back(&daqchan_vout);
-    channels.push_back(&daqchan_cout);
-    channels.push_back(&daqchan_vin);
-    channels.push_back(&daqchan_cin);
 
     //--------------------------------------------------------------
     // Set up RT

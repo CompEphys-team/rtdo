@@ -12,6 +12,7 @@ initial version: 2016-01-04
 --------------------------------------------------------------------------*/
 #include "channellistmodel.h"
 #include "globals.h"
+#include "config.h"
 
 ChannelListModel::ChannelListModel(int displayflags, QObject *parent) :
     QAbstractListModel(parent),
@@ -21,7 +22,7 @@ ChannelListModel::ChannelListModel(int displayflags, QObject *parent) :
 
 QVariant ChannelListModel::data(const QModelIndex &index, int role) const
 {
-    daq_channel *c = channels.at(index.row());
+    daq_channel *c = config.io.channels.at(index.row());
     if ( c && role == Qt::DisplayRole ) {
         return QString("%1 (dev %2, %3 %4)")
                 .arg(QString(c->name))
@@ -34,12 +35,12 @@ QVariant ChannelListModel::data(const QModelIndex &index, int role) const
 
 int ChannelListModel::rowCount(const QModelIndex &parent) const
 {
-    return channels.size();
+    return config.io.channels.size();
 }
 
 Qt::ItemFlags ChannelListModel::flags(const QModelIndex &index) const
 {
-    daq_channel *c = channels.at(index.row());
+    daq_channel *c = config.io.channels.at(index.row());
     if ( c && displayChannel(c) )
         return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
     else
