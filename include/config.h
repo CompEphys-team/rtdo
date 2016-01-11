@@ -36,6 +36,9 @@ public:
     string wavefile;
     string sigfile;
     int popsize;
+
+    daq_channel *in;
+    daq_channel *out;
 };
 
 class conf::IOConfig {

@@ -18,19 +18,4 @@ initial version: 2015-12-03
 #define DO_DEVICE_BASE "/dev/comedi"
 #define DO_MAX_DEVICES 32
 
-#include "types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern daq_channel daqchan_vout;
-extern daq_channel daqchan_cout;
-extern daq_channel daqchan_vin;
-extern daq_channel daqchan_cin;
-
-#ifdef __cplusplus
-}
-#endif
-
 #endif // GLOBALS_H

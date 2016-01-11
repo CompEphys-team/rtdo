@@ -151,8 +151,14 @@ void run_vclamp_start() {
 
     stop = 0;
     rtdo_set_sampling_rate(config.io.dt, 1);
-    active_in =& daqchan_cin;
-    active_out =& daqchan_vout;
+    for ( vector<daq_channel *>::iterator it = config.io.channels.begin(); it != config.io.channels.end(); ++it ) {
+        if ( *it == config.vc.in )
+            active_in = *it;
+        if ( *it == config.vc.out )
+            active_out = *it;
+    }
+    if ( !active_in || !active_out )
+        return;
     thread = rtdo_thread_create(vclaunch, 0, 1000000);
     sqthread = rtdo_thread_create(sqread, 0, 1000000);
 }
@@ -165,14 +171,14 @@ void run_vclamp_stop() {
         rtdo_stop();
         thread = 0;
         sqthread = 0;
-        active_in = 0;
-        active_out = 0;
     }
     if ( lib ) {
         dlclose(lib);
         lib = 0;
     }
-    rtdo_write_now(daqchan_vout.handle, daqchan_vout.offset);
+    rtdo_write_now(active_out->handle, active_out->offset);
+    active_in = 0;
+    active_out = 0;
 }
 
 void *vclaunch(void *unused) {

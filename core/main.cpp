@@ -17,11 +17,6 @@ initial version: 2015-12-03
 #include "rt.h"
 #include "config.h"
 
-daq_channel daqchan_vout;
-daq_channel daqchan_cout;
-daq_channel daqchan_vin;
-daq_channel daqchan_cin;
-
 conf::Config config;
 
 int main(int argc, char *argv[])
@@ -29,6 +24,10 @@ int main(int argc, char *argv[])
     int ret=0;
 
     // Stop-gap until config save/load is implemented in UI
+    daq_channel &daqchan_vout = *(new daq_channel);
+    daq_channel &daqchan_cout = *(new daq_channel);
+    daq_channel &daqchan_vin = *(new daq_channel);
+    daq_channel &daqchan_cin = *(new daq_channel);
     config.output.dir = "/home/felix/projects/build/rtdo/output";
     config.vc.sigfile = "/home/felix/projects/rtdo/models/Lymnaea_B1.dat";
     config.vc.wavefile= "/home/felix/projects/rtdo/vclamp/wave2.dat";
@@ -37,6 +36,8 @@ int main(int argc, char *argv[])
     config.io.channels.push_back(&daqchan_cout);
     config.io.channels.push_back(&daqchan_vin);
     config.io.channels.push_back(&daqchan_cin);
+    config.vc.in =& daqchan_cin;
+    config.vc.out =& daqchan_vout;
 
     //--------------------------------------------------------------
     // Set up channels

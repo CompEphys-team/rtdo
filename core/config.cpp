@@ -26,6 +26,8 @@ void conf::VCConfig::Init() {
     popsize = 1000;
     sigfile = "";
     wavefile = "";
+    in = 0;
+    out = 0;
 }
 
 
@@ -67,6 +69,16 @@ bool conf::Config::save(string filename)
 
     { // VC
         section = new TiXmlElement("voltageclamp");
+        if ( vc.in ) {
+            vector<daq_channel *>::iterator it = find(io.channels.begin(), io.channels.end(), vc.in);
+            if ( it != io.channels.end() )
+                section->SetAttribute("in", (int)(it - io.channels.begin()));
+        }
+        if ( vc.out ) {
+            vector<daq_channel *>::iterator it = find(io.channels.begin(), io.channels.end(), vc.out);
+            if ( it != io.channels.end() )
+                section->SetAttribute("out", (int)(it - io.channels.begin()));
+        }
         root->LinkEndChild(section);
 
         el = new TiXmlElement("sigfile");
@@ -157,15 +169,6 @@ bool conf::Config::load(string filename)
         return false;
     TiXmlHandle hRoot(el);
 
-    // VC
-    vc.Init();
-    if ( (section = hRoot.FirstChildElement("voltageclamp").Element()) ) {
-        if ( (el = section->FirstChildElement("sigfile")) )
-            vc.sigfile = el->GetText();
-        if ( (el = section->FirstChildElement("wavefile")) )
-            vc.wavefile = el->GetText();
-    }
-
     // I/O
     io.Init();
     if ( (section = hRoot.FirstChildElement("io").Element()) ) {
@@ -222,6 +225,23 @@ bool conf::Config::load(string filename)
             else
                 (*cit)->read_offset_src = 0;
         }
+    }
+
+    // VC
+    vc.Init();
+    if ( (section = hRoot.FirstChildElement("voltageclamp").Element()) ) {
+        int p = -1;
+        section->QueryIntAttribute("in", &p);
+        if ( p >= 0 && p < (int)io.channels.size() )
+            vc.in = io.channels[p];
+        p = -1;
+        section->QueryIntAttribute("out", &p);
+        if ( p >= 0 && p < (int)io.channels.size() )
+            vc.out = io.channels[p];
+        if ( (el = section->FirstChildElement("sigfile")) )
+            vc.sigfile = el->GetText();
+        if ( (el = section->FirstChildElement("wavefile")) )
+            vc.wavefile = el->GetText();
     }
 
     // Model
