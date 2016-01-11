@@ -14,6 +14,7 @@ initial version: 2016-01-08
 #include "tinyxml.h"
 #include <algorithm>
 #include "softrtdaq.h"
+#include "rt.h"
 
 conf::Config::Config()
 {}
@@ -181,7 +182,7 @@ bool conf::Config::load(string filename)
 
             TiXmlElement *sub;
             if ( (sub = el->FirstChildElement("name")) )
-                strncpy(c->name, sub->GetText(), DAQCHAN_NAMELEN);
+                daq_set_channel_name(c, sub->GetText());
 
             if ( (sub = el->FirstChildElement("device")) ) {
                 sub->QueryUnsignedAttribute("number", &c->deviceno);
@@ -210,6 +211,11 @@ bool conf::Config::load(string filename)
                 sub->QueryBoolAttribute("read_later", &later);
                 c->read_offset_later = (char)later;
             }
+
+            if ( daq_setup_channel(c) )
+                continue;
+            if ( rtdo_add_channel(c, 10000) )
+                continue;
 
             io.channels.push_back(c);
         }

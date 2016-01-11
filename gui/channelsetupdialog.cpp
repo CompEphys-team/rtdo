@@ -79,6 +79,7 @@ ChannelSetupDialog::~ChannelSetupDialog()
     delete arefModel;
 }
 
+#include <iostream>
 void ChannelSetupDialog::open()
 {
     comedi_t *dev;
@@ -92,11 +93,7 @@ void ChannelSetupDialog::open()
 
     QDialog::open();
 
-    QModelIndex idx = chanList->index(0);
-    QModelIndex cur = ui->channelList->currentIndex();
-    ui->channelList->setCurrentIndex(chanList->index(0));
-    cur = ui->channelList->currentIndex();
-    idx = cur;
+    ui->channelList->reset();
 }
 
 void ChannelSetupDialog::addChannel()

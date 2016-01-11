@@ -175,6 +175,9 @@
     </property>
     <addaction name="actionChannel_setup"/>
     <addaction name="actionVoltage_clamp"/>
+    <addaction name="separator"/>
+    <addaction name="actionLoad_configuration"/>
+    <addaction name="actionSave_configuration"/>
    </widget>
    <addaction name="menuRTDO"/>
   </widget>
@@ -195,6 +198,16 @@
   <action name="actionVoltage_clamp">
    <property name="text">
     <string>Voltage clamp...</string>
+   </property>
+  </action>
+  <action name="actionLoad_configuration">
+   <property name="text">
+    <string>Load configuration...</string>
+   </property>
+  </action>
+  <action name="actionSave_configuration">
+   <property name="text">
+    <string>Save configuration...</string>
    </property>
   </action>
  </widget>

@@ -152,10 +152,15 @@ void run_vclamp_start() {
     stop = 0;
     rtdo_set_sampling_rate(config.io.dt, 1);
     for ( vector<daq_channel *>::iterator it = config.io.channels.begin(); it != config.io.channels.end(); ++it ) {
-        if ( *it == config.vc.in )
+        if ( *it == config.vc.in ) {
             active_in = *it;
-        if ( *it == config.vc.out )
+            rtdo_set_channel_active(active_in->handle, 1);
+        } else if ( *it == config.vc.out ) {
             active_out = *it;
+            rtdo_set_channel_active(active_out->handle, 1);
+        } else {
+            rtdo_set_channel_active((*it)->handle, 0);
+        }
     }
     if ( !active_in || !active_out )
         return;

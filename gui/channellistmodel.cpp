@@ -22,7 +22,12 @@ ChannelListModel::ChannelListModel(int displayflags, QObject *parent) :
 
 QVariant ChannelListModel::data(const QModelIndex &index, int role) const
 {
-    daq_channel *c = config.io.channels.at(index.row());
+    daq_channel *c;
+    try {
+        c = config.io.channels.at(index.row());
+    } catch (...) {
+        return QVariant();
+    }
     if ( c && role == Qt::DisplayRole ) {
         return QString("%1 (dev %2, %3 %4)")
                 .arg(QString(c->name))
