@@ -49,7 +49,7 @@ void MainWindow::on_modelfile_browse_clicked()
 {
     QString file, dir;
     dir = dirname(ui->modelfile->text().toStdString());
-    file = QFileDialog::getOpenFileName(this, QString("Select model file..."), dir, QString("C++ Files (*.cc *.cpp)"));
+    file = QFileDialog::getOpenFileName(this, QString("Select model file..."), dir, QString("*.xml"));
     if ( !file.isEmpty() )
         ui->modelfile->setText(file);
 }

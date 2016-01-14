@@ -1,0 +1,109 @@
+<model name="mymodel">
+	<precision digits="6" scalar="float"/>
+	<variable name="V" type="scalar" value="-60"/>
+	<variable name="m" type="scalar" value="0.0529324"/>
+	<variable name="h" type="scalar" value="0.3176767"/>
+	<variable name="n" type="scalar" value="0.5961207"/>
+
+	<adjustableParam name="gNa" type="scalar" value="120">
+		<range min="1" max="500"/>
+		<perturbation type="multiplicative" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="ENa" type="scalar" value="55">
+		<range min="0" max="100"/>
+		<perturbation type="additive" rate="10"/>
+	</adjustableParam>
+	<adjustableParam name="maoff" type="scalar" value="3.5">
+		<range min="3.25" max="3.75"/>
+		<perturbation type="+" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="maslope" type="scalar" value="0.1">
+		<range min="0.09" max="0.11"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="mboff" type="scalar" value="60">
+		<range min="57.5" max="62.5"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="mbslope" type="scalar" value="18">
+		<range min="16.2" max="19.8"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="haoff" type="scalar" value="3">
+		<range min="2.75" max="3.25"/>
+		<perturbation type="+" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="haslope" type="scalar" value="20">
+		<range min="18" max="22"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="hboff" type="scalar" value="3">
+		<range min="2.75" max="3.25"/>
+		<perturbation type="+" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="hbslope" type="scalar" value="0.1">
+		<range min="0.09" max="0.11"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+
+	<adjustableParam name="gK" type="scalar" value="36">
+		<range min="1" max="500"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="EK" type="scalar" value="-72">
+		<range min="-100" max="0"/>
+		<perturbation type="+" rate="10"/>
+	</adjustableParam>
+	<adjustableParam name="naoff" type="scalar" value="0.5">
+		<range min="0.25" max="0.75"/>
+		<perturbation type="+" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="naslope" type="scalar" value="0.01">
+		<range min="0.009" max="0.011"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="nboff" type="scalar" value="60">
+		<range min="57.5" max="62.5"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="nbslope" type="scalar" value="80">
+		<range min="72" max="88"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+
+	<adjustableParam name="gl" type="scalar" value="0.3">
+		<range min="1" max="500"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="El" type="scalar" value="-50">
+		<range min="-100" max="0"/>
+		<perturbation type="+" rate="10"/>
+	</adjustableParam>
+
+	<adjustableParam name="C" type="scalar" value="1">
+		<range min="0.1" max="10"/>
+		<perturbation type="*" rate="0.2"/>
+	</adjustableParam>
+
+	<code>
+    scalar Imem;
+    unsigned int mt;
+    scalar mdt= DT/50.0;
+    for (mt=0; mt &lt; 50; mt++) {
+      Isyn= 200.0*($(stepVG)-$(V));
+      Imem= -($(m)*$(m)*$(m)*$(h)*$(gNa)*($(V)-($(ENa)))+
+              $(n)*$(n)*$(n)*$(n)*$(gK)*($(V)-($(EK)))+
+              $(gl)*($(V)-($(El)))-Isyn);
+      scalar _a= ($(maoff)+$(maslope)*$(V)) / (1.0-exp(-$(maoff)-$(maslope)*$(V)));
+      scalar _b= 4.0*exp(-($(V)+$(mboff))/$(mbslope));
+      $(m)+= (_a*(1.0-$(m))-_b*$(m))*mdt;
+      _a= 0.07*exp(-$(V)/$(haslope)-$(haoff));
+      _b= 1.0 / (exp(-$(hboff)-$(hbslope)*$(V))+1.0);
+      $(h)+= (_a*(1.0-$(h))-_b*$(h))*mdt;
+      _a= (-$(naoff)-$(naslope)*$(V)) / (exp(-10.0*$(naoff)-10.0*$(naslope)*$(V))-1.0);
+      _b= 0.125*exp(-($(V)+$(nboff))/$(nbslope));
+      $(n)+= (_a*(1.0-$(n))-_b*$(n))*mdt;
+      $(V)+= Imem/$(C)*mdt;
+    }
+	</code>
+</model>

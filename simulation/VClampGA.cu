@@ -38,9 +38,8 @@ inline bool file_exists( const std::string& name )
 	}
 }
 
-extern "C" int vclamp(const char *basename, const char *outdir, const char *stimFName, const char *sigFName) {
+extern "C" int vclamp(const char *basename, const char *outdir, const char *stimFName) {
     ifstream is( stimFName );
-    ifstream sis( sigFName );
 
 	int experimentNo = 0;
     string OutDir = toString(outdir);
@@ -85,8 +84,7 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 	// build the neuronal circuitery
 
 	NNmodel model;
-	modelDefinition( model );
-    load_param_values(sis, model);
+    modelDefinition( model );
 	allocateMem();
     initialize();
     rtdo_init_bridge();
@@ -113,9 +111,9 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
         for (int s = 0, k = pperturb.size(); s < k; s++) {
 			I = stims[nextS];
 			iTN = (int)(I.t / DT);
-            stepVG = I.baseV;
-            ot = t + I.ot;
-            ote = t + I.ot + I.dur;
+            stepVGHH = I.baseV;
+            otHH = t + I.ot;
+            oteHH = t + I.ot + I.dur;
 			lt = 0.0;
             sn = 0;
 
@@ -124,17 +122,17 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 
             for (int iT = 0; iT < iTN; iT++) {
 				oldt = lt;
-                IsynG = run_getsample( t );
+                IsynGHH = run_getsample( t );
                 stepTimeGPU( t );
 				t += DT;
 				lt += DT;
 				if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
-                    stepVG = I.V[sn];
+                    stepVGHH = I.V[sn];
 					sn++;
-                    fprintf( osf, "%f %f \n", t, stepVG );
+                    fprintf( osf, "%f %f \n", t, stepVGHH );
                 }
             }
-            CHECK_CUDA_ERRORS( cudaMemcpy( errM, d_errM, VSize, cudaMemcpyDeviceToHost ) );
+            CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
 
             if ( (done = run_check_break()) )
                 break;

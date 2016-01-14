@@ -39,10 +39,14 @@ SOURCES += core/main.cpp \
     lib/src/tinyxml.cpp \
     lib/src/tinyxmlerror.cpp \
     lib/src/tinyxmlparser.cpp \
-    core/config.cpp
+    core/config.cpp \
+    core/xmlmodel.cpp
 
-OTHER_FILES += simulation/* \
-    models/*.cc
+OTHER_FILES += simulation/GNUmakefile \
+    simulation/VClampGA.cu \
+    simulation/VClampGA.h \
+    simulation/helper.h \
+    simulation/GA.cc
 
 HEADERS  += \
     include/mainwindow.h \
@@ -61,7 +65,8 @@ HEADERS  += \
     include/util.h \
     lib/include/tinystr.h \
     lib/include/tinyxml.h \
-    include/config.h
+    include/config.h \
+    include/xmlmodel.h
 
 FORMS    += \
     gui/mainwindow.ui \

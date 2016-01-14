@@ -37,7 +37,7 @@ void procreatePopPperturb( FILE *osb, double amplitude, vector<vector<double> > 
 	static errTupel errs[NPOP];
 	for (int i = 0; i < NPOP; i++) {
 		errs[i].id = i;
-        errs[i].err = errM[i];
+        errs[i].err = errHH[i];
 	}
 	qsort( (void *)errs, NPOP, sizeof( errTupel ), compareErrTupel );
 //#define DEBUG_PROCREATE

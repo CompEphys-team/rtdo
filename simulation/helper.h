@@ -18,8 +18,6 @@
 #include <limits>
 
 scalar range[NPARAM][2];
-bool pertmult[NPARAM];
-double sigma[NPARAM];
 
 #ifndef _WAVE
 ostream &operator<<(ostream &os, inputSpec &I)
@@ -40,17 +38,17 @@ ostream &operator<<(ostream &os, inputSpec &I)
 void single_var_init_fullrange(int n)
 {
     for ( int i = 0; i < NPARAM; i++ ) {
-        mparam[i][n] = range[i][0] + R.n() * (range[i][1] - range[i][0]); // uniform in allowed interval
+        mparam[i][n] = aParamRange[2*i] + R.n() * (range[2*i+1] - range[2*i]); // uniform in allowed interval
     }
 }
 
 void single_var_reinit(int n, double fac) 
 {
     for ( int i = 0; i < NPARAM; i++ ) {
-        if ( pertmult[i] )
-            mparam[i][n] *= (1.0 + fac * sigma[i] * RG.n());
+        if ( aParamPMult[i] )
+            mparam[i][n] *= (1.0 + fac * aParamSigma[i] * RG.n());
         else
-            mparam[i][n] += fac * sigma[i] * RG.n();
+            mparam[i][n] += fac * aParamSigma[i] * RG.n();
     }
 }
 
@@ -58,10 +56,10 @@ void single_var_reinit_pperturb(int n, double fac, vector<double> &pperturb)
 {
     for ( int i = 0; i < NPARAM; i++ ) {
         if ( R.n() < pperturb[i] ) {
-            if ( pertmult[i] )
-                mparam[i][n] *= (1.0 + fac * sigma[i] * RG.n());
+            if ( aParamPMult[i] )
+                mparam[i][n] *= (1.0 + fac * aParamSigma[i] * RG.n());
             else
-                mparam[i][n] += fac * sigma[i] * RG.n();
+                mparam[i][n] += fac * aParamSigma[i] * RG.n();
         }
     }
 }
@@ -94,9 +92,9 @@ void truevar_init()
 {
   for (int n= 0; n < NPOP; n++) {  
       for ( int i = 0; i < NVAR; i++ ) {
-          mvar[i][n] = mvar_ini[i];
+          mvar[i][n] = variableIni[i];
       }
-      errM[n] = 0.0;
+      errHH[n] = 0.0;
   }
   copyStateToDevice();	  
 }
@@ -133,33 +131,4 @@ void load_stim(istream &is, vector<vector<double>> &pperturb, vector<inputSpec> 
             stims.push_back( I );
         }
     }
-}
-
-void load_param_values(std::istream &is, const NNmodel &model) {
-    const neuronModel& n = nModels[model.neuronType[0]];
-    std::string name, type;
-    scalar lower, upper;
-    double sig;
-    std::bitset<NPARAM> bits;
-    int j;
-    while ( is.good() ) {
-        is >> name;
-        if ( name.c_str()[0] == '#' ) {
-            is.ignore(numeric_limits<std::streamsize>::max(), '\n');
-            continue;
-        }
-        is >> lower >> upper >> type >> sig;
-        for ( j = 0; j < NPARAM; j++ ) {
-            if ( !name.compare(n.varNames[NVAR + j]) ) {
-                range[j][0] = lower;
-                range[j][1] = upper;
-                pertmult[j] = bool(type.compare("+"));
-                sigma[j] = sig;
-                bits.set(j);
-                break;
-            }
-        }
-        is.ignore(numeric_limits<std::streamsize>::max(), '\n').peek();
-    }
-    assert(bits.all());
 }

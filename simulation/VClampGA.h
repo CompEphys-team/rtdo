@@ -37,7 +37,6 @@ randomGauss RG;
 #define BASEV -60.0
 #define MAVGBUFSZ 10
 
-#include "model.h"
 #include "run.h"
 #include "helper.h"
 

@@ -21,6 +21,7 @@ initial version: 2015-12-08
 #include "rt.h"
 #include "globals.h"
 #include "config.h"
+#include "xmlmodel.h"
 
 #define BRIDGE_START "Bridge code begin >>>"
 #define BRIDGE_END "<<< Bridge code end"
@@ -29,7 +30,7 @@ using namespace std;
 
 static long thread=0, sqthread=0;
 static void *lib=0;
-static int (*libmain)(const char*, const char*, const char*, const char*);
+static int (*libmain)(const char*, const char*, const char*);
 static int stop=0;
 static daq_channel *active_in=0, *active_out=0;
 
@@ -49,87 +50,43 @@ string basename_nosuffix(const string& path) {
 }
 
 int compile_model() {
-    string cmd, modelname, modelfname;
+    string cxxflags = string("CXXFLAGS=\"$CXXFLAGS -std=c++11 -DDT=") + to_string(config.io.dt) + "\" ";
+    string nvccflags = string("NVCCFLAGS=\"$NVCCFLAGS -DDT=") + to_string(config.io.dt) + "\" ";
     int ret=0;
 
-    modelfname = basename_nosuffix(config.model.deffile);
+    XMLModel model(config.model.deffile);
+    string modelname = model.generateDefinition(XMLModel::VClamp, config.vc.popsize, INSTANCEDIR);
 
-    cmd = string("cp ") + config.model.deffile + " " + INSTANCEDIR + "/" + modelfname + ".cc";
-    system(cmd.c_str());
-
-    string fname = string(INSTANCEDIR) + "/SimulationParameters.h";
-    ofstream os( fname.c_str() );
-    os << "#define NPOP " << config.vc.popsize << endl;
-    os << "#define TOTALT " << 0 << endl;
-    os << "#define fixGPU " << 0 << endl;
-    os << "#define INoiseSTD " << 0 << endl;
-    os << "#define DT " << config.io.dt << endl;
-    os << "#define BRIDGE_START \"" << BRIDGE_START << "\"" << endl;
-    os << "#define BRIDGE_END \"" << BRIDGE_END << "\"" << endl;
-    os << "#include \"" << SIMDIR << "/model_helper.cc\"" << endl;
-    os.close();
-
-    cmd = string("cd ") + INSTANCEDIR + " && buildmodel.sh " + modelfname + " 0 2>&1";
+    string cmd = string("cd ") + INSTANCEDIR + " && " + cxxflags + "buildmodel.sh " + modelname + " 0 2>&1";
     cout << cmd << endl;
     FILE *is = popen(cmd.c_str(), "r");
-    char buffer[1024], *p, *q;
-    bool name_found = false, bridge_found = false;
-    stringstream dump, bridge;
+    char buffer[1024];
+    stringstream dump;
     while ( fgets(buffer, 1024, is) ) {
         dump << buffer;
-        if ( !name_found && strstr(buffer, "dry-run compile") ) {
-            if ( !fgets(buffer, 1024, is) )
-                break;
-            dump << buffer;
-            if ( !(p = strstr(buffer, INSTANCEDIR)) )
-                continue;
-            p += strlen(INSTANCEDIR) + 1;
-            if ( !(q = strstr(p, "_CODE/")) )
-                continue;
-            modelname = string(p, q-p);
-            name_found = true;
-        }
-        if ( !bridge_found && strstr(buffer, BRIDGE_START) ) {
-            while ( fgets(buffer, 1024, is) && !strstr(buffer, BRIDGE_END) ) {
-                bridge << buffer;
-            }
-            bridge_found = true;
-        }
         if ( strstr(buffer, "error") || strstr(buffer, "Error") )
             ret = 1;
     }
     pclose(is);
-    if ( !name_found || !bridge_found || ret ) {
-        cerr << "Error building model: ";
-        if ( ret )
-            cerr << "GeNN build failed.";
-        else if ( !name_found )
-            cerr << "Model name not found.";
-        else if ( !bridge_found )
-            cerr << "RTDO bridge code not found.";
-        cerr << endl << "Build output follows:\n*********" << endl;
-        cerr << dump.str();
-        cerr << "********** End build output." << endl;
-        cerr << "Compilation failed." << endl;
+    cout << dump.str();
+    if ( ret ) {
+        cerr << "Model build failed." << endl;
         return 1;
     }
-    cout << "Model build complete." << endl;
 
-    fname = string(SIMDIR) + "/model.h";
-    os.open(fname.c_str());
-    os << "#ifndef MODEL_H" << endl;
-    os << "#define MODEL_H" << endl << endl;
-    os << "#include \"" << INSTANCEDIR << "/" << modelfname << ".cc\"" << endl;
-    os << "#include \"" << INSTANCEDIR << "/" << modelname << "_CODE/runner.cc\"" << endl;
-    os << bridge.str() << endl;
-    os << "#endif" << endl;
-    os.close();
-
+    string includeflags = string("INCLUDE_FLAGS='")
+            + "-include " + INSTANCEDIR + "/" + modelname + "_CODE/runner.cc "
+            + "-include " INSTANCEDIR + "/" + modelname + ".cc' ";
 #ifdef _DEBUG
-    cmd = string("cd ") + SIMDIR + " && make clean -I " + INSTANCEDIR + " && make debug -I " + INSTANCEDIR;
+    cmd = string("cd ") + SIMDIR
+            + " && " + "make clean -I " + INSTANCEDIR
+            + " && " + cxxflags + nvccflags + includeflags + "make debug -I " + INSTANCEDIR;
 #else
-    cmd = string("cd ") + SIMDIR + " && make clean -I " + INSTANCEDIR + " && make release -I " + INSTANCEDIR;
+    cmd = string("cd ") + SIMDIR
+            + " && " + "make clean -I " + INSTANCEDIR
+            + " && " + cxxflags + nvccflags + includeflags + "make release -I " + INSTANCEDIR;
 #endif
+    cout << cmd << endl;
     if ( (ret = system(cmd.c_str())) ) {
         cerr << "Compilation failed." << endl;
         return 1;
@@ -197,7 +154,7 @@ void *vclaunch(void *unused) {
         std::cerr << dlerror() << endl;
         return (void *)EXIT_FAILURE;
     }
-    libmain("live", config.output.dir.c_str(), config.vc.wavefile.c_str(), config.vc.sigfile.c_str());
+    libmain("live", config.output.dir.c_str(), config.vc.wavefile.c_str());
     return 0;
 }
 
