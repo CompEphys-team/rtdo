@@ -34,7 +34,6 @@ public:
     void Init();
 
     string wavefile;
-    string sigfile;
     int popsize;
 
     daq_channel *in;

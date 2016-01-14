@@ -25,7 +25,6 @@ conf::VCConfig::VCConfig() {
 }
 void conf::VCConfig::Init() {
     popsize = 1000;
-    sigfile = "";
     wavefile = "";
     in = 0;
     out = 0;
@@ -81,10 +80,6 @@ bool conf::Config::save(string filename)
                 section->SetAttribute("out", (int)(it - io.channels.begin()));
         }
         root->LinkEndChild(section);
-
-        el = new TiXmlElement("sigfile");
-        el->LinkEndChild(new TiXmlText(vc.sigfile));
-        section->LinkEndChild(el);
 
         el = new TiXmlElement("wavefile");
         el->LinkEndChild(new TiXmlText(vc.wavefile));
@@ -244,8 +239,6 @@ bool conf::Config::load(string filename)
         section->QueryIntAttribute("out", &p);
         if ( p >= 0 && p < (int)io.channels.size() )
             vc.out = io.channels[p];
-        if ( (el = section->FirstChildElement("sigfile")) )
-            vc.sigfile = el->GetText();
         if ( (el = section->FirstChildElement("wavefile")) )
             vc.wavefile = el->GetText();
     }

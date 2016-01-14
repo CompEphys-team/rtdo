@@ -39,7 +39,6 @@ void VClampSetupDialog::open()
     }
 
     ui->waveformFile->setText(QString::fromStdString(config.vc.wavefile));
-    ui->sigmaFile->setText(QString::fromStdString(config.vc.sigfile));
     ui->popSize->setValue(config.vc.popsize);
 
     QDialog::open();
@@ -54,7 +53,6 @@ void VClampSetupDialog::accept()
             ? *(config.io.channels.begin() + ui->voltageOutputChannel->currentIndex())
             : 0;
     config.vc.wavefile = ui->waveformFile->text().toStdString();
-    config.vc.sigfile = ui->sigmaFile->text().toStdString();
     config.vc.popsize = ui->popSize->value();
 
     QDialog::accept();
@@ -71,13 +69,4 @@ void VClampSetupDialog::on_waveformBrowse_clicked()
     file = QFileDialog::getOpenFileName(this, QString("Select voltage clamp waveform file..."), dir);
     if ( !file.isEmpty() )
         ui->waveformFile->setText(file);
-}
-
-void VClampSetupDialog::on_sigmaBrowse_clicked()
-{
-    QString file, dir;
-    dir = dirname(ui->sigmaFile->text());
-    file = QFileDialog::getOpenFileName(this, QString("Select voltage clamp sigma file..."), dir);
-    if ( !file.isEmpty() )
-        ui->sigmaFile->setText(file);
 }

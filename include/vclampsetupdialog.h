@@ -26,8 +26,6 @@ public slots:
 private slots:
     void on_waveformBrowse_clicked();
 
-    void on_sigmaBrowse_clicked();
-
 private:
     Ui::VClampSetupDialog *ui;
     ChannelListModel *cinModel;
