@@ -23,54 +23,20 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow),
     channel_setup(new ChannelSetupDialog),
     vclamp_setup(new VClampSetupDialog),
-    wavegen_setup(new WavegenSetupDialog)
+    wavegen_setup(new WavegenSetupDialog),
+    model_setup(new ModelSetupDialog)
 {
     ui->setupUi(this);
-    on_simparams_reset_clicked();
     connect(channel_setup, SIGNAL(channelsUpdated()), vclamp_setup, SIGNAL(channelsUpdated()));
     connect(ui->actionVoltage_clamp, SIGNAL(triggered()), vclamp_setup, SLOT(open()));
     connect(ui->actionChannel_setup, SIGNAL(triggered()), channel_setup, SLOT(open()));
     connect(ui->actionWavegen_setup, SIGNAL(triggered()), wavegen_setup, SLOT(open()));
+    connect(ui->actionModel_setup, SIGNAL(triggered()), model_setup, SLOT(open()));
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-}
-
-void MainWindow::on_outdir_browse_clicked()
-{
-    QString file, dir;
-    dir = dirname(ui->outdir->text().toStdString());
-    file = QFileDialog::getExistingDirectory(this, QString("Select data output directory..."), dir);
-    if ( !file.isEmpty() )
-        ui->outdir->setText(file);
-}
-
-void MainWindow::on_modelfile_browse_clicked()
-{
-    QString file, dir;
-    dir = dirname(ui->modelfile->text().toStdString());
-    file = QFileDialog::getOpenFileName(this, QString("Select model file..."), dir, QString("*.xml"));
-    if ( !file.isEmpty() )
-        ui->modelfile->setText(file);
-}
-
-void MainWindow::on_simparams_reset_clicked()
-{
-    ui->outdir->setText(QString::fromStdString(config.output.dir));
-    ui->dt->setValue(config.io.dt);
-    ui->modelfile->setText(QString::fromStdString(config.model.deffile));
-}
-
-void MainWindow::on_simparams_apply_clicked()
-{
-    std::string mfile = ui->modelfile->text().toStdString();
-    double dt = ui->dt->value();
-
-    config.model.deffile = mfile;
-    config.io.dt = dt;
-    config.output.dir = ui->outdir->text().toStdString();
 }
 
 void MainWindow::on_vclamp_start_clicked()
@@ -81,6 +47,11 @@ void MainWindow::on_vclamp_start_clicked()
 void MainWindow::on_vclamp_stop_clicked()
 {
     run_vclamp_stop();
+}
+
+void MainWindow::on_vclamp_compile_clicked()
+{
+    compile_model(XMLModel::VClamp);
 }
 
 void MainWindow::on_actionSave_configuration_triggered()

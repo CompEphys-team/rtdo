@@ -41,7 +41,8 @@ SOURCES += core/main.cpp \
     lib/src/tinyxmlparser.cpp \
     core/config.cpp \
     core/xmlmodel.cpp \
-    gui/wavegensetupdialog.cpp
+    gui/wavegensetupdialog.cpp \
+    gui/modelsetupdialog.cpp
 
 OTHER_FILES += simulation/GNUmakefile \
     simulation/VClampGA.cu \
@@ -72,13 +73,15 @@ HEADERS  += \
     lib/include/tinyxml.h \
     include/config.h \
     include/xmlmodel.h \
-    include/wavegensetupdialog.h
+    include/wavegensetupdialog.h \
+    include/modelsetupdialog.h
 
 FORMS    += \
     gui/mainwindow.ui \
     gui/channelsetupdialog.ui \
     gui/vclampsetupdialog.ui \
-    gui/wavegensetupdialog.ui
+    gui/wavegensetupdialog.ui \
+    gui/modelsetupdialog.ui
 
 LIBS     += -rdynamic -ldl -pthread -L. -lRC_kcomedilxrt -lcomedi
 

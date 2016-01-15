@@ -17,6 +17,7 @@ initial version: 2015-12-03
 #include "channelsetupdialog.h"
 #include "vclampsetupdialog.h"
 #include "wavegensetupdialog.h"
+#include "modelsetupdialog.h"
 
 namespace Ui {
 class MainWindow;
@@ -31,14 +32,6 @@ public:
     ~MainWindow();
 
 private slots:
-    void on_outdir_browse_clicked();
-
-    void on_modelfile_browse_clicked();
-
-    void on_simparams_reset_clicked();
-
-    void on_simparams_apply_clicked();
-
     void on_vclamp_start_clicked();
 
     void on_vclamp_stop_clicked();
@@ -53,11 +46,14 @@ private slots:
 
     void on_wavegen_compile_clicked();
 
+    void on_vclamp_compile_clicked();
+
 private:
     Ui::MainWindow *ui;
     ChannelSetupDialog *channel_setup;
     VClampSetupDialog *vclamp_setup;
     WavegenSetupDialog *wavegen_setup;
+    ModelSetupDialog *model_setup;
 };
 
 #endif // MAINWINDOW_H
