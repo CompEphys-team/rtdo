@@ -98,7 +98,7 @@ extern "C" inputSpec wavegen(int focusParam, int nGenerations)
 		{
             for (size_t j = 0; j < NPARAM + 1; j++)
 			{
-				float tmp = (stims[i].ot + OT);
+                float tmp = (stims[i].ot + stims[i].dur);
                 CHECK_CUDA_ERRORS( cudaMemcpy( &d_oteHH[i * (NPARAM + 1) + j], &tmp, sizeof( float ), cudaMemcpyHostToDevice ) );
 			}
 		}
@@ -144,7 +144,5 @@ extern "C" inputSpec wavegen(int focusParam, int nGenerations)
             break;
 	}
 	delete[] sn;
-
-	fprintf( stderr, "DONE" );
     return stims[0];
 }

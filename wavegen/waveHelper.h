@@ -1,4 +1,5 @@
 #include <algorithm>
+#include "run.h"
 
 #define GA_CROSSOVER_PROB 0.85
 #define GA_MUTATE_PROB 0.5
@@ -38,9 +39,11 @@ void var_init_auto_detune()
 void wave_pop_init( std::vector<inputSpec> & stims, int N )
 {
 	inputSpec I;
-	double st, nst, theV, theOBST;
-	I.t = TOTALT;
-	I.N = NVSTEPS;  // two steps for now
+    double st, nst, theV;
+    I.t = TOTALT;
+    I.ot = OT;
+    I.baseV = VSTEP0;
+    I.N = NVSTEPS;
 	for (int i = 0; i < N; ++i) {
 	tryagain:
 		I.st.clear();
@@ -54,14 +57,11 @@ void wave_pop_init( std::vector<inputSpec> & stims, int N )
 			st += nst;
 			I.st.push_back( st );
 			theV = RG.n()*VSTEPINI + VSTEP0; // steps around resting with Gaussian distribution
-			if (theV < MINV) theV = MINV;
+            if (theV < MINV) theV = MINV;
 			if (theV > MAXV) theV = MAXV;
 			I.V.push_back( theV );
-		}
-		do {
-			theOBST = R.n() * 100;
-		} while ((theOBST < MINT) || (theOBST > MAXT));
-		I.ot = theOBST;
+        }
+        I.dur = R.n() * (MAXT-MINT) + MINT;
 		stims.push_back( I );
 	}
 }
@@ -93,11 +93,11 @@ inputSpec mutate( inputSpec &inI )
 			theV = I.V[i] + mutateA*RG.n();
 		} while ((theV < MINV) || (theV > MAXV));
 		I.V[i] = theV;
-	}
+    }
 	do {
-		theOBST = I.ot + mutateA*RG.n();
+        theOBST = I.dur + mutateA*RG.n();
 	} while ((theOBST < MINT) || (theOBST > MAXT));
-	I.ot = theOBST;
+    I.dur = theOBST;
 	return I;
 }
 
@@ -105,6 +105,10 @@ void crossover( inputSpec const& parent1, inputSpec const& parent2, inputSpec & 
 {
 	child1.t = TOTALT;
 	child2.t = TOTALT;
+    child1.ot = OT;
+    child2.ot = OT;
+    child1.baseV = VSTEP0;
+    child2.baseV = VSTEP0;
 	child1.N = NVSTEPS;
 	child2.N = NVSTEPS;
 
@@ -136,13 +140,13 @@ void crossover( inputSpec const& parent1, inputSpec const& parent2, inputSpec & 
 	//And observation time
 	if (R.n() > 0.5)
 	{
-		child1.ot = parent1.ot;
-		child2.ot = parent2.ot;
+        child1.dur = parent1.dur;
+        child2.dur = parent2.dur;
 	}
 	else
 	{
-		child2.ot = parent1.ot;
-		child1.ot = parent2.ot;
+        child2.dur = parent1.dur;
+        child1.dur = parent2.dur;
 	}
 	mutations.erase( mutations.begin() + rndN );
 
