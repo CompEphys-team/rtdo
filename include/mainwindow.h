@@ -16,6 +16,7 @@ initial version: 2015-12-03
 #include <QMainWindow>
 #include "channelsetupdialog.h"
 #include "vclampsetupdialog.h"
+#include "wavegensetupdialog.h"
 
 namespace Ui {
 class MainWindow;
@@ -56,6 +57,7 @@ private:
     Ui::MainWindow *ui;
     ChannelSetupDialog *channel_setup;
     VClampSetupDialog *vclamp_setup;
+    WavegenSetupDialog *wavegen_setup;
 };
 
 #endif // MAINWINDOW_H

@@ -214,6 +214,7 @@
     </property>
     <addaction name="actionChannel_setup"/>
     <addaction name="actionVoltage_clamp"/>
+    <addaction name="actionWavegen_setup"/>
     <addaction name="separator"/>
     <addaction name="actionLoad_configuration"/>
     <addaction name="actionSave_configuration"/>
@@ -247,6 +248,11 @@
   <action name="actionSave_configuration">
    <property name="text">
     <string>Save configuration...</string>
+   </property>
+  </action>
+  <action name="actionWavegen_setup">
+   <property name="text">
+    <string>Waveform generation...</string>
    </property>
   </action>
  </widget>

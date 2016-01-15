@@ -22,13 +22,15 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     channel_setup(new ChannelSetupDialog),
-    vclamp_setup(new VClampSetupDialog)
+    vclamp_setup(new VClampSetupDialog),
+    wavegen_setup(new WavegenSetupDialog)
 {
     ui->setupUi(this);
     on_simparams_reset_clicked();
     connect(channel_setup, SIGNAL(channelsUpdated()), vclamp_setup, SIGNAL(channelsUpdated()));
     connect(ui->actionVoltage_clamp, SIGNAL(triggered()), vclamp_setup, SLOT(open()));
     connect(ui->actionChannel_setup, SIGNAL(triggered()), channel_setup, SLOT(open()));
+    connect(ui->actionWavegen_setup, SIGNAL(triggered()), wavegen_setup, SLOT(open()));
 }
 
 MainWindow::~MainWindow()
