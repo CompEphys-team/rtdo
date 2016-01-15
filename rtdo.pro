@@ -46,7 +46,11 @@ OTHER_FILES += simulation/GNUmakefile \
     simulation/VClampGA.cu \
     simulation/VClampGA.h \
     simulation/helper.h \
-    simulation/GA.cc
+    simulation/GA.cc \
+    wavegen/GNUmakefile \
+    wavegen/WaveGA.cu \
+    wavegen/WaveGA.h \
+    wavegen/waveHelper.h
 
 HEADERS  += \
     include/mainwindow.h \

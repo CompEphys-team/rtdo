@@ -23,20 +23,19 @@ initial version: 2015-12-08
 #include "config.h"
 #include "xmlmodel.h"
 
-#define BRIDGE_START "Bridge code begin >>>"
-#define BRIDGE_END "<<< Bridge code end"
-
 using namespace std;
 
 static long thread=0, sqthread=0;
 static void *lib=0;
 static int (*libmain)(const char*, const char*, const char*);
+static inputSpec (*wgmain)(int, int);
 static int stop=0;
 static daq_channel *active_in=0, *active_out=0;
 
 static queue<double> samples_q;
 
 void *vclaunch(void *);
+void *wglaunch(void *);
 void *sqread(void *);
 
 string basename_nosuffix(const string& path) {
@@ -49,13 +48,37 @@ string basename_nosuffix(const string& path) {
     }
 }
 
-int compile_model() {
+ostream &operator<<(ostream &os, inputSpec &I)
+{
+    for (int i = 0; i < I.N; i++) {
+        os << I.st[i] << " ";
+        os << I.V[i] << "  ";
+    }
+    os << " " << I.ot << "  ";
+    os << " " << I.fit << "    ";
+    return os;
+}
+
+int compile_model(XMLModel::outputType type) {
     string cxxflags = string("CXXFLAGS=\"$CXXFLAGS -std=c++11 -DDT=") + to_string(config.io.dt) + "\" ";
     string nvccflags = string("NVCCFLAGS=\"$NVCCFLAGS -DDT=") + to_string(config.io.dt) + "\" ";
     int ret=0;
 
-    XMLModel model(config.model.deffile);
-    string modelname = model.generateDefinition(XMLModel::VClamp, config.vc.popsize, INSTANCEDIR);
+    int popsize=0;
+    string simulator(SIMDIR);
+    switch ( type ) {
+    case XMLModel::VClamp:
+        popsize = config.vc.popsize;
+        simulator += "/simulation";
+        break;
+    case XMLModel::WaveGen:
+        popsize = config.wg.popsize;
+        simulator += "/wavegen";
+        break;
+    }
+
+    config.model.load();
+    string modelname = config.model.obj->generateDefinition(type, popsize, INSTANCEDIR);
 
     string cmd = string("cd ") + INSTANCEDIR + " && " + cxxflags + "buildmodel.sh " + modelname + " 0 2>&1";
     cout << cmd << endl;
@@ -78,11 +101,11 @@ int compile_model() {
             + "-include " + INSTANCEDIR + "/" + modelname + "_CODE/runner.cc "
             + "-include " INSTANCEDIR + "/" + modelname + ".cc' ";
 #ifdef _DEBUG
-    cmd = string("cd ") + SIMDIR
+    cmd = string("cd ") + simulator
             + " && " + "make clean -I " + INSTANCEDIR
             + " && " + cxxflags + nvccflags + includeflags + "make debug -I " + INSTANCEDIR;
 #else
-    cmd = string("cd ") + SIMDIR
+    cmd = string("cd ") + simulator
             + " && " + "make clean -I " + INSTANCEDIR
             + " && " + cxxflags + nvccflags + includeflags + "make release -I " + INSTANCEDIR;
 #endif
@@ -96,12 +119,9 @@ int compile_model() {
     return 0;
 }
 
-void run_vclamp_start() {
-    using std::endl;
-
-    if ( lib ) {
-        run_vclamp_stop();
-    }
+bool run_vclamp_start() {
+    if ( thread )
+        return false;
 
     while ( !samples_q.empty() )
         samples_q.pop();
@@ -120,9 +140,10 @@ void run_vclamp_start() {
         }
     }
     if ( !active_in || !active_out )
-        return;
+        return false;
     thread = rtdo_thread_create(vclaunch, 0, 1000000);
     sqthread = rtdo_thread_create(sqread, 0, 1000000);
+    return true;
 }
 
 void run_vclamp_stop() {
@@ -144,7 +165,7 @@ void run_vclamp_stop() {
 }
 
 void *vclaunch(void *unused) {
-    string fname = string(SIMDIR) + "/VClampGA.so";
+    string fname = string(SIMDIR) + "/simulation/VClampGA.so";
     dlerror();
     if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
         std::cerr << dlerror() << endl;
@@ -207,3 +228,48 @@ void run_setstimulus(inputSpec I) {
         std::cerr << "Error " << ret << " setting stimulus waveform" << std::endl;
 }
 
+bool run_wavegen_start(int focusParam) {
+    if ( thread )
+        return false;
+    stop = 0;
+    thread = rtdo_thread_create(wglaunch, new int(focusParam), 1000000);
+    return true;
+}
+
+void run_wavegen_stop() {
+    stop = 1;
+    rtdo_thread_join(thread);
+    thread = 0;
+    dlclose(lib);
+    lib = 0;
+}
+
+void *wglaunch(void * arg) {
+    int focusParam = *((int*)arg);
+    delete (int*)arg;
+    string fname = string(SIMDIR) + "/wavegen/WaveGen.so";
+    dlerror();
+    if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
+        cerr << dlerror() << endl;
+        return (void *)EXIT_FAILURE;
+    }
+    if ( !(*(void**)(&wgmain) = dlsym(lib, "wavegen")) ) {
+        cerr << dlerror() << endl;
+        return (void *)EXIT_FAILURE;
+    }
+
+    if ( focusParam == -1 ) {
+        const vector<XMLModel::param> &p = config.model.obj->adjustableParams();
+        int i = 0;
+        for ( vector<XMLModel::param>::const_iterator it = p.begin(); it != p.end() && !stop; ++it, ++i ) {
+            inputSpec is = wgmain(i, config.wg.ngen);
+            cout << it->name << ", best fit:" << endl;
+            cout << is << endl;
+        }
+    } else {
+        inputSpec is = wgmain(focusParam, config.wg.ngen);
+        cout << config.model.obj->adjustableParams().at(focusParam).name << ", best fit:" << endl;
+        cout << is << endl;
+    }
+    return 0;
+}

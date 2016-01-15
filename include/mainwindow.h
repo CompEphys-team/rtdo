@@ -46,6 +46,12 @@ private slots:
 
     void on_actionLoad_configuration_triggered();
 
+    void on_wavegen_start_clicked();
+
+    void on_wavegen_stop_clicked();
+
+    void on_wavegen_compile_clicked();
+
 private:
     Ui::MainWindow *ui;
     ChannelSetupDialog *channel_setup;

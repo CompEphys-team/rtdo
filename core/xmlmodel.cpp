@@ -21,6 +21,7 @@ XMLModel::XMLModel(string filename)
 bool XMLModel::load(string filename)
 {
     TiXmlDocument doc;
+    doc.SetCondenseWhiteSpace(false);
     doc.LoadFile(filename);
 
     TiXmlHandle hDoc(&doc);
@@ -46,25 +47,25 @@ bool XMLModel::load(string filename)
         genn_double = !string("double").compare(el->Attribute("scalar"));
     }
 
-    vars.clear();
+    _vars.clear();
     for ( el = hRoot.FirstChild("variable").Element(); el; el = el->NextSiblingElement("variable") ) {
         struct param p;
         p.name = el->Attribute("name");
         p.type = el->Attribute("type");
         el->QueryDoubleAttribute("value", &p.initial);
-        vars.push_back(p);
+        _vars.push_back(p);
     }
 
-    params.clear();
+    _params.clear();
     for ( el = hRoot.FirstChild("parameter").Element(); el; el = el->NextSiblingElement("parameter") ) {
         struct param p;
         p.name = el->Attribute("name");
         p.type = el->Attribute("type");
         el->QueryDoubleAttribute("value", &p.initial);
-        params.push_back(p);
+        _params.push_back(p);
     }
 
-    adjustableParams.clear();
+    _adjustableParams.clear();
     for ( el = hRoot.FirstChild("adjustableParam").Element(); el; el = el->NextSiblingElement("adjustableParam") ) {
         struct param p;
         p.name = el->Attribute("name");
@@ -79,7 +80,7 @@ bool XMLModel::load(string filename)
             string ptype = sub->Attribute("type");
             p.multiplicative = !ptype.compare("*") || !ptype.compare("multiplicative");
         }
-        adjustableParams.push_back(p);
+        _adjustableParams.push_back(p);
     }
 
     return true;
@@ -105,16 +106,17 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << setprecision(precision) << scientific;
 
-    of << "#define NVAR " << vars.size() << endl;
-    of << "#define NPARAM " << adjustableParams.size() << endl;
+    of << "#define NVAR " << _vars.size() << endl;
+    of << "#define NPARAM " << _adjustableParams.size() << endl;
     switch( type ) {
     case VClamp:
         of << "#define NPOP " << npop << endl;
         nExtraVars += 0;
         break;
     case WaveGen:
-        of << "#define NPOP " << to_string(npop * (adjustableParams.size() + 1)) << endl;
         of << "#define GAPOP " << npop << endl;
+        npop *= (_adjustableParams.size() + 1);
+        of << "#define NPOP " << npop << endl;
         nExtraVars += 2;
         break;
     }
@@ -124,32 +126,32 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "#include \"modelSpec.cc\"" << endl;
 
     of << endl;
-    of << "double variableIni[" << to_string(vars.size() + adjustableParams.size() + nExtraVars) << "] = {" << endl;
-    for ( vector<param>::iterator it = vars.begin(); it != vars.end(); ++it )
+    of << "double variableIni[" << to_string(_vars.size() + _adjustableParams.size() + nExtraVars) << "] = {" << endl;
+    for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it )
         of << "  " << it->initial << "," << endl;
-    for ( vector<param>::iterator it = adjustableParams.begin(); it != adjustableParams.end(); ++it )
+    for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it )
         of << "  " << it->initial << "," << endl;
     of << "};" << endl;
 
     of << "double fixedParamIni[] = {" << endl;
-    for ( vector<param>::iterator it = params.begin(); it != params.end(); ++it )
+    for ( vector<param>::iterator it = _params.begin(); it != _params.end(); ++it )
         of << "  " << it->initial << "," << endl;
     of << "};" << endl;
 
     of << "double *aParamIni = variableIni + NVAR;" << endl;
 
     of << "double aParamRange[NPARAM*2] = {" << endl;
-    for ( vector<param>::iterator it = adjustableParams.begin(); it != adjustableParams.end(); ++it )
+    for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it )
         of << "  " << it->min << ", " << it->max << "," << endl;
     of << "};" << endl;
 
     of << "double aParamSigma[NPARAM] = {" << endl;
-    for ( vector<param>::iterator it = adjustableParams.begin(); it != adjustableParams.end(); ++it )
+    for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it )
         of << "  " << it->sigma << "," << endl;
     of << "};" << endl;
 
     of << "bool aParamPMult[NPARAM] = {" << endl;
-    for ( vector<param>::iterator it = adjustableParams.begin(); it != adjustableParams.end(); ++it )
+    for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it )
         of << "  " << (it->multiplicative ? "true" : "false") << "," << endl;
     of << "};" << endl;
 
@@ -159,10 +161,10 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "scalar *mparam[NPARAM];" << endl;
     of << "void rtdo_init_bridge() {" << endl;
     int i = 0;
-    for ( vector<param>::iterator it = vars.begin(); it != vars.end(); ++it, ++i )
+    for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it, ++i )
         of << "mvar[" << i << "] = " << it->name << POPNAME << ";" << endl;
     i = 0;
-    for ( vector<param>::iterator it = adjustableParams.begin(); it != adjustableParams.end(); ++it, ++i )
+    for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it, ++i )
         of << "mparam[" << i << "] = " << it->name << POPNAME << ";" << endl;
     of << "}" << endl;
     of << "#endif" << endl;
@@ -175,12 +177,12 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "n.varTypes.clear();" << endl;
 
     of << endl;
-    for ( vector<param>::iterator it = vars.begin(); it != vars.end(); ++it ) {
+    for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it ) {
         of << "n.varNames.push_back(\"" << it->name << "\");" << endl;
         of << "n.varTypes.push_back(\"" << it->type << "\");" << endl;
     }
     of << endl;
-    for ( vector<param>::iterator it = adjustableParams.begin(); it != adjustableParams.end(); ++it ) {
+    for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it ) {
         of << "n.varNames.push_back(\"" << it->name << "\");" << endl;
         of << "n.varTypes.push_back(\"" << it->type << "\");" << endl;
     }
@@ -214,16 +216,19 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.varTypes.push_back(\"scalar\");" << endl;
         of << endl;
         // The following is a bit of code that writes a bit of code that writes a bit of code. Turtles all the way down.
-        of << "n.simCode += \"" << endl;
-        of << "__shared__ double IsynShare[" + to_string(adjustableParams.size() + 1) + "];\\n\\" << endl;
-        of << "if ((t > $(ot)) && (t < $(ote))) {\\n\\" << endl;
-        of << "    IsynShare[threadIdx.x] = Isyn;\\n\\" << endl;
-        of << "    __syncthreads();\\n\\" << endl;
-        of << "    $(err)+= abs(Isyn-IsynShare[0]) * mdt * DT;\\n\\" << endl;
-        of << "}\"" << endl;
+        of << "n.simCode += R\"EOF(" << endl;
+        of << "#ifndef _" << modelname << "_neuronFnct_cc" << endl;
+        of << "__shared__ double IsynShare[" + to_string(_adjustableParams.size() + 1) + "];" << endl;
+        of << "if ((t > $(ot)) && (t < $(ote))) {" << endl;
+        of << "    IsynShare[threadIdx.x] = Isyn;" << endl;
+        of << "    __syncthreads();" << endl;
+        of << "    $(err)+= abs(Isyn-IsynShare[0]) * mdt * DT;" << endl;
+        of << "}" << endl;
+        of << "#endif" << endl;
+        of << ")EOF\";" << endl;
         of << endl;
         of << "optimiseBlockSize = 0;" << endl;
-        of << "neuronBlkSz = " << to_string(adjustableParams.size() + 1) << ";" << endl;
+        of << "neuronBlkSz = " << to_string(_adjustableParams.size() + 1) << ";" << endl;
         of << "synapseBlkSz = 1;" << endl;
         of << "learnBlkSz = 1;" << endl;
         break;

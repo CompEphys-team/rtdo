@@ -19,6 +19,7 @@ initial version: 2015-12-08
 #include <iostream>
 #include <queue>
 #include <vector>
+#include "xmlmodel.h"
 
 typedef struct {
   double t;
@@ -30,10 +31,11 @@ typedef struct {
   std::vector<double> V;
   double fit;
 } inputSpec;
+std::ostream &operator<<(std::ostream &os, inputSpec &I);
 
-int compile_model();
+int compile_model(XMLModel::outputType type);
 
-void run_vclamp_start();
+bool run_vclamp_start();
 void run_vclamp_stop();
 
 daq_channel *run_get_active_outchan();
@@ -44,5 +46,8 @@ int run_check_break();
 
 double run_getsample(float t);
 void run_setstimulus(inputSpec I);
+
+bool run_wavegen_start(int focusParam = -1);
+void run_wavegen_stop();
 
 #endif // RUN_H

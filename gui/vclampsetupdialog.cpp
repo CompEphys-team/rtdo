@@ -58,7 +58,7 @@ void VClampSetupDialog::accept()
     QDialog::accept();
 
     QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
-    compile_model();
+    compile_model(XMLModel::VClamp);
     QApplication::restoreOverrideCursor();
 }
 

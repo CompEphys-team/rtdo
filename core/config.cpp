@@ -54,6 +54,24 @@ conf::ModelConfig::ModelConfig() {
 }
 void conf::ModelConfig::Init() {
     deffile = "";
+    obj = NULL;
+}
+void conf::ModelConfig::load() {
+    if ( obj && !deffile.compare(loadedObjFile) )
+        return;
+    else if ( obj )
+        delete obj;
+    obj = new XMLModel(deffile);
+    loadedObjFile = deffile;
+}
+
+
+conf::WaveGenConfig::WaveGenConfig() {
+    Init();
+}
+void conf::WaveGenConfig::Init() {
+    popsize = 1000;
+    ngen = 400;
 }
 
 
@@ -146,6 +164,13 @@ bool conf::Config::save(string filename)
         el = new TiXmlElement("dir");
         el->LinkEndChild(new TiXmlText(output.dir));
         section->LinkEndChild(el);
+    }
+
+    { // WaveGen
+        section = new TiXmlElement("wavegen");
+        root->LinkEndChild(section);
+        section->SetAttribute("popsize", wg.popsize);
+        section->SetAttribute("generations", wg.ngen);
     }
 
     return doc.SaveFile(filename);
@@ -257,6 +282,13 @@ bool conf::Config::load(string filename)
         if ( (el = section->FirstChildElement("dir")) ) {
             output.dir = el->GetText();
         }
+    }
+
+    // WaveGen
+    wg.Init();
+    if ( (section = hRoot.FirstChildElement("wavegen").Element()) ) {
+        section->QueryIntAttribute("popsize", &wg.popsize);
+        section->QueryIntAttribute("generations", &wg.ngen);
     }
 
     return true;

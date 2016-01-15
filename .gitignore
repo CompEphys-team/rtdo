@@ -5,7 +5,5 @@ vclamp/model/HHVClamp_CODE/
 vclamp/wave_output
 *.pro.user
 *.o
+*.so
 models/*
-simulation/model.h
-simulation/*.so
-

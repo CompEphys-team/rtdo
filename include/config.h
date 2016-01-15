@@ -17,6 +17,7 @@ initial version: 2016-01-08
 #include <vector>
 #include <sys/types.h>
 #include "types.h"
+#include "xmlmodel.h"
 
 using namespace std;
 
@@ -26,6 +27,7 @@ namespace conf {
     class IOConfig;
     class OutputConfig;
     class ModelConfig;
+    class WaveGenConfig;
 }
 
 class conf::VCConfig {
@@ -62,8 +64,22 @@ class conf::ModelConfig {
 public:
     ModelConfig();
     void Init();
+    void load();
 
     string deffile;
+    XMLModel *obj;
+
+private:
+    string loadedObjFile;
+};
+
+class conf::WaveGenConfig {
+public:
+    WaveGenConfig();
+    void Init();
+
+    int popsize;
+    int ngen;
 };
 
 class conf::Config
@@ -78,6 +94,7 @@ public:
     conf::IOConfig io;
     conf::OutputConfig output;
     conf::ModelConfig model;
+    conf::WaveGenConfig wg;
 };
 
 extern conf::Config config;

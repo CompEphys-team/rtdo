@@ -13,7 +13,7 @@ initial version: 2015-12-03
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#define SIMDIR "/home/felix/projects/rtdo/simulation"
+#define SIMDIR "/home/felix/projects/rtdo"
 #define INSTANCEDIR "/home/felix/projects/rtdo/models"
 #define DO_DEVICE_BASE "/dev/comedi"
 #define DO_MAX_DEVICES 32

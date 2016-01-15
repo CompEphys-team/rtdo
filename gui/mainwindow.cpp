@@ -98,3 +98,18 @@ void MainWindow::on_actionLoad_configuration_triggered()
         return;
     config.load(file.toStdString());
 }
+
+void MainWindow::on_wavegen_start_clicked()
+{
+    run_wavegen_start();
+}
+
+void MainWindow::on_wavegen_stop_clicked()
+{
+    run_wavegen_stop();
+}
+
+void MainWindow::on_wavegen_compile_clicked()
+{
+    compile_model(XMLModel::WaveGen);
+}

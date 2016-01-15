@@ -159,6 +159,45 @@
      <string>Stop</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="wavegen_start">
+    <property name="geometry">
+     <rect>
+      <x>230</x>
+      <y>370</y>
+      <width>160</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Generate waveforms</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="wavegen_stop">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>370</y>
+      <width>85</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Interrupt</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="wavegen_compile">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>370</y>
+      <width>217</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Compile waveform generator</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
