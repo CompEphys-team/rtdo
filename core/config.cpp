@@ -97,6 +97,7 @@ bool conf::Config::save(string filename)
             if ( it != io.channels.end() )
                 section->SetAttribute("out", (int)(it - io.channels.begin()));
         }
+        section->SetAttribute("popsize", vc.popsize);
         root->LinkEndChild(section);
 
         el = new TiXmlElement("wavefile");
@@ -264,6 +265,7 @@ bool conf::Config::load(string filename)
         section->QueryIntAttribute("out", &p);
         if ( p >= 0 && p < (int)io.channels.size() )
             vc.out = io.channels[p];
+        section->QueryIntAttribute("popsize", &vc.popsize);
         if ( (el = section->FirstChildElement("wavefile")) )
             vc.wavefile = el->GetText();
     }
