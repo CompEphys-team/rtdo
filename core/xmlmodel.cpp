@@ -33,8 +33,8 @@ bool XMLModel::load(string filename)
         return false;
     TiXmlHandle hRoot(el);
 
-    name.clear();
-    name = el->Attribute("name");
+    _name.clear();
+    _name = el->Attribute("name");
 
     code.clear();
     if ( (el = hRoot.FirstChild("code").Element()) )
@@ -88,15 +88,7 @@ bool XMLModel::load(string filename)
 
 std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, string path)
 {
-    string modelname = name + "_";
-    switch ( type ) {
-    case VClamp:
-        modelname += "vclamp";
-        break;
-    case WaveGen:
-        modelname += "wavegen";
-        break;
-    }
+    string modelname = name(type);
 
     int nExtraVars = 1;
 
@@ -244,5 +236,19 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "model.finalize();" << endl;
     of << "}" << endl;
 
+    return modelname;
+}
+
+string XMLModel::name(XMLModel::outputType type) const
+{
+    string modelname = _name + "_";
+    switch ( type ) {
+    case VClamp:
+        modelname += "vclamp";
+        break;
+    case WaveGen:
+        modelname += "wavegen";
+        break;
+    }
     return modelname;
 }

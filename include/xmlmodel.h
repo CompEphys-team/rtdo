@@ -28,12 +28,14 @@ public:
 
     std::string generateDefinition(enum outputType type, int npop, std::string path);
 
+    inline const std::string &name() const { return _name; }
+    std::string name(enum outputType type) const;
     inline const std::vector<param> &vars() const { return _vars; }
     inline const std::vector<param> &adjustableParams() const { return _adjustableParams; }
     inline const std::vector<param> &params() const { return _params; }
 
 private:
-    std::string name;
+    std::string _name;
     std::string code;
     std::vector<param> _vars;
     std::vector<param> _adjustableParams;

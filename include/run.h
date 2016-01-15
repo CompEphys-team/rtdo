@@ -32,6 +32,7 @@ typedef struct {
   double fit;
 } inputSpec;
 std::ostream &operator<<(std::ostream &os, inputSpec &I);
+std::istream &operator>>(std::istream &is, inputSpec &I);
 
 int compile_model(XMLModel::outputType type);
 

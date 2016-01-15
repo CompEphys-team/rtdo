@@ -48,15 +48,29 @@ string basename_nosuffix(const string& path) {
     }
 }
 
-ostream &operator<<(ostream &os, inputSpec &I)
-{
+ostream &operator<<(ostream &os, inputSpec &I) {
+    os << I.t << " " << I.ot << " " << I.dur << " " << I.baseV << " " << I.N << " ";
     for (int i = 0; i < I.N; i++) {
         os << I.st[i] << " ";
-        os << I.V[i] << "  ";
+        os << I.V[i] << " ";
     }
-    os << " " << I.ot << "  ";
-    os << " " << I.fit << "    ";
+    os << I.fit;
     return os;
+}
+
+istream &operator>>(istream &is, inputSpec &I) {
+    double tmp;
+    I.st.clear();
+    I.V.clear();
+    is >> I.t >> I.ot >> I.dur >> I.baseV >> I.N;
+    for ( int i = 0; i < I.N; i++ ) {
+        is >> tmp;
+        I.st.push_back(tmp);
+        is >> tmp;
+        I.V.push_back(tmp);
+    }
+    is >> I.fit;
+    return is;
 }
 
 int compile_model(XMLModel::outputType type) {
@@ -259,12 +273,25 @@ void *wglaunch(void * arg) {
     }
 
     if ( focusParam == -1 ) {
+        stringstream buffer;
         const vector<XMLModel::param> &p = config.model.obj->adjustableParams();
-        int i = 0;
+        int i = 0, j = 0;
         for ( vector<XMLModel::param>::const_iterator it = p.begin(); it != p.end() && !stop; ++it, ++i ) {
             inputSpec is = wgmain(i, config.wg.ngen);
             cout << it->name << ", best fit:" << endl;
             cout << is << endl;
+            j = 0;
+            for ( vector<XMLModel::param>::const_iterator jt = p.begin(); jt != p.end() && !stop; ++jt, ++j )
+                buffer << (j==i ? 1 : 0) << " ";
+            buffer << is << endl;
+        }
+        if ( !stop ) {
+            string filename = config.output.dir + (config.output.dir.back()=='/' ? "" : "/")
+                    + config.model.obj->name() + "_wave.";
+            for ( i = 0; !access(string(filename + to_string(i)).c_str(), F_OK); i++ );
+            ofstream file(filename + to_string(i));
+            file << buffer.str();
+            file.close();
         }
     } else {
         inputSpec is = wgmain(focusParam, config.wg.ngen);

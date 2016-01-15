@@ -106,8 +106,6 @@ void load_stim(istream &is, vector<vector<double>> &pperturb, vector<inputSpec> 
     char buf[1024];
     while (is.good()) {
         prob.clear();
-        I.st.clear();
-        I.V.clear();
         while (((is.peek() == '%') || (is.peek() == '\n') || (is.peek() == ' ')) && is.good()) { // remove comments
             is.getline( buf, BUFSZ );
         }
@@ -115,17 +113,7 @@ void load_stim(istream &is, vector<vector<double>> &pperturb, vector<inputSpec> 
             is >> dtmp;
             prob.push_back( dtmp );
         }
-        is >> I.t;
-        is >> I.ot;
-        is >> I.dur;
-        is >> I.baseV;
-        is >> I.N;
-        for (int i = 0; i < I.N; i++) {
-            is >> dtmp;
-            I.st.push_back( dtmp );
-            is >> dtmp;
-            I.V.push_back( dtmp );
-        }
+        is >> I;
         if (is.good()) {
             pperturb.push_back( prob );
             stims.push_back( I );
