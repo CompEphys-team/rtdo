@@ -150,14 +150,20 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << endl;
     of << "#ifdef DEFINITIONS_H" << endl;
     of << "scalar *mvar[NVAR];" << endl;
+    of << "scalar *d_mvar[NVAR];" << endl;
     of << "scalar *mparam[NPARAM];" << endl;
+    of << "scalar *d_mparam[NPARAM];" << endl;
     of << "void rtdo_init_bridge() {" << endl;
     int i = 0;
-    for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it, ++i )
+    for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it, ++i ) {
         of << "mvar[" << i << "] = " << it->name << POPNAME << ";" << endl;
+        of << "d_mvar[" << i << "] = d_" << it->name << POPNAME << ";" << endl;
+    }
     i = 0;
-    for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it, ++i )
+    for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it, ++i ) {
         of << "mparam[" << i << "] = " << it->name << POPNAME << ";" << endl;
+        of << "d_mparam[" << i << "] = d_" << it->name << POPNAME << ";" << endl;
+    }
     of << "}" << endl;
     of << "#endif" << endl;
 
