@@ -190,8 +190,6 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "n.varTypes.push_back(\"scalar\");" << endl;
     of << "n.extraGlobalNeuronKernelParameters.push_back(\"ot\");" << endl;
     of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
-    of << "n.extraGlobalNeuronKernelParameters.push_back(\"IsynG\");" << endl;
-    of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
 
     of << endl;
     // Assume std >= c++11 for raw string literal:
@@ -203,6 +201,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"ote\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"stepVG\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"IsynG\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
         of << endl;
         of << "n.simCode += \"if ((t > $(ot)) && (t < $(ote))) { $(err)+= abs(Isyn-$(IsynG)); }\";" << endl;
