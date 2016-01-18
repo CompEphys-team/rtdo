@@ -31,29 +31,29 @@ void VClampSetupDialog::open()
     int i;
     ui->currentInputChannel->setCurrentIndex(-1);
     ui->voltageOutputChannel->setCurrentIndex(-1);
-    for ( it = config.io.channels.begin(), i = 0; it != config.io.channels.end(); ++it, ++i ) {
-        if ( *it == config.vc.in )
+    for ( it = config->io.channels.begin(), i = 0; it != config->io.channels.end(); ++it, ++i ) {
+        if ( *it == config->vc.in )
             ui->currentInputChannel->setCurrentIndex(i);
-        if ( *it == config.vc.out )
+        if ( *it == config->vc.out )
             ui->voltageOutputChannel->setCurrentIndex(i);
     }
 
-    ui->waveformFile->setText(QString::fromStdString(config.vc.wavefile));
-    ui->popSize->setValue(config.vc.popsize);
+    ui->waveformFile->setText(QString::fromStdString(config->vc.wavefile));
+    ui->popSize->setValue(config->vc.popsize);
 
     QDialog::open();
 }
 
 void VClampSetupDialog::accept()
 {
-    config.vc.in = ( ui->currentInputChannel->currentIndex() >= 0 )
-            ? *(config.io.channels.begin() + ui->currentInputChannel->currentIndex())
+    config->vc.in = ( ui->currentInputChannel->currentIndex() >= 0 )
+            ? *(config->io.channels.begin() + ui->currentInputChannel->currentIndex())
             : 0;
-    config.vc.out = ( ui->voltageOutputChannel->currentIndex() >= 0 )
-            ? *(config.io.channels.begin() + ui->voltageOutputChannel->currentIndex())
+    config->vc.out = ( ui->voltageOutputChannel->currentIndex() >= 0 )
+            ? *(config->io.channels.begin() + ui->voltageOutputChannel->currentIndex())
             : 0;
-    config.vc.wavefile = ui->waveformFile->text().toStdString();
-    config.vc.popsize = ui->popSize->value();
+    config->vc.wavefile = ui->waveformFile->text().toStdString();
+    config->vc.popsize = ui->popSize->value();
 
     QDialog::accept();
 

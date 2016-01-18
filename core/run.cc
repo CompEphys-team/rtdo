@@ -74,25 +74,25 @@ istream &operator>>(istream &is, inputSpec &I) {
 }
 
 int compile_model(XMLModel::outputType type) {
-    string cxxflags = string("CXXFLAGS=\"$CXXFLAGS -std=c++11 -DDT=") + to_string(config.io.dt) + "\" ";
-    string nvccflags = string("NVCCFLAGS=\"$NVCCFLAGS -DDT=") + to_string(config.io.dt) + "\" ";
+    string cxxflags = string("CXXFLAGS=\"$CXXFLAGS -std=c++11 -DDT=") + to_string(config->io.dt) + "\" ";
+    string nvccflags = string("NVCCFLAGS=\"$NVCCFLAGS -DDT=") + to_string(config->io.dt) + "\" ";
     int ret=0;
 
     int popsize=0;
     string simulator(SIMDIR);
     switch ( type ) {
     case XMLModel::VClamp:
-        popsize = config.vc.popsize;
+        popsize = config->vc.popsize;
         simulator += "/simulation";
         break;
     case XMLModel::WaveGen:
-        popsize = config.wg.popsize;
+        popsize = config->wg.popsize;
         simulator += "/wavegen";
         break;
     }
 
-    config.model.load();
-    string modelname = config.model.obj->generateDefinition(type, popsize, INSTANCEDIR);
+    config->model.load();
+    string modelname = config->model.obj->generateDefinition(type, popsize, INSTANCEDIR);
 
     string cmd = string("cd ") + INSTANCEDIR + " && " + cxxflags + "buildmodel.sh " + modelname + " 0 2>&1";
     cout << cmd << endl;
@@ -141,12 +141,12 @@ bool run_vclamp_start() {
         samples_q.pop();
 
     stop = 0;
-    rtdo_set_sampling_rate(config.io.dt, 1);
-    for ( vector<daq_channel *>::iterator it = config.io.channels.begin(); it != config.io.channels.end(); ++it ) {
-        if ( *it == config.vc.in ) {
+    rtdo_set_sampling_rate(config->io.dt, 1);
+    for ( vector<daq_channel *>::iterator it = config->io.channels.begin(); it != config->io.channels.end(); ++it ) {
+        if ( *it == config->vc.in ) {
             active_in = *it;
             rtdo_set_channel_active(active_in->handle, 1);
-        } else if ( *it == config.vc.out ) {
+        } else if ( *it == config->vc.out ) {
             active_out = *it;
             rtdo_set_channel_active(active_out->handle, 1);
         } else {
@@ -189,12 +189,12 @@ void *vclaunch(void *unused) {
         std::cerr << dlerror() << endl;
         return (void *)EXIT_FAILURE;
     }
-    libmain("live", config.output.dir.c_str(), config.vc.wavefile.c_str());
+    libmain("live", config->output.dir.c_str(), config->vc.wavefile.c_str());
     return 0;
 }
 
 void *sqread(void *) {
-    std::string fname = config.output.dir + "/samples.tmp";
+    std::string fname = config->output.dir + "/samples.tmp";
     std::ofstream os(fname.c_str());
     RTIME delay = nano2count(0.1e6);
 
@@ -272,12 +272,14 @@ void *wglaunch(void * arg) {
         return (void *)EXIT_FAILURE;
     }
 
+    config->model.load(false);
+
     if ( focusParam == -1 ) {
         stringstream buffer;
-        const vector<XMLModel::param> &p = config.model.obj->adjustableParams();
+        const vector<XMLModel::param> &p = config->model.obj->adjustableParams();
         int i = 0, j = 0;
         for ( vector<XMLModel::param>::const_iterator it = p.begin(); it != p.end() && !stop; ++it, ++i ) {
-            inputSpec is = wgmain(i, config.wg.ngen);
+            inputSpec is = wgmain(i, config->wg.ngen);
             cout << it->name << ", best fit:" << endl;
             cout << is << endl;
             j = 0;
@@ -286,16 +288,16 @@ void *wglaunch(void * arg) {
             buffer << is << endl;
         }
         if ( !stop ) {
-            string filename = config.output.dir + (config.output.dir.back()=='/' ? "" : "/")
-                    + config.model.obj->name() + "_wave.";
+            string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
+                    + config->model.obj->name() + "_wave.";
             for ( i = 0; !access(string(filename + to_string(i)).c_str(), F_OK); i++ );
             ofstream file(filename + to_string(i));
             file << buffer.str();
             file.close();
         }
     } else {
-        inputSpec is = wgmain(focusParam, config.wg.ngen);
-        cout << config.model.obj->adjustableParams().at(focusParam).name << ", best fit:" << endl;
+        inputSpec is = wgmain(focusParam, config->wg.ngen);
+        cout << config->model.obj->adjustableParams().at(focusParam).name << ", best fit:" << endl;
         cout << is << endl;
     }
     return 0;

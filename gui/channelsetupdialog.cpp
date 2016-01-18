@@ -117,7 +117,7 @@ void ChannelSetupDialog::removeChannel()
 void ChannelSetupDialog::on_readOffsetNow_clicked()
 {
     int err=0;
-    daq_channel *src = config.io.channels.at(ui->readOffsetSource->currentIndex());
+    daq_channel *src = config->io.channels.at(ui->readOffsetSource->currentIndex());
     double val = rtdo_read_now(src->handle, &err);
     if ( !err )
         editor->setData(editor->index(mapper->currentIndex(), ChannelEditorModel::Offset), QVariant(val), Qt::EditRole);

@@ -61,7 +61,7 @@ void MainWindow::on_actionSave_configuration_triggered()
         return;
     if ( !file.endsWith(".xml") )
         file.append(".xml");
-    config.save(file.toStdString());
+    config->save(file.toStdString());
 }
 
 void MainWindow::on_actionLoad_configuration_triggered()
@@ -69,7 +69,8 @@ void MainWindow::on_actionLoad_configuration_triggered()
     QString file = QFileDialog::getOpenFileName(0, QString("Select configuration file..."), QString(), QString("*.xml"));
     if ( file.isEmpty() )
         return;
-    config.load(file.toStdString());
+    delete config;
+    config = new conf::Config(file.toStdString());
 }
 
 void MainWindow::on_wavegen_start_clicked()

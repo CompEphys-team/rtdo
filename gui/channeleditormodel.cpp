@@ -52,10 +52,10 @@ QVariant ChannelEditorModel::data(const QModelIndex & index, int role) const {
         case Offset:
             return QVariant(c->offset);
         case ReadOffsetSource:
-            if ( (it = std::find(config.io.channels.begin(), config.io.channels.end(), c->read_offset_src)) == config.io.channels.end() )
+            if ( (it = std::find(config->io.channels.begin(), config->io.channels.end(), c->read_offset_src)) == config->io.channels.end() )
                 return QVariant(-1);
             else
-                return QVariant((int)(it - config.io.channels.begin()));
+                return QVariant((int)(it - config->io.channels.begin()));
         case ReadOffsetLater:
             return QVariant((bool)c->read_offset_later);
         default:
@@ -152,7 +152,7 @@ bool ChannelEditorModel::setData(const QModelIndex &index, const QVariant &value
 }
 
 int ChannelEditorModel::rowCount(const QModelIndex & parent) const {
-    return config.io.channels.size();
+    return config->io.channels.size();
 }
 
 bool ChannelEditorModel::insertRow(int row, const QModelIndex &parent) {
@@ -174,7 +174,7 @@ bool ChannelEditorModel::insertRow(int row, const QModelIndex &parent) {
     }
 
     beginInsertRows(parent, row, row+1);
-    config.io.channels.insert(config.io.channels.begin() + row, 1, chan);
+    config->io.channels.insert(config->io.channels.begin() + row, 1, chan);
     endInsertRows();
     emit channelsUpdated();
     return true;
@@ -183,10 +183,10 @@ bool ChannelEditorModel::insertRow(int row, const QModelIndex &parent) {
 bool ChannelEditorModel::removeRow(int row, const QModelIndex &parent) {
     daq_channel *c = channel(row);
     beginRemoveRows(parent, row, row+1);
-    config.io.channels.erase(config.io.channels.begin() + row);
+    config->io.channels.erase(config->io.channels.begin() + row);
     endRemoveRows();
 
-    for ( std::vector<daq_channel *>::iterator it = config.io.channels.begin(); it != config.io.channels.end(); ++it ) {
+    for ( std::vector<daq_channel *>::iterator it = config->io.channels.begin(); it != config->io.channels.end(); ++it ) {
         if ( (*it)->read_offset_src == c )
             (*it)->read_offset_src = 0;
     }

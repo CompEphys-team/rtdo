@@ -24,7 +24,7 @@ QVariant ChannelListModel::data(const QModelIndex &index, int role) const
 {
     daq_channel *c;
     try {
-        c = config.io.channels.at(index.row());
+        c = config->io.channels.at(index.row());
     } catch (...) {
         return QVariant();
     }
@@ -40,12 +40,12 @@ QVariant ChannelListModel::data(const QModelIndex &index, int role) const
 
 int ChannelListModel::rowCount(const QModelIndex &parent) const
 {
-    return config.io.channels.size();
+    return config->io.channels.size();
 }
 
 Qt::ItemFlags ChannelListModel::flags(const QModelIndex &index) const
 {
-    daq_channel *c = config.io.channels.at(index.row());
+    daq_channel *c = config->io.channels.at(index.row());
     if ( c && displayChannel(c) )
         return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
     else

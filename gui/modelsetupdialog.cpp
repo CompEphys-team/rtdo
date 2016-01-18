@@ -18,17 +18,17 @@ ModelSetupDialog::~ModelSetupDialog()
 
 void ModelSetupDialog::open()
 {
-    ui->modelfile->setText(QString::fromStdString(config.model.deffile));
-    ui->outdir->setText(QString::fromStdString(config.output.dir));
-    ui->dt->setValue(config.io.dt);
+    ui->modelfile->setText(QString::fromStdString(config->model.deffile));
+    ui->outdir->setText(QString::fromStdString(config->output.dir));
+    ui->dt->setValue(config->io.dt);
     QDialog::open();
 }
 
 void ModelSetupDialog::accept()
 {
-    config.model.deffile = ui->modelfile->text().toStdString();
-    config.output.dir = ui->outdir->text().toStdString();
-    config.io.dt = ui->dt->value();
+    config->model.deffile = ui->modelfile->text().toStdString();
+    config->output.dir = ui->outdir->text().toStdString();
+    config->io.dt = ui->dt->value();
     QDialog::accept();
 }
 

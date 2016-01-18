@@ -17,7 +17,7 @@ initial version: 2015-12-03
 #include "rt.h"
 #include "config.h"
 
-conf::Config config;
+conf::Config *config;
 
 int main(int argc, char *argv[])
 {
@@ -27,6 +27,8 @@ int main(int argc, char *argv[])
         return ret;
 //    rtdo_set_channel_active(daqchan_vout.handle, 1);
 //    rtdo_set_channel_active(daqchan_cin.handle, 1);
+
+    config = new conf::Config;
 
     // Set up GUI
     QApplication a(argc, argv);

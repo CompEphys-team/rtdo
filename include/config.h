@@ -18,6 +18,7 @@ initial version: 2016-01-08
 #include <sys/types.h>
 #include "types.h"
 #include "xmlmodel.h"
+#include "tinyxml.h"
 
 using namespace std;
 
@@ -31,63 +32,83 @@ namespace conf {
 }
 
 class conf::VCConfig {
+    friend class conf::Config;
 public:
     VCConfig();
-    void Init();
 
     string wavefile;
     int popsize;
 
     daq_channel *in;
     daq_channel *out;
+
+private:
+    void fromXML(TiXmlElement *section, const conf::IOConfig &io);
+    void toXML(TiXmlElement *section, const IOConfig &io) const;
 };
 
 class conf::IOConfig {
+    friend class conf::Config;
 public:
     IOConfig();
-    void Init();
+    ~IOConfig();
 
     vector<daq_channel *> channels;
     double dt;
     int ai_supersampling;
+
+private:
+    void fromXML(TiXmlElement *section);
+    void toXML(TiXmlElement *section) const;
 };
 
 class conf::OutputConfig {
+    friend class conf::Config;
 public:
     OutputConfig();
-    void Init();
 
     string dir;
+
+private:
+    void fromXML(TiXmlElement *section);
+    void toXML(TiXmlElement *section) const;
 };
 
 class conf::ModelConfig {
+    friend class conf::Config;
 public:
     ModelConfig();
-    void Init();
-    void load();
+
+    void load(bool forceReload=true);
 
     string deffile;
     XMLModel *obj;
 
 private:
+    void fromXML(TiXmlElement *section);
+    void toXML(TiXmlElement *section) const;
+
     string loadedObjFile;
 };
 
 class conf::WaveGenConfig {
+    friend class conf::Config;
 public:
     WaveGenConfig();
-    void Init();
 
     int popsize;
     int ngen;
+
+private:
+    void fromXML(TiXmlElement *section);
+    void toXML(TiXmlElement *section) const;
 };
 
 class conf::Config
 {
 public:
-    Config();
+    Config(string filename = string());
 
-    bool load(string filename);
     bool save(string filename);
 
     conf::VCConfig vc;
@@ -95,8 +116,10 @@ public:
     conf::OutputConfig output;
     conf::ModelConfig model;
     conf::WaveGenConfig wg;
+private:
+    bool load(string filename);
 };
 
-extern conf::Config config;
+extern conf::Config *config;
 
 #endif // CONFIG_H

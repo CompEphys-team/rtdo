@@ -16,14 +16,14 @@ WavegenSetupDialog::~WavegenSetupDialog()
 
 void WavegenSetupDialog::open()
 {
-    ui->popsize->setValue(config.wg.popsize);
-    ui->ngen->setValue(config.wg.ngen);
+    ui->popsize->setValue(config->wg.popsize);
+    ui->ngen->setValue(config->wg.ngen);
     QDialog::open();
 }
 
 void WavegenSetupDialog::accept()
 {
-    config.wg.popsize = ui->popsize->value();
-    config.wg.ngen = ui->ngen->value();
+    config->wg.popsize = ui->popsize->value();
+    config->wg.ngen = ui->ngen->value();
     QDialog::accept();
 }
