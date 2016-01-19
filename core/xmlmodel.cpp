@@ -86,9 +86,13 @@ bool XMLModel::load(string filename)
     return true;
 }
 
-std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, string path)
+std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, string path, bool single)
 {
-    string modelname = name(type);
+    string modelname = name(type, single);
+
+    if ( single ) {
+        npop = 1;
+    }
 
     int nExtraVars = 1;
 
@@ -107,7 +111,9 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         break;
     case WaveGen:
         of << "#define GAPOP " << npop << endl;
-        npop *= (_adjustableParams.size() + 1);
+        if ( !single ) {
+            npop *= (_adjustableParams.size() + 1);
+        }
         of << "#define NPOP " << npop << endl;
         nExtraVars += 2;
         break;
@@ -245,7 +251,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     return modelname;
 }
 
-string XMLModel::name(XMLModel::outputType type) const
+string XMLModel::name(XMLModel::outputType type, bool single) const
 {
     string modelname = _name + "_";
     switch ( type ) {
@@ -255,6 +261,9 @@ string XMLModel::name(XMLModel::outputType type) const
     case WaveGen:
         modelname += "wavegen";
         break;
+    }
+    if ( single ) {
+        modelname += "_single";
     }
     return modelname;
 }

@@ -26,10 +26,10 @@ public:
         bool multiplicative;
     };
 
-    std::string generateDefinition(enum outputType type, int npop, std::string path);
+    std::string generateDefinition(enum outputType type, int npop, std::string path, bool single = false);
 
     inline const std::string &name() const { return _name; }
-    std::string name(enum outputType type) const;
+    std::string name(enum outputType type, bool single = false) const;
     inline const std::vector<param> &vars() const { return _vars; }
     inline const std::vector<param> &adjustableParams() const { return _adjustableParams; }
     inline const std::vector<param> &params() const { return _params; }
