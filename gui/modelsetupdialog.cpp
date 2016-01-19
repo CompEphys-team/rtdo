@@ -36,7 +36,7 @@ void ModelSetupDialog::on_modelfile_browse_clicked()
 {
     QString file = QFileDialog::getOpenFileName(this,
                                                 QString("Select model file..."),
-                                                dirname(ui->outdir->text()),
+                                                dirname(ui->modelfile->text()),
                                                 QString("*.xml"));
     if ( !file.isEmpty() )
         ui->modelfile->setText(file);
