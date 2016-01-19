@@ -1,0 +1,89 @@
+<model name="B1_basic">
+	<precision digits="8" scalar="float"/>
+	<variable name="V" type="scalar" value="-52.2"/>
+	<variable name="m" type="scalar" value="0.0285961"/>
+	<variable name="h" type="scalar" value="0.9977761"/>
+	<variable name="nA" type="scalar" value="0.0172525"/>
+	<variable name="nB" type="scalar" value="0.0152976"/>
+	<variable name="a" type="scalar" value="0.0560959"/>
+	<variable name="b" type="scalar" value="0.0547893"/>
+
+	<adjustableParam name="gNa" type="scalar" value="7">
+		<range min="0" max="500"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="ENa" type="scalar" value="35">
+		<range min="0" max="100"/>
+		<perturbation type="+" rate="10"/>
+	</adjustableParam>
+
+	<adjustableParam name="gKA" type="scalar" value="1.44">
+		<range min="0" max="100"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="gKB" type="scalar" value="2.88">
+		<range min="0" max="100"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="gA" type="scalar" value="12">
+		<range min="0" max="100"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="EK" type="scalar" value="-67">
+		<range min="-100" max="0"/>
+		<perturbation type="+" rate="10"/>
+	</adjustableParam>
+
+	<adjustableParam name="gl" type="scalar" value="0.02">
+		<range min="0" max="100"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="El" type="scalar" value="-20">
+		<range min="-100" max="50"/>
+		<perturbation type="+" rate="10"/>
+	</adjustableParam>
+
+	<adjustableParam name="C" type="scalar" value="3.5">
+		<range min="0.1" max="10"/>
+		<perturbation type="*" rate="0.2"/>
+	</adjustableParam>
+
+	<code>
+    scalar Imem;
+    unsigned int mt;
+    scalar mdt= DT/50.0;
+    for (mt=0; mt &lt; 50; mt++) {
+      Isyn= 200.0*($(stepVG)-$(V));
+      Imem= -($(m)*$(m)*$(m)*$(h)*$(gNa)*($(V)-($(ENa)))+
+              ($(nA)*$(nA)*$(gKA)+$(nB)*$(gKB))*($(V)-($(EK)))+
+              $(a)*$(a)*$(a)*$(a)*$(b)*$(gA)*($(V)-($(EK)))+
+              $(gl)*($(V)-($(El)))-Isyn);
+
+      // Sodium:
+      scalar _inf= 1.0/(1.0 + exp((24.0+$(V))/(-8.0)));
+      scalar tau_= 0.3 + 8.0/(1 + exp(($(V)+40.0)/2.0));
+      $(m)+= ((_inf-$(m))/tau_)*mdt;
+      _inf= 1.0/(1.0 + exp((29.0+$(V))/3.8));
+      tau_= 2.4 + 15.0/(1 + exp(($(V)+24.3)/3.8));
+      $(h)+= ((_inf-$(h))/tau_)*mdt;
+
+      // Sustained potassium, fast and slow component:
+      _inf= 1.0/(1.0 + exp((14.9-$(V))/16.6));
+      tau_= 38.3 - 0.41*$(V);
+      $(nA)+= ((_inf-$(nA))/tau_)*mdt;
+      _inf= 1.0/(1.0 + exp((8.6-$(V))/14.6));
+      tau_= 5.7 - 0.07*$(V);
+      $(nB)+= ((_inf-$(nB))/tau_)*mdt;
+
+      // Transient potassium:
+      _inf= 1.0/(1.0 + exp((12.4+$(V))/(-14.1)));
+      tau_= 1.8 - 0.03*$(V);
+      $(a)+= ((_inf-$(a))/tau_)*mdt;
+      _inf= 1.0/(1.0 + exp((71.0+$(V))/6.6));
+      tau_= 26.0 - 0.22*$(V);
+      $(b)+= ((_inf-$(b))/tau_)*mdt;
+
+      $(V)+= Imem/$(C)*mdt;
+    }
+	</code>
+</model>

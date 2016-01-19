@@ -1,0 +1,201 @@
+<model name="B1_full">
+	<precision digits="8" scalar="float"/>
+	<variable name="V" type="scalar" value="-52.2"/>
+	<variable name="m" type="scalar" value="0.0285961"/>
+	<variable name="h" type="scalar" value="0.9977761"/>
+	<variable name="nA" type="scalar" value="0.0172525"/>
+	<variable name="nB" type="scalar" value="0.0152976"/>
+	<variable name="a" type="scalar" value="0.0560959"/>
+	<variable name="b" type="scalar" value="0.0547893"/>
+
+	<adjustableParam name="gNa" type="scalar" value="7">
+		<range min="0" max="500"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="ENa" type="scalar" value="35">
+		<range min="0" max="100"/>
+		<perturbation type="+" rate="10"/>
+	</adjustableParam>
+	<adjustableParam name="minfoff" type="scalar" value="-24.0">
+		<range min="-34" max="-14"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="minfslope" type="scalar" value="-8.0">
+		<range min="-7.5" max="-8.5"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="tmmin" type="scalar" value="0.3">
+		<range min="0.1" max="0.5"/>
+		<perturbation type="+" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="tmmax" type="scalar" value="8.3">
+		<range min="5" max="10"/>
+		<perturbation type="+" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="tmoff" type="scalar" value="-40.0">
+		<range min="-50" max="-30"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tmslope" type="scalar" value="2.0">
+		<range min="1.5" max="2.5"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="hinfoff" type="scalar" value="-29.0">
+		<range min="-39" max="-19"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="hinfslope" type="scalar" value="3.8">
+		<range min="2.8" max="4.8"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="thmin" type="scalar" value="2.4">
+		<range min="2" max="4"/>
+		<perturbation type="+" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="thmax" type="scalar" value="17.4">
+		<range min="15" max="20"/>
+		<perturbation type="+" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="thoff" type="scalar" value="-24.3">
+		<range min="-30" max="-15"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="thslope" type="scalar" value="3.8">
+		<range min="2.8" max="4.8"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+
+	<adjustableParam name="gKA" type="scalar" value="1.44">
+		<range min="0" max="100"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="gKB" type="scalar" value="2.88">
+		<range min="0" max="100"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="gA" type="scalar" value="12">
+		<range min="0" max="100"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="EK" type="scalar" value="-67">
+		<range min="-100" max="0"/>
+		<perturbation type="+" rate="10"/>
+	</adjustableParam>
+	<adjustableParam name="nAinfoff" type="scalar" value="-14.9">
+		<range min="-24.9" max="-4.9"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="nAinfslope" type="scalar" value="-16.6">
+		<range min="-18.2" max="-15.0"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="tnAoff" type="scalar" value="38.3">
+		<range min="28" max="49"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tnAslope" type="scalar" value="-0.41">
+		<range min="-4.1" max="-0.041"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="nBinfoff" type="scalar" value="-8.6">
+		<range min="-18.6" max="1.4"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="nBinfslope" type="scalar" value="-14.6">
+		<range min="-15.6" max="-13.6"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="tnBoff" type="scalar" value="5.7">
+		<range min="-4.3" max="15.7"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tnBslope" type="scalar" value="-0.07">
+		<range min="-0.7" max="-0.007"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="ainfoff" type="scalar" value="-12.4">
+		<range min="-22.4" max="-2.4"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="ainfslope" type="scalar" value="-14.1">
+		<range min="-15.1" max="-13.1"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="taoff" type="scalar" value="1.8">
+		<range min="-8.2" max="11.8"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="taslope" type="scalar" value="-0.03">
+		<range min="-0.3" max="-0.003"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="binfoff" type="scalar" value="-71.0">
+		<range min="-120.0" max="-40.0"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="binfslope" type="scalar" value="6.6">
+		<range min="5.6" max="7.6"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+	<adjustableParam name="tboff" type="scalar" value="26.0">
+		<range min="16" max="36"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tbslope" type="scalar" value="-0.22">
+		<range min="-2.2" max="-0.022"/>
+		<perturbation type="*" rate="0.001"/>
+	</adjustableParam>
+
+	<adjustableParam name="gl" type="scalar" value="0.02">
+		<range min="0" max="100"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="El" type="scalar" value="-20">
+		<range min="-100" max="50"/>
+		<perturbation type="+" rate="10"/>
+	</adjustableParam>
+
+	<adjustableParam name="C" type="scalar" value="3.5">
+		<range min="0.1" max="10"/>
+		<perturbation type="*" rate="0.2"/>
+	</adjustableParam>
+
+	<code>
+    scalar Imem;
+    unsigned int mt;
+    scalar mdt= DT/50.0;
+    for (mt=0; mt &lt; 50; mt++) {
+      Isyn= 200.0*($(stepVG)-$(V));
+      Imem= -($(m)*$(m)*$(m)*$(h)*$(gNa)*($(V)-($(ENa)))+
+              ($(nA)*$(nA)*$(gKA)+$(nB)*$(gKB))*($(V)-($(EK)))+
+              $(a)*$(a)*$(a)*$(a)*$(b)*$(gA)*($(V)-($(EK)))+
+              $(gl)*($(V)-($(El)))-Isyn);
+
+      // Sodium:
+      scalar _inf= 1.0/(1.0 + exp(($(V)-$(minfoff))/$(minfslope)));
+      scalar tau_= $(tmmin) + ($(tmmax)-$(tmmin))/(1 + exp(($(V)-$(tmoff))/$(tmslope)));
+      $(m)+= ((_inf-$(m))/tau_)*mdt;
+      _inf= 1.0/(1.0 + exp(($(V)-$(hinfoff))/$(hinfslope)));
+      tau_= $(thmin) + ($(thmax)-$(thmin))/(1 + exp(($(V)-$(thoff))/$(thslope)));
+      $(h)+= ((_inf-$(h))/tau_)*mdt;
+
+      // Sustained potassium, slow and fast component:
+      _inf= 1.0/(1.0 + exp(($(V)-$(nAinfoff))/$(nAinfslope)));
+      tau_= $(tnAoff) + $(tnAslope)*$(V);
+      $(nA)+= ((_inf-$(nA))/tau_)*mdt;
+      _inf= 1.0/(1.0 + exp(($(V)-$(nBinfoff))/$(nBinfslope)));
+      tau_= $(tnBoff) + $(tnBslope)*$(V);
+      $(nB)+= ((_inf-$(nB))/tau_)*mdt;
+
+      // Transient potassium:
+      _inf= 1.0/(1.0 + exp(($(V)-$(ainfoff))/$(ainfslope)));
+      tau_= $(taoff) + $(taslope)*$(V);
+      $(a)+= ((_inf-$(a))/tau_)*mdt;
+      _inf= 1.0/(1.0 + exp(($(V)-$(binfoff))/$(binfslope)));
+      tau_= $(tboff) + $(tbslope)*$(V);
+      $(b)+= ((_inf-$(b))/tau_)*mdt;
+
+      $(V)+= Imem/$(C)*mdt;
+    }
+	</code>
+</model>
