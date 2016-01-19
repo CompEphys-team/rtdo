@@ -89,9 +89,12 @@ extern "C" inputSpec wavegen(int focusParam, int nGenerations)
 
 	for (size_t generation = 0; generation < NGEN; ++generation)
 	{
-		memset( sn, 0x00000000, NPOP * sizeof( size_t ) );
-		cudaMemset( d_errHH, 0x0, VSize );
-		var_init_auto_detune();
+        for ( int j = 0; j < NPOP; j++ ) {
+            errHH[j] = 0.0;
+        }
+
+        var_init_auto_detune();
+        memset( sn, 0x00000000, NPOP * sizeof( size_t ) );
         otHH = OT;
 
 		for (size_t i = 0; i < stims.size(); ++i)
