@@ -145,9 +145,27 @@ bool run_vclamp_start() {
     for ( vector<daq_channel *>::iterator it = config->io.channels.begin(); it != config->io.channels.end(); ++it ) {
         if ( *it == config->vc.in ) {
             active_in = *it;
+            if ( active_in->read_offset_later && active_in->read_offset_src ) {
+                int err;
+                double tmp = rtdo_read_now(active_in->read_offset_src->handle, &err);
+                if ( err ) {
+                    cerr << "Warning: Read offset for channel " << active_in->name << " failed with error code " << err << endl;
+                } else {
+                    active_in->offset = tmp;
+                }
+            }
             rtdo_set_channel_active(active_in->handle, 1);
         } else if ( *it == config->vc.out ) {
             active_out = *it;
+            if ( active_out->read_offset_later && active_out->read_offset_src ) {
+                int err;
+                double tmp = rtdo_read_now(active_out->read_offset_src->handle, &err);
+                if ( err ) {
+                    cerr << "Warning: Read offset for channel " << active_out->name << " failed with error code " << err << endl;
+                } else {
+                    active_out->offset = tmp;
+                }
+            }
             rtdo_set_channel_active(active_out->handle, 1);
         } else {
             rtdo_set_channel_active((*it)->handle, 0);
