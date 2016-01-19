@@ -84,11 +84,28 @@ extern "C" inputSpec wavegen(int focusParam, int nGenerations)
 	initialize();
     rtdo_init_bridge();
 	
+    //------------------------------------------------------
+    // Get steady-state variable values at holding potential
+    scalar tmp = VSTEP0;
+    cudaMemcpy(d_stepVGHH, &tmp, theSize(model.ftype), cudaMemcpyHostToDevice);
+    for ( double t = 0.0; t < 10000.0; t += DT ) {
+        // A single thread on a GPU, blasphemy!
+        calcNeurons <<< 1, 1 >>> (10000.0, t);
+    }
+    scalar holdingVar[NVAR];
+    for ( int i = 0; i < NVAR; i++ )
+        cudaMemcpy(&holdingVar[i], d_mvar[i], theSize(model.ftype), cudaMemcpyDeviceToHost);
+
 
 	unsigned int VSize = NPOP*theSize( model.ftype );
 
 	for (size_t generation = 0; generation < NGEN; ++generation)
 	{
+        for ( int i = 0; i < NVAR; i++ ) {
+            for ( int j = 0; j < NPOP; j++ ) {
+                mvar[i][j] = holdingVar[i];
+            }
+        }
         for ( int j = 0; j < NPOP; j++ ) {
             errHH[j] = 0.0;
         }
