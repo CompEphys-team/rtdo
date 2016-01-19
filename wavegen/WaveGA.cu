@@ -86,15 +86,13 @@ extern "C" inputSpec wavegen(int focusParam, int nGenerations)
 	
     //------------------------------------------------------
     // Get steady-state variable values at holding potential
-    scalar tmp = VSTEP0;
-    cudaMemcpy(d_stepVGHH, &tmp, theSize(model.ftype), cudaMemcpyHostToDevice);
+    stepVGHH[0] = VSTEP0;
     for ( double t = 0.0; t < 10000.0; t += DT ) {
-        // A single thread on a GPU, blasphemy!
-        calcNeurons <<< 1, 1 >>> (10000.0, t);
+        calcSingleNeuronCPU(t);
     }
     scalar holdingVar[NVAR];
     for ( int i = 0; i < NVAR; i++ )
-        cudaMemcpy(&holdingVar[i], d_mvar[i], theSize(model.ftype), cudaMemcpyDeviceToHost);
+        holdingVar[i] = mvar[i][0];
 
 
 	unsigned int VSize = NPOP*theSize( model.ftype );
