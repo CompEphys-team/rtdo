@@ -17,28 +17,10 @@
 #include <bitset>
 #include <limits>
 
-scalar range[NPARAM][2];
-
-#ifndef _WAVE
-ostream &operator<<(ostream &os, inputSpec &I)
-{
-  os << " " << I.t << " ";
-  os << " " << I.ot << " ";
-  os << " " << I.dur << " ";
-  os << " " << I.baseV << "  ";
-  os << " " << I.N << "    ";  
-  for (int i= 0; i < I.N; i++) {
-    os << I.st[i] << " ";
-    os << I.V[i] << "  ";
-  }
-  return os;
-}
-#endif
-
 void single_var_init_fullrange(int n)
 {
     for ( int i = 0; i < NPARAM; i++ ) {
-        mparam[i][n] = aParamRange[2*i] + R.n() * (range[2*i+1] - range[2*i]); // uniform in allowed interval
+        mparam[i][n] = aParamRange[2*i] + R.n() * (aParamRange[2*i+1] - aParamRange[2*i]); // uniform in allowed interval
     }
 }
 
