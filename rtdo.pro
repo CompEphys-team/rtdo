@@ -20,6 +20,9 @@ TEMPLATE = app
 
 CONFIG(debug, release|debug):DEFINES += _DEBUG
 
+DEFINES += SOURCEDIR=\\\"$$_PRO_FILE_PWD_\\\" \
+    INSTANCEDIR=\\\"$$_PRO_FILE_PWD_/models\\\"
+
 SOURCES += core/main.cpp \
     gui/mainwindow.cpp \
     core/softrtdaq.c \

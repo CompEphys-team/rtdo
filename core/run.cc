@@ -79,7 +79,7 @@ int compile_model(XMLModel::outputType type) {
     int ret=0;
 
     int popsize=0;
-    string simulator(SIMDIR);
+    string simulator(SOURCEDIR);
     switch ( type ) {
     case XMLModel::VClamp:
         popsize = config->vc.popsize;
@@ -214,7 +214,7 @@ void run_vclamp_stop() {
 }
 
 void *vclaunch(void *unused) {
-    string fname = string(SIMDIR) + "/simulation/VClampGA.so";
+    string fname = string(SOURCEDIR) + "/simulation/VClampGA.so";
     dlerror();
     if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
         std::cerr << dlerror() << endl;
@@ -296,7 +296,7 @@ void run_wavegen_stop() {
 void *wglaunch(void * arg) {
     int focusParam = *((int*)arg);
     delete (int*)arg;
-    string fname = string(SIMDIR) + "/wavegen/WaveGen.so";
+    string fname = string(SOURCEDIR) + "/wavegen/WaveGen.so";
     dlerror();
     if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
         cerr << dlerror() << endl;
