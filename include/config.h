@@ -79,7 +79,7 @@ class conf::ModelConfig {
 public:
     ModelConfig();
 
-    void load(bool forceReload=true);
+    bool load(bool forceReload=true);
 
     string deffile;
     XMLModel *obj;

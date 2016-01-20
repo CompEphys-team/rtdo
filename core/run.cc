@@ -91,7 +91,11 @@ int compile_model(XMLModel::outputType type) {
         break;
     }
 
-    config->model.load();
+    if ( !config->model.load() ) {
+        cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
+        return 1;
+    }
+
     string modelname = config->model.obj->generateDefinition(type, popsize, INSTANCEDIR);
 
     string cmd = string("cd ") + INSTANCEDIR + " && " + cxxflags + "buildmodel.sh " + modelname + " 0 2>&1";
@@ -303,7 +307,10 @@ void *wglaunch(void * arg) {
         return (void *)EXIT_FAILURE;
     }
 
-    config->model.load(false);
+    if ( !config->model.load(false) ) {
+        cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
+        return (void *)EXIT_FAILURE;
+    }
 
     if ( focusParam == -1 ) {
         stringstream buffer;

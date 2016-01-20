@@ -219,13 +219,18 @@ void conf::ModelConfig::toXML(TiXmlElement *section) const
     section->LinkEndChild(el);
 }
 
-void conf::ModelConfig::load(bool forceReload) {
+bool conf::ModelConfig::load(bool forceReload) {
     if ( !forceReload && obj && !deffile.compare(loadedObjFile) )
-        return;
+        return true;
     else if ( obj )
         delete obj;
-    obj = new XMLModel(deffile);
+    try {
+        obj = new XMLModel(deffile);
+    } catch (exception &e) {
+        return false;
+    }
     loadedObjFile = deffile;
+    return true;
 }
 
 

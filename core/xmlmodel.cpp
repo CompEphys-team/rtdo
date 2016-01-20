@@ -15,7 +15,7 @@ XMLModel::XMLModel()
 XMLModel::XMLModel(string filename)
 {
     if ( !load(filename) )
-        throw("Error loading model definition.");
+        throw(exception());
 }
 
 bool XMLModel::load(string filename)
