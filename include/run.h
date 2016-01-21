@@ -16,23 +16,8 @@ initial version: 2015-12-08
 
 #include "types.h"
 #include "rt.h"
-#include <iostream>
-#include <queue>
-#include <vector>
 #include "xmlmodel.h"
-
-typedef struct {
-  double t;
-  double ot;
-  double dur;
-  double baseV;
-  int N;
-  std::vector<double> st;
-  std::vector<double> V;
-  double fit;
-} inputSpec;
-std::ostream &operator<<(std::ostream &os, inputSpec &I);
-std::istream &operator>>(std::istream &is, inputSpec &I);
+#include "shared.h"
 
 int compile_model(XMLModel::outputType type);
 
@@ -42,7 +27,8 @@ void run_vclamp_stop();
 daq_channel *run_get_active_outchan();
 daq_channel *run_get_active_inchan();
 
-void run_digest(double best_err, double mavg, int nextS);
+void run_digest(int generation, double best_err, double mavg, int nextS);
+void run_use_backlog(backlog::Backlog *log);
 int run_check_break();
 
 double run_getsample(float t);

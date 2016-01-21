@@ -22,6 +22,7 @@ void single_var_init_fullrange(int n)
     for ( int i = 0; i < NPARAM; i++ ) {
         mparam[i][n] = aParamRange[2*i] + R.n() * (aParamRange[2*i+1] - aParamRange[2*i]); // uniform in allowed interval
     }
+    uids[n] = ++latest_uid;
 }
 
 void single_var_reinit(int n, double fac) 
@@ -51,6 +52,7 @@ void copy_var(int src, int trg)
     for ( int i = 0; i < NPARAM; i++ ) {
         mparam[i][trg] = mparam[i][src];
     }
+    uids[trg] = ++latest_uid;
 }
 
 void var_init_fullrange()

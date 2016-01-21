@@ -80,6 +80,9 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 		initial[i] = 1;
 	}
 
+    backlog::AsyncLog *logger = new backlog::AsyncLog(Nstim*NPOP, Nstim);
+    run_use_backlog(logger->log());
+
 	//-----------------------------------------------------------------
 	// build the neuronal circuitery
 
@@ -105,6 +108,7 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 	timer.startTimer();
 	t = 0.0; cerr << pperturb.size() << " iterations" << endl;
 	int nextS = 0;
+    int generation = 0;
 	while (!done)
     {
         truevar_init();
@@ -134,9 +138,11 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
             }
             CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
 
-            if ( (done = run_check_break()) )
+            if ( (done = run_check_break()) ) {
                 break;
-			procreatePopPperturb( osb, pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim ); //perturb for next step
+            }
+
+            procreatePopPperturb( osb, pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim, logger, generation++ ); //perturb for next step
         }
 	}
     timer.stopTimer();
@@ -145,6 +151,8 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 	fclose( osf );
 	fclose( timef );
 	fclose( osb );
+
+    logger->halt();
 
 	fprintf( stderr, "DONE" );
 	return 0;

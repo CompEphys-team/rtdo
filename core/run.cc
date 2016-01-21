@@ -38,6 +38,8 @@ void *vclaunch(void *);
 void *wglaunch(void *);
 void *sqread(void *);
 
+backlog::Backlog *logp;
+
 string basename_nosuffix(const string& path) {
     int lastslash = path.find_last_of('/');
     int lastperiod = path.find_last_of('.');
@@ -190,6 +192,7 @@ bool run_vclamp_start() {
     }
     if ( !active_in || !active_out )
         return false;
+    logp = 0;
     thread = rtdo_thread_create(vclaunch, 0, 1000000);
     sqthread = rtdo_thread_create(sqread, 0, 1000000);
     return true;
@@ -207,6 +210,7 @@ void run_vclamp_stop() {
     if ( lib ) {
         dlclose(lib);
         lib = 0;
+        logp = 0;
     }
     rtdo_write_now(active_out->handle, active_out->offset);
     active_in = 0;
@@ -225,6 +229,27 @@ void *vclaunch(void *unused) {
         return (void *)EXIT_FAILURE;
     }
     libmain("live", config->output.dir.c_str(), config->vc.wavefile.c_str());
+
+    // Spit out some of the best models
+    if ( logp ) {
+        void (*backlogSort)(backlog::Backlog *, bool discardUntested);
+        dlerror();
+        if ( !(*(void**)(&backlogSort) = dlsym(lib, "BacklogSort")) ) {
+            cerr << dlerror() << endl;
+            return (void *)EXIT_FAILURE;
+        }
+        cout << endl;
+        cout << "Backlog contains " << logp->log.size() << " entries, of which ";
+        backlogSort(logp, false);
+        cout << logp->log.size() << " are valid, and ";
+        backlogSort(logp, true);
+        cout << logp->log.size() << " were tested on all stimuli." << endl;
+        int i = 0;
+        for ( list<backlog::LogEntry>::iterator e = logp->log.begin(); e != logp->log.end() && i < 20; ++e, ++i ) {
+            cout << i << ": uid " << e->uid << ", since " << e->since << ", err=" << e->errScore << endl;
+        }
+    }
+
     return 0;
 }
 
@@ -255,8 +280,13 @@ daq_channel *run_get_active_inchan() {
     return active_in;
 }
 
-void run_digest(double best_err, double mavg, int nextS) {
-    std::cerr << best_err << " " << mavg << " " << nextS << std::endl;
+void run_digest(int generation, double best_err, double mavg, int nextS) {
+    cout << generation << " " << best_err << " " << mavg << " " << nextS << endl;
+}
+
+void run_use_backlog(backlog::Backlog *log)
+{
+    logp = log;
 }
 
 int run_check_break() {

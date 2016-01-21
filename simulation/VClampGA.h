@@ -37,8 +37,13 @@ randomGauss RG;
 #define BASEV -60.0
 #define MAVGBUFSZ 10
 
+long long *uids = new long long[NPOP];
+long long latest_uid = 0;
+
+#include "shared.h"
 #include "run.h"
 #include "helper.h"
+#include "backlog.cc"
 
 //#define DEBUG_PROCREATE
 #include "GA.cc"

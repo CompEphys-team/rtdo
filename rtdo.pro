@@ -52,6 +52,7 @@ OTHER_FILES += simulation/GNUmakefile \
     simulation/VClampGA.h \
     simulation/helper.h \
     simulation/GA.cc \
+    simulation/backlog.cc \
     wavegen/GNUmakefile \
     wavegen/WaveGA.cu \
     wavegen/WaveGA.h \
@@ -77,7 +78,8 @@ HEADERS  += \
     include/config.h \
     include/xmlmodel.h \
     include/wavegensetupdialog.h \
-    include/modelsetupdialog.h
+    include/modelsetupdialog.h \
+    include/shared.h
 
 FORMS    += \
     gui/mainwindow.ui \
