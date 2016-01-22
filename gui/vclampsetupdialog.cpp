@@ -68,10 +68,6 @@ void VClampSetupDialog::accept()
     config->vc.popsize = ui->popSize->value();
 
     QDialog::accept();
-
-    QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
-    compile_model(XMLModel::VClamp);
-    QApplication::restoreOverrideCursor();
 }
 
 void VClampSetupDialog::on_waveformBrowse_clicked()

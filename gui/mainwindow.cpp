@@ -51,7 +51,9 @@ void MainWindow::on_vclamp_stop_clicked()
 
 void MainWindow::on_vclamp_compile_clicked()
 {
+    QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
     compile_model(XMLModel::VClamp);
+    QApplication::restoreOverrideCursor();
 }
 
 void MainWindow::on_actionSave_configuration_triggered()
@@ -85,5 +87,7 @@ void MainWindow::on_wavegen_stop_clicked()
 
 void MainWindow::on_wavegen_compile_clicked()
 {
+    QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
     compile_model(XMLModel::WaveGen);
+    QApplication::restoreOverrideCursor();
 }
