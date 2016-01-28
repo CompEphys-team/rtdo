@@ -39,7 +39,8 @@ LogEntry::LogEntry(int idx, int generation, int nstims) :
     since(generation),
     uid(uids[idx]),
     err(vector<double>(nstims, scalarLim.lowest())),
-    param(vector<double>(NPARAM))
+    param(vector<double>(NPARAM)),
+    rank(vector<int>(nstims, 0))
 {
     int i = 0;
     for ( vector<double>::iterator it = param.begin(); it != param.end(); ++it, ++i ) {
@@ -53,7 +54,7 @@ Backlog::Backlog(int size, int nstims) :
     log(list<LogEntry>(size))
 {}
     
-void Backlog::touch(int idx, int generation, int stim)
+void Backlog::touch(int idx, int generation, int stim, int rank)
 {
     target = uids[idx];
     list<LogEntry>::iterator it = find_if(log.begin(), log.end(), uidMatch);
@@ -65,6 +66,7 @@ void Backlog::touch(int idx, int generation, int stim)
         log.splice(log.end(), log, it);
     }
     it->err[stim] = errHH[idx];
+    it->rank[stim] = rank;
 }
 
 void Backlog::sort(bool discardUntested)
@@ -124,7 +126,7 @@ public:
         halt();
     }
 
-    void touch(errTupel *first, errTupel *last, int generation, int stim)
+    void touch(errTupel *first, errTupel *last, int generation, int stim, int rank = 0)
     {
         if ( stop ) {
             return;
@@ -186,8 +188,9 @@ private:
             mHeldByIdleExec.unlock();
             mHeldByBusyExec.lock();
             if ( !stop ) {
-                for ( errTupel *it = first; it <= last; ++it ) {
-                    _log.touch(it->id, generation, stim);
+                int rank = 1;
+                for ( errTupel *it = first; it <= last; ++it, ++rank ) {
+                    _log.touch(it->id, generation, stim, rank);
                 }
             }
             mHeldByBusyExec.unlock();

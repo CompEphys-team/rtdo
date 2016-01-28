@@ -239,14 +239,25 @@ void *vclaunch(void *unused) {
             return (void *)EXIT_FAILURE;
         }
         cout << endl;
-        cout << "Backlog contains " << logp->log.size() << " entries, of which ";
         backlogSort(logp, false);
-        cout << logp->log.size() << " are valid, and ";
+        cout << "Backlog contains " << logp->log.size() << " valid entries, of which ";
         backlogSort(logp, true);
         cout << logp->log.size() << " were tested on all stimuli." << endl;
         int i = 0;
         for ( list<backlog::LogEntry>::iterator e = logp->log.begin(); e != logp->log.end() && i < 20; ++e, ++i ) {
             cout << i << ": uid " << e->uid << ", since " << e->since << ", err=" << e->errScore << endl;
+            // The following code blindly assumes that (a) there is a single stimulation per parameter,
+            // and (b) the stimulations are in the same order as the parameters. This holds true for wavegen-produced
+            // stims as of 22 Jan 2016...
+            vector<double>::const_iterator errs = e->err.begin();
+            vector<double>::const_iterator vals = e->param.begin();
+            vector<int>::const_iterator ranks = e->rank.begin();
+            vector<XMLModel::param>::const_iterator names = config->model.obj->adjustableParams().begin();
+            cout << "\tParam\tValue\tError*\tRank*\t(* at the most recent stimulation)" << endl;
+            for ( ; errs != e->err.end() && vals != e->param.end() && names != config->model.obj->adjustableParams().end();
+                  ++errs, ++vals, ++names ) {
+                cout << '\t' << names->name << '\t' << *vals << '\t' << *errs << '\t' << *ranks << endl;
+            }
         }
     }
 

@@ -45,6 +45,7 @@ public:
     LogEntry(int idx, int generation, int nstims);
     std::vector<double> param;
     std::vector<double> err;
+    std::vector<int> rank;
     double errScore;
     int since;
     long long uid;
@@ -53,7 +54,7 @@ class Backlog
 {
 public:
     Backlog(int size, int nstims);
-    void touch(int idx, int generation, int stim);
+    void touch(int idx, int generation, int stim, int rank = 0);
     void sort(bool discardUntested = true);
 
     int size;
