@@ -14,7 +14,7 @@ initial version: 2015-11-17
 #include <math.h>
 #include <pthread.h>
 #include <signal.h>
-#include "RC_rtai_comedi.h"
+#include "impl/RC_wrapper.h"
 #include <rtai_sem.h>
 #include <rtai_mbx.h>
 
@@ -23,7 +23,7 @@ initial version: 2015-11-17
 #include "softrtdaq.h"
 #include "globals.h"
 
-static comedi_t *devices[DO_MAX_DEVICES] = {0};
+static struct comedi_t_struct *devices[DO_MAX_DEVICES] = {0};
 
 static RT_TASK *maintask;
 static SEM *sync_sem;

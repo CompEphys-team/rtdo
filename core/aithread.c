@@ -10,7 +10,7 @@ email to:  fbk21@sussex.ac.uk
 initial version: 2015-12-03
 
 --------------------------------------------------------------------------*/
-#include "RC_rtai_comedi.h"
+#include "impl/RC_wrapper.h"
 #include <rtai_sem.h>
 #include <rtai_mbx.h>
 #include "rt.h"
