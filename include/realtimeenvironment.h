@@ -35,6 +35,10 @@ public:
     void pause();
     void setSupersamplingRate(int acquisitionsPerSample);
 
+    //!< References to the input and output channel in use
+    Channel &outChannel() const;
+    Channel &inChannel(int index = 0) const;
+
     /** Use @a c starting from next call to @fn RealtimeEnvironment::sync.
      * Note: At any given time, only one output channel can be active. Previously set output channels are therefore discarded.
      **/

@@ -64,18 +64,15 @@ void conf::IOConfig::fromXML(TiXmlElement *section)
 #endif
         el->QueryIntAttribute("ID", &id);
 
-        if ( (sub = el->FirstChildElement("type")) ) {
-            std::string tmp = sub->GetText();
+        if ( (sub = el->FirstChildElement("device")) ) {
+            sub->QueryIntAttribute("number", &deviceno);
+            std::string tmp(sub->Attribute("type"));
             if ( !tmp.compare("AnalogIn") )
                 type = Channel::AnalogIn;
             else if ( !tmp.compare("AnalogOut") )
                 type = Channel::AnalogOut;
             else
                 type = Channel::Simulator;
-        }
-
-        if ( (sub = el->FirstChildElement("device")) ) {
-            sub->QueryIntAttribute("number", &deviceno);
         }
 
         if ( (sub = el->FirstChildElement("link")) ) {

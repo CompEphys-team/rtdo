@@ -70,7 +70,8 @@ void RealtimeEnvironment::setSupersamplingRate(int r)
 void RealtimeEnvironment::addChannel(Channel &c)
 {
     if ( c.type() == Channel::AnalogOut ) {
-        pImpl->out->channels[0] = c;
+        pImpl->out->channels.clear();
+        pImpl->out->channels.push_back(c);
         pImpl->out->reloadChannels = true;
     } else if ( c.type() == Channel::AnalogIn ) {
         pImpl->in->channels.push_back(c);
@@ -84,6 +85,16 @@ void RealtimeEnvironment::clearChannels()
     pImpl->out->reloadChannels = true;
     pImpl->in->channels.clear();
     pImpl->in->reloadChannels = true;
+}
+
+Channel &RealtimeEnvironment::outChannel() const
+{
+    return pImpl->out->channels.at(0);
+}
+
+Channel &RealtimeEnvironment::inChannel(int index) const
+{
+    return pImpl->in->channels.at(index);
 }
 
 struct comedi_t_struct *RealtimeEnvironment::getDevice(int n, bool RT)
@@ -121,6 +132,16 @@ void RealtimeEnvironment::addChannel(Channel &c)
 }
 
 void RealtimeEnvironment::clearChannels()
+{
+    // NYI
+}
+
+Channel &RealtimeEnvironment::outChannel() const
+{
+    // NYI
+}
+
+Channel &RealtimeEnvironment::inChannel(int index) const
 {
     // NYI
 }

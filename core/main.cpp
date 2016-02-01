@@ -30,5 +30,9 @@ int main(int argc, char *argv[])
     w.show();
 
     // Run GUI
-    return a.exec();
+    try {
+        return a.exec();
+    } catch ( exception &e ) {
+        std::cout << "A fatal exception occurred:" << std::endl << e.what() << std::endl;
+    }
 }

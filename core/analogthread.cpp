@@ -23,12 +23,22 @@ extern "C" {
 
 void *launchIn(void *_this)
 {
-    return ((AnalogThread *)_this)->inputFn();
+    try {
+        return ((AnalogThread *)_this)->inputFn();
+    } catch ( RealtimeException &e ) {
+        std::cerr << "An exception occurred in the analog input thread:" << std::endl << e.what() << std::endl;
+        throw;
+    }
 }
 
 void *launchOut(void *_this)
 {
-    return ((AnalogThread *)_this)->outputFn();
+    try {
+        return ((AnalogThread *)_this)->outputFn();
+    } catch ( RealtimeException &e ) {
+        std::cerr << "An exception occurred in the analog output thread:" << std::endl << e.what() << std::endl;
+        throw;
+    }
 }
 
 

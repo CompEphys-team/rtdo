@@ -344,7 +344,7 @@ int Channel::offsetSource() const { return pImpl->offsetSrc; }
 void Channel::flush()
 {
     lsampl_t buf[Channel_MailboxSize];
-    while ( rt_mbx_receive_wp(&*(pImpl->mbx), &buf, Channel_MailboxSize * sizeof(lsampl_t)) > 0 ) {}
+    while ( rt_mbx_receive_wp(&*(pImpl->mbx), &buf, Channel_MailboxSize * sizeof(lsampl_t)) < Channel_MailboxSize ) {}
 }
 
 double Channel::nextSample()
@@ -365,13 +365,12 @@ void Channel::readOffset()
 {
     double o;
     if ( pImpl->offsetSrc > 0 ) {
-//        Waiting for config to catch up
-//        for ( Channel &c : config->io.channels ) {
-//            if ( c.ID() == pImpl->offsetSrc && c.read(&o, true) ) {
-//                pImpl->_offset = o;
-//                break;
-//            }
-//        }
+        for ( Channel &c : config->io.channels ) {
+            if ( c.ID() == pImpl->offsetSrc && c.read(o, true) ) {
+                pImpl->_offset = o;
+                break;
+            }
+        }
     }
 }
 

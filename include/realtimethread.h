@@ -32,8 +32,8 @@ public:
     void *join();
     bool joinable() const;
 
-private:
     class Impl;
+private:
     std::unique_ptr<Impl> pImpl;
 };
 

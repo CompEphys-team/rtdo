@@ -50,7 +50,10 @@ RealtimeConditionVariable::~RealtimeConditionVariable() {}
 
 void RealtimeConditionVariable::wait()
 {
-    int ret = rt_sem_wait(pImpl->sem);
+    int ret;
+    do {
+        ret = rt_sem_wait(pImpl->sem);
+    } while ( ret == RTE_UNBLKD );
     if ( ret > 1 ) {
         throw RealtimeException(RealtimeException::RuntimeFunc, "rt_sem_wait", ret);
     }
@@ -58,7 +61,10 @@ void RealtimeConditionVariable::wait()
 
 bool RealtimeConditionVariable::wait_if()
 {
-    int ret = rt_sem_wait_if(pImpl->sem);
+    int ret;
+    do {
+        ret = rt_sem_wait_if(pImpl->sem);
+    } while ( ret == RTE_UNBLKD );
     if ( ret > 1 ) {
         throw RealtimeException(RealtimeException::RuntimeFunc, "rt_sem_wait_if", ret);
     }
