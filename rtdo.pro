@@ -20,7 +20,7 @@ TEMPLATE = app
 
 CONFIG(debug, release|debug):DEFINES += _DEBUG
 
-#CONFIG += realtime
+CONFIG += realtime
 realtime {
     DEFINES += CONFIG_RT
 
@@ -83,7 +83,8 @@ SOURCES += core/main.cpp \
     core/impl/channel_RC.cpp \
     core/impl/channel_SC.cpp \
     core/realtimeconditionvariable.cpp \
-    core/impl/RC_wrapper.c
+    core/impl/RC_wrapper.c \
+    core/runner.cpp
 
 OTHER_FILES += simulation/GNUmakefile \
     simulation/VClampGA.cu \
@@ -121,7 +122,8 @@ HEADERS  += \
     core/impl/realtimeenvironment_impl.h \
     core/impl/channel_impl.h \
     include/realtimeconditionvariable.h \
-    core/impl/RC_wrapper.h
+    core/impl/RC_wrapper.h \
+    include/runner.h
 
 FORMS    += \
     gui/mainwindow.ui \

@@ -10,73 +10,23 @@ email to:  fbk21@sussex.ac.uk
 initial version: 2015-12-08
 
 --------------------------------------------------------------------------*/
-/*
+
 #include <string>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <dlfcn.h>
 #include <stdio.h>
+#include <unistd.h>
+#include "util.h"
 #include "run.h"
-#include "rt.h"
-#include "globals.h"
 #include "config.h"
 #include "xmlmodel.h"
-#include "realtimethread.h"
+#include "realtimeenvironment.h"
 
 using namespace std;
 
-static RealtimeThread *libthread = 0, *sqthread = 0;
-static void *lib=0;
-static int (*libmain)(const char*, const char*, const char*);
-static inputSpec (*wgmain)(int, int);
-static int stop=0;
-static daq_channel *active_in=0, *active_out=0;
-
-static queue<double> samples_q;
-
-void *vclaunch(void *);
-void *wglaunch(void *);
-void *sqread(void *);
-
-backlog::Backlog *logp;
-
-string basename_nosuffix(const string& path) {
-    int lastslash = path.find_last_of('/');
-    int lastperiod = path.find_last_of('.');
-    if ( lastslash && lastslash+1 < lastperiod ) {
-        return path.substr(lastslash+1, lastperiod-lastslash-1);
-    } else {
-        return string();
-    }
-}
-
-ostream &operator<<(ostream &os, inputSpec &I) {
-    os << I.t << " " << I.ot << " " << I.dur << " " << I.baseV << " " << I.N << " ";
-    for (int i = 0; i < I.N; i++) {
-        os << I.st[i] << " ";
-        os << I.V[i] << " ";
-    }
-    os << I.fit;
-    return os;
-}
-
-istream &operator>>(istream &is, inputSpec &I) {
-    double tmp;
-    I.st.clear();
-    I.V.clear();
-    is >> I.t >> I.ot >> I.dur >> I.baseV >> I.N;
-    for ( int i = 0; i < I.N; i++ ) {
-        is >> tmp;
-        I.st.push_back(tmp);
-        is >> tmp;
-        I.V.push_back(tmp);
-    }
-    is >> I.fit;
-    return is;
-}
-
-int compile_model(XMLModel::outputType type) {
+bool compile_model(XMLModel::outputType type) {
     string cxxflags = string("CXXFLAGS=\"$CXXFLAGS -std=c++11 -DDT=") + to_string(config->io.dt) + "\" ";
     string nvccflags = string("NVCCFLAGS=\"$NVCCFLAGS -DDT=") + to_string(config->io.dt) + "\" ";
     int ret=0;
@@ -96,7 +46,7 @@ int compile_model(XMLModel::outputType type) {
 
     if ( !config->model.load() ) {
         cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
-        return 1;
+        return false;
     }
 
     string modelname = config->model.obj->generateDefinition(type, popsize, INSTANCEDIR);
@@ -105,17 +55,15 @@ int compile_model(XMLModel::outputType type) {
     cout << cmd << endl;
     FILE *is = popen(cmd.c_str(), "r");
     char buffer[1024];
-    stringstream dump;
     while ( fgets(buffer, 1024, is) ) {
-        dump << buffer;
+        cout << buffer;
         if ( strstr(buffer, "error") || strstr(buffer, "Error") )
             ret = 1;
     }
     pclose(is);
-    cout << dump.str();
     if ( ret ) {
         cerr << "Model build failed." << endl;
-        return 1;
+        return false;
     }
 
     // Build single-neuron version
@@ -146,127 +94,139 @@ int compile_model(XMLModel::outputType type) {
     cout << cmd << endl;
     if ( (ret = system(cmd.c_str())) ) {
         cerr << "Compilation failed." << endl;
-        return 1;
+        return false;
     }
 
     cout << "Compilation successful." << endl;
-    return 0;
-}
-
-bool run_vclamp_start() {
-    if ( libthread && libthread->joinable() )
-        return false;
-
-    while ( !samples_q.empty() )
-        samples_q.pop();
-
-    stop = 0;
-    rtdo_set_sampling_rate(config->io.dt, 1);
-    for ( vector<daq_channel *>::iterator it = config->io.channels.begin(); it != config->io.channels.end(); ++it ) {
-        if ( *it == config->vc.in ) {
-            active_in = *it;
-            if ( active_in->read_offset_later && active_in->read_offset_src ) {
-                int err;
-                double tmp = rtdo_read_now(active_in->read_offset_src->handle, &err);
-                if ( err ) {
-                    cerr << "Warning: Read offset for channel " << active_in->name << " failed with error code " << err << endl;
-                } else {
-                    active_in->offset = tmp;
-                }
-            }
-            rtdo_set_channel_active(active_in->handle, 1);
-        } else if ( *it == config->vc.out ) {
-            active_out = *it;
-            if ( active_out->read_offset_later && active_out->read_offset_src ) {
-                int err;
-                double tmp = rtdo_read_now(active_out->read_offset_src->handle, &err);
-                if ( err ) {
-                    cerr << "Warning: Read offset for channel " << active_out->name << " failed with error code " << err << endl;
-                } else {
-                    active_out->offset = tmp;
-                }
-            }
-            rtdo_set_channel_active(active_out->handle, 1);
-        } else {
-            rtdo_set_channel_active((*it)->handle, 0);
-        }
-    }
-    if ( !active_in || !active_out )
-        return false;
-    logp = 0;
-    sqthread = new RealtimeThread(sqread, 0, 6, 64*1024);
-    libthread = new RealtimeThread(vclaunch, 0, 5, 128*1024);
     return true;
 }
 
-void run_vclamp_stop() {
-    stop = 1;
-    if ( libthread->joinable() ) {
-        libthread->join();
-        sqthread->join();
-        rtdo_stop();
-        delete libthread;
-        delete sqthread;
-        libthread = 0;
-        sqthread = 0;
-    }
-    if ( lib ) {
-        dlclose(lib);
-        lib = 0;
-        logp = 0;
-    }
-    rtdo_write_now(active_out->handle, active_out->offset);
-    active_in = 0;
-    active_out = 0;
-}
+bool run_vclamp(bool *stopFlag)
+{
+    bool stopdummy = false;
+    if ( !stopFlag )
+        stopFlag =& stopdummy;
 
-void *vclaunch(void *unused) {
+    RealtimeEnvironment &env = RealtimeEnvironment::env();
+    env.clearChannels();
+    for ( Channel &c : config->io.channels ) {
+        if ( c.ID() == config->vc.in ) {
+            env.addChannel(c);
+        }
+        if ( c.ID() == config->vc.out ) {
+            env.addChannel(c);
+        }
+    }
+    env.setSupersamplingRate(config->io.ai_supersampling);
+
+    void *lib;
+    int (*libmain)(const char*, const char*, const char*, bool *);
     string fname = string(SOURCEDIR) + "/simulation/VClampGA.so";
     dlerror();
     if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
         std::cerr << dlerror() << endl;
-        return (void *)EXIT_FAILURE;
+        return false;
     }
     if ( !(*(void**)(&libmain) = dlsym(lib, "vclamp")) ) {
         std::cerr << dlerror() << endl;
-        return (void *)EXIT_FAILURE;
+        return false;
     }
-    libmain("live", config->output.dir.c_str(), config->vc.wavefile.c_str());
+    libmain("live", config->output.dir.c_str(), config->vc.wavefile.c_str(), stopFlag);
+    dlclose(lib);
 
-    // Spit out some of the best models
-    if ( logp ) {
-        void (*backlogSort)(backlog::Backlog *, bool discardUntested);
-        dlerror();
-        if ( !(*(void**)(&backlogSort) = dlsym(lib, "BacklogSort")) ) {
-            cerr << dlerror() << endl;
-            return (void *)EXIT_FAILURE;
-        }
-        cout << endl;
-        backlogSort(logp, false);
-        cout << "Backlog contains " << logp->log.size() << " valid entries, of which ";
-        backlogSort(logp, true);
-        cout << logp->log.size() << " were tested on all stimuli." << endl;
-        int i = 0;
-        for ( list<backlog::LogEntry>::iterator e = logp->log.begin(); e != logp->log.end() && i < 20; ++e, ++i ) {
-            cout << i << ": uid " << e->uid << ", since " << e->since << ", err=" << e->errScore << endl;
-            // The following code blindly assumes that (a) there is a single stimulation per parameter,
-            // and (b) the stimulations are in the same order as the parameters. This holds true for wavegen-produced
-            // stims as of 22 Jan 2016...
-            vector<double>::const_iterator errs = e->err.begin();
-            vector<double>::const_iterator vals = e->param.begin();
-            vector<int>::const_iterator ranks = e->rank.begin();
-            vector<XMLModel::param>::const_iterator names = config->model.obj->adjustableParams().begin();
-            cout << "\tParam\tValue\tError*\tRank*\t(* at the most recent stimulation)" << endl;
-            for ( ; errs != e->err.end() && vals != e->param.end() && names != config->model.obj->adjustableParams().end();
-                  ++errs, ++vals, ++names ) {
-                cout << '\t' << names->name << '\t' << *vals << '\t' << *errs << '\t' << *ranks << endl;
+//    // Spit out some of the best models
+//    if ( logp ) {
+//        void (*backlogSort)(backlog::Backlog *, bool discardUntested);
+//        dlerror();
+//        if ( !(*(void**)(&backlogSort) = dlsym(lib, "BacklogSort")) ) {
+//            cerr << dlerror() << endl;
+//            return (void *)EXIT_FAILURE;
+//        }
+//        cout << endl;
+//        backlogSort(logp, false);
+//        cout << "Backlog contains " << logp->log.size() << " valid entries, of which ";
+//        backlogSort(logp, true);
+//        cout << logp->log.size() << " were tested on all stimuli." << endl;
+//        int i = 0;
+//        for ( list<backlog::LogEntry>::iterator e = logp->log.begin(); e != logp->log.end() && i < 20; ++e, ++i ) {
+//            cout << i << ": uid " << e->uid << ", since " << e->since << ", err=" << e->errScore << endl;
+//            // The following code blindly assumes that (a) there is a single stimulation per parameter,
+//            // and (b) the stimulations are in the same order as the parameters. This holds true for wavegen-produced
+//            // stims as of 22 Jan 2016...
+//            vector<double>::const_iterator errs = e->err.begin();
+//            vector<double>::const_iterator vals = e->param.begin();
+//            vector<int>::const_iterator ranks = e->rank.begin();
+//            vector<XMLModel::param>::const_iterator names = config->model.obj->adjustableParams().begin();
+//            cout << "\tParam\tValue\tError*\tRank*\t(* at the most recent stimulation)" << endl;
+//            for ( ; errs != e->err.end() && vals != e->param.end() && names != config->model.obj->adjustableParams().end();
+//                  ++errs, ++vals, ++names ) {
+//                cout << '\t' << names->name << '\t' << *vals << '\t' << *errs << '\t' << *ranks << endl;
+//            }
+//        }
+//    }
+
+    return true;
+}
+
+bool run_wavegen(int focusParam, bool *stopFlag)
+{
+    bool stopdummy = false;
+    if ( !stopFlag )
+        stopFlag =& stopdummy;
+
+    void *lib;
+    inputSpec (*wgmain)(int, int, bool*);
+    string fname = string(SOURCEDIR) + "/wavegen/WaveGen.so";
+    dlerror();
+    if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
+        cerr << dlerror() << endl;
+        return false;
+    }
+    if ( !(*(void**)(&wgmain) = dlsym(lib, "wavegen")) ) {
+        cerr << dlerror() << endl;
+        return false;
+    }
+
+    if ( !config->model.load(false) ) {
+        cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
+        return false;
+    }
+
+    if ( focusParam == -1 ) {
+        string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
+                + config->model.obj->name() + "_wave.";
+        int i, j;
+        for ( i = 0; !access(string(filename + to_string(i)).c_str(), F_OK); i++ ) {}
+        filename += to_string(i);
+        ofstream file(filename);
+
+        const vector<XMLModel::param> &params = config->model.obj->adjustableParams();
+        i = 0;
+        for ( auto &p : params ) {
+            inputSpec is = wgmain(i, config->wg.ngen, stopFlag);
+            cout << p.name << ", best fit:" << endl;
+            cout << is << endl;
+            j = 0;
+            for ( auto &_ : params ) {
+                file << (j==i) << " ";
+                ++j;
             }
+            file << is << endl;
+            file.flush();
+            ++i;
+            if ( *stopFlag )
+                break;
         }
+        file.close();
+    } else {
+        inputSpec is = wgmain(focusParam, config->wg.ngen, stopFlag);
+        cout << config->model.obj->adjustableParams().at(focusParam).name << ", best fit:" << endl;
+        cout << is << endl;
     }
-
     return 0;
 }
 
+/*
 void *sqread(void *) {
     std::string fname = config->output.dir + "/samples.tmp";
     std::ofstream os(fname.c_str());
@@ -285,119 +245,7 @@ void *sqread(void *) {
     os.close();
     return 0;
 }
-
-daq_channel *run_get_active_outchan() {
-    return active_out;
-}
-
-daq_channel *run_get_active_inchan() {
-    return active_in;
-}
-
+*/
 void run_digest(int generation, double best_err, double mavg, int nextS) {
     cout << generation << " " << best_err << " " << mavg << " " << nextS << endl;
 }
-
-void run_use_backlog(backlog::Backlog *log)
-{
-    logp = log;
-}
-
-int run_check_break() {
-    return stop;
-}
-
-double run_getsample(float t) {
-    daq_channel *in = run_get_active_inchan();
-    int err=0;
-    double sample = rtdo_get_data(in->handle, &err);
-    samples_q.push(sample);
-    return sample;
-}
-void run_setstimulus(inputSpec I) {
-    daq_channel *out = run_get_active_outchan();
-    int ret = rtdo_set_stimulus(out->handle, I.baseV, I.N, I.V.data(), I.st.data(), I.t);
-    if ( ret )
-        std::cerr << "Error " << ret << " setting stimulus waveform" << std::endl;
-}
-
-bool run_wavegen_start(int focusParam) {
-    if ( libthread && libthread->joinable() )
-        return false;
-    stop = 0;
-    libthread = new RealtimeThread(wglaunch, new int(focusParam));
-    return true;
-}
-
-void run_wavegen_stop() {
-    stop = 1;
-    libthread->join();
-    delete libthread;
-    libthread = 0;
-    dlclose(lib);
-    lib = 0;
-}
-
-void *wglaunch(void * arg) {
-    int focusParam = *((int*)arg);
-    delete (int*)arg;
-    string fname = string(SOURCEDIR) + "/wavegen/WaveGen.so";
-    dlerror();
-    if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
-        cerr << dlerror() << endl;
-        return (void *)EXIT_FAILURE;
-    }
-    if ( !(*(void**)(&wgmain) = dlsym(lib, "wavegen")) ) {
-        cerr << dlerror() << endl;
-        return (void *)EXIT_FAILURE;
-    }
-
-    if ( !config->model.load(false) ) {
-        cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
-        return (void *)EXIT_FAILURE;
-    }
-
-    if ( focusParam == -1 ) {
-        stringstream buffer;
-        const vector<XMLModel::param> &p = config->model.obj->adjustableParams();
-        int i = 0, j = 0;
-        for ( vector<XMLModel::param>::const_iterator it = p.begin(); it != p.end() && !stop; ++it, ++i ) {
-            inputSpec is = wgmain(i, config->wg.ngen);
-            cout << it->name << ", best fit:" << endl;
-            cout << is << endl;
-            j = 0;
-            for ( vector<XMLModel::param>::const_iterator jt = p.begin(); jt != p.end() && !stop; ++jt, ++j )
-                buffer << (j==i ? 1 : 0) << " ";
-            buffer << is << endl;
-        }
-        if ( !stop ) {
-            string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
-                    + config->model.obj->name() + "_wave.";
-            for ( i = 0; !access(string(filename + to_string(i)).c_str(), F_OK); i++ );
-            ofstream file(filename + to_string(i));
-            file << buffer.str();
-            file.close();
-        }
-    } else {
-        inputSpec is = wgmain(focusParam, config->wg.ngen);
-        cout << config->model.obj->adjustableParams().at(focusParam).name << ", best fit:" << endl;
-        cout << is << endl;
-    }
-    return 0;
-}
-*/
-#include "run.h"
-int compile_model(XMLModel::outputType type) { return 0; }
-
-bool run_vclamp_start() { return false; }
-void run_vclamp_stop() {}
-
-void run_digest(int generation, double best_err, double mavg, int nextS) {}
-void run_use_backlog(backlog::Backlog *log) {}
-int run_check_break() { return 0; }
-
-double run_getsample(float t) { return 0; }
-void run_setstimulus(inputSpec I) {}
-
-bool run_wavegen_start(int focusParam) { return false; }
-void run_wavegen_stop() {}

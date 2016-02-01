@@ -64,7 +64,7 @@ double mutateA = 10.0;
 //--------------------------------------------------------------------------
 
 
-extern "C" inputSpec wavegen(int focusParam, int nGenerations)
+extern "C" inputSpec wavegen(int focusParam, int nGenerations, bool *stopFlag)
 {
     double gaBalance = 1.0 / (NPARAM - 1.0);
     NGEN = nGenerations;
@@ -97,7 +97,7 @@ extern "C" inputSpec wavegen(int focusParam, int nGenerations)
 
 	unsigned int VSize = NPOP*theSize( model.ftype );
 
-	for (size_t generation = 0; generation < NGEN; ++generation)
+    for (size_t generation = 0; generation < NGEN && !*stopFlag; ++generation)
 	{
         for ( int i = 0; i < NVAR; i++ ) {
             for ( int j = 0; j < NPOP; j++ ) {
@@ -158,8 +158,6 @@ extern "C" inputSpec wavegen(int focusParam, int nGenerations)
         procreatePop( stims );
         cout << "Generation " << generation << "'s best stimulus:" << endl;
         cout << stims[0] << endl;
-        if ( run_check_break() )
-            break;
 	}
 	delete[] sn;
     return stims[0];

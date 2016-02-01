@@ -38,7 +38,7 @@ void procreatePopPperturb( FILE *osb,
                            backlog::AsyncLog *logger,
                            int generation )
 {
-    logger->wait();
+    //logger->wait();
 	double tmavg;
 	static errTupel errs[NPOP];
 	for (int i = 0; i < NPOP; i++) {
@@ -57,7 +57,7 @@ void procreatePopPperturb( FILE *osb,
     //fprintf( osb, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f \n", gNaHH[errs[0].id], ENaHH[errs[0].id], maoffHH[errs[0].id], maslopeHH[errs[0].id], mboffHH[errs[0].id], mbslopeHH[errs[0].id], haoffHH[errs[0].id], haslopeHH[errs[0].id], hboffHH[errs[0].id], hbslopeHH[errs[0].id], gKHH[errs[0].id], EKHH[errs[0].id], naoffHH[errs[0].id], naslopeHH[errs[0].id], nboffHH[errs[0].id], nbslopeHH[errs[0].id], glHH[errs[0].id], ElHH[errs[0].id], CHH[errs[0].id], errHH[errs[0].id] );
 
     int k = NPOP / 3;
-    logger->touch(&errs[0], &errs[k-1], generation, nextS);
+    //logger->touch(&errs[0], &errs[k-1], generation, nextS);
 
 	// update moving averages
 	epos[nextS] = (epos[nextS] + 1) % MAVGBUFSZ;

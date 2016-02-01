@@ -23,7 +23,10 @@ MainWindow::MainWindow(QWidget *parent) :
     channel_setup(new ChannelSetupDialog),
     vclamp_setup(new VClampSetupDialog),
     wavegen_setup(new WavegenSetupDialog),
-    model_setup(new ModelSetupDialog)
+    model_setup(new ModelSetupDialog),
+    compiler(new CompileRunner),
+    vclamp(new VClampRunner),
+    wavegen(new WaveGenRunner)
 {
     ui->setupUi(this);
     connect(channel_setup, SIGNAL(channelsUpdated()), vclamp_setup, SIGNAL(channelsUpdated()));
@@ -31,6 +34,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionChannel_setup, SIGNAL(triggered()), channel_setup, SLOT(open()));
     connect(ui->actionWavegen_setup, SIGNAL(triggered()), wavegen_setup, SLOT(open()));
     connect(ui->actionModel_setup, SIGNAL(triggered()), model_setup, SLOT(open()));
+    connect(vclamp, SIGNAL(processCompleted(bool)), this, SLOT(vclampComplete(bool)));
+    connect(wavegen, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
+    connect(ui->vclamp_stop, SIGNAL(clicked()), vclamp, SLOT(stop()));
+    connect(ui->wavegen_stop, SIGNAL(clicked()), wavegen, SLOT(stop()));
 }
 
 MainWindow::~MainWindow()
@@ -40,18 +47,29 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_vclamp_start_clicked()
 {
-    run_vclamp_start();
+    if ( !vclamp->start() )
+        return;
+    ui->vclamp_compile->setEnabled(false);
+    ui->vclamp_start->setEnabled(false);
+    ui->vclamp_stop->setEnabled(true);
 }
 
-void MainWindow::on_vclamp_stop_clicked()
+void MainWindow::vclampComplete(bool successfully)
 {
-    run_vclamp_stop();
+    ui->vclamp_compile->setEnabled(true);
+    ui->vclamp_start->setEnabled(true);
+    ui->vclamp_stop->setEnabled(false);
 }
 
 void MainWindow::on_vclamp_compile_clicked()
 {
     QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
-    compile_model(XMLModel::VClamp);
+    ui->vclamp_compile->setEnabled(false);
+    ui->vclamp_start->setEnabled(false);
+    compiler->setType(XMLModel::VClamp);
+    if ( compiler->start() )
+        ui->vclamp_start->setEnabled(true);
+    ui->vclamp_compile->setEnabled(true);
     QApplication::restoreOverrideCursor();
 }
 
@@ -76,17 +94,28 @@ void MainWindow::on_actionLoad_configuration_triggered()
 
 void MainWindow::on_wavegen_start_clicked()
 {
-    run_wavegen_start();
+    if ( !wavegen->start() )
+        return;
+    ui->wavegen_compile->setEnabled(false);
+    ui->wavegen_start->setEnabled(false);
+    ui->wavegen_stop->setEnabled(true);
 }
 
-void MainWindow::on_wavegen_stop_clicked()
+void MainWindow::wavegenComplete(bool successfully)
 {
-    run_wavegen_stop();
+    ui->wavegen_compile->setEnabled(true);
+    ui->wavegen_start->setEnabled(true);
+    ui->wavegen_stop->setEnabled(false);
 }
 
 void MainWindow::on_wavegen_compile_clicked()
 {
     QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
-    compile_model(XMLModel::WaveGen);
+    ui->wavegen_compile->setEnabled(false);
+    ui->wavegen_start->setEnabled(false);
+    compiler->setType(XMLModel::WaveGen);
+    if ( compiler->start() )
+        ui->wavegen_start->setEnabled(true);
+    ui->wavegen_compile->setEnabled(true);
     QApplication::restoreOverrideCursor();
 }

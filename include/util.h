@@ -18,4 +18,6 @@ initial version: 2016-01-20
 QString dirname(QString path);
 QString dirname(std::string path);
 
+std::string basename_nosuffix(const std::string &path);
+
 #endif // UTIL_H

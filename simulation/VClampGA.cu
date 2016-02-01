@@ -21,6 +21,7 @@ initial version: 2014-06-26
 #ifdef _V_CLAMP
 #define _CRTDBG_MAP_ALLOC
 #include "VClampGA.h"
+#include "realtimeenvironment.h"
 
 //--------------------------------------------------------------------------
 /*! \brief This function is the entry point for running the project
@@ -38,7 +39,7 @@ inline bool file_exists( const std::string& name )
 	}
 }
 
-extern "C" int vclamp(const char *basename, const char *outdir, const char *stimFName) {
+extern "C" int vclamp(const char *basename, const char *outdir, const char *stimFName, bool *stopFlag) {
     ifstream is( stimFName );
 
 	int experimentNo = 0;
@@ -52,6 +53,7 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
     name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".out.best" );
 	FILE *osb = fopen( name.c_str(), "w" );
 
+    RealtimeEnvironment &env = RealtimeEnvironment::env();
 
 	//-----------------------------------------------------------------
     // read the relevant stimulus patterns
@@ -80,8 +82,8 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 		initial[i] = 1;
 	}
 
-    backlog::AsyncLog *logger = new backlog::AsyncLog(Nstim*NPOP, Nstim);
-    run_use_backlog(logger->log());
+    backlog::AsyncLog *logger ;//= new backlog::AsyncLog(Nstim*NPOP, Nstim);
+    //run_use_backlog(logger->log());
 
 	//-----------------------------------------------------------------
 	// build the neuronal circuitery
@@ -106,44 +108,41 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 	int iTN;
 
 	timer.startTimer();
-	t = 0.0; cerr << pperturb.size() << " iterations" << endl;
+    t = 0.0;
 	int nextS = 0;
     int generation = 0;
-	while (!done)
+    while (!done && !*stopFlag)
     {
         truevar_init();
-        for (int s = 0, k = pperturb.size(); s < k; s++) {
-			I = stims[nextS];
-			iTN = (int)(I.t / DT);
-            stepVGHH = I.baseV;
-            otHH = t + I.ot;
-            oteHH = t + I.ot + I.dur;
-			lt = 0.0;
-            sn = 0;
+        I = stims[nextS];
+        iTN = (int)(I.t / DT);
+        stepVGHH = I.baseV;
+        otHH = t + I.ot;
+        oteHH = t + I.ot + I.dur;
+        lt = 0.0;
+        sn = 0;
 
-            run_setstimulus(I);
-            rtdo_sync();
+        env.outChannel().setWaveform(I);
+        env.sync();
 
-            for (int iT = 0; iT < iTN; iT++) {
-				oldt = lt;
-                IsynGHH = run_getsample( t );
-                stepTimeGPU( t );
-				t += DT;
-				lt += DT;
-				if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
-                    stepVGHH = I.V[sn];
-					sn++;
-                    fprintf( osf, "%f %f \n", t, stepVGHH );
-                }
+        for (int iT = 0; iT < iTN; iT++) {
+            oldt = lt;
+            IsynGHH = env.inChannel().nextSample();
+            stepTimeGPU( t );
+            t += DT;
+            lt += DT;
+            if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
+                stepVGHH = I.V[sn];
+                sn++;
+                fprintf( osf, "%f %f \n", t, stepVGHH );
             }
-            CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
-
-            if ( (done = run_check_break()) ) {
-                break;
-            }
-
-            procreatePopPperturb( osb, pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim, logger, generation++ ); //perturb for next step
         }
+
+        env.pause();
+
+        CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
+
+        procreatePopPperturb( osb, pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim, logger, generation++ ); //perturb for next step
 	}
     timer.stopTimer();
 	fprintf( timef, "%f \n", timer.getElapsedTime() );
@@ -152,7 +151,7 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 	fclose( timef );
 	fclose( osb );
 
-    logger->halt();
+    //logger->halt();
 
 	fprintf( stderr, "DONE" );
 	return 0;
