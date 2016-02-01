@@ -10,7 +10,7 @@ email to:  fbk21@sussex.ac.uk
 initial version: 2015-12-08
 
 --------------------------------------------------------------------------*/
-
+/*
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -22,10 +22,11 @@ initial version: 2015-12-08
 #include "globals.h"
 #include "config.h"
 #include "xmlmodel.h"
+#include "realtimethread.h"
 
 using namespace std;
 
-static long thread=0, sqthread=0;
+static RealtimeThread *libthread = 0, *sqthread = 0;
 static void *lib=0;
 static int (*libmain)(const char*, const char*, const char*);
 static inputSpec (*wgmain)(int, int);
@@ -153,7 +154,7 @@ int compile_model(XMLModel::outputType type) {
 }
 
 bool run_vclamp_start() {
-    if ( thread )
+    if ( libthread && libthread->joinable() )
         return false;
 
     while ( !samples_q.empty() )
@@ -193,18 +194,20 @@ bool run_vclamp_start() {
     if ( !active_in || !active_out )
         return false;
     logp = 0;
-    thread = rtdo_thread_create(vclaunch, 0, 1000000);
-    sqthread = rtdo_thread_create(sqread, 0, 1000000);
+    sqthread = new RealtimeThread(sqread, 0, 6, 64*1024);
+    libthread = new RealtimeThread(vclaunch, 0, 5, 128*1024);
     return true;
 }
 
 void run_vclamp_stop() {
     stop = 1;
-    if ( thread ) {
-        rtdo_thread_join(thread);
-        rtdo_thread_join(sqthread);
+    if ( libthread->joinable() ) {
+        libthread->join();
+        sqthread->join();
         rtdo_stop();
-        thread = 0;
+        delete libthread;
+        delete sqthread;
+        libthread = 0;
         sqthread = 0;
     }
     if ( lib ) {
@@ -319,17 +322,18 @@ void run_setstimulus(inputSpec I) {
 }
 
 bool run_wavegen_start(int focusParam) {
-    if ( thread )
+    if ( libthread && libthread->joinable() )
         return false;
     stop = 0;
-    thread = rtdo_thread_create(wglaunch, new int(focusParam), 1000000);
+    libthread = new RealtimeThread(wglaunch, new int(focusParam));
     return true;
 }
 
 void run_wavegen_stop() {
     stop = 1;
-    rtdo_thread_join(thread);
-    thread = 0;
+    libthread->join();
+    delete libthread;
+    libthread = 0;
     dlclose(lib);
     lib = 0;
 }
@@ -381,3 +385,19 @@ void *wglaunch(void * arg) {
     }
     return 0;
 }
+*/
+#include "run.h"
+int compile_model(XMLModel::outputType type) { return 0; }
+
+bool run_vclamp_start() { return false; }
+void run_vclamp_stop() {}
+
+void run_digest(int generation, double best_err, double mavg, int nextS) {}
+void run_use_backlog(backlog::Backlog *log) {}
+int run_check_break() { return 0; }
+
+double run_getsample(float t) { return 0; }
+void run_setstimulus(inputSpec I) {}
+
+bool run_wavegen_start(int focusParam) { return false; }
+void run_wavegen_stop() {}

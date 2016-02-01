@@ -14,7 +14,6 @@ initial version: 2016-01-04
 #define CHANNELLISTMODEL_H
 
 #include <QAbstractListModel>
-#include "types.h"
 
 class ChannelListModel : public QAbstractListModel
 {
@@ -37,8 +36,6 @@ public slots:
 
 private:
     int displayflags;
-
-    bool displayChannel(daq_channel *c) const;
 
 };
 

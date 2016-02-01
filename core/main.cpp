@@ -12,9 +12,7 @@ initial version: 2015-12-03
 --------------------------------------------------------------------------*/
 #include "mainwindow.h"
 #include <QApplication>
-#include "globals.h"
-#include "softrtdaq.h"
-#include "rt.h"
+#include "realtimeenvironment.h"
 #include "config.h"
 
 conf::Config *config;
@@ -22,11 +20,7 @@ conf::Config *config;
 int main(int argc, char *argv[])
 {
     // Set up RT
-    int ret=0;
-    if ( (ret = rtdo_init()) )
-        return ret;
-//    rtdo_set_channel_active(daqchan_vout.handle, 1);
-//    rtdo_set_channel_active(daqchan_cin.handle, 1);
+    RealtimeEnvironment::RealtimeEnvironment::env();
 
     config = new conf::Config;
 
@@ -36,11 +30,5 @@ int main(int argc, char *argv[])
     w.show();
 
     // Run GUI
-    ret = a.exec();
-
-    // Cleanup
-    rtdo_exit();
-    daq_exit();
-
-    return ret;
+    return a.exec();
 }

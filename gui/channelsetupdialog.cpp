@@ -12,19 +12,16 @@ initial version: 2016-01-04
 --------------------------------------------------------------------------*/
 #include "channelsetupdialog.h"
 #include "ui_channelsetupdialog.h"
-#include "softrtdaq.h"
-#include "rt.h"
-#include "globals.h"
-#include <comedilib.h>
+#include "realtimeenvironment.h"
 
 ChannelSetupDialog::ChannelSetupDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::ChannelSetupDialog),
     editor(new ChannelEditorModel),
     mapper(new QDataWidgetMapper),
-    channelModel(new DeviceChannelModel(editor, mapper)),
-    rangeModel(new DeviceRangeModel(editor, mapper)),
-    arefModel(new DeviceReferenceModel(editor, mapper)),
+    channelModel(new DeviceChannelModel(mapper)),
+    rangeModel(new DeviceRangeModel(mapper)),
+    arefModel(new DeviceReferenceModel(mapper)),
     chanList(new ChannelListModel(ChannelListModel::AnalogIn | ChannelListModel::AnalogOut)),
     offsetSources(new ChannelListModel(ChannelListModel::AnalogIn))
 {
@@ -32,22 +29,20 @@ ChannelSetupDialog::ChannelSetupDialog(QWidget *parent) :
     ui->channel->setModel(channelModel);
     ui->range->setModel(rangeModel);
     ui->reference->setModel(arefModel);
-
-    editor->setRelatedModels(channelModel, rangeModel, arefModel);
     ui->readOffsetSource->setModel(offsetSources);
     ui->channelList->setModel(chanList);
+
     mapper->setModel(editor);
     mapper->setItemDelegate(new ComboboxDataDelegate(this));
     mapper->addMapping(ui->name, ChannelEditorModel::Name);
     mapper->addMapping(ui->device, ChannelEditorModel::Device);
     mapper->addMapping(ui->type, ChannelEditorModel::Type, "currentIndex");
-    mapper->addMapping(ui->channel, ChannelEditorModel::Channel, "currentIndex");
+    mapper->addMapping(ui->channel, ChannelEditorModel::ChannelField, "currentIndex");
     mapper->addMapping(ui->range, ChannelEditorModel::Range, "currentIndex");
     mapper->addMapping(ui->reference, ChannelEditorModel::Reference, "currentIndex");
     mapper->addMapping(ui->conversionFactor, ChannelEditorModel::ConversionFactor);
     mapper->addMapping(ui->offset, ChannelEditorModel::Offset);
     mapper->addMapping(ui->readOffsetSource, ChannelEditorModel::ReadOffsetSource, "currentIndex");
-    mapper->addMapping(ui->readOffsetLater, ChannelEditorModel::ReadOffsetLater);
     mapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
     QItemSelectionModel *sm = ui->channelList->selectionModel();
     connect(sm, SIGNAL(currentRowChanged(QModelIndex, QModelIndex)),
@@ -79,16 +74,18 @@ ChannelSetupDialog::~ChannelSetupDialog()
     delete arefModel;
 }
 
-#include <iostream>
 void ChannelSetupDialog::open()
 {
-    comedi_t *dev;
-    ui->device->clear();
-    for ( uint i = 0; i < DO_MAX_DEVICES; i++ ) {
-        if ( !daq_open_device(i, &dev) ) {
-            ui->device->addItem(QString("%1 (dev %2)").arg(QString(comedi_get_board_name(dev))).arg(i),
-                                QVariant(i));
+    RealtimeEnvironment &env = RealtimeEnvironment::env();
+    std::string name;
+    for ( int i = 0; i < 32; ++i) { // Doubt there's anyone with more than 32 devices!
+        try {
+            name = env.getDeviceName(i);
+        } catch ( RealtimeException & ) {
+            continue;
         }
+        ui->device->addItem(QString("%1 (dev %2)").arg(QString::fromStdString(name)).arg(i),
+                            QVariant(i));
     }
 
     QDialog::open();
@@ -112,15 +109,6 @@ void ChannelSetupDialog::removeChannel()
     }
     editor->removeRow(pos);
     ui->channelList->setCurrentIndex(chanList->index(pos >= chanList->rowCount() ? pos-1 : pos));
-}
-
-void ChannelSetupDialog::on_readOffsetNow_clicked()
-{
-    int err=0;
-    daq_channel *src = config->io.channels.at(ui->readOffsetSource->currentIndex());
-    double val = rtdo_read_now(src->handle, &err);
-    if ( !err )
-        editor->setData(editor->index(mapper->currentIndex(), ChannelEditorModel::Offset), QVariant(val), Qt::EditRole);
 }
 
 void ChannelSetupDialog::selectionChanged(QModelIndex index, QModelIndex previous)

@@ -179,26 +179,16 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_9">
       <item>
-       <widget class="QPushButton" name="readOffsetNow">
-        <property name="enabled">
-         <bool>true</bool>
-        </property>
+       <widget class="QLabel" name="label_8">
         <property name="text">
          <string>Read offset from:</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="readOffsetSource"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_10">
-      <item>
-       <widget class="QCheckBox" name="readOffsetLater">
-        <property name="text">
-         <string>Read offset when clamping starts</string>
+       <widget class="QComboBox" name="readOffsetSource">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If set, the offset is read from the selected channel at the start of an experiment, overwriting the manually set value.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>

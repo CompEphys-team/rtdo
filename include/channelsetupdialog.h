@@ -46,9 +46,6 @@ public slots:
 signals:
     void channelsUpdated();
 
-private slots:
-    void on_readOffsetNow_clicked();
-
 private:
     Ui::ChannelSetupDialog *ui;
     ChannelEditorModel *editor;

@@ -12,7 +12,6 @@ initial version: 2015-12-03
 --------------------------------------------------------------------------*/
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "globals.h"
 #include "run.h"
 #include <QFileDialog>
 #include "config.h"

@@ -11,33 +11,35 @@ initial version: 2016-01-04
 
 --------------------------------------------------------------------------*/
 #include "devicerangemodel.h"
-#include "types.h"
-#include <comedilib.h>
+#include "config.h"
 
-DeviceRangeModel::DeviceRangeModel(ChannelEditorModel *editor, QDataWidgetMapper *mapper, QObject *parent) :
+DeviceRangeModel::DeviceRangeModel(QDataWidgetMapper *mapper, QObject *parent) :
     QAbstractListModel(parent),
-    editor(editor),
     mapper(mapper)
 {}
 
 QVariant DeviceRangeModel::data(const QModelIndex &index, int role) const
 {
-    daq_channel *c = editor->channel(mapper->currentIndex());
-    if ( c && role == Qt::DisplayRole ) {
-        comedi_range *r = comedi_get_range(c->device, c->subdevice, c->channel, index.row());
-        if ( !r )
-            return QVariant();
-        QString unit;
-        if ( r->unit == UNIT_volt ) unit = "V";
-        else if ( r->unit == UNIT_mA ) unit = "mA";
-        else unit = "X";
-        return QString("[%1 %3, %2 %3]").arg(r->min).arg(r->max).arg(unit);
+    if ( role == Qt::DisplayRole && mapper->currentIndex() >= 0 ) {
+        Channel &c = config->io.channels.at(mapper->currentIndex());
+        if ( c.hasRange(index.row()) ) {
+            return QString("[%1 %3, %2 %3]")
+                    .arg(c.rangeMin(index.row()))
+                    .arg(c.rangeMax(index.row()))
+                    .arg(QString::fromStdString(c.rangeUnit(index.row())));
+        }
     }
     return QVariant();
 }
 
 int DeviceRangeModel::rowCount(const QModelIndex &parent) const
 {
-    daq_channel *c = editor->channel(mapper->currentIndex());
-    return c ? comedi_get_n_ranges(c->device, c->subdevice, c->channel) : 0;
+    if ( mapper->currentIndex() >= 0 ) {
+        Channel &c = config->io.channels.at(mapper->currentIndex());
+        unsigned int i = 0;
+        while ( c.hasRange(i) )
+            ++i;
+        return (int) i;
+    }
+    return 0;
 }

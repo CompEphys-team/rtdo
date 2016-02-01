@@ -39,15 +39,15 @@ VClampSetupDialog::~VClampSetupDialog()
 
 void VClampSetupDialog::open()
 {
-    vector<daq_channel *>::iterator it;
-    int i;
+    int i = 0;
     ui->currentInputChannel->setCurrentIndex(-1);
     ui->voltageOutputChannel->setCurrentIndex(-1);
-    for ( it = config->io.channels.begin(), i = 0; it != config->io.channels.end(); ++it, ++i ) {
-        if ( *it == config->vc.in )
+    for ( Channel &c : config->io.channels ) {
+        if ( config->vc.in == c.ID() )
             ui->currentInputChannel->setCurrentIndex(i);
-        if ( *it == config->vc.out )
+        if ( config->vc.out == c.ID() )
             ui->voltageOutputChannel->setCurrentIndex(i);
+        ++i;
     }
 
     ui->waveformFile->setText(QString::fromStdString(config->vc.wavefile));
@@ -58,12 +58,10 @@ void VClampSetupDialog::open()
 
 void VClampSetupDialog::accept()
 {
-    config->vc.in = ( ui->currentInputChannel->currentIndex() >= 0 )
-            ? *(config->io.channels.begin() + ui->currentInputChannel->currentIndex())
-            : 0;
-    config->vc.out = ( ui->voltageOutputChannel->currentIndex() >= 0 )
-            ? *(config->io.channels.begin() + ui->voltageOutputChannel->currentIndex())
-            : 0;
+    int in = ui->currentInputChannel->currentIndex();
+    int out = ui->voltageOutputChannel->currentIndex();
+    config->vc.in = ( in >= 0 ) ? config->io.channels.at(in).ID() : 0;
+    config->vc.out = ( out >= 0 ) ? config->io.channels.at(out).ID() : 0;
     config->vc.wavefile = ui->waveformFile->text().toStdString();
     config->vc.popsize = ui->popSize->value();
 

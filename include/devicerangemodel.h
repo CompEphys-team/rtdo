@@ -15,18 +15,16 @@ initial version: 2016-01-04
 
 #include <QAbstractListModel>
 #include <QDataWidgetMapper>
-#include "channeleditormodel.h"
 
 class DeviceRangeModel : public QAbstractListModel
 {
     Q_OBJECT
 public:
-    explicit DeviceRangeModel(ChannelEditorModel *editor, QDataWidgetMapper *mapper, QObject *parent = 0);
+    explicit DeviceRangeModel(QDataWidgetMapper *mapper, QObject *parent = 0);
     QVariant data(const QModelIndex &index, int role) const;
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
 
 protected:
-    ChannelEditorModel *editor;
     QDataWidgetMapper *mapper;
 };
 

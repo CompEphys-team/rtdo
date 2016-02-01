@@ -13,9 +13,6 @@ initial version: 2016-01-08
 #include "config.h"
 #include "tinyxml.h"
 #include <algorithm>
-#include "softrtdaq.h"
-#include "rt.h"
-
 
 conf::VCConfig::VCConfig() :
     popsize(1000),
@@ -24,35 +21,19 @@ conf::VCConfig::VCConfig() :
 {}
 
 void conf::VCConfig::fromXML(TiXmlElement *section, const conf::IOConfig &io) {
-    TiXmlElement *el;
-    int p = -1;
-    section->QueryIntAttribute("in", &p);
-    if ( p >= 0 && p < (int)io.channels.size() )
-        in = io.channels[p];
-
-    p = -1;
-    section->QueryIntAttribute("out", &p);
-    if ( p >= 0 && p < (int)io.channels.size() )
-        out = io.channels[p];
-
+    section->QueryIntAttribute("in", &in);
+    section->QueryIntAttribute("out", &out);
     section->QueryIntAttribute("popsize", &popsize);
 
+    TiXmlElement *el;
     if ( (el = section->FirstChildElement("wavefile")) )
         wavefile = el->GetText();
 }
 
 void conf::VCConfig::toXML(TiXmlElement *section, const conf::IOConfig &io) const
 {
-    if ( in ) {
-        vector<daq_channel *>::const_iterator it = find(io.channels.begin(), io.channels.end(), in);
-        if ( it != io.channels.end() )
-            section->SetAttribute("in", (int)(it - io.channels.begin()));
-    }
-    if ( out ) {
-        vector<daq_channel *>::const_iterator it = find(io.channels.begin(), io.channels.end(), out);
-        if ( it != io.channels.end() )
-            section->SetAttribute("out", (int)(it - io.channels.begin()));
-    }
+    section->SetAttribute("in", in);
+    section->SetAttribute("out", out);
     section->SetAttribute("popsize", popsize);
 
     TiXmlElement *el = new TiXmlElement("wavefile");
@@ -66,74 +47,65 @@ conf::IOConfig::IOConfig() :
     ai_supersampling(1)
 {}
 
-conf::IOConfig::~IOConfig()
-{
-    for ( vector<daq_channel *>::iterator it = channels.begin(); it != channels.end(); ++it ) {
-        daq_delete_channel(*it);
-        delete *it;
-    }
-}
-
 void conf::IOConfig::fromXML(TiXmlElement *section)
 {
     section->QueryDoubleAttribute("dt", &dt);
     section->QueryIntAttribute("ai_supersampling", &ai_supersampling);
-    vector<int> src_idx;
-    for ( TiXmlElement *el = section->FirstChildElement("channel"); el; el = el->NextSiblingElement() ) {
-        daq_channel *c = new daq_channel;
-        daq_create_channel(c);
 
+    for ( TiXmlElement *el = section->FirstChildElement("channel"); el; el = el->NextSiblingElement() ) {
         TiXmlElement *sub;
-        if ( (sub = el->FirstChildElement("name")) )
-            daq_set_channel_name(c, sub->GetText());
+        Channel::Type type;
+        int deviceno = 0, id = 0;
+        unsigned int channel = 0, range = 0, aref = 0;
+#ifdef CONFIG_RT
+        type = Channel::AnalogIn;
+#else
+        type = Channel::Simulator;
+#endif
+        el->QueryIntAttribute("ID", &id);
+
+        if ( (sub = el->FirstChildElement("type")) ) {
+            std::string tmp = sub->GetText();
+            if ( !tmp.compare("AnalogIn") )
+                type = Channel::AnalogIn;
+            else if ( !tmp.compare("AnalogOut") )
+                type = Channel::AnalogOut;
+            else
+                type = Channel::Simulator;
+        }
 
         if ( (sub = el->FirstChildElement("device")) ) {
-            sub->QueryUnsignedAttribute("number", &c->deviceno);
-            int type = c->type;
-            sub->QueryIntAttribute("type", &type);
-            c->type = type == COMEDI_SUBD_AO ? COMEDI_SUBD_AO : COMEDI_SUBD_AI;
+            sub->QueryIntAttribute("number", &deviceno);
         }
 
         if ( (sub = el->FirstChildElement("link")) ) {
-            sub->QueryValueAttribute("channel", &c->channel);
-            sub->QueryValueAttribute("range", &c->range);
-            sub->QueryValueAttribute("aref", &c->aref);
+            sub->QueryUnsignedAttribute("channel", &channel);
+            sub->QueryUnsignedAttribute("range", &range);
+            sub->QueryUnsignedAttribute("aref", &aref);
         }
 
-        if ( (sub = el->FirstChildElement("amp")) ) {
-            sub->QueryDoubleAttribute("offset", &c->offset);
-            sub->QueryDoubleAttribute("conversion_factor", &c->gain);
-        }
-
-        if ( (sub = el->FirstChildElement("offset_source")) ) {
-            int src = -1;
-            sub->QueryIntAttribute("channel", &src);
-            src_idx.push_back(src);
-            c->read_offset_src = (daq_channel *)1;
-            bool later = false;
-            sub->QueryBoolAttribute("read_later", &later);
-            c->read_offset_later = (char)later;
-        }
-
-        if ( daq_setup_channel(c) || rtdo_add_channel(c, 10000) ) {
-            daq_delete_channel(c);
-            delete c;
+        try {
+            if ( id )
+                channels.push_back(Channel(id, type, deviceno, channel, range, static_cast<Channel::Aref>(aref)));
+            else
+                channels.push_back(Channel(type, deviceno, channel, range, static_cast<Channel::Aref>(aref)));
+        } catch ( RealtimeException & ) {
             continue;
         }
 
-        channels.push_back(c);
-    }
+        if ( (sub = el->FirstChildElement("name")) )
+            channels.back().setName(sub->GetText());
 
-    // Resolve read_offset_source index into pointers
-    vector<daq_channel *>::iterator cit = channels.begin();
-    vector<int>::iterator pit = src_idx.begin();
-    for ( ; pit != src_idx.end(); ++pit, ++cit ) {
-        while ( !(*cit)->read_offset_src )
-            ++cit;
-        if ( *pit > 0 && *pit < (int)channels.size() )
-            (*cit)->read_offset_src = channels[*pit];
-        else
-            (*cit)->read_offset_src = 0;
+        if ( (sub = el->FirstChildElement("amp")) ) {
+            double offset=0, gain=1;
+            int src = 0;
+            sub->QueryDoubleAttribute("offset", &offset);
+            sub->QueryDoubleAttribute("conversion_factor", &gain);
+            sub->QueryIntAttribute("offset_source", &src);
+            channels.back().setOffset(offset);
+            channels.back().setConversionFactor(gain);
+            channels.back().setOffsetSource(src);
+        }
     }
 }
 
@@ -142,40 +114,35 @@ void conf::IOConfig::toXML(TiXmlElement *section) const
     section->SetDoubleAttribute("dt", dt);
     section->SetAttribute("ai_supersampling", ai_supersampling);
 
-    for ( vector<daq_channel *>::const_iterator it = channels.begin(); it != channels.end(); ++it ) {
-        const daq_channel *c = *it;
+    for ( const Channel &c : channels ) {
         TiXmlElement *el = new TiXmlElement("channel");
+        el->SetAttribute("ID", c.ID());
         section->LinkEndChild(el);
 
         TiXmlElement *sub = new TiXmlElement("name");
-        sub->LinkEndChild(new TiXmlText(c->name));
+        sub->LinkEndChild(new TiXmlText(c.name()));
         el->LinkEndChild(sub);
 
         sub = new TiXmlElement("device");
-        sub->SetAttribute("number", c->deviceno);
-        sub->SetAttribute("type", c->type);
+        sub->SetAttribute("number", c.device());
+        switch ( c.type() ) {
+        case Channel::AnalogIn:  sub->SetAttribute("type", "AnalogIn");  break;
+        case Channel::AnalogOut: sub->SetAttribute("type", "AnalogOut"); break;
+        case Channel::Simulator: sub->SetAttribute("type", "Simulator"); break;
+        }
         el->LinkEndChild(sub);
 
         sub = new TiXmlElement("link");
-        sub->SetAttribute("channel", c->channel);
-        sub->SetAttribute("range", c->range);
-        sub->SetAttribute("aref", c->aref);
+        sub->SetAttribute("channel", c.channel());
+        sub->SetAttribute("range", c.range());
+        sub->SetAttribute("aref", c.aref());
         el->LinkEndChild(sub);
 
         sub = new TiXmlElement("amp");
-        sub->SetDoubleAttribute("offset", c->offset);
-        sub->SetDoubleAttribute("conversion_factor", c->gain);
+        sub->SetDoubleAttribute("offset", c.offset());
+        sub->SetDoubleAttribute("conversion_factor", c.conversionFactor());
+        sub->SetAttribute("offset_source", c.offsetSource());
         el->LinkEndChild(sub);
-
-        if ( c->read_offset_src ) {
-            vector<daq_channel *>::const_iterator src = find(channels.begin(), channels.end(), c->read_offset_src);
-            if ( src != channels.end() ) {
-                sub = new TiXmlElement("offset_source");
-                sub->SetAttribute("channel", (int)(src - channels.begin()));
-                sub->SetAttribute("read_later", (int)c->read_offset_later);
-                el->LinkEndChild(sub);
-            }
-        }
     }
 }
 

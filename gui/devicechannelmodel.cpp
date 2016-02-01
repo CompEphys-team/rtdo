@@ -11,12 +11,10 @@ initial version: 2016-01-04
 
 --------------------------------------------------------------------------*/
 #include "devicechannelmodel.h"
-#include <comedilib.h>
-#include "types.h"
+#include "config.h"
 
-DeviceChannelModel::DeviceChannelModel(ChannelEditorModel *editor, QDataWidgetMapper *mapper, QObject *parent) :
+DeviceChannelModel::DeviceChannelModel(QDataWidgetMapper *mapper, QObject *parent) :
     QAbstractListModel(parent),
-    editor(editor),
     mapper(mapper)
 {}
 
@@ -29,9 +27,7 @@ QVariant DeviceChannelModel::data(const QModelIndex &index, int role) const
 
 int DeviceChannelModel::rowCount(const QModelIndex &parent) const
 {
-    daq_channel *c = editor->channel(mapper->currentIndex());
-    if ( c )
-        return comedi_get_n_channels(c->device, c->subdevice);
-    else
-        return 0;
+    if ( mapper->currentIndex() >= 0 )
+        return config->io.channels.at(mapper->currentIndex()).numChannels();
+    return 0;
 }

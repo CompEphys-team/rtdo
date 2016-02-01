@@ -15,8 +15,8 @@ initial version: 2016-01-08
 
 #include <string>
 #include <vector>
-#include <sys/types.h>
-#include "types.h"
+#include "channel.h"
+#include "realtimeenvironment.h"
 #include "xmlmodel.h"
 #include "tinyxml.h"
 
@@ -39,8 +39,8 @@ public:
     string wavefile;
     int popsize;
 
-    daq_channel *in;
-    daq_channel *out;
+    int in;
+    int out;
 
 private:
     void fromXML(TiXmlElement *section, const conf::IOConfig &io);
@@ -51,9 +51,8 @@ class conf::IOConfig {
     friend class conf::Config;
 public:
     IOConfig();
-    ~IOConfig();
 
-    vector<daq_channel *> channels;
+    vector<Channel> channels;
     double dt;
     int ai_supersampling;
 
