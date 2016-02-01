@@ -20,9 +20,13 @@ TEMPLATE = app
 
 CONFIG(debug, release|debug):DEFINES += _DEBUG
 
-CONFIG += realtime
+#CONFIG += realtime
 realtime {
     DEFINES += CONFIG_RT
+
+    LIBS += -pthread -L. -lRC_kcomedilxrt -lcomedi
+
+    INCLUDEPATH += /usr/realtime/include /usr/src/comedi/inc-wrap
 
     RTAI_LIBDIR = /usr/realtime/lib # Location of libkcomedilxrt.a
     RC_HEADER = RC_rtai_comedi.h # Header file replacing rtai_comedi.h with a prefixed version
@@ -53,10 +57,6 @@ DEFINES += SOURCEDIR=\\\"$$_PRO_FILE_PWD_\\\" \
 
 SOURCES += core/main.cpp \
     gui/mainwindow.cpp \
-    core/softrtdaq.c \
-    core/rt.c \
-    core/aothread.c \
-    core/aithread.c \
     core/run.cc \
     gui/channelsetupdialog.cpp \
     gui/channeleditormodel.cpp \
@@ -98,10 +98,6 @@ OTHER_FILES += simulation/GNUmakefile \
 
 HEADERS  += \
     include/mainwindow.h \
-    include/softrtdaq.h \
-    include/types.h \
-    include/globals.h \
-    include/rt.h \
     include/run.h \
     include/channelsetupdialog.h \
     include/channeleditormodel.h \
@@ -134,13 +130,11 @@ FORMS    += \
     gui/wavegensetupdialog.ui \
     gui/modelsetupdialog.ui
 
-LIBS     += -rdynamic -ldl -pthread -L. -lRC_kcomedilxrt -lcomedi
+LIBS     += -rdynamic -ldl
 
 INCLUDEPATH += \
     include \
-    lib/include \
-    /usr/realtime/include \
-    /usr/src/comedi/inc-wrap
+    lib/include
 
 QMAKE_CFLAGS += -Wno-unused-parameter
 QMAKE_CXXFLAGS += -Wno-unused-parameter -std=c++11
