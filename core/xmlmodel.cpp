@@ -72,7 +72,6 @@ bool XMLModel::load(string filename)
     for ( el = hRoot.FirstChild("parameter").Element(); el; el = el->NextSiblingElement("parameter") ) {
         struct param p;
         p.name = el->Attribute("name");
-        p.type = el->Attribute("type");
         el->QueryDoubleAttribute("value", &p.initial);
         _params.push_back(p);
     }
@@ -201,6 +200,10 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it ) {
         of << "n.varNames.push_back(\"" << it->name << "\");" << endl;
         of << "n.varTypes.push_back(\"" << it->type << "\");" << endl;
+    }
+    of << endl;
+    for ( vector<param>::iterator it = _params.begin(); it != _params.end(); ++it ) {
+        of << "n.pNames.push_back(\"" << it->name << "\");" << endl;
     }
     of << endl;
 
