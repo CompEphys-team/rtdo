@@ -66,22 +66,13 @@ bool compile_model(XMLModel::outputType type) {
         return false;
     }
 
-    // Build single-neuron version
-    string singlename = config->model.obj->generateDefinition(type, 1, INSTANCEDIR, true);
-    cmd = string("cd ") + INSTANCEDIR + " && " + cxxflags + "buildmodel.sh " + singlename + " 0 2>&1";
-    cout << cmd << endl;
-    ret = system(cmd.c_str()); // Return value from buildmodel.sh is always 0, ignore it
-    ofstream inc(string(INSTANCEDIR) + "/" + singlename + "_CODE/single.h");
-    inc << "#define calcNeuronsCPU calcSingleNeuronCPU" << endl;
-    inc << "#include \"neuronFnct.cc\"" << endl;
-    inc << "#undef calcNeuronsCPU" << endl;
-    inc.close();
+    // Add simulator code to the model definition file
+    config->model.obj->generateSimulator(type, INSTANCEDIR);
 
     // Compile it all
     string includeflags = string("INCLUDE_FLAGS='")
             + "-include " + INSTANCEDIR + "/" + modelname + "_CODE/runner.cc "
-            + "-include " + INSTANCEDIR + "/" + modelname + ".cc "
-            + "-include " + INSTANCEDIR + "/" + singlename + "_CODE/single.h' ";
+            + "-include " + INSTANCEDIR + "/" + modelname + ".cc' ";
 #ifdef _DEBUG
     cmd = string("cd ") + simulator
             + " && " + "make clean -I " + INSTANCEDIR

@@ -17,6 +17,7 @@ initial version: 2016-01-20
 #include <iomanip>
 
 #define POPNAME "HH"
+#define CUTMARK "///--- Cut simulator here ---///"
 
 using namespace std;
 
@@ -214,7 +215,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << endl;
     // Assume std >= c++11 for raw string literal:
-    of << "n.simCode = R\"EOF(" << endl << code << endl << ")EOF\";";
+    of << "n.simCode = R\"EOF(" << endl << CUTMARK << endl << code << endl << CUTMARK << endl << ")EOF\";";
 
     of << endl;
     switch ( type ) {
@@ -264,6 +265,49 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "}" << endl;
 
     return modelname;
+}
+
+void XMLModel::generateSimulator(XMLModel::outputType type, string path)
+{
+    if ( path.back() != '/' )
+        path += "/";
+    ofstream of(path + name(type) + string(".cc"), ios_base::out | ios_base::app);
+    ifstream is(path + name(type) + string("_CODE/neuronFnct.cc"));
+
+    string scalar(genn_double ? "double" : "float");
+
+    of << endl;
+    of << "extern \"C\" void simulateSingleNeuron("
+       << scalar << " *variables, "
+       << scalar << " *adjustableParams, "
+       << scalar << " lstepVG)" << endl;
+    of << "{" << endl;
+    of << "\t" << scalar << " Isyn = 0;" << endl;
+
+    int i = 0;
+    for ( param& v : _vars ) {
+        of << "\t" << scalar << " &l" << v.name << " = variables[" << i << "];" << endl;
+        ++i;
+    }
+    i = 0;
+    for ( param &p : _adjustableParams ) {
+        of << "\t" << scalar << " l" << p.name << " = adjustableParams[" << i << "];" << endl;
+        ++i;
+    }
+    of << endl;
+
+    char buffer[1024];
+    bool cut = false;
+    while ( is.good() ) {
+        is.getline(buffer, 1024);
+        if ( !string(buffer).compare(CUTMARK) ) {
+            cut = !cut;
+        } else if ( cut ) {
+            of << buffer << endl;
+        }
+    }
+
+    of << "}" << endl;
 }
 
 string XMLModel::name(XMLModel::outputType type, bool single) const

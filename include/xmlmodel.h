@@ -39,6 +39,7 @@ public:
     };
 
     std::string generateDefinition(enum outputType type, int npop, std::string path, bool single = false);
+    void generateSimulator(enum outputType type, std::string path);
 
     inline const std::string &name() const { return _name; }
     std::string name(enum outputType type, bool single = false) const;
