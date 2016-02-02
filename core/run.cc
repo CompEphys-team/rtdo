@@ -98,17 +98,12 @@ bool run_vclamp(bool *stopFlag)
     if ( !stopFlag )
         stopFlag =& stopdummy;
 
-    RealtimeEnvironment &env = RealtimeEnvironment::env();
-    env.clearChannels();
-    for ( Channel &c : config->io.channels ) {
-        if ( c.ID() == config->vc.in ) {
-            env.addChannel(c);
-        }
-        if ( c.ID() == config->vc.out ) {
-            env.addChannel(c);
-        }
+    if ( !config->model.load(false) ) {
+        cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
+        return false;
     }
-    env.setSupersamplingRate(config->io.ai_supersampling);
+
+    RealtimeEnvironment &env = RealtimeEnvironment::env();
 
     void *lib;
     int (*libmain)(const char*, const char*, const char*, bool *);
@@ -122,6 +117,38 @@ bool run_vclamp(bool *stopFlag)
         std::cerr << dlerror() << endl;
         return false;
     }
+    if ( config->model.obj->genn_float() ) {
+        float (*simF)(float*, float*, float);
+        if ( !(*(void**)(&simF) = dlsym(lib, "simulateSingleNeuron")) ) {
+            std::cerr << dlerror() << endl;
+            return false;
+        }
+        env.setSimulator(simF);
+
+    } else {
+        double (*simD)(double*, double*, double);
+        if ( !(*(void**)(&simD) = dlsym(lib, "simulateSingleNeuron")) ) {
+            std::cerr << dlerror() << endl;
+            return false;
+        }
+        env.setSimulator(simD);
+    }
+
+    env.clearChannels();
+    for ( Channel &c : config->io.channels ) {
+        if ( c.ID() == config->vc.in ) {
+            env.addChannel(c);
+            c.readOffset();
+        }
+        if ( c.ID() == config->vc.out ) {
+            env.addChannel(c);
+            c.readOffset();
+        }
+    }
+    env.setSupersamplingRate(config->io.ai_supersampling);
+    env.setDT(config->io.dt);
+    env.useSimulator(false);
+
     libmain("live", config->output.dir.c_str(), config->vc.wavefile.c_str(), stopFlag);
     dlclose(lib);
 
@@ -165,6 +192,8 @@ bool run_wavegen(int focusParam, bool *stopFlag)
     if ( !stopFlag )
         stopFlag =& stopdummy;
 
+    RealtimeEnvironment &env = RealtimeEnvironment::env();
+
     void *lib;
     inputSpec (*wgmain)(int, int, bool*);
     string fname = string(SOURCEDIR) + "/wavegen/WaveGen.so";
@@ -182,6 +211,25 @@ bool run_wavegen(int focusParam, bool *stopFlag)
         cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
         return false;
     }
+    if ( config->model.obj->genn_float() ) {
+        float (*simF)(float*, float*, float);
+        if ( !(*(void**)(&simF) = dlsym(lib, "simulateSingleNeuron")) ) {
+            std::cerr << dlerror() << endl;
+            return false;
+        }
+        env.setSimulator(simF);
+
+    } else {
+        double (*simD)(double*, double*, double);
+        if ( !(*(void**)(&simD) = dlsym(lib, "simulateSingleNeuron")) ) {
+            std::cerr << dlerror() << endl;
+            return false;
+        }
+        env.setSimulator(simD);
+    }
+
+    env.setDT(config->io.dt);
+    env.useSimulator(true);
 
     if ( focusParam == -1 ) {
         string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")

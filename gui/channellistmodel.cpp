@@ -24,10 +24,9 @@ QVariant ChannelListModel::data(const QModelIndex &index, int role) const
     if ( role == Qt::DisplayRole && index.row() >= 0 ) {
         Channel &c = config->io.channels.at(index.row());
         QString type;
-        switch ( c.type() ) {
+        switch ( c.direction() ) {
         case Channel::AnalogIn:  type = "in";  break;
         case Channel::AnalogOut: type = "out"; break;
-        case Channel::Simulator: type = "sim"; break;
         }
         return QString("%1 (dev %2, %3 %4)")
                 .arg(QString::fromStdString(c.name()))
@@ -46,9 +45,8 @@ int ChannelListModel::rowCount(const QModelIndex &parent) const
 Qt::ItemFlags ChannelListModel::flags(const QModelIndex &index) const
 {
     Channel &c = config->io.channels.at(index.row());
-    if ( (displayflags & AnalogIn && c.type() == Channel::AnalogIn) ||
-         (displayflags & AnalogOut && c.type() == Channel::AnalogOut) ||
-         (displayflags & (AnalogIn | AnalogOut) && c.type() == Channel::Simulator) )
+    if ( (displayflags & AnalogIn && c.direction() == Channel::AnalogIn) ||
+         (displayflags & AnalogOut && c.direction() == Channel::AnalogOut) )
         return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
     else
         return Qt::NoItemFlags;

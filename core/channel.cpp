@@ -18,35 +18,16 @@ initial version: 2016-01-25
 // ----------- Realtime implementation --------------
 #include "impl/channel_impl.h"
 
-#else
-// ----------------------- Non-realtime implementation ----------------------
 
-class Channel::Impl
-{
+#else
+// ----------------------- Non-realtime "implementation" ----------------------
+
+class Channel::Impl {
 public:
-    Impl(Channel::Type type, int, unsigned int, unsigned int, Channel::Aref) {
-        if ( type != Channel::Simulator )
-            throw RealtimeException(RealtimeException::RuntimeMsg, "Non-RT channels can only be simulators.");
-    }
+    Impl(Channel::Direction, int, unsigned int, unsigned int, Channel::Aref) {}
 };
 
-bool Channel::setDirection(Channel::Type)
-{
-    // NYI
-    return false;
-}
-
-void Channel::flush()
-{
-    // NYI
-}
-
-double Channel::nextSample()
-{
-    // NYI
-    return 0.0;
-}
-
+bool Channel::setDirection(Channel::Direction) { return false; }
 bool Channel::setDevice(int deviceno) { return true; }
 bool Channel::setChannel(unsigned int channel) { return true; }
 bool Channel::setRange(unsigned int range) { return true; }
@@ -55,7 +36,7 @@ void Channel::setConversionFactor(double) {}
 void Channel::setOffset(double) {}
 void Channel::setOffsetSource(int) {}
 
-bool Channel::hasDirection(Channel::Type type) const { return false; }
+bool Channel::hasDirection(Channel::Direction type) const { return false; }
 unsigned int Channel::numChannels() const { return 0; }
 bool Channel::hasRange(unsigned int range) const { return false; }
 bool Channel::hasAref(Channel::Aref aref) const { return false; }
@@ -75,6 +56,8 @@ int Channel::offsetSource() const { return 0; }
 lsampl_t Channel::convert(double voltage) const { return 0; }
 double Channel::convert(lsampl_t sample) const { return 0; }
 
+void Channel::flush() {}
+double Channel::nextSample() { return 0.0; }
 void Channel::readOffset() {}
 
 bool Channel::read(lsampl_t &sample, bool hint) const { return false; }
@@ -85,7 +68,7 @@ void Channel::put(lsampl_t &sample) {}
 
 int Channel::nextID = 1;
 
-Channel::Channel(Type type, int deviceno, unsigned int channel, unsigned int range, Aref aref) :
+Channel::Channel(Direction type, int deviceno, unsigned int channel, unsigned int range, Aref aref) :
     _type(type),
     _waveform(new inputSpec()),
     _waveformChanged(new bool(true)),
@@ -93,7 +76,7 @@ Channel::Channel(Type type, int deviceno, unsigned int channel, unsigned int ran
     pImpl(new Impl(type, deviceno, channel, range, aref))
 {}
 
-Channel::Channel(int ID, Type type, int deviceno, unsigned int channel, unsigned int range, Aref aref) :
+Channel::Channel(int ID, Direction type, int deviceno, unsigned int channel, unsigned int range, Aref aref) :
     Channel(type, deviceno, channel, range, aref)
 {
     _ID = ID;

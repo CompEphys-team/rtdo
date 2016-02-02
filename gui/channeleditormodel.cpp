@@ -31,7 +31,7 @@ QVariant ChannelEditorModel::data(const QModelIndex & index, int role) const {
         case Device:
             return QVariant(c.device());
         case Type:
-            return QVariant(c.type());
+            return QVariant(c.direction());
         case ChannelField:
             return QVariant(c.channel());
         case Range:
@@ -69,7 +69,7 @@ bool ChannelEditorModel::setData(const QModelIndex &index, const QVariant &value
         emit dataChanged(index, this->index(index.row(), Reference));
         break;
     case Type:
-        if ( !c.setDirection((Channel::Type)value.toInt()) )
+        if ( !c.setDirection((Channel::Direction)value.toInt()) )
             return false;
         emit dataChanged(index, this->index(index.row(), Reference));
         break;
@@ -111,11 +111,7 @@ int ChannelEditorModel::rowCount(const QModelIndex & parent) const {
 
 bool ChannelEditorModel::insertRow(int row, const QModelIndex &parent) {
     beginInsertRows(parent, row, row+1);
-#ifdef CONFIG_RT
     config->io.channels.insert(config->io.channels.begin() + row, 1, Channel(Channel::AnalogIn));
-#else
-        config->io.channels.insert(config->io.channels.begin() + row, 1, Channel(Channel::Simulator));
-#endif
     endInsertRows();
     emit channelsUpdated();
     return true;

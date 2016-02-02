@@ -107,6 +107,14 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 	double pertFac = 0.1;
 	int iTN;
 
+    scalar simulatorVars[NVAR], simulatorParams[NPARAM];
+    for ( int i = 0; i < NVAR; i++ )
+        simulatorVars[i] = variableIni[i];
+    for ( int i = 0; i < NPARAM; i++ )
+        simulatorParams[i] = aParamIni[i];
+    env.setSimulatorVariables(simulatorVars);
+    env.setSimulatorParameters(simulatorParams);
+
 	timer.startTimer();
     t = 0.0;
 	int nextS = 0;
@@ -122,12 +130,12 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
         lt = 0.0;
         sn = 0;
 
-        env.outChannel().setWaveform(I);
+        env.setWaveform(I);
         env.sync();
 
         for (int iT = 0; iT < iTN; iT++) {
             oldt = lt;
-            IsynGHH = env.inChannel().nextSample();
+            IsynGHH = env.nextSample();
             stepTimeGPU( t );
             t += DT;
             lt += DT;

@@ -28,7 +28,7 @@ public:
     comedi_range *range;
     lsampl_t maxdata;
 
-    Converter(Channel::Type type, Channel::Impl *chan) :
+    Converter(Channel::Direction type, Channel::Impl *chan) :
         has_cal(false),
         range(comedi_get_range(chan->_deviceSC, chan->_subdevice, chan->_channel, chan->_range)),
         maxdata(comedi_get_maxdata(chan->_deviceSC, chan->_subdevice, chan->_channel))
@@ -62,7 +62,7 @@ public:
 
 
 // ------------------------------------- Channel implementation --------------------------------------
-Channel::Impl::Impl(Channel::Type type, int deviceno, unsigned int channel, unsigned int range, Channel::Aref aref) :
+Channel::Impl::Impl(Channel::Direction type, int deviceno, unsigned int channel, unsigned int range, Channel::Aref aref) :
     _deviceno(deviceno),
     _deviceRC(RealtimeEnvironment::env().getDevice(deviceno, true)),
     _deviceSC(RealtimeEnvironment::env().getDevice(deviceno, false)),
@@ -75,10 +75,7 @@ Channel::Impl::Impl(Channel::Type type, int deviceno, unsigned int channel, unsi
     offsetSrc(0),
     mbx(rt_typed_mbx_init(0, Channel_MailboxSize * sizeof(lsampl_t), PRIO_Q), &rt_mbx_delete),
     converter(new Converter(type, this))
-{
-    if ( type == Channel::Simulator )
-        throw RealtimeException(RealtimeException::RuntimeMsg, "RT channels can not be simulators.");
-}
+{}
 
 Channel::Impl::Impl(const Impl &other) :
     _deviceno(other._deviceno),
@@ -197,7 +194,7 @@ double Channel::convert(lsampl_t sample) const
     return (raw * pImpl->_gain) + pImpl->_offset;
 }
 
-bool Channel::hasDirection(Channel::Type type) const
+bool Channel::hasDirection(Channel::Direction type) const
 {
     if ( type != Channel::AnalogIn && type != Channel::AnalogOut )
         return false;
@@ -261,7 +258,7 @@ std::string Channel::rangeUnit(unsigned int range) const
     }
 }
 
-bool Channel::setDirection(Channel::Type type)
+bool Channel::setDirection(Channel::Direction type)
 {
     if ( !hasDirection(type) )
         return false;

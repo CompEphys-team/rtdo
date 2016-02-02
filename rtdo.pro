@@ -20,7 +20,7 @@ TEMPLATE = app
 
 CONFIG(debug, release|debug):DEFINES += _DEBUG
 
-CONFIG += realtime
+#CONFIG += realtime
 realtime {
     DEFINES += CONFIG_RT
 

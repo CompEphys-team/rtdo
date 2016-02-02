@@ -54,25 +54,16 @@ void conf::IOConfig::fromXML(TiXmlElement *section)
 
     for ( TiXmlElement *el = section->FirstChildElement("channel"); el; el = el->NextSiblingElement() ) {
         TiXmlElement *sub;
-        Channel::Type type;
+        Channel::Direction type = Channel::AnalogIn;
         int deviceno = 0, id = 0;
         unsigned int channel = 0, range = 0, aref = 0;
-#ifdef CONFIG_RT
-        type = Channel::AnalogIn;
-#else
-        type = Channel::Simulator;
-#endif
+
         el->QueryIntAttribute("ID", &id);
 
         if ( (sub = el->FirstChildElement("device")) ) {
             sub->QueryIntAttribute("number", &deviceno);
             std::string tmp(sub->Attribute("type"));
-            if ( !tmp.compare("AnalogIn") )
-                type = Channel::AnalogIn;
-            else if ( !tmp.compare("AnalogOut") )
-                type = Channel::AnalogOut;
-            else
-                type = Channel::Simulator;
+            type = !tmp.compare("AnalogIn") ? Channel::AnalogIn : Channel::AnalogOut;
         }
 
         if ( (sub = el->FirstChildElement("link")) ) {
@@ -122,10 +113,9 @@ void conf::IOConfig::toXML(TiXmlElement *section) const
 
         sub = new TiXmlElement("device");
         sub->SetAttribute("number", c.device());
-        switch ( c.type() ) {
+        switch ( c.direction() ) {
         case Channel::AnalogIn:  sub->SetAttribute("type", "AnalogIn");  break;
         case Channel::AnalogOut: sub->SetAttribute("type", "AnalogOut"); break;
-        case Channel::Simulator: sub->SetAttribute("type", "Simulator"); break;
         }
         el->LinkEndChild(sub);
 

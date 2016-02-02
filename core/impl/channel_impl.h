@@ -23,7 +23,7 @@ initial version: 2016-01-26
 class Channel::Impl
 {
 public:
-    Impl(Channel::Type type, int deviceno, unsigned int channel, unsigned int range, Channel::Aref aref);
+    Impl(Channel::Direction type, int deviceno, unsigned int channel, unsigned int range, Channel::Aref aref);
 
     Impl(const Impl&);
     ~Impl();

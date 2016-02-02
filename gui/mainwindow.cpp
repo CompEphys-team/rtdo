@@ -38,6 +38,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(wavegen, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
     connect(ui->vclamp_stop, SIGNAL(clicked()), vclamp, SLOT(stop()));
     connect(ui->wavegen_stop, SIGNAL(clicked()), wavegen, SLOT(stop()));
+
+#ifndef CONFIG_RT
+    ui->actionChannel_setup->setEnabled(false);
+#endif
 }
 
 MainWindow::~MainWindow()

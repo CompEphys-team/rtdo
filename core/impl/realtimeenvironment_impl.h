@@ -42,7 +42,7 @@ public:
     void closeDevicesSC();
 
     std::string getDeviceName(int deviceno);
-    unsigned int getSubdevice(int deviceno, Channel::Type type);
+    unsigned int getSubdevice(int deviceno, Channel::Direction type);
 
     std::unique_ptr<RT_TASK, int (*)(RT_TASK *)> task;
 

@@ -28,6 +28,11 @@ VClampSetupDialog::VClampSetupDialog(QWidget *parent) :
     ui->voltageOutputChannel->setModel(voutModel);
     connect(this, SIGNAL(channelsUpdated()), cinModel, SIGNAL(modelReset()));
     connect(this, SIGNAL(channelsUpdated()), voutModel, SIGNAL(modelReset()));
+
+#ifndef CONFIG_RT
+    ui->currentInputChannel->setEnabled(false);
+    ui->voltageOutputChannel->setEnabled(false);
+#endif
 }
 
 VClampSetupDialog::~VClampSetupDialog()

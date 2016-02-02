@@ -37,7 +37,7 @@ void RealtimeEnvironment::Impl::closeDevicesSC()
     }
 }
 
-unsigned int RealtimeEnvironment::Impl::getSubdevice(int deviceno, Channel::Type type)
+unsigned int RealtimeEnvironment::Impl::getSubdevice(int deviceno, Channel::Direction type)
 {
     if ( type != Channel::AnalogIn && type != Channel::AnalogOut )
         return 0;
