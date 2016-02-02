@@ -277,7 +277,7 @@ void XMLModel::generateSimulator(XMLModel::outputType type, string path)
     string scalar(genn_double ? "double" : "float");
 
     of << endl;
-    of << "extern \"C\" void simulateSingleNeuron("
+    of << "extern \"C\" " << scalar << " simulateSingleNeuron("
        << scalar << " *variables, "
        << scalar << " *adjustableParams, "
        << scalar << " lstepVG)" << endl;
@@ -307,6 +307,7 @@ void XMLModel::generateSimulator(XMLModel::outputType type, string path)
         }
     }
 
+    of << "\treturn Isyn;" << endl;
     of << "}" << endl;
 }
 
