@@ -16,7 +16,7 @@ initial version: 2016-01-25
 
 #ifdef CONFIG_RT
 // ----------- Realtime implementation --------------
-#include "impl/channel_impl.h"
+#include "realtime/channel_impl.h"
 
 
 #else

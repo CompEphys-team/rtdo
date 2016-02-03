@@ -90,7 +90,7 @@ void RealtimeEnvironment::setSimulatorParameters(float *params)
 
 #ifdef CONFIG_RT
 // ------------------------------ Realtime implementation ---------------------
-#include "impl/realtimeenvironment_impl.h"
+#include "realtime/realtimeenvironment_impl.h"
 
 RealtimeEnvironment::RealtimeEnvironment() :
     sImpl(new Simulator)

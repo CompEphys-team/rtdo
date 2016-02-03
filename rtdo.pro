@@ -20,13 +20,24 @@ TEMPLATE = app
 
 CONFIG(debug, release|debug):DEFINES += _DEBUG
 
-#CONFIG += realtime
 realtime {
     DEFINES += CONFIG_RT
 
     LIBS += -pthread -L. -lRC_kcomedilxrt -lcomedi
 
     INCLUDEPATH += /usr/realtime/include /usr/src/comedi/inc-wrap
+
+    SOURCES += realtime/analogthread.cpp \
+	realtime/realtimeenvironment_RC.cpp \
+	realtime/realtimeenvironment_SC.cpp \
+	realtime/channel_RC.cpp \
+	realtime/channel_SC.cpp \
+	realtime/RC_wrapper.c
+
+    HEADERS +=  realtime/analogthread.h \
+	realtime/realtimeenvironment_impl.h \
+	realtime/channel_impl.h \
+	realtime/RC_wrapper.h
 
     RTAI_LIBDIR = /usr/realtime/lib # Location of libkcomedilxrt.a
     RC_HEADER = RC_rtai_comedi.h # Header file replacing rtai_comedi.h with a prefixed version
@@ -76,14 +87,8 @@ SOURCES += core/main.cpp \
     gui/modelsetupdialog.cpp \
     core/realtimethread.cpp \
     core/realtimeenvironment.cpp \
-    core/analogthread.cpp \
     core/channel.cpp \
-    core/impl/realtimeenvironment_RC.cpp \
-    core/impl/realtimeenvironment_SC.cpp \
-    core/impl/channel_RC.cpp \
-    core/impl/channel_SC.cpp \
     core/realtimeconditionvariable.cpp \
-    core/impl/RC_wrapper.c \
     core/runner.cpp
 
 OTHER_FILES += simulation/GNUmakefile \
@@ -117,12 +122,8 @@ HEADERS  += \
     include/shared.h \
     include/realtimethread.h \
     include/realtimeenvironment.h \
-    include/analogthread.h \
     include/channel.h \
-    core/impl/realtimeenvironment_impl.h \
-    core/impl/channel_impl.h \
     include/realtimeconditionvariable.h \
-    core/impl/RC_wrapper.h \
     include/runner.h
 
 FORMS    += \
