@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>200</height>
+    <height>270</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <property name="geometry">
     <rect>
      <x>50</x>
-     <y>160</y>
+     <y>230</y>
      <width>341</width>
      <height>32</height>
     </rect>
@@ -35,11 +35,11 @@
      <x>10</x>
      <y>10</y>
      <width>381</width>
-     <height>142</height>
+     <height>216</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout">
-    <item row="3" column="0" colspan="2">
+    <item row="5" column="0" colspan="2">
      <widget class="QLabel" name="label_5">
       <property name="text">
        <string>Candidate model population size</string>
@@ -66,7 +66,17 @@
     <item row="1" column="2" colspan="2">
      <widget class="QComboBox" name="voltageOutputChannel"/>
     </item>
-    <item row="3" column="2" colspan="2">
+    <item row="4" column="3">
+     <widget class="QToolButton" name="waveformBrowse">
+      <property name="text">
+       <string>...</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="1" colspan="2">
+     <widget class="QLineEdit" name="waveformFile"/>
+    </item>
+    <item row="5" column="2" colspan="2">
      <widget class="QSpinBox" name="popSize">
       <property name="maximum">
        <number>1000000</number>
@@ -76,20 +86,37 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="1" colspan="2">
-     <widget class="QLineEdit" name="waveformFile"/>
-    </item>
-    <item row="2" column="3">
-     <widget class="QToolButton" name="waveformBrowse">
-      <property name="text">
-       <string>...</string>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="0">
+    <item row="4" column="0">
      <widget class="QLabel" name="label_3">
       <property name="text">
        <string>Waveform file</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0" colspan="2">
+     <widget class="QLabel" name="label_4">
+      <property name="text">
+       <string>Clamp gain (V/V)</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0" colspan="2">
+     <widget class="QLabel" name="label_6">
+      <property name="text">
+       <string>Electrode resistance (MΩ)</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="2" colspan="2">
+     <widget class="QDoubleSpinBox" name="resistance"/>
+    </item>
+    <item row="2" column="2" colspan="2">
+     <widget class="QSpinBox" name="gain">
+      <property name="maximum">
+       <number>10000</number>
+      </property>
+      <property name="singleStep">
+       <number>100</number>
       </property>
      </widget>
     </item>

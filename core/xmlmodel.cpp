@@ -167,6 +167,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << endl;
     of << "#ifdef DEFINITIONS_H" << endl;
+    of << "#include \"realtimeenvironment.h\"" << endl;
     of << "scalar *mvar[NVAR];" << endl;
     of << "scalar *d_mvar[NVAR];" << endl;
     of << "scalar *mparam[NPARAM];" << endl;
@@ -182,6 +183,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "mparam[" << i << "] = " << it->name << POPNAME << ";" << endl;
         of << "d_mparam[" << i << "] = d_" << it->name << POPNAME << ";" << endl;
     }
+    of << "RealtimeEnvironment::env().setClampGainParameter(&clampGainHH);" << endl;
     of << "}" << endl;
     of << "#endif" << endl;
 
@@ -211,6 +213,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "n.varNames.push_back(\"err\");" << endl;
     of << "n.varTypes.push_back(\"scalar\");" << endl;
     of << "n.extraGlobalNeuronKernelParameters.push_back(\"ot\");" << endl;
+    of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
+    of << "n.extraGlobalNeuronKernelParameters.push_back(\"clampGain\");" << endl;
     of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
 
     of << endl;

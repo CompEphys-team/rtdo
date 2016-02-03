@@ -88,6 +88,13 @@ void RealtimeEnvironment::setSimulatorParameters(float *params)
     sImpl->simParamsFloat = params;
 }
 
+double RealtimeEnvironment::getClampGain()
+{
+    return config->vc.gain / config->vc.resistance;
+    // Units are not an oversight: with gain in V/V, resistance in MOhm, current in nA, and voltage in mV,
+    // units do cancel out nicely.
+}
+
 #ifdef CONFIG_RT
 // ------------------------------ Realtime implementation ---------------------
 #include "realtime/realtimeenvironment_impl.h"
@@ -103,6 +110,11 @@ RealtimeEnvironment::~RealtimeEnvironment() {}
 
 void RealtimeEnvironment::sync()
 {
+    if ( sImpl->useFloat )
+        *((float *)clampGainParam) = (float) getClampGain();
+    else
+        *((double *)clampGainParam) = getClampGain();
+
     if ( _useSim ) {
         sImpl->sync();
     } else {
@@ -216,6 +228,10 @@ RealtimeEnvironment::~RealtimeEnvironment() {}
 
 void RealtimeEnvironment::sync()
 {
+    if ( sImpl->useFloat )
+        *((float *)clampGainParam) = (float) getClampGain();
+    else
+        *((double *)clampGainParam) = getClampGain();
     sImpl->sync();
 }
 

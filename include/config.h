@@ -42,6 +42,9 @@ public:
     int in;
     int out;
 
+    int gain;
+    double resistance;
+
 private:
     void fromXML(TiXmlElement *section, const conf::IOConfig &io);
     void toXML(TiXmlElement *section, const IOConfig &io) const;

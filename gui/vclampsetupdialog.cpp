@@ -55,6 +55,9 @@ void VClampSetupDialog::open()
         ++i;
     }
 
+    ui->gain->setValue(config->vc.gain);
+    ui->resistance->setValue(config->vc.resistance);
+
     ui->waveformFile->setText(QString::fromStdString(config->vc.wavefile));
     ui->popSize->setValue(config->vc.popsize);
 
@@ -67,6 +70,8 @@ void VClampSetupDialog::accept()
     int out = ui->voltageOutputChannel->currentIndex();
     config->vc.in = ( in >= 0 ) ? config->io.channels.at(in).ID() : 0;
     config->vc.out = ( out >= 0 ) ? config->io.channels.at(out).ID() : 0;
+    config->vc.gain = ui->gain->value();
+    config->vc.resistance = ui->resistance->value();
     config->vc.wavefile = ui->waveformFile->text().toStdString();
     config->vc.popsize = ui->popSize->value();
 

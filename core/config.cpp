@@ -17,7 +17,9 @@ initial version: 2016-01-08
 conf::VCConfig::VCConfig() :
     popsize(1000),
     in(0),
-    out(0)
+    out(0),
+    gain(1000),
+    resistance(5.0)
 {}
 
 void conf::VCConfig::fromXML(TiXmlElement *section, const conf::IOConfig &io) {
@@ -28,6 +30,11 @@ void conf::VCConfig::fromXML(TiXmlElement *section, const conf::IOConfig &io) {
     TiXmlElement *el;
     if ( (el = section->FirstChildElement("wavefile")) )
         wavefile = el->GetText();
+
+    if ( (el = section->FirstChildElement("clamp")) ) {
+        section->QueryIntAttribute("gain", &gain);
+        section->QueryDoubleAttribute("resistance", &resistance);
+    }
 }
 
 void conf::VCConfig::toXML(TiXmlElement *section, const conf::IOConfig &io) const
@@ -39,6 +46,10 @@ void conf::VCConfig::toXML(TiXmlElement *section, const conf::IOConfig &io) cons
     TiXmlElement *el = new TiXmlElement("wavefile");
     el->LinkEndChild(new TiXmlText(wavefile));
     section->LinkEndChild(el);
+
+    el = new TiXmlElement("clamp");
+    el->SetAttribute("gain", gain);
+    el->SetAttribute("resistance", resistance);
 }
 
 

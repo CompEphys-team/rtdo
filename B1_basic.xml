@@ -53,7 +53,7 @@
     unsigned int mt;
     scalar mdt= DT/50.0;
     for (mt=0; mt &lt; 50; mt++) {
-      Isyn= 200.0*($(stepVG)-$(V));
+      Isyn= $(clampGain)*($(stepVG)-$(V));
       Imem= -($(m)*$(m)*$(m)*$(h)*$(gNa)*($(V)-($(ENa)))+
               ($(nA)*$(nA)*$(gKA)+$(nB)*$(gKB))*($(V)-($(EK)))+
               $(a)*$(a)*$(a)*$(a)*$(b)*$(gA)*($(V)-($(EK)))+
