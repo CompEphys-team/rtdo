@@ -15,6 +15,7 @@ initial version: 2016-01-20
 #include <fstream>
 #include <exception>
 #include <iomanip>
+#include "config.h"
 
 #define POPNAME "HH"
 #define CUTMARK "///--- Cut simulator here ---///"
@@ -106,7 +107,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         npop = 1;
     }
 
-    int nExtraVars = 1;
+    int nExtraVars = 2;
 
     if ( path.back() != '/' )
         path += "/";
@@ -114,7 +115,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << setprecision(precision) << scientific;
 
-    of << "#define NVAR " << _vars.size() << endl;
+    of << "#define NVAR " << _vars.size() + 1 << endl; // +1 for V
     of << "#define NPARAM " << _adjustableParams.size() << endl;
     switch( type ) {
     case VClamp:
@@ -137,15 +138,17 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << endl;
     of << "double variableIni[" << to_string(_vars.size() + _adjustableParams.size() + nExtraVars) << "] = {" << endl;
+    of << "  -60.0," << endl;
     for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it )
         of << "  " << it->initial << "," << endl;
     for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it )
         of << "  " << it->initial << "," << endl;
     of << "};" << endl;
 
-    of << "double fixedParamIni[] = {" << endl;
+    of << "double fixedParamIni[" << to_string(_params.size() + 1) << "] = {" << endl;
     for ( vector<param>::iterator it = _params.begin(); it != _params.end(); ++it )
         of << "  " << it->initial << "," << endl;
+    of << "  " << config->model.cycles << endl;
     of << "};" << endl;
 
     of << "double *aParamIni = variableIni + NVAR;" << endl;
@@ -173,7 +176,9 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "scalar *mparam[NPARAM];" << endl;
     of << "scalar *d_mparam[NPARAM];" << endl;
     of << "void rtdo_init_bridge() {" << endl;
-    int i = 0;
+    of << "  mvar[0] = VHH;" << endl;
+    of << "  d_mvar[0] = d_VHH;" << endl;
+    int i = 1;
     for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it, ++i ) {
         of << "mvar[" << i << "] = " << it->name << POPNAME << ";" << endl;
         of << "d_mvar[" << i << "] = d_" << it->name << POPNAME << ";" << endl;
@@ -195,6 +200,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "n.varTypes.clear();" << endl;
 
     of << endl;
+    of << "n.varNames.push_back(\"V\");" << endl;
+    of << "n.varTypes.push_back(\"scalar\");" << endl;
     for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it ) {
         of << "n.varNames.push_back(\"" << it->name << "\");" << endl;
         of << "n.varTypes.push_back(\"" << it->type << "\");" << endl;
@@ -208,6 +215,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     for ( vector<param>::iterator it = _params.begin(); it != _params.end(); ++it ) {
         of << "n.pNames.push_back(\"" << it->name << "\");" << endl;
     }
+    of << "n.pNames.push_back(\"simCycles\");" << endl;
     of << endl;
 
     of << "n.varNames.push_back(\"err\");" << endl;
@@ -216,12 +224,43 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
     of << "n.extraGlobalNeuronKernelParameters.push_back(\"clampGain\");" << endl;
     of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
-
     of << endl;
+
     // Assume std >= c++11 for raw string literal:
-    of << "n.simCode = R\"EOF(" << endl << CUTMARK << endl << code << endl << CUTMARK << endl << ")EOF\";";
-
+    of << "n.simCode = R\"EOF(" << endl
+       << CUTMARK << endl
+       << "unsigned int mt;" << endl
+       << "scalar mdt= DT/$(simCycles);" << endl
+       << "for (mt=0; mt < $(simCycles); mt++) {" << endl
+       << "  Isyn= $(clampGain)*($(stepVG)-$(V));" << endl
+       << code
+       << endl;
+    switch ( type ) {
+    case VClamp:
+        of << "}" << endl
+           << CUTMARK << endl
+           << "if ((t > $(ot)) && (t < $(ote))) {" << endl
+           << "  $(err) += abs(Isyn-$(IsynG));" << endl
+           << "}" << endl
+           << ")EOF\";" << endl;
+        break;
+    case WaveGen:
+        of << "#ifndef _" << modelname << "_neuronFnct_cc" << endl // Don't compile this part in calcNeuronsCPU
+           << "#ifdef _" << modelname << "_neuronKrnl_cc" << endl // Also, don't compile in simulateSingleNeuron
+           << "  __shared__ double IsynShare[" + to_string(_adjustableParams.size() + 1) + "];" << endl
+           << "  if ((t > $(ot)) && (t < $(ote))) {" << endl
+           << "    IsynShare[threadIdx.x] = Isyn;" << endl
+           << "    __syncthreads();" << endl
+           << "    $(err)+= abs(Isyn-IsynShare[0]) * mdt * DT;" << endl
+           << "  }" << endl
+           << "#endif" << endl
+           << "#endif" << endl
+           << "}" << endl
+           << CUTMARK << endl
+           << ")EOF\";" << endl;
+    }
     of << endl;
+
     switch ( type ) {
     case VClamp:
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"ote\");" << endl;
@@ -230,27 +269,12 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"IsynG\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
-        of << endl;
-        of << "n.simCode += \"if ((t > $(ot)) && (t < $(ote))) { $(err)+= abs(Isyn-$(IsynG)); }\";" << endl;
         break;
     case WaveGen:
         of << "n.varNames.push_back(\"stepVG\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
         of << "n.varNames.push_back(\"ote\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
-        of << endl;
-        // The following is a bit of code that writes a bit of code that writes a bit of code. Turtles all the way down.
-        of << "n.simCode += R\"EOF(" << endl;
-        of << "#ifndef _" << modelname << "_neuronFnct_cc" << endl;
-        of << "__shared__ double IsynShare[" + to_string(_adjustableParams.size() + 1) + "];" << endl;
-        of << "if ((t > $(ot)) && (t < $(ote))) {" << endl;
-        of << "    IsynShare[threadIdx.x] = Isyn;" << endl;
-        of << "    __syncthreads();" << endl;
-        of << "    $(err)+= abs(Isyn-IsynShare[0]) * mdt * DT;" << endl;
-        of << "}" << endl;
-        of << "#endif" << endl;
-        of << ")EOF\";" << endl;
-        of << endl;
         of << "optimiseBlockSize = 0;" << endl;
         of << "neuronBlkSz = " << to_string(_adjustableParams.size() + 1) << ";" << endl;
         of << "synapseBlkSz = 1;" << endl;
@@ -288,7 +312,8 @@ void XMLModel::generateSimulator(XMLModel::outputType type, string path)
     of << "{" << endl;
     of << "\t" << scalar << " Isyn = 0;" << endl;
 
-    int i = 0;
+    int i = 1;
+    of << "\t" << scalar << " &lV = variables[0];" << endl;
     for ( param& v : _vars ) {
         of << "\t" << scalar << " &l" << v.name << " = variables[" << i << "];" << endl;
         ++i;

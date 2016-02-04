@@ -86,6 +86,8 @@ public:
     string deffile;
     XMLModel *obj;
 
+    int cycles;
+
 private:
     void fromXML(TiXmlElement *section);
     void toXML(TiXmlElement *section) const;

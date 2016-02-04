@@ -49,7 +49,8 @@ void conf::VCConfig::toXML(TiXmlElement *section, const conf::IOConfig &io) cons
 
     el = new TiXmlElement("clamp");
     el->SetAttribute("gain", gain);
-    el->SetAttribute("resistance", resistance);
+    el->SetDoubleAttribute("resistance", resistance);
+    section->LinkEndChild(el);
 }
 
 
@@ -166,7 +167,8 @@ void conf::OutputConfig::toXML(TiXmlElement *section) const
 
 
 conf::ModelConfig::ModelConfig() :
-    obj(NULL)
+    obj(NULL),
+    cycles(50)
 {}
 
 void conf::ModelConfig::fromXML(TiXmlElement *section)
@@ -175,12 +177,20 @@ void conf::ModelConfig::fromXML(TiXmlElement *section)
     if ( (el = section->FirstChildElement("deffile")) ) {
         deffile = el->GetText();
     }
+
+    if ( (el = section->FirstChildElement("resolution")) ) {
+        section->QueryIntAttribute("steps", &cycles);
+    }
 }
 
 void conf::ModelConfig::toXML(TiXmlElement *section) const
 {
     TiXmlElement *el = new TiXmlElement("deffile");
     el->LinkEndChild(new TiXmlText(deffile));
+    section->LinkEndChild(el);
+
+    el = new TiXmlElement("resolution");
+    el->SetAttribute("cycles", cycles);
     section->LinkEndChild(el);
 }
 

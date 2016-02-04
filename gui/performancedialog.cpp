@@ -18,6 +18,7 @@ PerformanceDialog::~PerformanceDialog()
 void PerformanceDialog::open()
 {
     ui->ai_supersampling->setValue(config->io.ai_supersampling);
+    ui->simCycles->setValue(config->model.cycles);
     QDialog::open();
 }
 
@@ -39,6 +40,8 @@ void PerformanceDialog::apply()
     int sup = ui->ai_supersampling->value();
     config->io.ai_supersampling = sup;
     RealtimeEnvironment::env().setSupersamplingRate(sup);
+
+    config->model.cycles = ui->simCycles->value();
 }
 
 void PerformanceDialog::on_reportingToggle_clicked()

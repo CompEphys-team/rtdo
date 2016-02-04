@@ -1,6 +1,5 @@
 <model name="B1_full">
 	<precision digits="8" scalar="float"/>
-	<variable name="V" type="scalar" value="-52.2"/>
 	<variable name="m" type="scalar" value="0.0285961"/>
 	<variable name="h" type="scalar" value="0.9977761"/>
 	<variable name="nA" type="scalar" value="0.0172525"/>
@@ -161,12 +160,7 @@
 	</adjustableParam>
 
 	<code>
-    scalar Imem;
-    unsigned int mt;
-    scalar mdt= DT/50.0;
-    for (mt=0; mt &lt; 50; mt++) {
-      Isyn= $(clampGain)*($(stepVG)-$(V));
-      Imem= -($(m)*$(m)*$(m)*$(h)*$(gNa)*($(V)-($(ENa)))+
+      scalar Imem= -($(m)*$(m)*$(m)*$(h)*$(gNa)*($(V)-($(ENa)))+
               ($(nA)*$(nA)*$(gKA)+$(nB)*$(gKB))*($(V)-($(EK)))+
               $(a)*$(a)*$(a)*$(a)*$(b)*$(gA)*($(V)-($(EK)))+
               $(gl)*($(V)-($(El)))-Isyn);
@@ -196,6 +190,5 @@
       $(b)+= ((_inf-$(b))/tau_)*mdt;
 
       $(V)+= Imem/$(C)*mdt;
-    }
 	</code>
 </model>
