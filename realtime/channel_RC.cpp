@@ -33,9 +33,4 @@ bool Channel::write(lsampl_t sample) const
                                       pImpl->_channel, pImpl->_range, pImpl->_aref, sample));
 }
 
-void Channel::put(lsampl_t &sample)
-{
-    rt_mbx_send(&*(pImpl->mbx), &sample, sizeof(lsampl_t));
-}
-
 #endif

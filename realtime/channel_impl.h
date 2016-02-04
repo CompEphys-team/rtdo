@@ -14,11 +14,7 @@ initial version: 2016-01-26
 #define CHANNEL_IMPL_H
 
 #include "channel.h"
-#include <rtai_mbx.h>
-
-#ifndef ChannelImpl_MailboxSize
-#define Channel_MailboxSize 1000
-#endif
+#include "realtimequeue.h"
 
 class Channel::Impl
 {
@@ -49,7 +45,7 @@ public:
 
     int offsetSrc;
 
-    std::shared_ptr<MBX> mbx;
+    RealtimeQueue<lsampl_t> q;
 
     class Converter;
     std::unique_ptr<Converter> converter;

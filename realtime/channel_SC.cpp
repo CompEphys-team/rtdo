@@ -14,7 +14,6 @@ initial version: 2016-01-26
 
 #include "channel_impl.h"
 #include <comedilib.h>
-#include <rtai_mbx.h>
 #include <iostream>
 #include "realtimeenvironment.h"
 #include "config.h"
@@ -73,7 +72,7 @@ Channel::Impl::Impl(Channel::Direction type, int deviceno, unsigned int channel,
     _gain(1.0),
     _offset(0.0),
     offsetSrc(0),
-    mbx(rt_typed_mbx_init(0, Channel_MailboxSize * sizeof(lsampl_t), PRIO_Q), &rt_mbx_delete),
+    q(Channel_MailboxSize, RealtimeQueue<lsampl_t>::Double),
     converter(new Converter(type, this))
 {}
 
@@ -88,7 +87,7 @@ Channel::Impl::Impl(const Impl &other) :
     _gain(other._gain),
     _offset(other._offset),
     offsetSrc(other.offsetSrc),
-    mbx(other.mbx),
+    q(other.q),
     converter(new Converter(*other.converter))
 {}
 
@@ -338,10 +337,14 @@ unsigned int Channel::range() const { return pImpl->_range; }
 Channel::Aref Channel::aref() const { return Impl::aref(pImpl->_aref); }
 int Channel::offsetSource() const { return pImpl->offsetSrc; }
 
+void Channel::put(lsampl_t &sample)
+{
+    pImpl->q.push(sample, false);
+}
+
 void Channel::flush()
 {
-    lsampl_t buf[Channel_MailboxSize];
-    while ( rt_mbx_receive_wp(&*(pImpl->mbx), &buf, Channel_MailboxSize * sizeof(lsampl_t)) < Channel_MailboxSize ) {}
+    pImpl->q.flush();
 }
 
 double Channel::nextSample()
@@ -350,8 +353,7 @@ double Channel::nextSample()
         throw RealtimeException(RealtimeException::RuntimeMsg, "Reading samples from output channel is not supported.");
 
     lsampl_t sample;
-    RTIME delay = 100 * nano2count(1e6 * config->io.dt);
-    if ( rt_mbx_receive_timed(&*(pImpl->mbx), &sample, sizeof(lsampl_t), delay) ) {
+    if ( !pImpl->q.pop_timed(sample, 100 * 1e6 * config->io.dt) ) {
         throw RealtimeException(RealtimeException::Timeout, "receiving data from read queue");
     }
 

@@ -1,6 +1,7 @@
 #include "runner.h"
 #include "run.h"
 #include "realtimethread.h"
+#include "realtimeenvironment.h"
 
 void *Runner::launchStatic(void *_this)
 {
@@ -45,7 +46,13 @@ bool VClampRunner::stop()
 
 void *VClampRunner::launch()
 {
-    bool ret = run_vclamp(&_stop);
+    bool ret;
+    try {
+        ret = run_vclamp(&_stop);
+    } catch ( RealtimeException &e ) {
+        std::cerr << "An exception occurred in the main clamping thread: " << e.what() << std::endl;
+        RealtimeEnvironment::env().pause();
+    }
     _running = false;
     emit processCompleted(ret);
     return 0;

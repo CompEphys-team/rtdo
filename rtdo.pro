@@ -124,7 +124,8 @@ HEADERS  += \
     include/realtimeenvironment.h \
     include/channel.h \
     include/realtimeconditionvariable.h \
-    include/runner.h
+    include/runner.h \
+    include/realtimequeue.h
 
 FORMS    += \
     gui/mainwindow.ui \
