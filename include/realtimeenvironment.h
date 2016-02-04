@@ -95,6 +95,13 @@ public:
     //!< Finds the first subdevice of the given type [RT build only]
     unsigned int getSubdevice(int deviceno, Channel::Direction type);
 
+    /** Turns reporting about free time or overruns in the analog input thread on or off. By default, reporting is off.
+     * Enable to diagnose supersampling ability, but preferably disable for production as it takes a considerable amount
+     * of time to process during sync.
+     **/
+    void setIdleTimeReporting(bool);
+    bool idleTimeReporting() const;
+
 private:
     RealtimeEnvironment();
 

@@ -17,6 +17,7 @@ initial version: 2016-01-25
 #include "channel.h"
 #include "realtimethread.h"
 #include "realtimeconditionvariable.h"
+#include "realtimequeue.h"
 
 #ifndef AnalogThread_CPUMask
 #define AnalogThread_CPUMask 0xFF
@@ -53,6 +54,9 @@ public:
     std::shared_ptr<RealtimeConditionVariable> sync;
 
     bool reloadChannels;
+
+    bool reporting;
+    RealtimeQueue<RTIME> reportQ;
 
 private:
     bool running;

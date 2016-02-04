@@ -89,7 +89,8 @@ SOURCES += core/main.cpp \
     core/realtimeenvironment.cpp \
     core/channel.cpp \
     core/realtimeconditionvariable.cpp \
-    core/runner.cpp
+    core/runner.cpp \
+    gui/performancedialog.cpp
 
 OTHER_FILES += simulation/GNUmakefile \
     simulation/VClampGA.cu \
@@ -125,6 +126,7 @@ HEADERS  += \
     include/channel.h \
     include/realtimeconditionvariable.h \
     include/runner.h \
+    include/performancedialog.h \
     include/realtimequeue.h
 
 FORMS    += \
@@ -132,7 +134,8 @@ FORMS    += \
     gui/channelsetupdialog.ui \
     gui/vclampsetupdialog.ui \
     gui/wavegensetupdialog.ui \
-    gui/modelsetupdialog.ui
+    gui/modelsetupdialog.ui \
+    gui/performancedialog.ui
 
 LIBS     += -rdynamic -ldl
 

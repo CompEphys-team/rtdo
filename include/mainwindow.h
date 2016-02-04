@@ -18,6 +18,7 @@ initial version: 2015-12-03
 #include "vclampsetupdialog.h"
 #include "wavegensetupdialog.h"
 #include "modelsetupdialog.h"
+#include "performancedialog.h"
 #include "runner.h"
 
 namespace Ui {
@@ -54,6 +55,7 @@ private:
     VClampSetupDialog *vclamp_setup;
     WavegenSetupDialog *wavegen_setup;
     ModelSetupDialog *model_setup;
+    PerformanceDialog *performance;
 
     CompileRunner *compiler;
     VClampRunner *vclamp;

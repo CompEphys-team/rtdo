@@ -45,6 +45,8 @@ void *launchOut(void *_this)
 AnalogThread::AnalogThread(bool in, std::shared_ptr<RealtimeConditionVariable> sync) :
     sync(sync),
     reloadChannels(true),
+    reporting(false),
+    reportQ(Channel_MailboxSize, RealtimeQueue<RTIME>::Tenfold),
     running(false),
     exit(false),
     t(new RealtimeThread(in ? launchIn : launchOut, this, AnalogThread_Priority, AnalogThread_StackSize, SCHED_FIFO,
@@ -63,10 +65,11 @@ AnalogThread::~AnalogThread()
 void *AnalogThread::inputFn()
 {
     int i, nchans=0, iter, nsum=0;
-    RTIME now, expected, samp_ticks=0;
+    RTIME now, expected, samp_ticks=0, tDiff;
     lsampl_t sample;
     std::vector<lsampl_t> sums;
     std::vector<Channel> chans;
+    bool report;
 
     while ( !exit ) {
         // Load new channel config
@@ -83,6 +86,10 @@ void *AnalogThread::inputFn()
         }
         nsum = supersampling;
         samp_ticks = nano2count(1e6 * config->io.dt / nsum);
+
+        if ( (report = reporting) ) {
+            reportQ.push(samp_ticks);
+        }
 
         iter = 0;
 
@@ -118,10 +125,15 @@ void *AnalogThread::inputFn()
             // Wait period
             iter++;
             now = rt_get_time();
-            if ( now < expected ) {
-                rt_sleep(expected-now);
+            tDiff = expected - now;
+            if ( tDiff > 0 ) {
+                rt_sleep(tDiff);
             }
             expected += samp_ticks;
+
+            if ( report ) {
+                reportQ.push(tDiff, false);
+            }
         }
     }
 

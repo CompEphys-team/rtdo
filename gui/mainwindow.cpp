@@ -24,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent) :
     vclamp_setup(new VClampSetupDialog),
     wavegen_setup(new WavegenSetupDialog),
     model_setup(new ModelSetupDialog),
+    performance(new PerformanceDialog),
     compiler(new CompileRunner),
     vclamp(new VClampRunner),
     wavegen(new WaveGenRunner)
@@ -34,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionChannel_setup, SIGNAL(triggered()), channel_setup, SLOT(open()));
     connect(ui->actionWavegen_setup, SIGNAL(triggered()), wavegen_setup, SLOT(open()));
     connect(ui->actionModel_setup, SIGNAL(triggered()), model_setup, SLOT(open()));
+    connect(ui->actionPerformance, SIGNAL(triggered()), performance, SLOT(open()));
     connect(vclamp, SIGNAL(processCompleted(bool)), this, SLOT(vclampComplete(bool)));
     connect(wavegen, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
     connect(ui->vclamp_stop, SIGNAL(clicked()), vclamp, SLOT(stop()));

@@ -53,6 +53,9 @@ public:
 
     std::map<int, struct comedi_t_struct *>devSC;
     std::map<int, struct comedi_t_struct *>devRC;
+
+    int nSyncs;
+    int supersamplingRecommend;
 };
 
 #endif // REALTIMEENVIRONMENT_IMPL_H

@@ -98,6 +98,7 @@ double RealtimeEnvironment::getClampGain()
 #ifdef CONFIG_RT
 // ------------------------------ Realtime implementation ---------------------
 #include "realtime/realtimeenvironment_impl.h"
+#include <iomanip>
 
 RealtimeEnvironment::RealtimeEnvironment() :
     sImpl(new Simulator)
@@ -128,11 +129,46 @@ void RealtimeEnvironment::sync()
         pImpl->out->preload.wait();
         pImpl->out->load.signal();
 
-        // Flush the message buffer & load input assignment
+        // Flush the read queue
         pImpl->in->preload.wait();
         for ( Channel& c : pImpl->in->channels ) {
             c.flush();
         }
+
+        // Reporting
+        if ( pImpl->in->reporting ) {
+            RTIME loop;
+            // Ignore first iteration after reset
+            if ( pImpl->nSyncs++ && pImpl->in->reportQ.pop(loop, false) ) {
+                RTIME best = 0, worst = loop, sum = 0, buffer;
+                int n, overruns = 0;
+                for ( n = 0; pImpl->in->reportQ.pop(buffer, false); n++ ) {
+                    sum += buffer;
+                    if ( buffer < worst )
+                        worst = buffer;
+                    if ( buffer > best )
+                        best = buffer;
+                    if ( buffer < 0 )
+                        overruns++;
+                }
+                RTIME average = count2nano(sum/n);
+                double saturation = (1.0 - average * 1.0/count2nano(loop));
+                int recommendation = config->io.ai_supersampling * 1.0 / saturation;
+                pImpl->supersamplingRecommend += recommendation;
+                pImpl->nSyncs++;
+                rt_make_soft_real_time();
+                cout << setprecision(2) << fixed
+                     << "Average idle time in analog in: " << average << " ns" << endl
+                     << "saturation " << 100.0*saturation << "%" << endl
+                     << "spread: " << count2nano(worst) << " ns to " << count2nano(best) << " ns." << endl
+                     << "total overruns, out of " << n << " acquisitions: " << overruns << endl
+                     << "Maximum recommended supersampling rate: " << (int)(pImpl->supersamplingRecommend / pImpl->nSyncs) << endl;
+                rt_make_hard_real_time();
+            }
+        }
+        pImpl->in->reportQ.flush();
+
+        // Load input assignment
         pImpl->in->load.signal();
 
         // Wait for load
@@ -140,6 +176,7 @@ void RealtimeEnvironment::sync()
         pImpl->out->prime();
         pImpl->in->presync.wait();
         pImpl->out->presync.wait();
+        rt_sleep(nano2count(100000));
 
         // Release the hounds!
         pImpl->sync->broadcast();
@@ -159,6 +196,8 @@ void RealtimeEnvironment::pause()
 void RealtimeEnvironment::setSupersamplingRate(int r)
 {
     pImpl->in->setSupersamplingRate(r);
+    pImpl->nSyncs = 0;
+    pImpl->supersamplingRecommend = 0;
 }
 
 void RealtimeEnvironment::setWaveform(const inputSpec &i)
@@ -216,6 +255,18 @@ unsigned int RealtimeEnvironment::getSubdevice(int deviceno, Channel::Direction 
     return pImpl->getSubdevice(deviceno, type);
 }
 
+void RealtimeEnvironment::setIdleTimeReporting(bool yes)
+{
+    pImpl->in->reporting = yes;
+    pImpl->nSyncs = 0;
+    pImpl->supersamplingRecommend  = 0;
+}
+
+bool RealtimeEnvironment::idleTimeReporting() const
+{
+    return pImpl->in->reporting;
+}
+
 #else
 // ------------------------------ Non-realtime implementation --------------------------
 
@@ -257,6 +308,8 @@ void RealtimeEnvironment::setSupersamplingRate(int) {}
 struct comedi_t_struct *RealtimeEnvironment::getDevice(int, bool) { return 0; }
 std::string RealtimeEnvironment::getDeviceName(int deviceno) { return std::string("Simulator"); }
 unsigned int RealtimeEnvironment::getSubdevice(int, Channel::Direction) { return 0; }
+void RealtimeEnvironment::setIdleTimeReporting(bool) {}
+bool RealtimeEnvironment::idleTimeReporting() const { return false; }
 
 #endif
 
