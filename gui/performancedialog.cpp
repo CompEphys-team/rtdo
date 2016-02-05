@@ -1,3 +1,15 @@
+/*--------------------------------------------------------------------------
+Author: Felix Kern
+
+Institute: School of Life Sciences
+University of Sussex
+Falmer, Brighton BN1 9QG, UK
+
+email to:  fbk21@sussex.ac.uk
+
+initial version: 2016-02-04
+
+--------------------------------------------------------------------------*/
 #include "performancedialog.h"
 #include "ui_performancedialog.h"
 #include "config.h"

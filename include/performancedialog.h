@@ -1,3 +1,15 @@
+/*--------------------------------------------------------------------------
+Author: Felix Kern
+
+Institute: School of Life Sciences
+University of Sussex
+Falmer, Brighton BN1 9QG, UK
+
+email to:  fbk21@sussex.ac.uk
+
+initial version: 2016-02-04
+
+--------------------------------------------------------------------------*/
 #ifndef PERFORMANCEDIALOG_H
 #define PERFORMANCEDIALOG_H
 
