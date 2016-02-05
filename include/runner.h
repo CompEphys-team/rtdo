@@ -15,6 +15,7 @@ initial version: 2016-02-01
 
 #include <QObject>
 #include "realtimethread.h"
+#include "realtimeconditionvariable.h"
 #include "xmlmodel.h"
 
 class Runner : public QObject
@@ -30,6 +31,7 @@ signals:
 public slots:
     virtual bool start() = 0;
     inline virtual bool stop() { return false; }
+    virtual void wait();
 
 protected:
     virtual void *launch() = 0;
@@ -37,6 +39,8 @@ protected:
     friend class RealtimeThread::Impl;
 
     std::unique_ptr<RealtimeThread> t;
+
+    RealtimeConditionVariable _sem;
 
     bool _running;
 };

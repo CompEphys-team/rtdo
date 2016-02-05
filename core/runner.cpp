@@ -17,7 +17,14 @@ initial version: 2016-02-01
 
 void *Runner::launchStatic(void *_this)
 {
-    return ((Runner *)_this)->launch();
+    void *ret = ((Runner *)_this)->launch();
+    ((Runner *)_this)->_sem.broadcast();
+    return ret;
+}
+
+void Runner::wait()
+{
+    _sem.wait();
 }
 
 CompileRunner::CompileRunner(XMLModel::outputType type, QObject *parent) :
