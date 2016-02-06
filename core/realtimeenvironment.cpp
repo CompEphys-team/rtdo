@@ -44,6 +44,14 @@ public:
         return sample;
     }
 
+    void setClampGain(void *var, double val)
+    {
+        if ( useFloat )
+            *((float *)var) = (float) val;
+        else
+            *((double *)var) = val;
+    }
+
 private:
     double lt;
     double stepV;
@@ -88,6 +96,12 @@ void RealtimeEnvironment::setSimulatorParameters(float *params)
     sImpl->simParamsFloat = params;
 }
 
+void RealtimeEnvironment::setClampGainParameter(void *param)
+{
+    clampGainParam = param;
+    sImpl->setClampGain(param, getClampGain());
+}
+
 double RealtimeEnvironment::getClampGain()
 {
     return config->vc.gain / config->vc.resistance;
@@ -111,10 +125,7 @@ RealtimeEnvironment::~RealtimeEnvironment() {}
 
 void RealtimeEnvironment::sync()
 {
-    if ( sImpl->useFloat )
-        *((float *)clampGainParam) = (float) getClampGain();
-    else
-        *((double *)clampGainParam) = getClampGain();
+    sImpl->setClampGain(clampGainParam, getClampGain());
 
     if ( _useSim ) {
         sImpl->sync();
@@ -279,10 +290,7 @@ RealtimeEnvironment::~RealtimeEnvironment() {}
 
 void RealtimeEnvironment::sync()
 {
-    if ( sImpl->useFloat )
-        *((float *)clampGainParam) = (float) getClampGain();
-    else
-        *((double *)clampGainParam) = getClampGain();
+    sImpl->setClampGain(clampGainParam,	getClampGain());
     sImpl->sync();
 }
 

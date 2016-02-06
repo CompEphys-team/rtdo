@@ -81,7 +81,7 @@ public:
      * This is called from within @fn rtdo_setup_bridge and need not be repeated elsewhere.
      * The native type of @a param should be scalar*.
      **/
-    inline void setClampGainParameter(void *param) { clampGainParam = param; }
+    void setClampGainParameter(void *param);
 
     //!< Get the configured clamp gain value
     double getClampGain();
