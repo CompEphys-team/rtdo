@@ -26,8 +26,8 @@ MainWindow::MainWindow(QWidget *parent) :
     model_setup(new ModelSetupDialog),
     performance(new PerformanceDialog),
     compiler(new CompileRunner),
-    vclamp(new VClampRunner),
-    wavegen(new WaveGenRunner)
+    vclamp(new Runner(XMLModel::VClamp)),
+    wavegen(new Runner(XMLModel::WaveGen))
 {
     ui->setupUi(this);
     connect(channel_setup, SIGNAL(channelsUpdated()), vclamp_setup, SIGNAL(channelsUpdated()));

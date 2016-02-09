@@ -58,8 +58,8 @@ private:
     PerformanceDialog *performance;
 
     CompileRunner *compiler;
-    VClampRunner *vclamp;
-    WaveGenRunner *wavegen;
+    Runner *vclamp;
+    Runner *wavegen;
 };
 
 #endif // MAINWINDOW_H

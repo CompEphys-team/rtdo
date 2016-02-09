@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
             for ( option::Option *opt = &options[TASK]; opt; opt = opt->next() ) {
                 if ( !std::string("wavegen").compare(opt->arg) )       builder = new CompileRunner(XMLModel::WaveGen);
                 else if ( !std::string("vclamp").compare(opt->arg) )   builder = new CompileRunner(XMLModel::VClamp);
+                else continue;
                 std::cout << "Building " << opt->arg << "..." << std::endl;
                 if ( !builder->start() ) {
                     std::cout << "Building " << opt->arg << " failed." << std::endl;
@@ -154,8 +155,9 @@ int main(int argc, char *argv[])
         if ( !buildFailed && options[RUN] ) {
             Runner *runner = 0;
             for ( option::Option *opt = &options[TASK]; opt; opt = opt->next() ) {
-                if ( !std::string("wavegen").compare(opt->arg) )       runner = new WaveGenRunner();
-                else if ( !std::string("vclamp").compare(opt->arg) )   runner = new VClampRunner();
+                if ( !std::string("wavegen").compare(opt->arg) )       runner = new Runner(XMLModel::WaveGen);
+                else if ( !std::string("vclamp").compare(opt->arg) )   runner = new Runner(XMLModel::VClamp);
+                else continue;
                 std::cout << "Running " << opt->arg << "..." << std::endl;
                 if ( !runner->start() ) {
                     std::cout << "Running " << opt->arg << " failed." << std::endl;

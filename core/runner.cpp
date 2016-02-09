@@ -15,6 +15,13 @@ initial version: 2016-02-01
 #include "realtimethread.h"
 #include "realtimeenvironment.h"
 
+Runner::Runner(XMLModel::outputType type, QObject *parent) :
+    QObject(parent),
+    _type(type),
+    _running(false),
+    _stop(false)
+{}
+
 void *Runner::launchStatic(void *_this)
 {
     void *ret = ((Runner *)_this)->launch();
@@ -24,13 +31,48 @@ void *Runner::launchStatic(void *_this)
 
 void Runner::wait()
 {
-    _sem.wait();
+    if ( _running )
+        _sem.wait();
 }
 
-CompileRunner::CompileRunner(XMLModel::outputType type, QObject *parent) :
-    Runner(parent),
-    _type(type)
-{}
+bool Runner::start()
+{
+    if ( _running )
+        return false;
+
+    _running = true;
+    _stop = false;
+    t.reset(new RealtimeThread(Runner::launchStatic, this, 20, 256*1024));
+
+    return true;
+}
+
+bool Runner::stop()
+{
+    return _stop = true;
+}
+
+void *Runner::launch()
+{
+    bool ret = false;
+    try {
+        switch ( _type ) {
+        case XMLModel::VClamp:
+            ret = run_vclamp(&_stop);
+            break;
+        case XMLModel::WaveGen:
+            ret = run_wavegen(-1, &_stop);
+            break;
+        }
+    } catch ( RealtimeException &e ) {
+        std::cerr << "An exception occurred in the worker thread: " << e.what() << std::endl;
+        RealtimeEnvironment::env().pause();
+    }
+    _running = false;
+    emit processCompleted(ret);
+    return 0;
+}
+
 
 bool CompileRunner::start()
 {
@@ -43,62 +85,4 @@ bool CompileRunner::start()
     _running = false;
 
     return true;
-}
-
-
-bool VClampRunner::start()
-{
-    if ( _running )
-        return false;
-
-    _running = true;
-    _stop = false;
-    t.reset(new RealtimeThread(Runner::launchStatic, this, 20, 256*1024));
-
-    return true;
-}
-
-bool VClampRunner::stop()
-{
-    return _stop = true;
-}
-
-void *VClampRunner::launch()
-{
-    bool ret;
-    try {
-        ret = run_vclamp(&_stop);
-    } catch ( RealtimeException &e ) {
-        std::cerr << "An exception occurred in the main clamping thread: " << e.what() << std::endl;
-        RealtimeEnvironment::env().pause();
-    }
-    _running = false;
-    emit processCompleted(ret);
-    return 0;
-}
-
-
-bool WaveGenRunner::start()
-{
-    if ( _running )
-        return false;
-
-    _running = true;
-    _stop = false;
-    t.reset(new RealtimeThread(Runner::launchStatic, this, 20, 256*1024));
-
-    return true;
-}
-
-bool WaveGenRunner::stop()
-{
-    return _stop = true;
-}
-
-void *WaveGenRunner::launch()
-{
-    bool ret = run_wavegen(-1, &_stop);
-    _running = false;
-    emit processCompleted(ret);
-    return 0;
 }
