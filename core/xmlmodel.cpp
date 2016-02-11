@@ -130,6 +130,14 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "#define NPOP " << npop << endl;
         nExtraVars += 2;
         break;
+    case WaveGenNoveltySearch:
+        of << "#define GAPOP " << npop << endl;
+        if ( !single ) {
+            npop *= (_adjustableParams.size() + 1);
+        }
+        of << "#define NPOP " << npop << endl;
+        nExtraVars += 8;
+        break;
     }
 
     of << endl;
@@ -226,18 +234,16 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
     of << endl;
 
-    // Assume std >= c++11 for raw string literal:
-    of << "n.simCode = R\"EOF(" << endl
-       << CUTMARK << endl
-       << "unsigned int mt;" << endl
-       << "scalar mdt= DT/$(simCycles);" << endl
-       << "for (mt=0; mt < $(simCycles); mt++) {" << endl
-       << "  Isyn= $(clampGain)*($(stepVG)-$(V));" << endl
-       << code
-       << endl;
     switch ( type ) {
     case VClamp:
-        of << "}" << endl
+        of << "n.simCode = R\"EOF(" << endl
+           << CUTMARK << endl
+           << "unsigned int mt;" << endl
+           << "scalar mdt= DT/$(simCycles);" << endl
+           << "for (mt=0; mt < $(simCycles); mt++) {" << endl
+           << "  Isyn= $(clampGain)*($(stepVG)-$(V));" << endl
+           << code << endl
+           << "}" << endl
            << CUTMARK << endl
            << "if ((t > $(ot)) && (t < $(ote))) {" << endl
            << "  $(err) += abs(Isyn-$(IsynG));" << endl
@@ -245,7 +251,14 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << ")EOF\";" << endl;
         break;
     case WaveGen:
-        of << "#ifndef _" << modelname << "_neuronFnct_cc" << endl // Don't compile this part in calcNeuronsCPU
+        of << "n.simCode = R\"EOF(" << endl
+           << CUTMARK << endl
+           << "unsigned int mt;" << endl
+           << "scalar mdt= DT/$(simCycles);" << endl
+           << "for (mt=0; mt < $(simCycles); mt++) {" << endl
+           << "  Isyn= $(clampGain)*($(stepVG)-$(V));" << endl
+           << code << endl
+           << "#ifndef _" << modelname << "_neuronFnct_cc" << endl // Don't compile this part in calcNeuronsCPU
            << "#ifdef _" << modelname << "_neuronKrnl_cc" << endl // Also, don't compile in simulateSingleNeuron
            << "  __shared__ double IsynShare[" + to_string(_adjustableParams.size() + 1) + "];" << endl
            << "  if ((t > $(ot)) && (t < $(ote))) {" << endl
@@ -257,6 +270,77 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "#endif" << endl
            << "}" << endl
            << CUTMARK << endl
+           << ")EOF\";" << endl;
+        break;
+    case WaveGenNoveltySearch:
+        of << "n.simCode = R\"EOF(" << endl
+           << "#ifndef _" << modelname << "_neuronFnct_cc" << endl
+           << "scalar IsynErr = 0;" << endl
+           << "bool gatherError = ( $(stage) == " << stDetuneAdjust << " || ((t > $(ot)) && (t < $(ote))) );" << endl
+           << "#endif" << endl
+
+           // Internal loop
+           << CUTMARK << endl
+           << "unsigned int mt;" << endl
+           << "scalar mdt= DT/$(simCycles);" << endl
+           << "for (mt=0; mt < $(simCycles); mt++) {" << endl
+           << "  Isyn= $(clampGain)*($(stepVG)-$(V));" << endl
+           << code << endl
+           << "#ifndef _" << modelname << "_neuronFnct_cc" << endl // Don't compile this part in calcNeuronsCPU
+           << "#ifdef _" << modelname << "_neuronKrnl_cc" << endl // Also, don't compile in simulateSingleNeuron
+           << "  __shared__ double IsynShare[" + to_string(_adjustableParams.size() + 1) + "];" << endl
+           << "  if ( gatherError ) {" << endl
+           << "    IsynShare[threadIdx.x] = Isyn;" << endl
+           << "    __syncthreads();" << endl
+           << "    IsynErr += abs(Isyn-IsynShare[0]) * mdt;" << endl
+           << "  }" << endl
+           << "#endif" << endl
+           << "#endif" << endl
+           << "}" << endl
+           << CUTMARK << endl
+
+           << "#ifndef _" << modelname << "_neuronFnct_cc" << endl
+
+           // DetuneAdjust stage: Add up this parameter's deviation from tuned model
+           << "if ( $(stage) == " << stDetuneAdjust << " ) {" << endl
+           << "  $(err) += IsynErr * DT;" << endl
+
+           // Calculate average deviation from tuned model across all parameters
+           << "} else if ( gatherError ) {" << endl
+           << "  __shared__ scalar IsynErrShare[" << to_string(_adjustableParams.size() + 1) << "];" << endl
+           << "  IsynErrShare[threadIdx.x] = IsynErr;" << endl
+           << "  __syncthreads();" << endl
+           << "  scalar avgIsynErr = 0;" << endl
+           << "  for ( int i = 1; i < " << to_string(_adjustableParams.size() + 1) << "; ++i ) {" << endl
+           << "    avgIsynErr += IsynErrShare[i];" << endl
+           << "  }" << endl
+           << "  avgIsynErr /= " << to_string(_adjustableParams.size()) << ";" << endl
+
+           // NoveltySearch and WaveformOptimise stage:
+           // Find the largest positive deviation from the average, in terms of normalised area under the curve
+//<< "if(threadIdx.x==9&&blockIdx.x==0) printf(\"%d  %.7f\\t%.7f\\t%.2f\\t%.2f\\n\","
+//"(IsynErr>avgIsynErr), avgIsynErr, IsynErr, $(exceedCurrent), t);"
+           << "  if ( IsynErr > avgIsynErr && avgIsynErr > 0 ) {" << endl
+           << "    if ( $(stage) == " << stObservationWindow << " && $(nExceedCurrent) == 0 )" << endl
+           << "      $(tStartCurrent) = t;" << endl
+           << "    $(nExceedCurrent)++;" << endl
+           << "    $(exceedCurrent) += (IsynErr / avgIsynErr) - 1.0;" << endl
+//<< "if(threadIdx.x==4&&blockIdx.x==0) printf(\"%d %d %.20f\\t%.20f\\n\", $(nExceedCurrent), $(nExceed), "
+//"$(exceedCurrent), $(exceed));"
+           << "    if ( $(exceedCurrent) > $(exceed) ) {" << endl
+           << "      $(nExceed) = $(nExceedCurrent);" << endl
+           << "      $(exceed) = $(exceedCurrent);" << endl
+           << "      if ( $(stage) == " << stObservationWindow << " ) {" << endl
+           << "        $(tStart) = $(tStartCurrent);" << endl
+           << "        $(tEnd) = t;" << endl
+           << "      }" << endl
+           << "    }" << endl
+           << "  } else {" << endl
+           << "    $(nExceedCurrent) = 0;" << endl
+           << "    $(exceedCurrent) = 0;" << endl
+           << "  }" << endl
+           << "}" << endl
+           << "#endif" << endl
            << ")EOF\";" << endl;
     }
     of << endl;
@@ -275,6 +359,34 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.varTypes.push_back(\"scalar\");" << endl;
         of << "n.varNames.push_back(\"ote\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "optimiseBlockSize = 0;" << endl;
+        of << "neuronBlkSz = " << to_string(_adjustableParams.size() + 1) << ";" << endl;
+        of << "synapseBlkSz = 1;" << endl;
+        of << "learnBlkSz = 1;" << endl;
+        break;
+    case WaveGenNoveltySearch:
+        of << "n.varNames.push_back(\"stepVG\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+
+        of << "n.varNames.push_back(\"exceed\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "n.varNames.push_back(\"exceedCurrent\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "n.varNames.push_back(\"nExceed\");" << endl;
+        of << "n.varTypes.push_back(\"int\");" << endl;
+        of << "n.varNames.push_back(\"nExceedCurrent\");" << endl;
+        of << "n.varTypes.push_back(\"int\");" << endl;
+
+        of << "n.varNames.push_back(\"tStart\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "n.varNames.push_back(\"tStartCurrent\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "n.varNames.push_back(\"tEnd\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"ote\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"stage\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"int\");" << endl;
         of << "optimiseBlockSize = 0;" << endl;
         of << "neuronBlkSz = " << to_string(_adjustableParams.size() + 1) << ";" << endl;
         of << "synapseBlkSz = 1;" << endl;
@@ -349,6 +461,9 @@ string XMLModel::name(XMLModel::outputType type, bool single) const
         break;
     case WaveGen:
         modelname += "wavegen";
+        break;
+    case WaveGenNoveltySearch:
+        modelname += "wavegenNS";
         break;
     }
     if ( single ) {

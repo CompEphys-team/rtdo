@@ -92,16 +92,25 @@ SOURCES += core/main.cpp \
     core/runner.cpp \
     gui/performancedialog.cpp
 
-OTHER_FILES += simulation/GNUmakefile \
+OTHER_FILES += \
+    simulation/GNUmakefile \
     simulation/VClampGA.cu \
     simulation/VClampGA.h \
     simulation/helper.h \
     simulation/GA.cc \
-    simulation/backlog.cc \
+    simulation/backlog.cc
+
+OTHER_FILES += \
     wavegen/GNUmakefile \
     wavegen/WaveGA.cu \
     wavegen/WaveGA.h \
     wavegen/waveHelper.h
+
+OTHER_FILES += \
+    wavegenNS/GNUmakefile \
+    wavegenNS/WaveGA.cu \
+    wavegenNS/WaveGA.h \
+    wavegenNS/waveHelper.h
 
 HEADERS  += \
     include/mainwindow.h \

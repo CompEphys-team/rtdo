@@ -63,6 +63,9 @@ void *Runner::launch()
         case XMLModel::WaveGen:
             ret = run_wavegen(-1, &_stop);
             break;
+        case XMLModel::WaveGenNoveltySearch:
+            ret = run_wavegen_NS(&_stop);
+            break;
         }
     } catch ( RealtimeException &e ) {
         std::cerr << "An exception occurred in the worker thread: " << e.what() << std::endl;

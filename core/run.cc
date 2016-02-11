@@ -42,6 +42,10 @@ bool compile_model(XMLModel::outputType type) {
         popsize = config->wg.popsize;
         simulator += "/wavegen";
         break;
+    case XMLModel::WaveGenNoveltySearch:
+        popsize = config->wg.popsize;
+        simulator += "/wavegenNS";
+        break;
     }
 
     if ( !config->model.load() ) {
@@ -262,7 +266,65 @@ bool run_wavegen(int focusParam, bool *stopFlag)
         cout << config->model.obj->adjustableParams().at(focusParam).name << ", best fit:" << endl;
         cout << is << endl;
     }
-    return 0;
+    return true;
+}
+
+bool run_wavegen_NS(bool *stopFlag)
+{
+    bool stopdummy = false;
+    if ( !stopFlag )
+        stopFlag =& stopdummy;
+
+    RealtimeEnvironment &env = RealtimeEnvironment::env();
+
+    void *lib;
+    void (*wgmain)(int, int, ofstream&, bool*);
+    string fname = string(SOURCEDIR) + "/wavegenNS/WaveGen.so";
+    dlerror();
+    if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
+        cerr << dlerror() << endl;
+        return false;
+    }
+    if ( !(*(void**)(&wgmain) = dlsym(lib, "wavegenNS")) ) {
+        cerr << dlerror() << endl;
+        return false;
+    }
+
+    if ( !config->model.load(false) ) {
+        cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
+        return false;
+    }
+    if ( config->model.obj->genn_float() ) {
+        float (*simF)(float*, float*, float);
+        if ( !(*(void**)(&simF) = dlsym(lib, "simulateSingleNeuron")) ) {
+            std::cerr << dlerror() << endl;
+            return false;
+        }
+        env.setSimulator(simF);
+
+    } else {
+        double (*simD)(double*, double*, double);
+        if ( !(*(void**)(&simD) = dlsym(lib, "simulateSingleNeuron")) ) {
+            std::cerr << dlerror() << endl;
+            return false;
+        }
+        env.setSimulator(simD);
+    }
+
+    env.setDT(config->io.dt);
+    env.useSimulator(true);
+
+    string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
+            + config->model.obj->name() + "_waveNS.";
+    int i;
+    for ( i = 0; !access(string(filename + to_string(i)).c_str(), F_OK); i++ ) {}
+    filename += to_string(i);
+    ofstream file(filename);
+
+    wgmain(config->wg.ngen, config->wg.ngen, file, stopFlag);
+
+    file.close();
+    return true;
 }
 
 /*

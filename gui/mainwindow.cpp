@@ -27,7 +27,8 @@ MainWindow::MainWindow(QWidget *parent) :
     performance(new PerformanceDialog),
     compiler(new CompileRunner),
     vclamp(new Runner(XMLModel::VClamp)),
-    wavegen(new Runner(XMLModel::WaveGen))
+    wavegen(new Runner(XMLModel::WaveGen)),
+    wavegenNS(new Runner(XMLModel::WaveGenNoveltySearch))
 {
     ui->setupUi(this);
     connect(channel_setup, SIGNAL(channelsUpdated()), vclamp_setup, SIGNAL(channelsUpdated()));
@@ -38,8 +39,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionPerformance, SIGNAL(triggered()), performance, SLOT(open()));
     connect(vclamp, SIGNAL(processCompleted(bool)), this, SLOT(vclampComplete(bool)));
     connect(wavegen, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
+    connect(wavegenNS, SIGNAL(processCompleted(bool)), this, SLOT(wavegenNSComplete(bool)));
     connect(ui->vclamp_stop, SIGNAL(clicked()), vclamp, SLOT(stop()));
     connect(ui->wavegen_stop, SIGNAL(clicked()), wavegen, SLOT(stop()));
+    connect(ui->wavegen_stop_NS, SIGNAL(clicked()), wavegenNS, SLOT(stop()));
 
 #ifndef CONFIG_RT
     ui->actionChannel_setup->setEnabled(false);
@@ -123,5 +126,33 @@ void MainWindow::on_wavegen_compile_clicked()
     if ( compiler->start() )
         ui->wavegen_start->setEnabled(true);
     ui->wavegen_compile->setEnabled(true);
+    QApplication::restoreOverrideCursor();
+}
+
+void MainWindow::on_wavegen_start_NS_clicked()
+{
+    if ( !wavegenNS->start() )
+        return;
+    ui->wavegen_compile_NS->setEnabled(false);
+    ui->wavegen_start_NS->setEnabled(false);
+    ui->wavegen_stop_NS->setEnabled(true);
+}
+
+void MainWindow::wavegenNSComplete(bool successfully)
+{
+    ui->wavegen_compile_NS->setEnabled(true);
+    ui->wavegen_start_NS->setEnabled(true);
+    ui->wavegen_stop_NS->setEnabled(false);
+}
+
+void MainWindow::on_wavegen_compile_NS_clicked()
+{
+    QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
+    ui->wavegen_compile_NS->setEnabled(false);
+    ui->wavegen_start_NS->setEnabled(false);
+    compiler->setType(XMLModel::WaveGenNoveltySearch);
+    if ( compiler->start() )
+        ui->wavegen_start_NS->setEnabled(true);
+    ui->wavegen_compile_NS->setEnabled(true);
     QApplication::restoreOverrideCursor();
 }

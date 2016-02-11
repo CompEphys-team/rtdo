@@ -25,7 +25,8 @@ public:
 
     enum outputType {
         VClamp,
-        WaveGen
+        WaveGen,
+        WaveGenNoveltySearch
     };
 
     struct param {

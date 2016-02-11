@@ -37,6 +37,13 @@ struct errTupel
     double err;
 };
 
+enum stageEnum {
+    stDetuneAdjust,
+    stNoveltySearch,
+    stWaveformOptimise,
+    stObservationWindow
+};
+
 namespace backlog {
 class LogEntry
 {

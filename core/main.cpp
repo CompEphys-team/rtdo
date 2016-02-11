@@ -42,8 +42,10 @@ struct Arg: public option::Arg
     {
         if ( option.arg != 0 && option.arg[0] != 0 ) {
             if ( std::string("vclamp").compare(option.arg) &&
-                 std::string("wavegen").compare(option.arg) ) {
-                if ( msg ) fprintf(stderr, "Unkown task '%s'. Known tasks are 'wavegen' and 'vclamp'.\n", option.arg);
+                 std::string("wavegen").compare(option.arg) &&
+                 std::string("wavegenNS").compare(option.arg) ) {
+                if ( msg ) fprintf(stderr, "Unkown task '%s'. "
+                                   "Known tasks are 'wavegenNS', 'wavegen' and 'vclamp'.\n", option.arg);
                 return option::ARG_ILLEGAL;
             }
             return option::ARG_OK;
@@ -59,7 +61,8 @@ const option::Descriptor usage[] =
 {
     { HELP,         0, "h", "help",     Arg::None,      u8"-h, --help\tPrint this help" },
     { TASK,         0, "t", "task",     Arg::Task,      u8"-tX, --task=X\tComplete task X in this run. "
-                                                        u8"Currently supported tasks are 'wavegen' and 'vclamp'." },
+                                                        u8"Currently supported tasks are 'wavegenNS', 'wavegen' "
+                                                        u8"and 'vclamp'." },
     { BUILD,        0, "b", "build",    Arg::None,      u8"-b, --build\tRecompile the model from its definition file." },
     { RUN,          0, "r", "run",      Arg::None,      u8"-r, --run\tRun the specified task." },
     { CONFIG,       0, "c", "config",   Arg::NonEmpty,  u8"-cFILE, --config=FILE\tUse the config xml in FILE." },
@@ -143,6 +146,8 @@ int main(int argc, char *argv[])
             for ( option::Option *opt = &options[TASK]; opt; opt = opt->next() ) {
                 if ( !std::string("wavegen").compare(opt->arg) )       builder = new CompileRunner(XMLModel::WaveGen);
                 else if ( !std::string("vclamp").compare(opt->arg) )   builder = new CompileRunner(XMLModel::VClamp);
+                else if ( !std::string("wavegenNS").compare(opt->arg) )
+                    builder = new CompileRunner(XMLModel::WaveGenNoveltySearch);
                 else continue;
                 std::cout << "Building " << opt->arg << "..." << std::endl;
                 if ( !builder->start() ) {
@@ -157,6 +162,8 @@ int main(int argc, char *argv[])
             for ( option::Option *opt = &options[TASK]; opt; opt = opt->next() ) {
                 if ( !std::string("wavegen").compare(opt->arg) )       runner = new Runner(XMLModel::WaveGen);
                 else if ( !std::string("vclamp").compare(opt->arg) )   runner = new Runner(XMLModel::VClamp);
+                else if ( !std::string("wavegenNS").compare(opt->arg) )
+                    runner = new Runner(XMLModel::WaveGenNoveltySearch);
                 else continue;
                 std::cout << "Running " << opt->arg << "..." << std::endl;
                 if ( !runner->start() ) {

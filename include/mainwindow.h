@@ -48,6 +48,11 @@ private slots:
 
     void vclampComplete(bool successfully);
     void wavegenComplete(bool successfully);
+    void wavegenNSComplete(bool successfully);
+
+    void on_wavegen_compile_NS_clicked();
+
+    void on_wavegen_start_NS_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -60,6 +65,7 @@ private:
     CompileRunner *compiler;
     Runner *vclamp;
     Runner *wavegen;
+    Runner *wavegenNS;
 };
 
 #endif // MAINWINDOW_H
