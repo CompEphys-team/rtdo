@@ -101,174 +101,20 @@ inputSpec mutate( inputSpec &inI )
 	return I;
 }
 
-void crossover( inputSpec const& parent1, inputSpec const& parent2, inputSpec & child1, inputSpec & child2 )
-{
-	child1.t = TOTALT;
-	child2.t = TOTALT;
-    child1.ot = OT;
-    child2.ot = OT;
-    child1.baseV = VSTEP0;
-    child2.baseV = VSTEP0;
-	child1.N = NVSTEPS;
-	child2.N = NVSTEPS;
-
-	std::vector<bool> mutations;
-	mutations.reserve( parent1.V.size() + 1 );
-	bool offset = R.n() > 0.5;
-	for (size_t i = offset; i < parent1.V.size() + 1 + offset; ++i)
-	{
-		mutations.push_back( i % 2 );
-	}
-
-	//We can always switch around voltages
-	for (size_t i = 0; i < parent1.V.size(); ++i)
-	{
-		int rndN = R.n() * (0.1 + mutations.size() - 1);
-		if (mutations[rndN])
-		{
-			child1.V.push_back( parent1.V[i] );
-			child2.V.push_back( parent2.V[i] );
-		}
-		else
-		{
-			child1.V.push_back( parent2.V[i] );
-			child2.V.push_back( parent1.V[i] );
-		}
-		mutations.erase( mutations.begin() + rndN );
-	}
-	int rndN = R.n() * (0.1 + mutations.size() - 1);
-	//And observation time
-	if (R.n() > 0.5)
-	{
-        child1.dur = parent1.dur;
-        child2.dur = parent2.dur;
-	}
-	else
-	{
-        child2.dur = parent1.dur;
-        child1.dur = parent2.dur;
-	}
-	mutations.erase( mutations.begin() + rndN );
-
-
-	//For times we will need to reorder them and readjust
-	for (size_t i = 0; i < parent1.V.size(); ++i)
-	{
-		if (R.n() > 0.5)
-		{
-			child1.st.push_back( parent1.st[i] );
-			child2.st.push_back( parent2.st[i] );
-		}
-		else
-		{
-			child1.st.push_back( parent2.st[i] );
-			child2.st.push_back( parent1.st[i] );
-		}
-	}
-	std::sort( child1.st.begin(), child1.st.end() );
-	std::sort( child2.st.begin(), child2.st.end() );
-
-	for (size_t i = 1; i < child1.st.size(); ++i)
-	{
-		if (child1.st[i] - child1.st[i - 1] < MINSTEP) // Don't worry too much and just copy whole parent
-		{
-			child1.st = parent1.st;
-			break;
-		}
-	}
-	for (size_t i = 1; i < child2.st.size(); ++i)
-	{
-		if (child2.st[i] - child2.st[i - 1] < MINSTEP) // Don't worry too much and just copy whole parent
-		{
-			child2.st = parent2.st;
-			break;
-		}
-	}
-}
-
 void procreatePop( vector<inputSpec> &pGen )
 {
-	vector<inputSpec> newGen;
-	int k = pGen.size() / 10;
+    vector<inputSpec> newGen;
+    int k = pGen.size() / 3;
 
-	sort( pGen.begin(), pGen.end(), larger );
-#ifdef DEBUG_PROCREATE
-	cerr << "% sorted fitness: ";
-	for (int i = 0; i < pGen.size(); i++) {
-		cerr << pGen[i].fit << " ";
-	}
-	cerr << endl;
-#endif
-	//10% Elites
-	for (int i = 0; i < k; i++) {
-		newGen.push_back( pGen[i] );
-	}
-	//10% New seeds
-	wave_pop_init( newGen, k );
+    sort(pGen.begin(), pGen.end(), larger);
 
-	//roulette
-	int capacity = (GAPOP + 1) * GAPOP / 2;
-
-	while (newGen.size() < GAPOP) {
-		int rand1 = R.n() * capacity;
-		int rand2 = R.n() * capacity;
-		if (rand1 > rand2) { double tmp = rand1; rand1 = rand2; rand2 = tmp; }
-		int parent1 = -1;
-		int parent2 = -1;
-		for (size_t i = 0; i < GAPOP; i++) //This could probably be approximated/sped up but w/e
-		{
-			rand1 -= GAPOP - i;
-			rand2 -= GAPOP - i;
-			if (rand1 <= 0 && parent1 == -1)
-			{
-				parent1 = i;
-			}
-			if (rand2 <= 0)
-			{
-				parent2 = i;
-				break;
-			}
-		}
-		inputSpec child1;
-		inputSpec child2;
-		//Crossover
-		if (R.n() < GA_CROSSOVER_PROB)
-		{
-			if (parent1 = parent2)
-			{
-				parent2 += (parent2 == GAPOP - 1) ? -1 : 1;
-			}
-			crossover( pGen[parent1], pGen[parent2], child1, child2 );
-		}
-		else
-		{
-			child1 = pGen[parent1];
-			child2 = pGen[parent2];
-			if (parent1 < k)
-			{
-				child1 = mutate( pGen[parent1] );
-			}
-			if (parent2 < k)
-			{
-				child2 = mutate( pGen[parent2] );
-			}
-		}
-		//Mutate
-		if (R.n() < GA_MUTATE_PROB)
-		{
-			child1 = mutate( child1 );
-		}
-		if (R.n() < GA_MUTATE_PROB)
-		{
-			child2 = mutate( child2 );
-		}
-		newGen.push_back( child1 );
-		if (newGen.size() < GAPOP)
-		{
-			newGen.push_back( child2 );
-		}
-
-	}
-	pGen = newGen;
-	assert( pGen.size() == GAPOP );
+    for (int i = 0; i < k; i++) {
+        newGen.push_back(pGen[i]);
+    }
+    for (int i = k; i < 2 * k; i++) {
+        newGen.push_back(mutate(pGen[i - k]));
+    }
+    wave_pop_init(newGen, pGen.size() - 2 * k);
+    pGen = newGen;
+    assert(pGen.size() == GAPOP);
 }
