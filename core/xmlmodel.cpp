@@ -321,12 +321,12 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "  avgIsynErr /= " << to_string(_adjustableParams.size()) << ";" << endl
 
            // Calculate $(best), normalised by the second-greatest error signal
-           << "  if ( $(calcBest) ) {" << endl
+           << "  if ( $(calcBest) && threadIdx.x > 0 ) {" << endl
            << "    if ( IsynErr == maxIsynErr ) {" << endl
            << "      if ( $(stage) == " << stObservationWindow << " && !$(calcExceed) && $(nBestCurrent) == 0 )" << endl
            << "        $(tStartCurrent) = t;" << endl
            << "      $(nBestCurrent)++;" << endl
-           << "      $(bestCurrent) += (IsynErr - IsynErrShare[runnerUp]) / IsynErrShare[runnerUp];" << endl
+           << "      $(bestCurrent) += (IsynErr - IsynErrShare[runnerUp]) / IsynErr;" << endl
            << "      if ( $(nBestCurrent) > $(nBest) ) {" << endl
            << "        $(nBest) = $(nBestCurrent);" << endl
            << "        $(best) = $(bestCurrent);" << endl
@@ -343,7 +343,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
            // NoveltySearch and WaveformOptimise stage:
            // Find the largest positive deviation from the average, in terms of normalised area under the curve
-           << "  if ( $(calcExceed) ) {" << endl
+           << "  if ( $(calcExceed) && threadIdx.x > 0 ) {" << endl
            << "    if ( IsynErr > avgIsynErr && avgIsynErr > 0 ) {" << endl
            << "      if ( $(stage) == " << stObservationWindow << " && $(nExceedCurrent) == 0 )" << endl
            << "        $(tStartCurrent) = t;" << endl
