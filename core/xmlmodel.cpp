@@ -136,7 +136,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
             npop *= (_adjustableParams.size() + 1);
         }
         of << "#define NPOP " << npop << endl;
-        nExtraVars += 8;
+        nExtraVars += 12;
         break;
     }
 
@@ -311,33 +311,56 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "  IsynErrShare[threadIdx.x] = IsynErr;" << endl
            << "  __syncthreads();" << endl
            << "  scalar avgIsynErr = 0;" << endl
+           << "  scalar maxIsynErr = 0;" << endl
+           << "  int runnerUp = 0;"
            << "  for ( int i = 1; i < " << to_string(_adjustableParams.size() + 1) << "; ++i ) {" << endl
            << "    avgIsynErr += IsynErrShare[i];" << endl
+           << "    maxIsynErr = maxIsynErr > IsynErrShare[i] ? maxIsynErr : IsynErrShare[i];" << endl
+           << "    if ( i != threadIdx.x )  runnerUp = i;" << endl
            << "  }" << endl
            << "  avgIsynErr /= " << to_string(_adjustableParams.size()) << ";" << endl
 
+           // Calculate $(best), normalised by the second-greatest error signal
+           << "  if ( $(calcBest) ) {" << endl
+           << "    if ( IsynErr == maxIsynErr ) {" << endl
+           << "      if ( $(stage) == " << stObservationWindow << " && !$(calcExceed) && $(nBestCurrent) == 0 )" << endl
+           << "        $(tStartCurrent) = t;" << endl
+           << "      $(nBestCurrent)++;" << endl
+           << "      $(bestCurrent) += (IsynErr - IsynErrShare[runnerUp]) / IsynErrShare[runnerUp];" << endl
+           << "      if ( $(nBestCurrent) > $(nBest) ) {" << endl
+           << "        $(nBest) = $(nBestCurrent);" << endl
+           << "        $(best) = $(bestCurrent);" << endl
+           << "        if ( $(stage) == " << stObservationWindow << " && !$(calcExceed) ) {" << endl
+           << "          $(tStart) = $(tStartCurrent);" << endl
+           << "          $(tEnd) = t + DT;" << endl
+           << "        }" << endl
+           << "      }" << endl
+           << "    } else {" << endl
+           << "      $(nBestCurrent) = 0;" << endl
+           << "      $(bestCurrent) = 0;" << endl
+           << "    }" << endl
+           << "  }" << endl
+
            // NoveltySearch and WaveformOptimise stage:
            // Find the largest positive deviation from the average, in terms of normalised area under the curve
-//<< "if(threadIdx.x==9&&blockIdx.x==0) printf(\"%d  %.7f\\t%.7f\\t%.2f\\t%.2f\\n\","
-//"(IsynErr>avgIsynErr), avgIsynErr, IsynErr, $(exceedCurrent), t);"
-           << "  if ( IsynErr > avgIsynErr && avgIsynErr > 0 ) {" << endl
-           << "    if ( $(stage) == " << stObservationWindow << " && $(nExceedCurrent) == 0 )" << endl
-           << "      $(tStartCurrent) = t;" << endl
-           << "    $(nExceedCurrent)++;" << endl
-           << "    $(exceedCurrent) += (IsynErr / avgIsynErr) - 1.0;" << endl
-//<< "if(threadIdx.x==4&&blockIdx.x==0) printf(\"%d %d %.20f\\t%.20f\\n\", $(nExceedCurrent), $(nExceed), "
-//"$(exceedCurrent), $(exceed));"
-           << "    if ( $(exceedCurrent) > $(exceed) ) {" << endl
-           << "      $(nExceed) = $(nExceedCurrent);" << endl
-           << "      $(exceed) = $(exceedCurrent);" << endl
-           << "      if ( $(stage) == " << stObservationWindow << " ) {" << endl
-           << "        $(tStart) = $(tStartCurrent);" << endl
-           << "        $(tEnd) = t;" << endl
+           << "  if ( $(calcExceed) ) {" << endl
+           << "    if ( IsynErr > avgIsynErr && avgIsynErr > 0 ) {" << endl
+           << "      if ( $(stage) == " << stObservationWindow << " && $(nExceedCurrent) == 0 )" << endl
+           << "        $(tStartCurrent) = t;" << endl
+           << "      $(nExceedCurrent)++;" << endl
+           << "      $(exceedCurrent) += (IsynErr / avgIsynErr) - 1.0;" << endl
+           << "      if ( $(exceedCurrent) > $(exceed) ) {" << endl
+           << "        $(nExceed) = $(nExceedCurrent);" << endl
+           << "        $(exceed) = $(exceedCurrent);" << endl
+           << "        if ( $(stage) == " << stObservationWindow << " ) {" << endl
+           << "          $(tStart) = $(tStartCurrent);" << endl
+           << "          $(tEnd) = t + DT;" << endl
+           << "        }" << endl
            << "      }" << endl
+           << "    } else {" << endl
+           << "      $(nExceedCurrent) = 0;" << endl
+           << "      $(exceedCurrent) = 0;" << endl
            << "    }" << endl
-           << "  } else {" << endl
-           << "    $(nExceedCurrent) = 0;" << endl
-           << "    $(exceedCurrent) = 0;" << endl
            << "  }" << endl
            << "}" << endl
            << "#endif" << endl
@@ -368,6 +391,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.varNames.push_back(\"stepVG\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
 
+        // Exceed: Windows where the error signal for a parameter exceeds the mean error across all parameters
+        // The selected value reflects the greatest aggregate error above the mean (the area between the error and the mean error curves)
         of << "n.varNames.push_back(\"exceed\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
         of << "n.varNames.push_back(\"exceedCurrent\");" << endl;
@@ -377,12 +402,31 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.varNames.push_back(\"nExceedCurrent\");" << endl;
         of << "n.varTypes.push_back(\"int\");" << endl;
 
+        // Best: Windows where the error signal for a parameter exceeds all other parameters' error signal
+        // The selected value reflects the longest 'winning streak', rather than the greatest aggregate margin.
+        of << "n.varNames.push_back(\"best\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "n.varNames.push_back(\"bestCurrent\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "n.varNames.push_back(\"nBest\");" << endl;
+        of << "n.varTypes.push_back(\"int\");" << endl;
+        of << "n.varNames.push_back(\"nBestCurrent\");" << endl;
+        of << "n.varTypes.push_back(\"int\");" << endl;
+
+        // Waveform start/end (for stObservationWindow)
         of << "n.varNames.push_back(\"tStart\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
         of << "n.varNames.push_back(\"tStartCurrent\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
         of << "n.varNames.push_back(\"tEnd\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
+
+        // Switches (for stWaveformOptimise)
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"calcBest\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"bool\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"calcExceed\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"bool\");" << endl;
+
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"ote\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"stage\");" << endl;

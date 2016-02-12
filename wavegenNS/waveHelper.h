@@ -4,7 +4,7 @@
 #define GA_CROSSOVER_PROB 0.85
 #define GA_MUTATE_PROB 0.5
 
-#define NNOVELTY 2
+#define NNOVELTY 4
 struct noveltyBundle {
     inputSpec wave;
     double novelty[NNOVELTY];
@@ -53,13 +53,21 @@ void reset(scalar *holding, double fac)
         for ( int i = 0; i < NVAR; i++ )
             mvar[i][j] = holding[i];
         errHH[j] = 0.0;
+
         exceedHH[j] = 0;
         exceedCurrentHH[j] = 0;
         nExceedHH[j] = 0;
         nExceedCurrentHH[j] = 0;
+
+        bestHH[j] = 0;
+        bestCurrentHH[j] = 0;
+        nBestHH[j] = 0;
+        nBestCurrentHH[j] = 0;
+
         tStartHH[j] = 0;
         tStartCurrentHH[j] = 0;
         tEndHH[j] = 0;
+
         stepVGHH[j] = VSTEP0;
         single_var_init_auto_detune( j, fac );
     }
@@ -117,7 +125,7 @@ bool larger( inputSpec i, inputSpec j )
 
 bool fittestNovelty(const noveltyBundle &a, const noveltyBundle &b)
 {
-    return a.novelty[0] > b.novelty[0];
+    return a.novelty[2]*a.novelty[3] > b.novelty[2]*b.novelty[3];
 }
 
 inputSpec mutate( const inputSpec &inI )

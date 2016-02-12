@@ -167,6 +167,8 @@ extern "C" void wavegenNS(int nGenerationsNS, int nGenerationsOptimise, ofstream
         otHH = OT;
         oteHH = TOTALT;
         stageHH = stNoveltySearch;
+        calcBestHH = true;
+        calcExceedHH = true;
 
         for ( size_t generation = 0; generation < nGenerationsNS && !*stopFlag; ++generation ) {
             cout << "Novelty search, generation " << generation << endl;
@@ -188,6 +190,8 @@ extern "C" void wavegenNS(int nGenerationsNS, int nGenerationsOptimise, ofstream
 
             CHECK_CUDA_ERRORS( cudaMemcpy( exceedHH, d_exceedHH, VSize, cudaMemcpyDeviceToHost ) );
             CHECK_CUDA_ERRORS( cudaMemcpy( nExceedHH, d_nExceedHH, NPOP*sizeof(int), cudaMemcpyDeviceToHost ) );
+            CHECK_CUDA_ERRORS( cudaMemcpy( bestHH, d_bestHH, VSize, cudaMemcpyDeviceToHost ) );
+            CHECK_CUDA_ERRORS( cudaMemcpy( nBestHH, d_nBestHH, NPOP*sizeof(int), cudaMemcpyDeviceToHost ) );
 
             noveltyBundle bundle;
             double avgNovelty = 0;
@@ -197,6 +201,8 @@ extern "C" void wavegenNS(int nGenerationsNS, int nGenerationsOptimise, ofstream
                 for ( size_t j = 1; j < NPARAM + 1; j++ ) {
                     bundle.novelty[0] = exceedHH[i * (NPARAM + 1) + j];
                     bundle.novelty[1] = nExceedHH[i * (NPARAM + 1) + j];
+                    bundle.novelty[2] = bestHH[i * (NPARAM + 1) + j];
+                    bundle.novelty[3] = nBestHH[i * (NPARAM + 1) + j];
                     double least = 1e9;
                     for ( noveltyBundle &p : noveltyDB[j-1] ) {
                         double dist = noveltyDistance(p, bundle);
@@ -221,11 +227,25 @@ extern "C" void wavegenNS(int nGenerationsNS, int nGenerationsOptimise, ofstream
         }
     }
     for ( int i = 0; i < NPARAM; i++ ) {
-        cout << (noveltyDB[i].size()-1) << " touchstone waves for parameter " << (i+1) << endl;
+        cout << "Parameter " << (i+1) << ": " << (noveltyDB[i].size()-1) << " touchstone waves" << endl;
         if ( noveltyDB[i].size() == 1 ) {
             cout << "Waveforms for this parameter will be generated from scratch. You may need to "
                     "decrease the novelty threshold or fit this parameter using a different method." << endl;
             noveltyDB[i].clear();
+        } else {
+            double sums[4] = {}, maxV[4] = {};
+            for ( noveltyBundle &p : noveltyDB[i] ) {
+                for ( int j = 0; j < 4; j++ ) {
+                    sums[j] += p.novelty[j];
+                    if ( maxV[j] < p.novelty[j] ) {
+                        maxV[j] = p.novelty[j];
+                    }
+                }
+            }
+            cout << "\t\texceed\tnExceed\tbest\tnBest" << endl;
+            cout << "\taverage:\t" << sums[0]/(noveltyDB[i].size()-1) << '\t' << sums[1]/(noveltyDB[i].size()-1)
+                 << '\t' << sums[2]/(noveltyDB[i].size()-1) << '\t' << sums[3]/(noveltyDB[i].size()-1) << endl;
+            cout << "\tmax (unc.):\t" << maxV[0] << '\t' << maxV[1] << '\t' << maxV[2] << '\t' << maxV[3] << endl;
         }
     }
 
@@ -233,6 +253,8 @@ extern "C" void wavegenNS(int nGenerationsNS, int nGenerationsOptimise, ofstream
     // Stage: Waveform optimisation
     for ( int k = 0; k < NPARAM && !*stopFlag; k++ ) {
         stageHH = stWaveformOptimise;
+        calcBestHH = true;
+        calcExceedHH = false;
 
         vector<inputSpec> initial;
         initial.reserve(noveltyDB[k].size() * optimiseInitProportion);
@@ -262,9 +284,10 @@ extern "C" void wavegenNS(int nGenerationsNS, int nGenerationsOptimise, ofstream
                 }
             }
 
-            CHECK_CUDA_ERRORS( cudaMemcpy( exceedHH, d_exceedHH, VSize, cudaMemcpyDeviceToHost ) );
+            CHECK_CUDA_ERRORS( cudaMemcpy( bestHH, d_bestHH, VSize, cudaMemcpyDeviceToHost ) );
+            CHECK_CUDA_ERRORS( cudaMemcpy( nBestHH, d_nBestHH, VSize, cudaMemcpyDeviceToHost ) );
             for (size_t i = 0; i < GAPOP; ++i) {
-                stims[i].fit = exceedHH[i * (NPARAM + 1) + k + 1];
+                stims[i].fit = bestHH[i * (NPARAM + 1) + k + 1] * nBestHH[i * (NPARAM + 1) + k + 1];
             }
             procreateInitialisedPop( stims, initial );
             cout << stims[0] << endl;
@@ -289,11 +312,12 @@ extern "C" void wavegenNS(int nGenerationsNS, int nGenerationsOptimise, ofstream
                 }
             }
         }
-        CHECK_CUDA_ERRORS( cudaMemcpy( exceedHH, d_exceedHH, VSize, cudaMemcpyDeviceToHost ) );
+        CHECK_CUDA_ERRORS( cudaMemcpy( bestHH, d_bestHH, VSize, cudaMemcpyDeviceToHost ) );
+        CHECK_CUDA_ERRORS( cudaMemcpy( nBestHH, d_nBestHH, VSize, cudaMemcpyDeviceToHost ) );
         CHECK_CUDA_ERRORS( cudaMemcpy( tStartHH, d_tStartHH, VSize, cudaMemcpyDeviceToHost ) );
         CHECK_CUDA_ERRORS( cudaMemcpy( tEndHH, d_tEndHH, VSize, cudaMemcpyDeviceToHost ) );
         for (size_t i = 0; i < GAPOP; ++i) {
-            stims[i].fit = exceedHH[i * (NPARAM + 1) + k + 1];
+            stims[i].fit = bestHH[i * (NPARAM + 1) + k + 1] * nBestHH[i * (NPARAM + 1) + k + 1];
             stims[i].ot = tStartHH[i * (NPARAM + 1) + k + 1];
             stims[i].dur = tEndHH[i * (NPARAM + 1) + k + 1] - stims[i].ot;
         }
