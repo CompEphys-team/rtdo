@@ -39,21 +39,11 @@ inline bool file_exists( const std::string& name )
 	}
 }
 
-extern "C" int vclamp(const char *basename, const char *outdir, const char *stimFName, bool *stopFlag) {
+extern "C" int vclamp(const char *stimFName, bool *stopFlag, backlog::BacklogVirtual *bklog) {
     ifstream is( stimFName );
 
-	int experimentNo = 0;
-    string OutDir = toString(outdir);
-    while (file_exists( OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".time" ) )) { ++experimentNo; }
-	string name;
-    name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".time" );
-    FILE *timef = fopen( name.c_str(), "a" );
-    name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".out.I" );
-	FILE *osf = fopen( name.c_str(), "w" );
-    name = OutDir + "/" + toString( basename ) + "_" + std::to_string( experimentNo ) + toString( ".out.best" );
-	FILE *osb = fopen( name.c_str(), "w" );
-
     RealtimeEnvironment &env = RealtimeEnvironment::env();
+    backlog::AsyncLog logger(bklog);
 
 	//-----------------------------------------------------------------
     // read the relevant stimulus patterns
@@ -81,9 +71,6 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
 		epos[i] = 0;
 		initial[i] = 1;
 	}
-
-    backlog::AsyncLog *logger ;//= new backlog::AsyncLog(Nstim*NPOP, Nstim);
-    //run_use_backlog(logger->log());
 
 	//-----------------------------------------------------------------
 	// build the neuronal circuitery
@@ -115,7 +102,6 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
     env.setSimulatorVariables(simulatorVars);
     env.setSimulatorParameters(simulatorParams);
 
-	timer.startTimer();
     t = 0.0;
 	int nextS = 0;
     int generation = 0;
@@ -142,26 +128,20 @@ extern "C" int vclamp(const char *basename, const char *outdir, const char *stim
             if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
                 stepVGHH = I.V[sn];
                 sn++;
-                fprintf( osf, "%f %f \n", t, stepVGHH );
             }
         }
 
         env.pause();
+        logger.wait();
 
         CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
 
-        procreatePopPperturb( osb, pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim, logger, generation++ ); //perturb for next step
-	}
-    timer.stopTimer();
-	fprintf( timef, "%f \n", timer.getElapsedTime() );
-	// close files 
-	fclose( osf );
-	fclose( timef );
-	fclose( osb );
+        procreatePopPperturb( pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim, logger, generation++ ); //perturb for next step
+    }
 
-    //logger->halt();
+    logger.halt();
 
-	fprintf( stderr, "DONE" );
+    fprintf( stderr, "DONE\n" );
 	return 0;
 }
 #endif

@@ -54,19 +54,37 @@ public:
     std::vector<double> err;
     std::vector<int> rank;
     double errScore;
+    double rankScore;
     int since;
     long long uid;
+    bool valid;
+    bool tested;
 };
-class Backlog
+class BacklogVirtual
 {
 public:
-    Backlog(int size, int nstims);
-    void touch(int idx, int generation, int stim, int rank = 0);
-    void sort(bool discardUntested = true);
+    enum SortBy { ErrScore, RankScore };
+
+    BacklogVirtual(int size, int nstims) :
+        size(size), nstims(nstims), log(std::list<LogEntry>(size)) {}
+    virtual ~BacklogVirtual() {}
+
+    virtual void touch(errTupel *t, int generation, int stim, int rank = 0) = 0;
+    virtual void score() = 0;
+    virtual void sort(SortBy s, bool prioritiseTested = false) = 0;
 
     int size;
     int nstims;
     std::list<LogEntry> log;
+};
+class Backlog : public BacklogVirtual
+{
+public:
+    Backlog(int size, int nstims);
+    ~Backlog();
+    void touch(errTupel *t, int generation, int stim, int rank = 0);
+    void score();
+    void sort(SortBy s, bool prioritiseTested = false);
 };
 }
 

@@ -11,16 +11,13 @@ initial version: 2016-01-20
 
 --------------------------------------------------------------------------*/
 #include <algorithm>
-#include <limits>
-#include <thread>
-#include <mutex>
-#include <unistd.h>
 #include "shared.h"
+#include "realtimethread.h"
+#include "realtimeconditionvariable.h"
 
 using namespace std;
 
 namespace backlog {
-numeric_limits<scalar> scalarLim;
 
 long long target;
 bool uidMatch(LogEntry &e)
@@ -28,105 +25,111 @@ bool uidMatch(LogEntry &e)
     return e.uid == target;
 }
 
-bool compareErrScore(LogEntry &lhs, LogEntry &rhs)
+bool compareErrScore(const LogEntry &lhs, const LogEntry &rhs)
 {
     return lhs.errScore < rhs.errScore;
 }
 
-LogEntry::LogEntry() {}
+bool compareRankScore(const LogEntry &lhs, const LogEntry &rhs)
+{
+    return lhs.rankScore < rhs.rankScore;
+}
+
+LogEntry::LogEntry() : valid(false) {}
 
 LogEntry::LogEntry(int idx, int generation, int nstims) :
+    param(vector<double>(NPARAM)),
+    err(vector<double>(nstims, -1)),
+    rank(vector<int>(nstims, 0)),
+    errScore(0),
+    rankScore(0),
     since(generation),
     uid(uids[idx]),
-    err(vector<double>(nstims, scalarLim.lowest())),
-    param(vector<double>(NPARAM)),
-    rank(vector<int>(nstims, 0))
+    valid(true),
+    tested(true)
 {
     int i = 0;
-    for ( vector<double>::iterator it = param.begin(); it != param.end(); ++it, ++i ) {
-        *it = mparam[i][idx];
+    for ( double &p : param ) {
+        p = mparam[i++][idx];
     }
 }
 
 Backlog::Backlog(int size, int nstims) :
-    size(size),
-    nstims(nstims),
-    log(list<LogEntry>(size))
+    BacklogVirtual(size, nstims)
 {}
+
+Backlog::~Backlog() {}
     
-void Backlog::touch(int idx, int generation, int stim, int rank)
+void Backlog::touch(errTupel *t, int generation, int stim, int rank)
 {
-    target = uids[idx];
+    target = uids[t->id];
     list<LogEntry>::iterator it = find_if(log.begin(), log.end(), uidMatch);
     if ( it == log.end() ) {
         log.pop_front();
-        log.push_back(LogEntry(idx, generation, nstims));
+        log.push_back(LogEntry(t->id, generation, nstims));
         it = --log.end();
     } else {
         log.splice(log.end(), log, it);
     }
-    it->err[stim] = errHH[idx];
+    it->err[stim] = t->err;
     it->rank[stim] = rank;
 }
 
-void Backlog::sort(bool discardUntested)
+void Backlog::score()
 {
-    // Calculate errScore
     list<LogEntry>::iterator it = log.begin();
     while ( it != log.end() ) {
+        if ( !it->valid ) {
+            it = log.erase(it);
+            continue;
+        }
         double sumErr = 0;
+        int sumRank = 0;
         int divider = nstims;
-        for ( vector<double>::iterator errIt = it->err.begin(); errIt != it->err.end(); ++errIt ) {
-            if ( *errIt == scalarLim.lowest() ) {
-                if ( discardUntested ) {
-                    divider = 0;
-                    break;
-                } else {
-                    --divider;
-                }
+        for ( int i = 0; i < nstims; i++ ) {
+            if ( it->rank.at(i) ) {
+                sumErr += it->err.at(i);
+                sumRank += it->rank.at(i);
             } else {
-                sumErr += *errIt;
+                --divider;
+                it->tested = false;
             }
         }
-
-        if ( divider == 0 || it->err.empty() ) {
-            it = log.erase(it);
-        } else {
-            it->errScore = sumErr/divider;
-            ++it;
-        }
+        it->errScore = sumErr/divider;
+        it->rankScore = sumRank * 1.0/divider;
+        ++it;
     }
+}
 
-    // Sort
-    log.sort(compareErrScore);
+void Backlog::sort(SortBy s, bool prioritiseTested)
+{
+    switch ( s ) {
+    case ErrScore:
+        log.sort(compareErrScore);
+        break;
+    case RankScore:
+        log.sort(compareRankScore);
+        break;
+    }
 }
 
 
 class AsyncLog
 {
 public:
-    AsyncLog(int size, int nstims) :
-        _log(Backlog(size, nstims)),
+    AsyncLog(BacklogVirtual *log) :
+        _log(log),
         stop(false),
-        waiting(false)
-    {
-        mBarrierForExec.lock();
-        mHeldByBusyExec.lock();
-        t = thread(&AsyncLog::exec, this);
-
-        // Make sure exec is fully initialised
-        while ( mHeldByIdleExec.try_lock() ) {
-            mHeldByIdleExec.unlock();
-            usleep(5);
-        }
-    }
+        waiting(false),
+        t(&AsyncLog::execStatic, this, 80, 256*1024)
+    {}
     
     ~AsyncLog()
     {
         halt();
     }
 
-    void touch(errTupel *first, errTupel *last, int generation, int stim, int rank = 0)
+    void touch(errTupel *first, errTupel *last, int generation, int stim)
     {
         if ( stop ) {
             return;
@@ -138,23 +141,14 @@ public:
         this->generation = generation;
         this->stim = stim;
         waiting = true;
+        execGo.signal();
 
-        // Exec is on a lower priority, non-RT thread, so keeping it happy needs some care:
-        // Release exec
-        mBarrierForExec.unlock();
-        // Make sure exec is released
-        mHeldByIdleExec.lock();
-        mHeldByIdleExec.unlock();
-        // Lock exec's next loop
-        mBarrierForExec.lock();
-        // Finally, let exec do its job
-        mHeldByBusyExec.unlock();
     }
 
     void wait()
     {
         if ( waiting ) {
-            mHeldByBusyExec.lock();
+            execDone.wait();
             waiting = false;
         }
     }
@@ -164,61 +158,56 @@ public:
         if ( !stop ) {
             stop = true;
             wait();
-            mBarrierForExec.unlock();
-            mHeldByBusyExec.unlock();
             t.join();
         }
     }
 
-    Backlog *log()
+    BacklogVirtual *log()
     {
-        return &_log;
+        return _log;
     }
 
 private:
+    static void *execStatic(void *_this)
+    {
+        ((AsyncLog *)_this)->exec();
+        return 0;
+    }
+
     void exec()
     {
         while ( !stop ) {
-            mHeldByIdleExec.lock();
-            mBarrierForExec.lock();
-            mBarrierForExec.unlock();
-            if ( stop ) {
-                break;
-            }
-            mHeldByIdleExec.unlock();
-            mHeldByBusyExec.lock();
+            execGo.wait();
             if ( !stop ) {
                 int rank = 1;
                 for ( errTupel *it = first; it <= last; ++it, ++rank ) {
-                    _log.touch(it->id, generation, stim, rank);
+                    _log->touch(it, generation, stim, rank);
                 }
             }
-            mHeldByBusyExec.unlock();
+            execDone.signal();
         }
     }
 
-    Backlog _log;
-    thread t;
-    mutex mBarrierForExec, mHeldByBusyExec, mHeldByIdleExec;
+    BacklogVirtual *_log;
+
+    bool stop, waiting;
+
+    RealtimeConditionVariable execGo, execDone;
+    RealtimeThread t;
 
     errTupel *first, *last;
     int generation, stim;
-
-    bool stop, waiting;
 };
 
 
 } // namespace backlog
 
 
-extern "C" backlog::Backlog *BacklogMaker(int size, int nstims) {
+extern "C" backlog::BacklogVirtual *BacklogCreate(int size, int nstims) {
     return new backlog::Backlog(size, nstims);
 }
 
-extern "C" void BacklogTouch(backlog::Backlog *log, int idx, int generation, int stim) {
-    log->touch(idx, generation, stim);
-}
-
-extern "C" void BacklogSort(backlog::Backlog *log, bool disqualifyUntested) {
-    log->sort(disqualifyUntested);
+extern "C" void BacklogDestroy(backlog::BacklogVirtual **log) {
+    delete *log;
+    *log = NULL;
 }

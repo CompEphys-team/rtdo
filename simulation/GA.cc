@@ -26,8 +26,7 @@ int compareErrTupel( const void *x, const void *y )
 }
 
 
-void procreatePopPperturb( FILE *osb,
-                           double amplitude,
+void procreatePopPperturb( double amplitude,
                            vector<vector<double> > &pperturb,
                            vector<vector<double> > &errbuf,
                            vector<int> &epos,
@@ -35,10 +34,9 @@ void procreatePopPperturb( FILE *osb,
                            vector<double> &mavg,
                            int &nextS,
                            int Nstim,
-                           backlog::AsyncLog *logger,
+                           backlog::AsyncLog &logger,
                            int generation )
 {
-    //logger->wait();
     double tmavg, delErr;
 	static errTupel errs[NPOP];
     static int limiter = 0;
@@ -49,7 +47,7 @@ void procreatePopPperturb( FILE *osb,
 	qsort( (void *)errs, NPOP, sizeof( errTupel ), compareErrTupel );
 
     int k = NPOP / 3;
-    //logger->touch(&errs[0], &errs[k-1], generation, nextS);
+    logger.touch(&errs[0], &errs[k-1], generation, nextS);
 
 	// update moving averages
 	epos[nextS] = (epos[nextS] + 1) % MAVGBUFSZ;
@@ -90,6 +88,5 @@ void procreatePopPperturb( FILE *osb,
 	for (int i = 2 * k; i < NPOP; i++)
 	{
 		single_var_init_fullrange( errs[i].id );
-	}
-	copyStateToDevice();
+    }
 }

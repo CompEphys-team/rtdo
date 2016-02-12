@@ -18,6 +18,7 @@ initial version: 2015-12-08
 #include <dlfcn.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <ctime>
 #include "util.h"
 #include "run.h"
 #include "config.h"
@@ -96,6 +97,31 @@ bool compile_model(XMLModel::outputType type) {
     return true;
 }
 
+void write_backlog(ofstream &file, backlog::BacklogVirtual *log, bool ignoreUntested)
+{
+    // Assumption: ordered 1-to-1 mapping from stimulations to parameters
+    file << "# fully tested\tavg err\tavg rank"
+         << "#\t" << "param"
+         << '\t' << "value"
+         << '\t' << "error"
+         << '\t' << "rank"
+         << endl
+         << endl;
+    for ( backlog::LogEntry &e : log->log ) {
+        if ( ignoreUntested && !e.tested )
+            continue;
+        file << e.tested << '\t' << e.errScore << '\t' << e.rankScore << endl;
+        for ( int i = 0; i < log->nstims; i++ ) {
+            file << '\t' << config->model.obj->adjustableParams().at(i).name
+                 << '\t' << e.param.at(i)
+                 << '\t' << e.err.at(i)
+                 << '\t' << e.rank.at(i)
+                 << endl;
+        }
+        file << endl;
+    }
+}
+
 bool run_vclamp(bool *stopFlag)
 {
     bool stopdummy = false;
@@ -110,7 +136,10 @@ bool run_vclamp(bool *stopFlag)
     RealtimeEnvironment &env = RealtimeEnvironment::env();
 
     void *lib;
-    int (*libmain)(const char*, const char*, const char*, bool *);
+    int (*libmain)(const char*, bool *, backlog::BacklogVirtual *);
+    backlog::BacklogVirtual *(*logMake)(int size, int nstim);
+    void (*logBreak)(backlog::BacklogVirtual **);
+
     string fname = string(SOURCEDIR) + "/simulation/VClampGA.so";
     dlerror();
     if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
@@ -118,6 +147,14 @@ bool run_vclamp(bool *stopFlag)
         return false;
     }
     if ( !(*(void**)(&libmain) = dlsym(lib, "vclamp")) ) {
+        std::cerr << dlerror() << endl;
+        return false;
+    }
+    if ( !(*(void**)(&logMake) = dlsym(lib, "BacklogCreate")) ) {
+        std::cerr << dlerror() << endl;
+        return false;
+    }
+    if ( !(*(void**)(&logBreak) = dlsym(lib, "BacklogDestroy")) ) {
         std::cerr << dlerror() << endl;
         return false;
     }
@@ -153,40 +190,36 @@ bool run_vclamp(bool *stopFlag)
     env.setDT(config->io.dt);
     env.useSimulator(false);
 
-    libmain("live", config->output.dir.c_str(), config->vc.wavefile.c_str(), stopFlag);
+    // Assumption: 1 stim per param
+    backlog::BacklogVirtual *logp = logMake(config->vc.popsize, config->model.obj->adjustableParams().size());
+
+    // Run!
+    libmain(config->vc.wavefile.c_str(), stopFlag, logp);
+
+    // Process results
+    if ( logp ) {
+        time_t tt = time(NULL);
+        char timestr[32];
+        strftime(timestr, 32, "%Y%m%d-%H%M", localtime(&tt));
+        string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
+                + config->model.obj->name() + "_" + timestr + "_vclamp_all";
+        ofstream file(filename);
+
+        logp->score();
+        logp->sort(backlog::BacklogVirtual::ErrScore, false);
+        write_backlog(file, logp, false);
+        file.close();
+
+        int tested = 0;
+        for ( backlog::LogEntry &e : logp->log ) {
+            tested += (int)e.tested;
+        }
+        cout << endl << "Fitting complete. " << tested << " models fully evaluated. All available models deposited in " << filename << "." << endl;
+    }
+
+    logBreak(&logp);
+
     dlclose(lib);
-
-//    // Spit out some of the best models
-//    if ( logp ) {
-//        void (*backlogSort)(backlog::Backlog *, bool discardUntested);
-//        dlerror();
-//        if ( !(*(void**)(&backlogSort) = dlsym(lib, "BacklogSort")) ) {
-//            cerr << dlerror() << endl;
-//            return (void *)EXIT_FAILURE;
-//        }
-//        cout << endl;
-//        backlogSort(logp, false);
-//        cout << "Backlog contains " << logp->log.size() << " valid entries, of which ";
-//        backlogSort(logp, true);
-//        cout << logp->log.size() << " were tested on all stimuli." << endl;
-//        int i = 0;
-//        for ( list<backlog::LogEntry>::iterator e = logp->log.begin(); e != logp->log.end() && i < 20; ++e, ++i ) {
-//            cout << i << ": uid " << e->uid << ", since " << e->since << ", err=" << e->errScore << endl;
-//            // The following code blindly assumes that (a) there is a single stimulation per parameter,
-//            // and (b) the stimulations are in the same order as the parameters. This holds true for wavegen-produced
-//            // stims as of 22 Jan 2016...
-//            vector<double>::const_iterator errs = e->err.begin();
-//            vector<double>::const_iterator vals = e->param.begin();
-//            vector<int>::const_iterator ranks = e->rank.begin();
-//            vector<XMLModel::param>::const_iterator names = config->model.obj->adjustableParams().begin();
-//            cout << "\tParam\tValue\tError*\tRank*\t(* at the most recent stimulation)" << endl;
-//            for ( ; errs != e->err.end() && vals != e->param.end() && names != config->model.obj->adjustableParams().end();
-//                  ++errs, ++vals, ++names ) {
-//                cout << '\t' << names->name << '\t' << *vals << '\t' << *errs << '\t' << *ranks << endl;
-//            }
-//        }
-//    }
-
     return true;
 }
 
