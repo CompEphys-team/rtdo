@@ -32,17 +32,27 @@ void single_var_reinit(int n, double fac)
             mparam[i][n] *= (1.0 + fac * aParamSigma[i] * RG.n());
         else
             mparam[i][n] += fac * aParamSigma[i] * RG.n();
+
+        if ( mparam[i][n] < aParamRange[2*i] )
+            mparam[i][n] = aParamRange[2*i];
+        else if ( mparam[i][n] > aParamRange[2*i + 1] )
+            mparam[i][n] = aParamRange[2*i + 1];
     }
 }
 
 void single_var_reinit_pperturb(int n, double fac, vector<double> &pperturb) 
 {
     for ( int i = 0; i < NPARAM; i++ ) {
-        if ( R.n() < pperturb[i] ) {
+        if ( pperturb[i] > 0 && R.n() < pperturb[i] ) {
             if ( aParamPMult[i] )
                 mparam[i][n] *= (1.0 + fac * aParamSigma[i] * RG.n());
             else
                 mparam[i][n] += fac * aParamSigma[i] * RG.n();
+
+            if ( mparam[i][n] < aParamRange[2*i] )
+                mparam[i][n] = aParamRange[2*i];
+            else if ( mparam[i][n] > aParamRange[2*i + 1] )
+                mparam[i][n] = aParamRange[2*i + 1];
         }
     }
 }

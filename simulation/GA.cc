@@ -39,22 +39,14 @@ void procreatePopPperturb( FILE *osb,
                            int generation )
 {
     //logger->wait();
-	double tmavg;
+    double tmavg, delErr;
 	static errTupel errs[NPOP];
+    static int limiter = 0;
 	for (int i = 0; i < NPOP; i++) {
 		errs[i].id = i;
         errs[i].err = errHH[i];
 	}
 	qsort( (void *)errs, NPOP, sizeof( errTupel ), compareErrTupel );
-//#define DEBUG_PROCREATE
-#ifdef DEBUG_PROCREATE
-	cerr << "% sorted fitness: ";
-	for (int i = 0; i < NPOP; i++) {
-		cerr << errs[i].err << " ";
-	}
-	cerr << endl;
-#endif
-    //fprintf( osb, "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f \n", gNaHH[errs[0].id], ENaHH[errs[0].id], maoffHH[errs[0].id], maslopeHH[errs[0].id], mboffHH[errs[0].id], mbslopeHH[errs[0].id], haoffHH[errs[0].id], haslopeHH[errs[0].id], hboffHH[errs[0].id], hbslopeHH[errs[0].id], gKHH[errs[0].id], EKHH[errs[0].id], naoffHH[errs[0].id], naslopeHH[errs[0].id], nboffHH[errs[0].id], nbslopeHH[errs[0].id], glHH[errs[0].id], ElHH[errs[0].id], CHH[errs[0].id], errHH[errs[0].id] );
 
     int k = NPOP / 3;
     //logger->touch(&errs[0], &errs[k-1], generation, nextS);
@@ -65,16 +57,27 @@ void procreatePopPperturb( FILE *osb,
 		if (epos[nextS] == 0) {
 			initial[nextS] = 0;
 		}
+        delErr = 2 * errs[0].err;
 	}
 	else {
-		mavg[nextS] -= errbuf[nextS][epos[nextS]];
+        delErr = errbuf[nextS][epos[nextS]];
+        mavg[nextS] -= delErr;
 	}
 	errbuf[nextS][epos[nextS]] = errs[0].err;
 	mavg[nextS] += errbuf[nextS][epos[nextS]];
 	tmavg = mavg[nextS] / MAVGBUFSZ;
-	if (errs[0].err < tmavg*0.8) {
+
+    if (errs[0].err < tmavg*0.8) {
 		// we are getting better on this one -> adjust a different parameter combination
 		nextS = (nextS + 1) % Nstim;
+    }
+    if ( delErr > 1.01 * errs[0].err ) {
+        limiter = (limiter < 3 ? 0 : limiter-3);
+    }
+    if ( ++limiter > 5 ) {
+        // Stuck, move on
+        nextS = (nextS + 1) % Nstim;
+        limiter = 0;
     }
 
     run_digest(generation, errs[0].err, tmavg, nextS);
