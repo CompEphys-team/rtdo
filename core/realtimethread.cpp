@@ -96,7 +96,8 @@ RealtimeThread::RealtimeThread(void *(*fn)(void *), void *arg, int priority, int
 
 RealtimeThread::~RealtimeThread()
 {
-    join();
+    if ( joinable() )
+        join();
 }
 
 void *RealtimeThread::join()
@@ -137,7 +138,8 @@ RealtimeThread::RealtimeThread(void *(*fn)(void *), void *arg, int, int, int, in
 
 RealtimeThread::~RealtimeThread()
 {
-    join();
+    if ( joinable() )
+        join();
 }
 
 void *RealtimeThread::join()
