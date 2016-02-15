@@ -17,6 +17,8 @@ initial version: 2016-01-21
 #include <queue>
 #include <vector>
 #include <list>
+#include "realtimeconditionvariable.h"
+#include "realtimethread.h"
 
 struct inputSpec {
     double t;
@@ -57,7 +59,6 @@ public:
     double rankScore;
     int since;
     long long uid;
-    bool valid;
     bool tested;
 };
 class BacklogVirtual
@@ -65,26 +66,50 @@ class BacklogVirtual
 public:
     enum SortBy { ErrScore, RankScore };
 
-    BacklogVirtual(int size, int nstims) :
-        size(size), nstims(nstims), log(std::list<LogEntry>(size)) {}
+    BacklogVirtual(int size, int nstims, std::ostream &runtime_log) :
+        size(size),
+        nstims(nstims),
+        log(std::list<LogEntry>(0)),
+        out(runtime_log),
+        stop(false),
+        waiting(false),
+        t(&BacklogVirtual::execStatic, this, 80, 256*1024)
+    {}
     virtual ~BacklogVirtual() {}
 
-    virtual void touch(errTupel *t, int generation, int stim, int rank = 0) = 0;
+    virtual void touch(errTupel *first, errTupel *last, int generation, int stim) = 0;
     virtual void score() = 0;
     virtual void sort(SortBy s, bool prioritiseTested = false) = 0;
+    virtual void wait() = 0;
+    virtual void halt() = 0;
 
     int size;
     int nstims;
     std::list<LogEntry> log;
+    std::ostream &out;
+
+protected:
+    static void *execStatic(void *_this);
+    void exec();
+
+    bool stop, waiting;
+
+    RealtimeConditionVariable execGo, execDone;
+    RealtimeThread t;
+
+    errTupel *first, *last;
+    int generation, stim;
 };
 class Backlog : public BacklogVirtual
 {
 public:
-    Backlog(int size, int nstims);
+    Backlog(int size, int nstims, std::ostream &runtime_log);
     ~Backlog();
-    void touch(errTupel *t, int generation, int stim, int rank = 0);
+    void touch(errTupel *first, errTupel *last, int generation, int stim);
     void score();
     void sort(SortBy s, bool prioritiseTested = false);
+    void wait();
+    void halt();
 };
 }
 

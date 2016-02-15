@@ -34,7 +34,7 @@ void procreatePopPperturb( double amplitude,
                            vector<double> &mavg,
                            int &nextS,
                            int Nstim,
-                           backlog::AsyncLog &logger,
+                           backlog::BacklogVirtual *logger,
                            int generation )
 {
     double tmavg, delErr;
@@ -47,7 +47,7 @@ void procreatePopPperturb( double amplitude,
 	qsort( (void *)errs, NPOP, sizeof( errTupel ), compareErrTupel );
 
     int k = NPOP / 3;
-    logger.touch(&errs[0], &errs[k-1], generation, nextS);
+    logger->touch(&errs[0], &errs[k-1], generation, nextS);
 
 	// update moving averages
 	epos[nextS] = (epos[nextS] + 1) % MAVGBUFSZ;

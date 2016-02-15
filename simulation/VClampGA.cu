@@ -39,11 +39,10 @@ inline bool file_exists( const std::string& name )
 	}
 }
 
-extern "C" int vclamp(const char *stimFName, bool *stopFlag, backlog::BacklogVirtual *bklog) {
+extern "C" int vclamp(const char *stimFName, bool *stopFlag, backlog::BacklogVirtual *logger) {
     ifstream is( stimFName );
 
     RealtimeEnvironment &env = RealtimeEnvironment::env();
-    backlog::AsyncLog logger(bklog);
 
 	//-----------------------------------------------------------------
     // read the relevant stimulus patterns
@@ -132,14 +131,14 @@ extern "C" int vclamp(const char *stimFName, bool *stopFlag, backlog::BacklogVir
         }
 
         env.pause();
-        logger.wait();
+        logger->wait();
 
         CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
 
         procreatePopPperturb( pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim, logger, generation++ ); //perturb for next step
     }
 
-    logger.halt();
+    logger->halt();
 
     fprintf( stderr, "DONE\n" );
 	return 0;

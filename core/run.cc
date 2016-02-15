@@ -100,7 +100,7 @@ bool compile_model(XMLModel::outputType type) {
 void write_backlog(ofstream &file, backlog::BacklogVirtual *log, bool ignoreUntested)
 {
     // Assumption: ordered 1-to-1 mapping from stimulations to parameters
-    file << "# fully tested\tavg err\tavg rank"
+    file << "# fully tested\tavg err\tavg rank" << endl
          << "#\t" << "param"
          << '\t' << "value"
          << '\t' << "error"
@@ -137,7 +137,7 @@ bool run_vclamp(bool *stopFlag)
 
     void *lib;
     int (*libmain)(const char*, bool *, backlog::BacklogVirtual *);
-    backlog::BacklogVirtual *(*logMake)(int size, int nstim);
+    backlog::BacklogVirtual *(*logMake)(int size, int nstim, ostream &out);
     void (*logBreak)(backlog::BacklogVirtual **);
 
     string fname = string(SOURCEDIR) + "/simulation/VClampGA.so";
@@ -190,32 +190,51 @@ bool run_vclamp(bool *stopFlag)
     env.setDT(config->io.dt);
     env.useSimulator(false);
 
+    time_t tt = time(NULL);
+    char timestr[32];
+    strftime(timestr, 32, "%Y%m%d-%H%M", localtime(&tt));
+    string runtime_log = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
+            + config->model.obj->name() + "_" + timestr + "_vclamp_runstats.log";
+    cout << "Logging runtime statistics to " << runtime_log << endl;
+
+    string models_log = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
+            + config->model.obj->name() + "_" + timestr + "_vclamp_models.log";
+    ofstream models_logf(models_log);
+
+    ofstream runtime_logf(runtime_log);
+    runtime_logf << "# Model: " << config->model.deffile << endl;
+    runtime_logf << "# Stimulations: " << config->vc.wavefile << endl;
+    runtime_logf << "# DT = " << config->io.dt << endl;
+    runtime_logf << "# " << config->io.ai_supersampling << " analog samples per DT" << endl;
+    runtime_logf << "# " << config->model.cycles << " simulation cycles per DT" << endl;
+    runtime_logf << "# Clamp gain: " << config->vc.gain << " V/V, E2 resistance: " << config->vc.resistance << " MOhm" << endl;
+    runtime_logf << "#" << endl;
+    // Header for output as defined in backlog::BacklogVirtual::exec():
+    runtime_logf << "# Epoch\tStimulation\tBest error\tMean error\terror SD";
+    for ( const XMLModel::param &p : config->model.obj->adjustableParams() ) {
+        runtime_logf << "\tBest model " << p.name << "\tMean " << p.name << "\t" << p.name << " SD";
+    }
+    runtime_logf << endl;
+
     // Assumption: 1 stim per param
-    backlog::BacklogVirtual *logp = logMake(config->vc.popsize, config->model.obj->adjustableParams().size());
+    backlog::BacklogVirtual *logp = logMake(config->vc.popsize, config->model.obj->adjustableParams().size(), runtime_logf);
 
     // Run!
     libmain(config->vc.wavefile.c_str(), stopFlag, logp);
 
-    // Process results
-    if ( logp ) {
-        time_t tt = time(NULL);
-        char timestr[32];
-        strftime(timestr, 32, "%Y%m%d-%H%M", localtime(&tt));
-        string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
-                + config->model.obj->name() + "_" + timestr + "_vclamp_all";
-        ofstream file(filename);
+    runtime_logf.close();
 
-        logp->score();
-        logp->sort(backlog::BacklogVirtual::ErrScore, false);
-        write_backlog(file, logp, false);
-        file.close();
+    // Dump final model set
+    logp->score();
+    logp->sort(backlog::BacklogVirtual::ErrScore, true);
+    write_backlog(models_logf, logp, false);
+    models_logf.close();
 
-        int tested = 0;
-        for ( backlog::LogEntry &e : logp->log ) {
-            tested += (int)e.tested;
-        }
-        cout << endl << "Fitting complete. " << tested << " models fully evaluated. All available models deposited in " << filename << "." << endl;
+    int tested = 0;
+    for ( backlog::LogEntry &e : logp->log ) {
+        tested += (int)e.tested;
     }
+    cout << endl << "Fitting complete. " << tested << " models fully evaluated. All available models deposited in " << models_log << "." << endl;
 
     logBreak(&logp);
 
