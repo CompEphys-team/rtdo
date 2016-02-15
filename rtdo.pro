@@ -90,7 +90,8 @@ SOURCES += core/main.cpp \
     core/channel.cpp \
     core/realtimeconditionvariable.cpp \
     core/runner.cpp \
-    gui/performancedialog.cpp
+    gui/performancedialog.cpp \
+    core/teestream.cpp
 
 OTHER_FILES += \
     simulation/GNUmakefile \
@@ -136,7 +137,8 @@ HEADERS  += \
     include/realtimeconditionvariable.h \
     include/runner.h \
     include/performancedialog.h \
-    include/realtimequeue.h
+    include/realtimequeue.h \
+    include/teestream.h
 
 FORMS    += \
     gui/mainwindow.ui \

@@ -24,6 +24,7 @@ initial version: 2015-12-08
 #include "config.h"
 #include "xmlmodel.h"
 #include "realtimeenvironment.h"
+#include "teestream.h"
 
 using namespace std;
 
@@ -215,9 +216,10 @@ bool run_vclamp(bool *stopFlag)
         runtime_logf << "\tBest model " << p.name << "\tMean " << p.name << "\t" << p.name << " SD";
     }
     runtime_logf << endl;
+    teestream tee(runtime_logf, cout);
 
     // Assumption: 1 stim per param
-    backlog::BacklogVirtual *logp = logMake(config->vc.popsize, config->model.obj->adjustableParams().size(), runtime_logf);
+    backlog::BacklogVirtual *logp = logMake(config->vc.popsize, config->model.obj->adjustableParams().size(), tee);
 
     // Run!
     libmain(config->vc.wavefile.c_str(), stopFlag, logp);
@@ -399,6 +401,3 @@ void *sqread(void *) {
     return 0;
 }
 */
-void run_digest(int generation, double best_err, double mavg, int nextS) {
-    cout << generation << " " << best_err << " " << mavg << " " << nextS << endl;
-}

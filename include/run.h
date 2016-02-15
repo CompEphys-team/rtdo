@@ -23,7 +23,5 @@ bool run_vclamp(bool *stopFlag = 0);
 bool run_wavegen(int focusParam = -1, bool *stopFlag = 0);
 bool run_wavegen_NS(bool *stopFlag = 0);
 
-void run_digest(int generation, double best_err, double mavg, int nextS);
-
 
 #endif // RUN_H

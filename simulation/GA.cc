@@ -78,8 +78,6 @@ void procreatePopPperturb( double amplitude,
         limiter = 0;
     }
 
-    run_digest(generation, errs[0].err, tmavg, nextS);
-
     // mutate the second half of the instances
 	for (int i = k; i < 2 * k; i++) {
 		copy_var( errs[i - k].id, errs[i].id ); // copy good ones over bad ones
