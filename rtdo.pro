@@ -138,7 +138,8 @@ HEADERS  += \
     include/runner.h \
     include/performancedialog.h \
     include/realtimequeue.h \
-    include/teestream.h
+    include/teestream.h \
+    include/wavegenNS.h
 
 FORMS    += \
     gui/mainwindow.ui \

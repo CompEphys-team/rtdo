@@ -24,9 +24,9 @@ void single_var_init_auto_detune( int n, double fac )
         mparam[i][n] = aParamIni[i];
         if ( p == i ) {
             if ( aParamPMult[i] )
-                mparam[i][n] *= (1.0 + fac * aParamSigma[i]);
+                mparam[i][n] *= (1.0 + fac * aParamSigma[i] * sigmaAdjust[i]);
             else
-                mparam[i][n] += fac * aParamSigma[i];
+                mparam[i][n] += fac * aParamSigma[i] * sigmaAdjust[i];
         }
     }
 }

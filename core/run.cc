@@ -25,6 +25,7 @@ initial version: 2015-12-08
 #include "xmlmodel.h"
 #include "realtimeenvironment.h"
 #include "teestream.h"
+#include "wavegenNS.h"
 
 using namespace std;
 
@@ -331,21 +332,26 @@ bool run_wavegen_NS(bool *stopFlag)
 
     RealtimeEnvironment &env = RealtimeEnvironment::env();
 
+    if ( !config->model.load(false) ) {
+        cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
+        return false;
+    }
+
     void *lib;
-    void (*wgmain)(int, int, ofstream&, bool*);
+    WavegenNSVirtual *(*wgcreate)();
+    void (*wgdestroy)(WavegenNSVirtual **);
     string fname = string(SOURCEDIR) + "/wavegenNS/WaveGen.so";
     dlerror();
     if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
         cerr << dlerror() << endl;
         return false;
     }
-    if ( !(*(void**)(&wgmain) = dlsym(lib, "wavegenNS")) ) {
+    if ( !(*(void**)(&wgcreate) = dlsym(lib, "WavegenCreate")) ) {
         cerr << dlerror() << endl;
         return false;
     }
-
-    if ( !config->model.load(false) ) {
-        cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
+    if ( !(*(void**)(&wgdestroy) = dlsym(lib, "WavegenDestroy")) ) {
+        cerr << dlerror() << endl;
         return false;
     }
     if ( config->model.obj->genn_float() ) {
@@ -368,16 +374,38 @@ bool run_wavegen_NS(bool *stopFlag)
     env.setDT(config->io.dt);
     env.useSimulator(true);
 
-    string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
-            + config->model.obj->name() + "_waveNS.";
-    int i;
-    for ( i = 0; !access(string(filename + to_string(i)).c_str(), F_OK); i++ ) {}
-    filename += to_string(i);
-    ofstream file(filename);
+    time_t tt = time(NULL);
+    char timestr[32];
+    strftime(timestr, 32, "%Y%m%d-%H%M", localtime(&tt));
 
-    wgmain(config->wg.ngen, config->wg.ngen, file, stopFlag);
+    stringstream header;
+    header << "# Model: " << config->model.deffile << endl
+           << "# DT = " << config->io.dt << endl
+           << "# " << config->model.cycles << " simulation cycles per DT" << endl
+           << "# Clamp gain: " << config->vc.gain << " V/V, E2 resistance: " << config->vc.resistance << " MOhm" << endl
+           << "#MATLAB headerLines = 6" << endl
+           << endl;
 
-    file.close();
+    string wavefile_str = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
+            + config->model.obj->name() + "_" + timestr + "_wavegenNS.stim";
+    ofstream wavefile(wavefile_str);
+    wavefile << header.str();
+
+    string currentfile_str = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
+            + config->model.obj->name() + "_" + timestr + "_wavegenNS_currents.log";
+    ofstream currentfile(currentfile_str);
+    currentfile << header.str();
+
+    WavegenNSVirtual *wg = wgcreate();
+    wg->runAll(config->wg.ngen, config->wg.ngen, wavefile, currentfile, stopFlag);
+    wgdestroy(&wg);
+    dlclose(lib);
+    cout << endl << "Waveforms written to " << wavefile_str << endl;
+    cout << "Current traces written to " << currentfile_str << endl;
+    cout << "Waveform generation complete." << endl;
+
+    wavefile.close();
+    currentfile.close();
     return true;
 }
 

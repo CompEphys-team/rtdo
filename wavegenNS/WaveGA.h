@@ -38,3 +38,4 @@ randomGauss RG;
 #define BASEV -60.0
 #define MAVGBUFSZ 10
 
+double sigmaAdjust[NPARAM];

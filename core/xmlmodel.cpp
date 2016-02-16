@@ -301,6 +301,11 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
            << "#ifndef _" << modelname << "_neuronFnct_cc" << endl
 
+           // Report Isyn for validation
+           << "if ( $(stage) == " << stObservationWindow << " ) {" << endl
+           << "  $(err) = Isyn;" << endl
+           << "}" << endl
+
            // DetuneAdjust stage: Add up this parameter's deviation from tuned model
            << "if ( $(stage) == " << stDetuneAdjust << " ) {" << endl
            << "  $(err) += IsynErr * DT;" << endl
