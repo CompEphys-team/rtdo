@@ -358,17 +358,16 @@ void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)
 {
     // Header
     int blocklen = SIM_TIME/DT;
-    int offset = param*(blocklen+10) + 6; // 6 header lines, 4 footer lines, including blanks
+    int headerlen = 5;
+    int footerlen = 9;
+    int offset = param*(blocklen+headerlen+footerlen) + headerlen;
     currentfile << "# Parameter " << param << " final waveform evoked currents" << endl;
     currentfile << "# Waveform: see below" << endl;
-    currentfile << "#MATLAB dlmread(file, '\\t', [" << offset << "+headerLines 0 " << (blocklen+6) << "+headerLines, " << (NPARAM+2) << ")" << endl;
+    currentfile << "#MATLAB dlmread(file, '\\t', [" << offset << "+headerLines 0 " << (offset+blocklen+headerlen) << "+headerLines " << (NPARAM+2) << "])" << endl;
     currentfile << "#" << endl;
-    currentfile << "Time\tTuned";
+    currentfile << "Time\tVoltage\tReference";
     for ( int j = 0; j < NPARAM; j++ ) {
-        if ( j == param )
-            currentfile << "\tTarget";
-        else
-            currentfile << "\tParam " << j;
+        currentfile << "\tParam" << j;
     }
     currentfile << endl;
 
@@ -386,11 +385,12 @@ void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)
             for (size_t j = 0; j < NPARAM + 1; ++j) {
                 float tmp = stim.V[sn];
                 CHECK_CUDA_ERRORS( cudaMemcpy( &d_stepVGHH[j], &tmp, sizeof( float ), cudaMemcpyHostToDevice ) );
+                stepVGHH[0] = tmp;
             }
             ++sn;
         }
         CHECK_CUDA_ERRORS( cudaMemcpy(current, d_errHH, VSize, cudaMemcpyDeviceToHost) );
-        currentfile << t;
+        currentfile << t << '\t' << stepVGHH[0];
         for ( int j = 0; j < NPARAM + 1; j++ ) {
             currentfile << '\t' << current[j];
         }
@@ -407,4 +407,7 @@ void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)
 
     currentfile << endl << "# Waveform for the above currents:" << endl;
     currentfile << "# " << stim << endl << endl;
+    currentfile << "# Observation window for the above:" << endl;
+    currentfile << "start\tend" << endl;
+    currentfile << stim.ot << '\t' << (stim.ot+stim.dur) << endl << endl << endl;
 }
