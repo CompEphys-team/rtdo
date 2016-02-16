@@ -107,6 +107,11 @@ extern "C" inputSpec wavegen(int focusParam, int nGenerations, bool *stopFlag)
         for ( int j = 0; j < NPOP; j++ ) {
             errHH[j] = 0.0;
         }
+        for ( int i = 0; i < GAPOP; i++ ) {
+            for ( int j = 0; j < NPARAM+1; j++ ) {
+                stepVGHH[i * (NPARAM + 1) + j] = stims[i].baseV;
+            }
+        }
 
         var_init_auto_detune();
         memset( sn, 0x00000000, NPOP * sizeof( size_t ) );
