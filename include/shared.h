@@ -43,7 +43,12 @@ enum stageEnum {
     stDetuneAdjust,
     stNoveltySearch,
     stWaveformOptimise,
-    stObservationWindow
+
+    stObservationWindow__start,
+    stObservationWindowSeparation,
+    stObservationWindowBest,
+    stObservationWindowExceed,
+    stObservationWindow__end
 };
 
 namespace backlog {

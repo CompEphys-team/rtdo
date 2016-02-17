@@ -136,7 +136,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
             npop *= (_adjustableParams.size() + 1);
         }
         of << "#define NPOP " << npop << endl;
-        nExtraVars += 12;
+        nExtraVars += 16;
         break;
     }
 
@@ -302,7 +302,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "#ifndef _" << modelname << "_neuronFnct_cc" << endl
 
            // Report Isyn for validation
-           << "if ( $(stage) == " << stObservationWindow << " ) {" << endl
+           << "if ( $(stage) > " << stObservationWindow__start << " && $(stage) < " << stObservationWindow__end << " ) {" << endl
            << "  $(err) = Isyn;" << endl
            << "}" << endl
 
@@ -320,22 +320,48 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "  int runnerUp = 0;"
            << "  for ( int i = 1; i < " << to_string(_adjustableParams.size() + 1) << "; ++i ) {" << endl
            << "    avgIsynErr += IsynErrShare[i];" << endl
-           << "    maxIsynErr = maxIsynErr > IsynErrShare[i] ? maxIsynErr : IsynErrShare[i];" << endl
-           << "    if ( i != threadIdx.x )  runnerUp = i;" << endl
+           << "    if ( maxIsynErr <= IsynErrShare[i] ) {" << endl
+           << "      maxIsynErr = IsynErrShare[i];" << endl
+           << "      if ( i != threadIdx.x )  runnerUp = i;" << endl
+           << "    }" << endl
            << "  }" << endl
            << "  avgIsynErr /= " << to_string(_adjustableParams.size()) << ";" << endl
+           << "  scalar RUratio = IsynErr > 0 ? (IsynErr - IsynErrShare[runnerUp]) / IsynErr : 0;" << endl
+
+           // Calculate $(separation) as the square of the absolute separation from the runner-up,
+           // normalised by the absolute separation from the reference.
+           // This rewards both good separation from the other parameters, and good (large, robust-to-noise) current deflections
+           << "  if ( $(calcSeparation) && threadIdx.x > 0 ) {" << endl
+           << "    if ( IsynErr > IsynErrShare[runnerUp] ) {" << endl
+           << "      if ( $(stage) == " << stObservationWindowSeparation << " && $(nSepCurrent) == 0 )" << endl
+           << "        $(tStartCurrent) = t;" << endl
+           << "      $(nSepCurrent)++;" << endl
+           << "      $(sepCurrent) += RUratio * (IsynErr - IsynErrShare[runnerUp]);" << endl
+           << "      if ( $(sepCurrent) > $(separation) ) {" << endl
+           << "        $(nSeparation) = $(nSepCurrent);" << endl
+           << "        $(separation) = $(sepCurrent);" << endl
+           << "        if ( $(stage) == " << stObservationWindowSeparation << " ) {" << endl
+           << "          $(tStart) = $(tStartCurrent);" << endl
+           << "          $(tEnd) = t + DT;" << endl
+           << "        }" << endl
+           << "      }" << endl
+           << "    } else {" << endl
+           << "      $(nSepCurrent) = 0;" << endl
+           << "      $(sepCurrent) = 0;" << endl
+           << "    }" << endl
+           << "  }" << endl
 
            // Calculate $(best), normalised by the second-greatest error signal
            << "  if ( $(calcBest) && threadIdx.x > 0 ) {" << endl
-           << "    if ( IsynErr == maxIsynErr ) {" << endl
-           << "      if ( $(stage) == " << stObservationWindow << " && !$(calcExceed) && $(nBestCurrent) == 0 )" << endl
+           << "    if ( IsynErr > IsynErrShare[runnerUp] ) {" << endl
+           << "      if ( $(stage) == " << stObservationWindowBest << " && $(nBestCurrent) == 0 )" << endl
            << "        $(tStartCurrent) = t;" << endl
            << "      $(nBestCurrent)++;" << endl
-           << "      $(bestCurrent) += (IsynErr - IsynErrShare[runnerUp]) / IsynErr;" << endl
+           << "      $(bestCurrent) += RUratio;" << endl
            << "      if ( $(nBestCurrent) > $(nBest) ) {" << endl
            << "        $(nBest) = $(nBestCurrent);" << endl
            << "        $(best) = $(bestCurrent);" << endl
-           << "        if ( $(stage) == " << stObservationWindow << " && !$(calcExceed) ) {" << endl
+           << "        if ( $(stage) == " << stObservationWindowBest << " ) {" << endl
            << "          $(tStart) = $(tStartCurrent);" << endl
            << "          $(tEnd) = t + DT;" << endl
            << "        }" << endl
@@ -350,14 +376,14 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            // Find the largest positive deviation from the average, in terms of normalised area under the curve
            << "  if ( $(calcExceed) && threadIdx.x > 0 ) {" << endl
            << "    if ( IsynErr > avgIsynErr && avgIsynErr > 0 ) {" << endl
-           << "      if ( $(stage) == " << stObservationWindow << " && $(nExceedCurrent) == 0 )" << endl
+           << "      if ( $(stage) == " << stObservationWindowExceed << " && $(nExceedCurrent) == 0 )" << endl
            << "        $(tStartCurrent) = t;" << endl
            << "      $(nExceedCurrent)++;" << endl
            << "      $(exceedCurrent) += (IsynErr / avgIsynErr) - 1.0;" << endl
            << "      if ( $(exceedCurrent) > $(exceed) ) {" << endl
            << "        $(nExceed) = $(nExceedCurrent);" << endl
            << "        $(exceed) = $(exceedCurrent);" << endl
-           << "        if ( $(stage) == " << stObservationWindow << " ) {" << endl
+           << "        if ( $(stage) == " << stObservationWindowExceed << " ) {" << endl
            << "          $(tStart) = $(tStartCurrent);" << endl
            << "          $(tEnd) = t + DT;" << endl
            << "        }" << endl
@@ -418,6 +444,17 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.varNames.push_back(\"nBestCurrent\");" << endl;
         of << "n.varTypes.push_back(\"int\");" << endl;
 
+        // Separation: Windows where the error signal for a parameter exceeds all other parameters' error signal
+        // The selected value reflects the greatest aggregate separation. See also comment in code generation
+        of << "n.varNames.push_back(\"separation\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "n.varNames.push_back(\"sepCurrent\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
+        of << "n.varNames.push_back(\"nSeparation\");" << endl;
+        of << "n.varTypes.push_back(\"int\");" << endl;
+        of << "n.varNames.push_back(\"nSepCurrent\");" << endl;
+        of << "n.varTypes.push_back(\"int\");" << endl;
+
         // Waveform start/end (for stObservationWindow)
         of << "n.varNames.push_back(\"tStart\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
@@ -430,6 +467,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"calcBest\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"bool\");" << endl;
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"calcExceed\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"bool\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"calcSeparation\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"bool\");" << endl;
 
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"ote\");" << endl;

@@ -4,10 +4,30 @@
 #define GA_CROSSOVER_PROB 0.85
 #define GA_MUTATE_PROB 0.5
 
-#define NNOVELTY 4
+#define NNOVELTY 6
 struct noveltyBundle {
+public:
     inputSpec wave;
     double novelty[NNOVELTY];
+
+    noveltyBundle() :
+        wave {},
+        novelty {0}
+    {}
+    noveltyBundle(int index) :
+        novelty { exceedHH[index],
+                  (double) nExceedHH[index],
+                  bestHH[index],
+                  (double) nBestHH[index],
+                  separationHH[index],
+                  (double) nSeparationHH[index]
+                }
+    {}
+
+    inline double fitness() const
+    {
+        return (novelty[4] * DT) * (novelty[5] * DT / (TOTALT - OT));
+    }
 };
 
 void single_var_init_exact( int n )
@@ -63,6 +83,11 @@ void reset(scalar *holding, double fac)
         bestCurrentHH[j] = 0;
         nBestHH[j] = 0;
         nBestCurrentHH[j] = 0;
+
+        separationHH[j] = 0;
+        sepCurrentHH[j] = 0;
+        nSeparationHH[j] = 0;
+        nSepCurrentHH[j] = 0;
 
         tStartHH[j] = 0;
         tStartCurrentHH[j] = 0;
@@ -125,7 +150,7 @@ bool larger( inputSpec i, inputSpec j )
 
 bool fittestNovelty(const noveltyBundle &a, const noveltyBundle &b)
 {
-    return a.novelty[2]*a.novelty[3] > b.novelty[2]*b.novelty[3];
+    return a.fitness() > b.fitness();
 }
 
 inputSpec mutate( const inputSpec &inI )
@@ -156,6 +181,8 @@ void crossover( inputSpec const& parent1, inputSpec const& parent2, inputSpec & 
 	child2.t = TOTALT;
     child1.ot = OT;
     child2.ot = OT;
+    child1.dur = 0;
+    child2.dur = 0;
     child1.baseV = VSTEP0;
     child2.baseV = VSTEP0;
 	child1.N = NVSTEPS;
