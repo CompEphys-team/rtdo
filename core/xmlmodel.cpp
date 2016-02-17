@@ -289,7 +289,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "#ifndef _" << modelname << "_neuronFnct_cc" << endl // Don't compile this part in calcNeuronsCPU
            << "#ifdef _" << modelname << "_neuronKrnl_cc" << endl // Also, don't compile in simulateSingleNeuron
            << "  __shared__ double IsynShare[" + to_string(_adjustableParams.size() + 1) + "];" << endl
-           << "  if ( gatherError ) {" << endl
+           << "  if ( gatherError || ($(stage) > " << stObservationWindow__start
+                 << " && $(stage) < " << stObservationWindow__end << ") ) {" << endl
            << "    IsynShare[threadIdx.x] = Isyn;" << endl
            << "    __syncthreads();" << endl
            << "    IsynErr += abs(Isyn-IsynShare[0]) * mdt;" << endl
@@ -301,9 +302,9 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
            << "#ifndef _" << modelname << "_neuronFnct_cc" << endl
 
-           // Report Isyn for validation
+           // Report Isyn (reference) or IsynErr (detuned) for validation
            << "if ( $(stage) > " << stObservationWindow__start << " && $(stage) < " << stObservationWindow__end << " ) {" << endl
-           << "  $(err) = Isyn;" << endl
+           << "  $(err) = (threadIdx.x ? IsynErr : Isyn);" << endl
            << "}" << endl
 
            // DetuneAdjust stage: Add up this parameter's deviation from tuned model

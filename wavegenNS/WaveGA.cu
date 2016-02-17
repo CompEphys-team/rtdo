@@ -369,12 +369,20 @@ void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)
 {
     // Header
     int blocklen = SIM_TIME/DT;
-    int headerlen = 5;
+    int headerlen = 8;
     int footerlen = 9;
     int offset = param*(blocklen+headerlen+footerlen) + headerlen;
+    int offsetBottom = offset + blocklen + headerlen;
     currentfile << "# Parameter " << param << " final waveform evoked currents" << endl;
     currentfile << "# Waveform: see below" << endl;
-    currentfile << "#MATLAB dlmread(file, '\\t', [" << offset << "+headerLines 0 " << (offset+blocklen+headerlen) << "+headerLines " << (NPARAM+2) << "])" << endl;
+    currentfile << "#MATLAB time_p" << param << " = dlmread(file, '\\t', "
+                << "[" << offset << "+headerLines 0 " << offsetBottom << "+headerLines 0]);" << endl;
+    currentfile << "#MATLAB waveform_p" << param << " = dlmread(file, '\\t', "
+                << "[" << offset << "+headerLines 1 " << offsetBottom << "+headerLines 1]);" << endl;
+    currentfile << "#MATLAB reference_p" << param << " = dlmread(file, '\\t', "
+                << "[" << offset << "+headerLines 2 " << offsetBottom << "+headerLines 2]);" << endl;
+    currentfile << "#MATLAB currents_p" << param << " = dlmread(file, '\\t', "
+                << "[" << offset << "+headerLines 3 " << offsetBottom << "+headerLines " << (NPARAM+2) << "]);" << endl;
     currentfile << "#" << endl;
     currentfile << "Time\tVoltage\tReference";
     for ( int j = 0; j < NPARAM; j++ ) {
