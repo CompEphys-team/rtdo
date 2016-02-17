@@ -211,19 +211,41 @@ bool conf::ModelConfig::load(bool forceReload) {
 
 conf::WaveGenConfig::WaveGenConfig() :
     popsize(1000),
-    ngen(400)
+    ngen(400),
+    ns_ngenOptimise(100),
+    ns_noveltyThreshold(0.1),
+    ns_optimiseProportion(0.2)
 {}
 
 void conf::WaveGenConfig::fromXML(TiXmlElement *section)
 {
     section->QueryIntAttribute("popsize", &popsize);
     section->QueryIntAttribute("generations", &ngen);
+
+    TiXmlElement *el;
+    if ( (el = section->FirstChildElement("noveltysearch")) ) {
+        el->QueryDoubleAttribute("threshold", &ns_noveltyThreshold);
+
+        if ( (el = el->FirstChildElement("optimisation")) ) {
+            el->QueryIntAttribute("generations", &ns_ngenOptimise);
+            el->QueryDoubleAttribute("proportion", &ns_optimiseProportion);
+        }
+    }
 }
 
 void conf::WaveGenConfig::toXML(TiXmlElement *section) const
 {
     section->SetAttribute("popsize", popsize);
     section->SetAttribute("generations", ngen);
+
+    TiXmlElement *ns = new TiXmlElement("noveltysearch");
+    ns->SetDoubleAttribute("threshold", ns_noveltyThreshold);
+    section->LinkEndChild(ns);
+
+    TiXmlElement *el = new TiXmlElement("optimisation");
+    el->SetAttribute("generations", ns_ngenOptimise);
+    el->SetDoubleAttribute("proportion", ns_optimiseProportion);
+    ns->LinkEndChild(el);
 }
 
 

@@ -103,6 +103,10 @@ public:
     int popsize;
     int ngen;
 
+    int ns_ngenOptimise;
+    double ns_optimiseProportion;
+    double ns_noveltyThreshold;
+
 private:
     void fromXML(TiXmlElement *section);
     void toXML(TiXmlElement *section) const;

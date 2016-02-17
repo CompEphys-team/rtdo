@@ -2,19 +2,23 @@
 #define WAVEGENNS_H
 #include <iostream>
 #include "shared.h"
+#include "config.h"
 
 class WavegenNSVirtual
 {
 public:
-    WavegenNSVirtual() {}
+    WavegenNSVirtual(conf::WaveGenConfig *cfg) : cfg(cfg) {}
     virtual ~WavegenNSVirtual() {}
 
-    virtual void runAll(int nGenerationsNS, int nGenerationsOptimise, std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag) = 0;
+    virtual void runAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag) = 0;
     virtual void adjustSigmas() = 0;
-    virtual void noveltySearch(int nGenerations, bool *stopFlag) = 0;
-    virtual void optimiseAll(int nGenerations, std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag) = 0;
-    virtual void optimise(int param, int nGenerations, bool *stopFlag) = 0;
+    virtual void noveltySearch(bool *stopFlag) = 0;
+    virtual void optimiseAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag) = 0;
+    virtual void optimise(int param, bool *stopFlag) = 0;
     virtual void validate(inputSpec &stim, int param, std::ostream &currentfile) = 0;
+
+protected:
+    conf::WaveGenConfig *cfg;
 };
 
 #endif // WAVEGENNS_H

@@ -54,8 +54,6 @@ double mutateA = 10.0;
 // Novelty search param
 double maxSigmaToRange = 0.1;
 double pertFac = 0.1;
-double noveltyThreshold = 0.1;
-double optimiseInitProportion = 0.2;
 
 
 #include "WaveGA.h"
@@ -68,14 +66,14 @@ double optimiseInitProportion = 0.2;
 class WavegenNS : public WavegenNSVirtual
 {
 public:
-    WavegenNS();
+    WavegenNS(conf::WaveGenConfig *cfg);
     ~WavegenNS() {}
 
-    void runAll(int nGenerationsNS, int nGenerationsOptimise, std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag);
+    void runAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag);
     void adjustSigmas();
-    void noveltySearch(int nGenerations, bool *stopFlag);
-    void optimiseAll(int nGenerations, std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag);
-    void optimise(int param, int nGenerations, bool *stopFlag);
+    void noveltySearch(bool *stopFlag);
+    void optimiseAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag);
+    void optimise(int param, bool *stopFlag);
     void validate(inputSpec &stim, int param, std::ostream &currentfile);
 
 private:
@@ -86,9 +84,9 @@ private:
     NNmodel model;
 };
 
-extern "C" WavegenNSVirtual *WavegenCreate()
+extern "C" WavegenNSVirtual *WavegenCreate(conf::WaveGenConfig *cfg)
 {
-    return new WavegenNS();
+    return new WavegenNS(cfg);
 }
 
 extern "C" void WavegenDestroy(WavegenNSVirtual **_this)
@@ -98,8 +96,8 @@ extern "C" void WavegenDestroy(WavegenNSVirtual **_this)
 }
 
 
-WavegenNS::WavegenNS() :
-    WavegenNSVirtual()
+WavegenNS::WavegenNS(conf::WaveGenConfig *cfg) :
+    WavegenNSVirtual(cfg)
 {
     // build the neuronal circuitery
     modelDefinition( model );
@@ -121,11 +119,11 @@ WavegenNS::WavegenNS() :
     }
 }
 
-void WavegenNS::runAll(int nGenerationsNS, int nGenerationsOptimise, ostream &wavefile, ostream &currentfile, bool *stopFlag)
+void WavegenNS::runAll(ostream &wavefile, ostream &currentfile, bool *stopFlag)
 {
     adjustSigmas();
-    noveltySearch(nGenerationsNS, stopFlag);
-    optimiseAll(nGenerationsOptimise, wavefile, currentfile, stopFlag);
+    noveltySearch(stopFlag);
+    optimiseAll(wavefile, currentfile, stopFlag);
 }
 
 void WavegenNS::adjustSigmas()
@@ -196,7 +194,7 @@ void WavegenNS::adjustSigmas()
     cout << endl;
 }
 
-void WavegenNS::noveltySearch(int nGenerations, bool *stopFlag)
+void WavegenNS::noveltySearch(bool *stopFlag)
 {
     unsigned int VSize = NPOP*theSize( model.ftype );
     for ( int i = 0; i < NPARAM; i++ ) {
@@ -215,7 +213,7 @@ void WavegenNS::noveltySearch(int nGenerations, bool *stopFlag)
     double nSteps = (TOTALT-OT)/DT;
 
     // Stage: Novelty search
-    for ( size_t generation = 0; generation < nGenerations && !*stopFlag; ++generation ) {
+    for ( size_t generation = 0; generation < cfg->ngen && !*stopFlag; ++generation ) {
         cout << "Novelty search, generation " << generation << endl;
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};
@@ -251,13 +249,13 @@ void WavegenNS::noveltySearch(int nGenerations, bool *stopFlag)
                     double dist = noveltyDistance(p, bundle) / nSteps; // Normalise all novelty dimensions
                     if ( least > dist ) {
                         least = dist;
-                        if ( least < noveltyThreshold )
+                        if ( least < cfg->ns_noveltyThreshold )
                             break;
                     }
                 }
                 stims[i].fit += least / noveltyDB[j-1].size(); // Bias fitness, but not novelty, by count to boost params with fewer waves
                 avgNovelty += least;
-                if ( least > noveltyThreshold ) {
+                if ( least > cfg->ns_noveltyThreshold ) {
                     bundle.wave = stims[i];
                     noveltyDB[j-1].push_back(bundle);
                     ++numNew;
@@ -270,10 +268,10 @@ void WavegenNS::noveltySearch(int nGenerations, bool *stopFlag)
     }
     
     for ( int i = 0; i < NPARAM; i++ ) {
-        cout << "Parameter " << (i+1) << ": " << (noveltyDB[i].size()-1) << " touchstone waves" << endl;
+        cout << "Parameter " << (i+1) << ": " << (noveltyDB[i].size()-1) << " reference waves" << endl;
         if ( noveltyDB[i].size() == 1 ) {
-            cout << "Waveforms for this parameter will be generated from scratch. You may need to "
-                    "decrease the novelty threshold or fit this parameter using a different method." << endl;
+            cout << "Waveforms for this parameter will be generated from scratch during optimisation. "
+                 << "You may need to decrease the novelty threshold or fit this parameter using a different method." << endl;
             noveltyDB[i].clear();
         } else {
             double sums[NNOVELTY] = {}, maxV[NNOVELTY] = {};
@@ -300,10 +298,10 @@ void WavegenNS::noveltySearch(int nGenerations, bool *stopFlag)
     }
 }
 
-void WavegenNS::optimiseAll(int nGenerations, ostream &wavefile, ostream &currentfile, bool *stopFlag)
+void WavegenNS::optimiseAll(ostream &wavefile, ostream &currentfile, bool *stopFlag)
 {
     for ( int k = 0; k < NPARAM && !*stopFlag; k++ ) {
-        optimise(k, nGenerations, stopFlag);
+        optimise(k, stopFlag);
 
         // Since procreateInitialisedPop does not alter the first few waves, it is safe to assume that stims[0] is the fittest:
         validate(stims[0], k, currentfile);
@@ -316,7 +314,7 @@ void WavegenNS::optimiseAll(int nGenerations, ostream &wavefile, ostream &curren
     }
 }
 
-void WavegenNS::optimise(int param, int nGenerations, bool *stopFlag)
+void WavegenNS::optimise(int param, bool *stopFlag)
 {
     stageHH = stWaveformOptimise;
     calcBestHH = false;
@@ -328,9 +326,9 @@ void WavegenNS::optimise(int param, int nGenerations, bool *stopFlag)
     unsigned int VSize = NPOP*theSize( model.ftype );
 
     vector<inputSpec> initial;
-    initial.reserve(noveltyDB[param].size() * optimiseInitProportion);
+    initial.reserve(noveltyDB[param].size() * cfg->ns_optimiseProportion);
     sort(noveltyDB[param].begin(), noveltyDB[param].end(), fittestNovelty);
-    for ( int i = 0; i < noveltyDB[param].size() * optimiseInitProportion; i++ ) {
+    for ( int i = 0; i < noveltyDB[param].size() * cfg->ns_optimiseProportion; i++ ) {
         initial.push_back(noveltyDB[param].at(i).wave);
     }
 
@@ -338,7 +336,7 @@ void WavegenNS::optimise(int param, int nGenerations, bool *stopFlag)
     wave_pop_init_from( stims, GAPOP, initial );
 
     // Optimise
-    for (size_t generation = 0; generation < nGenerations && !*stopFlag; ++generation) {
+    for (size_t generation = 0; generation < cfg->ns_ngenOptimise && !*stopFlag; ++generation) {
         cout << "Optimising parameter " << (param+1) << ", generation " << generation << endl;
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};

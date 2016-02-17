@@ -339,7 +339,7 @@ bool run_wavegen_NS(bool *stopFlag)
     }
 
     void *lib;
-    WavegenNSVirtual *(*wgcreate)();
+    WavegenNSVirtual *(*wgcreate)(conf::WaveGenConfig *);
     void (*wgdestroy)(WavegenNSVirtual **);
     string fname = string(SOURCEDIR) + "/wavegenNS/WaveGen.so";
     dlerror();
@@ -397,8 +397,8 @@ bool run_wavegen_NS(bool *stopFlag)
     ofstream currentfile(currentfile_str);
     currentfile << header.str();
 
-    WavegenNSVirtual *wg = wgcreate();
-    wg->runAll(config->wg.ngen, config->wg.ngen, wavefile, currentfile, stopFlag);
+    WavegenNSVirtual *wg = wgcreate(&config->wg);
+    wg->runAll(wavefile, currentfile, stopFlag);
     wgdestroy(&wg);
     dlclose(lib);
     cout << endl << "Waveforms written to " << wavefile_str << endl;

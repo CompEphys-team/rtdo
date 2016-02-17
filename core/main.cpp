@@ -68,7 +68,9 @@ const option::Descriptor usage[] =
     { CONFIG,       0, "c", "config",   Arg::NonEmpty,  u8"-cFILE, --config=FILE\tUse the config xml in FILE." },
     { CFG_MODEL,    0, "m", "model",    Arg::Optional,  u8"-mFILE, --model=FILE\tUse the model xml in FILE, "
                                                         u8"instead of the one specified in the config file." },
-    { CFG_GENERATIONS, 0, "g", "generations", Arg::NonEmpty, u8"--generations=X\tRun X generations in waveform generation." },
+    { CFG_GENERATIONS, 0, "g", "generations", Arg::NonEmpty, u8"--generations=X\tRun X generations in waveform generation. "
+                                                        u8"If supplied, a second argument is used in wavegenNS for the number "
+                                                        u8"of optimisation epochs."},
     {0,0,0,0,0,0}
 };
 
@@ -127,8 +129,10 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        if ( options[CFG_GENERATIONS] )
-            config->wg.ngen = atoi(options[CFG_GENERATIONS].last()->arg );
+        if ( options[CFG_GENERATIONS] ) {
+            config->wg.ngen = atoi(options[CFG_GENERATIONS].first()->arg);
+            config->wg.ns_ngenOptimise = atoi(options[CFG_GENERATIONS].last()->arg);
+        }
 
         if ( !options[BUILD] && !options[RUN] ) {
             std::cout << "Nothing to do. Specify -b to build, and/or -r to run." << std::endl;

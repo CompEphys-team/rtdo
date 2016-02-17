@@ -21,6 +21,7 @@ CXXFLAGS	:= -fPIC
 NVCCFLAGS	+= --compiler-options "-fPIC" --std c++11
 LINK_FLAGS	:= -shared -lc
 INCLUDE_FLAGS   += -I../include \
+		   -I../lib/include \
 		   -I$(RTAI_PATH)/include \
 		   -I$(COMEDI_PATH)/inc-wrap
 
