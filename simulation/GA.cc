@@ -28,6 +28,7 @@ int compareErrTupel( const void *x, const void *y )
 
 void procreatePopPperturb( double amplitude,
                            vector<vector<double> > &pperturb,
+                           vector<vector<double> > &sigadjust,
                            vector<vector<double> > &errbuf,
                            vector<int> &epos,
                            vector<int> &initial,
@@ -81,7 +82,7 @@ void procreatePopPperturb( double amplitude,
     // mutate the second half of the instances
 	for (int i = k; i < 2 * k; i++) {
 		copy_var( errs[i - k].id, errs[i].id ); // copy good ones over bad ones
-		single_var_reinit_pperturb( errs[i].id, amplitude, pperturb[nextS] ); // jiggle the new copies a bit
+        single_var_reinit_pperturb( errs[i].id, amplitude, pperturb[nextS], sigadjust[nextS] ); // jiggle the new copies a bit
 	}
 	for (int i = 2 * k; i < NPOP; i++)
 	{

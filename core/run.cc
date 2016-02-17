@@ -293,21 +293,22 @@ bool run_wavegen(int focusParam, bool *stopFlag)
     if ( focusParam == -1 ) {
         string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
                 + config->model.obj->name() + "_wave.";
-        int i, j;
+        int i;
         for ( i = 0; !access(string(filename + to_string(i)).c_str(), F_OK); i++ ) {}
         filename += to_string(i);
         ofstream file(filename);
 
-        const vector<XMLModel::param> &params = config->model.obj->adjustableParams();
+        const vector<XMLModel::param> params = config->model.obj->adjustableParams(); // Copy to guard against user interference
         i = 0;
         for ( auto &p : params ) {
             inputSpec is = wgmain(i, config->wg.ngen, stopFlag);
             cout << p.name << ", best fit:" << endl;
             cout << is << endl;
-            j = 0;
-            for ( auto &_ : params ) {
+            for ( int j = 0; j < (int) params.size(); j++ ) {
                 file << (j==i) << " ";
-                ++j;
+            }
+            for ( int j = 0; j < (int) params.size(); j++ ) {
+                file << "1.0 "; // sigma adjustment hotfix
             }
             file << is << endl;
             file.flush();

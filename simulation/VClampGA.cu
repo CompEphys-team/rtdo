@@ -46,14 +46,18 @@ extern "C" int vclamp(const char *stimFName, bool *stopFlag, backlog::BacklogVir
 
 	//-----------------------------------------------------------------
     // read the relevant stimulus patterns
-	vector<vector<double> > pperturb;
+    vector<vector<double> > pperturb;
+    vector<vector<double> > sigadjust;
 	vector<inputSpec> stims;
     inputSpec I;
-    load_stim(is, pperturb, stims);
-	for (int i = 0, k = pperturb.size(); i < k; i++) {
-		for (int j = 0, l = pperturb[i].size(); j < l; j++) {
-			cerr << pperturb[i][j] << " ";
-		}
+    load_stim(is, pperturb, sigadjust, stims);
+    for (int i = 0, k = pperturb.size(); i < k; i++) {
+        for (int j = 0, l = pperturb[i].size(); j < l; j++) {
+            cerr << pperturb[i][j] << " ";
+        }
+        for (int j = 0, l = pperturb[i].size(); j < l; j++) {
+            cerr << sigadjust[i][j] << " ";
+        }
 		cerr << endl;
 		cerr << stims[i] << endl;
 	}
@@ -135,7 +139,7 @@ extern "C" int vclamp(const char *stimFName, bool *stopFlag, backlog::BacklogVir
 
         CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
 
-        procreatePopPperturb( pertFac, pperturb, errbuf, epos, initial, mavg, nextS, Nstim, logger, generation++ ); //perturb for next step
+        procreatePopPperturb( pertFac, pperturb, sigadjust, errbuf, epos, initial, mavg, nextS, Nstim, logger, generation++ ); //perturb for next step
     }
 
     logger->halt();

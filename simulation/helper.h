@@ -25,29 +25,14 @@ void single_var_init_fullrange(int n)
     uids[n] = ++latest_uid;
 }
 
-void single_var_reinit(int n, double fac) 
-{
-    for ( int i = 0; i < NPARAM; i++ ) {
-        if ( aParamPMult[i] )
-            mparam[i][n] *= (1.0 + fac * aParamSigma[i] * RG.n());
-        else
-            mparam[i][n] += fac * aParamSigma[i] * RG.n();
-
-        if ( mparam[i][n] < aParamRange[2*i] )
-            mparam[i][n] = aParamRange[2*i];
-        else if ( mparam[i][n] > aParamRange[2*i + 1] )
-            mparam[i][n] = aParamRange[2*i + 1];
-    }
-}
-
-void single_var_reinit_pperturb(int n, double fac, vector<double> &pperturb) 
+void single_var_reinit_pperturb(int n, double fac, vector<double> &pperturb, vector<double> &sigadjust)
 {
     for ( int i = 0; i < NPARAM; i++ ) {
         if ( pperturb[i] > 0 && R.n() < pperturb[i] ) {
             if ( aParamPMult[i] )
-                mparam[i][n] *= (1.0 + fac * aParamSigma[i] * RG.n());
+                mparam[i][n] *= (1.0 + fac * aParamSigma[i] * sigadjust[i] * RG.n());
             else
-                mparam[i][n] += fac * aParamSigma[i] * RG.n();
+                mparam[i][n] += fac * aParamSigma[i] * sigadjust[i] * RG.n();
 
             if ( mparam[i][n] < aParamRange[2*i] )
                 mparam[i][n] = aParamRange[2*i];
@@ -73,15 +58,6 @@ void var_init_fullrange()
   copyStateToDevice();	
 }
  
-void var_reinit(double fac) 
-{
-  // add noise to the parameters
-  for (int n= 0; n < NPOP; n++) {
-    single_var_reinit(n, fac);
-  }
-  copyStateToDevice();	
-}
-
 void truevar_init()
 {
   for (int n= 0; n < NPOP; n++) {  
@@ -93,9 +69,10 @@ void truevar_init()
   copyStateToDevice();	  
 }
 
-void load_stim(istream &is, vector<vector<double>> &pperturb, vector<inputSpec> &stims) {
+void load_stim(istream &is, vector<vector<double>> &pperturb, vector<vector<double>> &sigadjust, vector<inputSpec> &stims) {
     double dtmp;
     vector<double> prob;
+    vector<double> adjust;
     inputSpec I;
     char buf[1024];
     while (is.good()) {
@@ -107,9 +84,14 @@ void load_stim(istream &is, vector<vector<double>> &pperturb, vector<inputSpec> 
             is >> dtmp;
             prob.push_back( dtmp );
         }
+        for ( int i = 0; i < NPARAM; i++ ) {
+            is >> dtmp;
+            adjust.push_back(dtmp);
+        }
         is >> I;
         if (is.good()) {
             pperturb.push_back( prob );
+            sigadjust.push_back(adjust);
             stims.push_back( I );
         }
     }
