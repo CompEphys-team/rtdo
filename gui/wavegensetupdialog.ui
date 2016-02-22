@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Waveform generation setup</string>
   </property>
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
@@ -113,6 +113,9 @@
       <property name="toolTip">
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Threshold for new waveforms to be accepted as sufficiently novel to become a reference waveform.&lt;/p&gt;&lt;p&gt;As novelty is based on a number of features (e.g. of the current evoked by the waveform, in voltage clamp waveform generation), there is no one optimal value. As a rough guideline, aim for several hundred to a few thousand reference waveforms per parameter.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
+      <property name="decimals">
+       <number>3</number>
+      </property>
       <property name="maximum">
        <double>1000.000000000000000</double>
       </property>
@@ -129,6 +132,9 @@
      <widget class="QDoubleSpinBox" name="ns_optimiseProportion">
       <property name="toolTip">
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of reference waveforms from the novelty search stage that are to be used as the initial population in the optimisation stage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="decimals">
+       <number>2</number>
       </property>
       <property name="maximum">
        <double>1.000000000000000</double>
