@@ -79,13 +79,18 @@ void procreatePopPperturb( double amplitude,
         limiter = 0;
     }
 
-    // mutate the second half of the instances
+    // First third: Elitism
+    // Second third: mutated elite
 	for (int i = k; i < 2 * k; i++) {
 		copy_var( errs[i - k].id, errs[i].id ); // copy good ones over bad ones
         single_var_reinit_pperturb( errs[i].id, amplitude, pperturb[nextS], sigadjust[nextS] ); // jiggle the new copies a bit
 	}
+    // Third third: Mutations with quadratic preference
 	for (int i = 2 * k; i < NPOP; i++)
 	{
-		single_var_init_fullrange( errs[i].id );
+        double p = R.n();
+        copy_var(errs[(int)(p*p * NPOP)].id, errs[i].id);
+        single_var_reinit_pperturb( errs[i].id, amplitude, pperturb[nextS], sigadjust[nextS] );
     }
+    // Never ever: Add completely new models to a serial multiparameter fitting run
 }
