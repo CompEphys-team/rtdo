@@ -213,8 +213,8 @@ conf::WaveGenConfig::WaveGenConfig() :
     popsize(1000),
     ngen(400),
     ns_ngenOptimise(100),
-    ns_noveltyThreshold(0.1),
-    ns_optimiseProportion(0.2)
+    ns_optimiseProportion(0.2),
+    ns_noveltyThreshold(0.1)
 {}
 
 void conf::WaveGenConfig::fromXML(TiXmlElement *section)

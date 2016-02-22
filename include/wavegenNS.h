@@ -7,7 +7,7 @@
 class WavegenNSVirtual
 {
 public:
-    WavegenNSVirtual(conf::WaveGenConfig *cfg) : cfg(cfg) {}
+    WavegenNSVirtual(conf::Config *cfg) : cfg(cfg) {}
     virtual ~WavegenNSVirtual() {}
 
     virtual void runAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag) = 0;
@@ -18,7 +18,7 @@ public:
     virtual void validate(inputSpec &stim, int param, std::ostream &currentfile) = 0;
 
 protected:
-    conf::WaveGenConfig *cfg;
+    conf::Config *cfg;
 };
 
 #endif // WAVEGENNS_H

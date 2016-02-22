@@ -178,7 +178,6 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << endl;
     of << "#ifdef DEFINITIONS_H" << endl;
-    of << "#include \"realtimeenvironment.h\"" << endl;
     of << "scalar *mvar[NVAR];" << endl;
     of << "scalar *d_mvar[NVAR];" << endl;
     of << "scalar *mparam[NPARAM];" << endl;
@@ -196,7 +195,6 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "mparam[" << i << "] = " << it->name << POPNAME << ";" << endl;
         of << "d_mparam[" << i << "] = d_" << it->name << POPNAME << ";" << endl;
     }
-    of << "RealtimeEnvironment::env().setClampGainParameter(&clampGainHH);" << endl;
     of << "}" << endl;
     of << "#endif" << endl;
 
@@ -232,6 +230,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
     of << "n.extraGlobalNeuronKernelParameters.push_back(\"clampGain\");" << endl;
     of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
+    of << "n.extraGlobalNeuronKernelParameters.push_back(\"accessResistance\");" << endl;
+    of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
     of << endl;
 
     switch ( type ) {
@@ -241,7 +241,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "unsigned int mt;" << endl
            << "scalar mdt= DT/$(simCycles);" << endl
            << "for (mt=0; mt < $(simCycles); mt++) {" << endl
-           << "  Isyn= $(clampGain)*($(stepVG)-$(V));" << endl
+           << "  Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl
            << code << endl
            << "}" << endl
            << CUTMARK << endl
@@ -256,7 +256,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "unsigned int mt;" << endl
            << "scalar mdt= DT/$(simCycles);" << endl
            << "for (mt=0; mt < $(simCycles); mt++) {" << endl
-           << "  Isyn= $(clampGain)*($(stepVG)-$(V));" << endl
+           << "  Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl
            << code << endl
            << "#ifndef _" << modelname << "_neuronFnct_cc" << endl // Don't compile this part in calcNeuronsCPU
            << "#ifdef _" << modelname << "_neuronKrnl_cc" << endl // Also, don't compile in simulateSingleNeuron
@@ -284,7 +284,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "unsigned int mt;" << endl
            << "scalar mdt= DT/$(simCycles);" << endl
            << "for (mt=0; mt < $(simCycles); mt++) {" << endl
-           << "  Isyn= $(clampGain)*($(stepVG)-$(V));" << endl
+           << "  Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl
            << code << endl
            << "#ifndef _" << modelname << "_neuronFnct_cc" << endl // Don't compile this part in calcNeuronsCPU
            << "#ifdef _" << modelname << "_neuronKrnl_cc" << endl // Also, don't compile in simulateSingleNeuron

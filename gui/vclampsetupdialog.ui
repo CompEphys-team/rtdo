@@ -103,12 +103,16 @@
     <item row="3" column="0" colspan="2">
      <widget class="QLabel" name="label_6">
       <property name="text">
-       <string>Electrode resistance (MΩ)</string>
+       <string>Access resistance (MΩ)</string>
       </property>
      </widget>
     </item>
     <item row="3" column="2" colspan="2">
-     <widget class="QDoubleSpinBox" name="resistance"/>
+     <widget class="QDoubleSpinBox" name="resistance">
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Access resistance is the total resistance of the current electrode, including headstage resistors, if any.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+     </widget>
     </item>
     <item row="2" column="2" colspan="2">
      <widget class="QSpinBox" name="gain">

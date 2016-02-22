@@ -22,6 +22,7 @@ initial version: 2014-06-26
 #define _CRTDBG_MAP_ALLOC
 #include "VClampGA.h"
 #include "realtimeenvironment.h"
+#include "config.h"
 
 //--------------------------------------------------------------------------
 /*! \brief This function is the entry point for running the project
@@ -39,9 +40,7 @@ inline bool file_exists( const std::string& name )
 	}
 }
 
-extern "C" int vclamp(const char *stimFName, bool *stopFlag, backlog::BacklogVirtual *logger) {
-    ifstream is( stimFName );
-
+extern "C" int vclamp(conf::Config *cfg, bool *stopFlag, backlog::BacklogVirtual *logger) {
     RealtimeEnvironment &env = RealtimeEnvironment::env();
 
 	//-----------------------------------------------------------------
@@ -50,6 +49,7 @@ extern "C" int vclamp(const char *stimFName, bool *stopFlag, backlog::BacklogVir
     vector<vector<double> > sigadjust;
 	vector<inputSpec> stims;
     inputSpec I;
+    ifstream is(cfg->vc.wavefile);
     load_stim(is, pperturb, sigadjust, stims);
     for (int i = 0, k = pperturb.size(); i < k; i++) {
         for (int j = 0, l = pperturb[i].size(); j < l; j++) {
@@ -116,6 +116,8 @@ extern "C" int vclamp(const char *stimFName, bool *stopFlag, backlog::BacklogVir
         stepVGHH = I.baseV;
         otHH = t + I.ot;
         oteHH = t + I.ot + I.dur;
+        clampGainHH = cfg->vc.gain;
+        accessResistanceHH = cfg->vc.resistance;
         lt = 0.0;
         sn = 0;
 

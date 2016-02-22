@@ -57,6 +57,7 @@ double mutateA = 10.0;
 #include "WaveGA.h"
 #include "waveHelper.h"
 #include <cuda.h>
+#include "config.h"
 
 //--------------------------------------------------------------------------
 /*! \brief This function is the entry point for running the project
@@ -64,10 +65,10 @@ double mutateA = 10.0;
 //--------------------------------------------------------------------------
 
 
-extern "C" inputSpec wavegen(int focusParam, int nGenerations, bool *stopFlag)
+extern "C" inputSpec wavegen(conf::Config *cfg, int focusParam, bool *stopFlag)
 {
     double gaBalance = 1.0 / (NPARAM - 1.0);
-    NGEN = nGenerations;
+    NGEN = cfg->wg.ngen;
 
 	//-----------------------------------------------------------------
     // Initialize population
@@ -83,6 +84,9 @@ extern "C" inputSpec wavegen(int focusParam, int nGenerations, bool *stopFlag)
 	allocateMem();
 	initialize();
     rtdo_init_bridge();
+
+    clampGainHH = cfg->vc.gain;
+    accessResistanceHH = cfg->vc.resistance;
 	
     //------------------------------------------------------
     // Get steady-state variable values at holding potential

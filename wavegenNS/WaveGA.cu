@@ -66,7 +66,7 @@ double pertFac = 0.1;
 class WavegenNS : public WavegenNSVirtual
 {
 public:
-    WavegenNS(conf::WaveGenConfig *cfg);
+    WavegenNS(conf::Config *cfg);
     ~WavegenNS() {}
 
     void runAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag);
@@ -84,7 +84,7 @@ private:
     NNmodel model;
 };
 
-extern "C" WavegenNSVirtual *WavegenCreate(conf::WaveGenConfig *cfg)
+extern "C" WavegenNSVirtual *WavegenCreate(conf::Config *cfg)
 {
     return new WavegenNS(cfg);
 }
@@ -96,7 +96,7 @@ extern "C" void WavegenDestroy(WavegenNSVirtual **_this)
 }
 
 
-WavegenNS::WavegenNS(conf::WaveGenConfig *cfg) :
+WavegenNS::WavegenNS(conf::Config *cfg) :
     WavegenNSVirtual(cfg)
 {
     // build the neuronal circuitery
@@ -104,6 +104,9 @@ WavegenNS::WavegenNS(conf::WaveGenConfig *cfg) :
     allocateMem();
     initialize();
     rtdo_init_bridge();
+
+    clampGainHH = cfg->vc.gain;
+    accessResistanceHH = cfg->vc.resistance;
 
     for ( int i = 0; i < NPARAM; i++ ) {
         sigmaAdjust[i] = 1;
@@ -213,7 +216,7 @@ void WavegenNS::noveltySearch(bool *stopFlag)
     double nSteps = (TOTALT-OT)/DT;
 
     // Stage: Novelty search
-    for ( size_t generation = 0; generation < cfg->ngen && !*stopFlag; ++generation ) {
+    for ( size_t generation = 0; generation < cfg->wg.ngen && !*stopFlag; ++generation ) {
         cout << "Novelty search, generation " << generation << endl;
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};
@@ -249,13 +252,13 @@ void WavegenNS::noveltySearch(bool *stopFlag)
                     double dist = noveltyDistance(p, bundle) / nSteps; // Normalise all novelty dimensions
                     if ( least > dist ) {
                         least = dist;
-                        if ( least < cfg->ns_noveltyThreshold )
+                        if ( least < cfg->wg.ns_noveltyThreshold )
                             break;
                     }
                 }
                 stims[i].fit += least / noveltyDB[j-1].size(); // Bias fitness, but not novelty, by count to boost params with fewer waves
                 avgNovelty += least;
-                if ( least > cfg->ns_noveltyThreshold ) {
+                if ( least > cfg->wg.ns_noveltyThreshold ) {
                     bundle.wave = stims[i];
                     noveltyDB[j-1].push_back(bundle);
                     ++numNew;
@@ -326,9 +329,9 @@ void WavegenNS::optimise(int param, bool *stopFlag)
     unsigned int VSize = NPOP*theSize( model.ftype );
 
     vector<inputSpec> initial;
-    initial.reserve(noveltyDB[param].size() * cfg->ns_optimiseProportion);
+    initial.reserve(noveltyDB[param].size() * cfg->wg.ns_optimiseProportion);
     sort(noveltyDB[param].begin(), noveltyDB[param].end(), fittestNovelty);
-    for ( int i = 0; i < noveltyDB[param].size() * cfg->ns_optimiseProportion; i++ ) {
+    for ( int i = 0; i < noveltyDB[param].size() * cfg->wg.ns_optimiseProportion; i++ ) {
         initial.push_back(noveltyDB[param].at(i).wave);
     }
 
@@ -336,7 +339,7 @@ void WavegenNS::optimise(int param, bool *stopFlag)
     wave_pop_init_from( stims, GAPOP, initial );
 
     // Optimise
-    for (size_t generation = 0; generation < cfg->ns_ngenOptimise && !*stopFlag; ++generation) {
+    for (size_t generation = 0; generation < cfg->wg.ns_ngenOptimise && !*stopFlag; ++generation) {
         cout << "Optimising parameter " << (param+1) << ", generation " << generation << endl;
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};

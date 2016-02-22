@@ -138,7 +138,7 @@ bool run_vclamp(bool *stopFlag)
     RealtimeEnvironment &env = RealtimeEnvironment::env();
 
     void *lib;
-    int (*libmain)(const char*, bool *, backlog::BacklogVirtual *);
+    int (*libmain)(conf::Config*, bool *, backlog::BacklogVirtual *);
     backlog::BacklogVirtual *(*logMake)(int size, int nstim, ostream &out);
     void (*logBreak)(backlog::BacklogVirtual **);
 
@@ -223,7 +223,7 @@ bool run_vclamp(bool *stopFlag)
     backlog::BacklogVirtual *logp = logMake(config->vc.popsize, config->model.obj->adjustableParams().size(), tee);
 
     // Run!
-    libmain(config->vc.wavefile.c_str(), stopFlag, logp);
+    libmain(config, stopFlag, logp);
 
     runtime_logf.close();
 
@@ -254,7 +254,7 @@ bool run_wavegen(int focusParam, bool *stopFlag)
     RealtimeEnvironment &env = RealtimeEnvironment::env();
 
     void *lib;
-    inputSpec (*wgmain)(int, int, bool*);
+    inputSpec (*wgmain)(conf::Config*, int, bool*);
     string fname = string(SOURCEDIR) + "/wavegen/WaveGen.so";
     dlerror();
     if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
@@ -301,7 +301,7 @@ bool run_wavegen(int focusParam, bool *stopFlag)
         const vector<XMLModel::param> params = config->model.obj->adjustableParams(); // Copy to guard against user interference
         i = 0;
         for ( auto &p : params ) {
-            inputSpec is = wgmain(i, config->wg.ngen, stopFlag);
+            inputSpec is = wgmain(config, i, stopFlag);
             cout << p.name << ", best fit:" << endl;
             cout << is << endl;
             for ( int j = 0; j < (int) params.size(); j++ ) {
@@ -318,10 +318,13 @@ bool run_wavegen(int focusParam, bool *stopFlag)
         }
         file.close();
     } else {
-        inputSpec is = wgmain(focusParam, config->wg.ngen, stopFlag);
+        inputSpec is = wgmain(config, focusParam, stopFlag);
         cout << config->model.obj->adjustableParams().at(focusParam).name << ", best fit:" << endl;
         cout << is << endl;
     }
+
+    dlclose(lib);
+
     return true;
 }
 
@@ -339,7 +342,7 @@ bool run_wavegen_NS(bool *stopFlag)
     }
 
     void *lib;
-    WavegenNSVirtual *(*wgcreate)(conf::WaveGenConfig *);
+    WavegenNSVirtual *(*wgcreate)(conf::Config *);
     void (*wgdestroy)(WavegenNSVirtual **);
     string fname = string(SOURCEDIR) + "/wavegenNS/WaveGen.so";
     dlerror();
@@ -397,7 +400,7 @@ bool run_wavegen_NS(bool *stopFlag)
     ofstream currentfile(currentfile_str);
     currentfile << header.str();
 
-    WavegenNSVirtual *wg = wgcreate(&config->wg);
+    WavegenNSVirtual *wg = wgcreate(config);
     wg->runAll(wavefile, currentfile, stopFlag);
     wgdestroy(&wg);
     dlclose(lib);

@@ -77,15 +77,6 @@ public:
      **/
     bool useSimulator(bool);
 
-    /** Couple a variable (usually @var clampGainHH) to the configured clamp gain. The indicated value is updated at each @fn sync().
-     * This is called from within @fn rtdo_setup_bridge and need not be repeated elsewhere.
-     * The native type of @a param should be scalar*.
-     **/
-    void setClampGainParameter(void *param);
-
-    //!< Get the configured clamp gain value
-    double getClampGain();
-
     //!< Opens and returns a comedi device in hard/soft realtime [RT build only]
     struct comedi_t_struct *getDevice(int deviceno, bool RT);
 
@@ -112,8 +103,6 @@ private:
     std::unique_ptr<Impl> pImpl;
 
     bool _useSim;
-
-    void *clampGainParam;
 };
 
 
