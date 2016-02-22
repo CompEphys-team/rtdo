@@ -14,15 +14,10 @@
 EXECUTABLE	:= WaveGen.so
 SOURCES		:= WaveGA.cu
 
-RTAI_PATH	?= /usr/realtime
-COMEDI_PATH	?= /usr/src/comedi
-
 CXXFLAGS	:= -fPIC
 NVCCFLAGS	+= --compiler-options "-fPIC" --std c++11
 LINK_FLAGS	:= -shared -lc
 INCLUDE_FLAGS   += -I../include \
-		   -I../lib/include \
-		   -I$(RTAI_PATH)/include \
-		   -I$(COMEDI_PATH)/inc-wrap
+		   -I../lib/include
 
 include	$(GENN_PATH)/userproject/include/makefile_common_gnu.mk
