@@ -29,11 +29,11 @@ void conf::VCConfig::fromXML(TiXmlElement *section, const conf::IOConfig &io) {
 
     TiXmlElement *el;
     if ( (el = section->FirstChildElement("wavefile")) )
-        wavefile = el->GetText();
+        wavefile = el->GetText() ? el->GetText() : "";
 
     if ( (el = section->FirstChildElement("clamp")) ) {
-        section->QueryIntAttribute("gain", &gain);
-        section->QueryDoubleAttribute("resistance", &resistance);
+        el->QueryIntAttribute("gain", &gain);
+        el->QueryDoubleAttribute("resistance", &resistance);
     }
 }
 
@@ -94,7 +94,7 @@ void conf::IOConfig::fromXML(TiXmlElement *section)
         }
 
         if ( (sub = el->FirstChildElement("name")) )
-            channels.back().setName(sub->GetText());
+            channels.back().setName(sub->GetText() ? sub->GetText() : "");
 
         if ( (sub = el->FirstChildElement("amp")) ) {
             double offset=0, gain=1;
@@ -154,7 +154,7 @@ void conf::OutputConfig::fromXML(TiXmlElement *section)
 {
     TiXmlElement *el;
     if ( (el = section->FirstChildElement("dir")) ) {
-        dir = el->GetText();
+        dir = el->GetText() ? el->GetText() : "";
     }
 }
 
@@ -175,11 +175,11 @@ void conf::ModelConfig::fromXML(TiXmlElement *section)
 {
     TiXmlElement *el;
     if ( (el = section->FirstChildElement("deffile")) ) {
-        deffile = el->GetText();
+        deffile = el->GetText() ? el->GetText() : "";
     }
 
     if ( (el = section->FirstChildElement("resolution")) ) {
-        section->QueryIntAttribute("steps", &cycles);
+        el->QueryIntAttribute("cycles", &cycles);
     }
 }
 
