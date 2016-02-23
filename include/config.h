@@ -107,6 +107,10 @@ public:
     double ns_optimiseProportion;
     double ns_noveltyThreshold;
 
+    double tolTime;
+    double tolCurrent;
+    double tolDelta;
+
 private:
     void fromXML(TiXmlElement *section);
     void toXML(TiXmlElement *section) const;

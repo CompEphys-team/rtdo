@@ -136,7 +136,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
             npop *= (_adjustableParams.size() + 1);
         }
         of << "#define NPOP " << npop << endl;
-        nExtraVars += 16;
+        nExtraVars += 17;
         break;
     }
 
@@ -312,7 +312,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "  $(err) += IsynErr * DT;" << endl
 
            // Calculate average deviation from tuned model across all parameters
-           << "} else if ( gatherError ) {" << endl
+           << "} else if ( gatherError && threadIdx.x > 0 ) {" << endl
            << "  __shared__ scalar IsynErrShare[" << to_string(_adjustableParams.size() + 1) << "];" << endl
            << "  IsynErrShare[threadIdx.x] = IsynErr;" << endl
            << "  __syncthreads();" << endl
@@ -326,18 +326,23 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "      if ( i != threadIdx.x )  runnerUp = i;" << endl
            << "    }" << endl
            << "  }" << endl
+              // Apply current tolerance to all further operations
+           << "  if ( IsynErr < $(currentTolerance) ) IsynErr = 0;" << endl
            << "  avgIsynErr /= " << to_string(_adjustableParams.size()) << ";" << endl
            << "  scalar RUratio = IsynErr > 0 ? (IsynErr - IsynErrShare[runnerUp]) / IsynErr : 0;" << endl
 
            // Calculate $(separation) as the square of the absolute separation from the runner-up,
            // normalised by the absolute separation from the reference.
            // This rewards both good separation from the other parameters, and good (large, robust-to-noise) current deflections
-           << "  if ( $(calcSeparation) && threadIdx.x > 0 ) {" << endl
-           << "    if ( IsynErr > IsynErrShare[runnerUp] ) {" << endl
+           // Timing tolerance and delta tolerance apply here.
+           << "  if ( $(calcSeparation) ) {" << endl
+           << "    if ( IsynErr > IsynErrShare[runnerUp] + $(deltaTolerance) ) {" << endl
            << "      if ( $(stage) == " << stObservationWindowSeparation << " && $(nSepCurrent) == 0 )" << endl
            << "        $(tStartCurrent) = t;" << endl
            << "      $(nSepCurrent)++;" << endl
            << "      $(sepCurrent) += RUratio * (IsynErr - IsynErrShare[runnerUp]);" << endl
+           << "      if ( $(sepDecay) < $(timeTolerance) )" << endl
+           << "        $(sepDecay) += DT;" << endl
            << "      if ( $(sepCurrent) > $(separation) ) {" << endl
            << "        $(nSeparation) = $(nSepCurrent);" << endl
            << "        $(separation) = $(sepCurrent);" << endl
@@ -347,14 +352,20 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "        }" << endl
            << "      }" << endl
            << "    } else {" << endl
-           << "      $(nSepCurrent) = 0;" << endl
-           << "      $(sepCurrent) = 0;" << endl
+           << "      if ( $(sepDecay) > 0 ) {" << endl
+           << "        $(sepDecay) -= DT;" << endl
+           << "      } else { " << endl
+           << "        $(nSepCurrent) = 0;" << endl
+           << "        $(sepCurrent) = 0;" << endl
+           << "        $(sepDecay) = 0;" << endl
+           << "      }" << endl
            << "    }" << endl
            << "  }" << endl
 
            // Calculate $(best), normalised by the second-greatest error signal
-           << "  if ( $(calcBest) && threadIdx.x > 0 ) {" << endl
-           << "    if ( IsynErr > IsynErrShare[runnerUp] ) {" << endl
+           // Delta tolerance applies here.
+           << "  if ( $(calcBest) ) {" << endl
+           << "    if ( IsynErr > IsynErrShare[runnerUp] + $(deltaTolerance) ) {" << endl
            << "      if ( $(stage) == " << stObservationWindowBest << " && $(nBestCurrent) == 0 )" << endl
            << "        $(tStartCurrent) = t;" << endl
            << "      $(nBestCurrent)++;" << endl
@@ -375,7 +386,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
            // NoveltySearch and WaveformOptimise stage:
            // Find the largest positive deviation from the average, in terms of normalised area under the curve
-           << "  if ( $(calcExceed) && threadIdx.x > 0 ) {" << endl
+           << "  if ( $(calcExceed) ) {" << endl
            << "    if ( IsynErr > avgIsynErr && avgIsynErr > 0 ) {" << endl
            << "      if ( $(stage) == " << stObservationWindowExceed << " && $(nExceedCurrent) == 0 )" << endl
            << "        $(tStartCurrent) = t;" << endl
@@ -455,6 +466,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.varTypes.push_back(\"int\");" << endl;
         of << "n.varNames.push_back(\"nSepCurrent\");" << endl;
         of << "n.varTypes.push_back(\"int\");" << endl;
+        of << "n.varNames.push_back(\"sepDecay\");" << endl;
+        of << "n.varTypes.push_back(\"scalar\");" << endl;
 
         // Waveform start/end (for stObservationWindow)
         of << "n.varNames.push_back(\"tStart\");" << endl;
@@ -471,6 +484,14 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"bool\");" << endl;
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"calcSeparation\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"bool\");" << endl;
+
+        // Tolerance
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"timeTolerance\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"currentTolerance\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"deltaTolerance\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
 
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"ote\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;

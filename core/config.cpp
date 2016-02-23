@@ -214,7 +214,10 @@ conf::WaveGenConfig::WaveGenConfig() :
     ngen(400),
     ns_ngenOptimise(100),
     ns_optimiseProportion(0.2),
-    ns_noveltyThreshold(0.1)
+    ns_noveltyThreshold(0.1),
+    tolTime(0.5),
+    tolCurrent(0.001),
+    tolDelta(0.0005)
 {}
 
 void conf::WaveGenConfig::fromXML(TiXmlElement *section)
@@ -231,6 +234,12 @@ void conf::WaveGenConfig::fromXML(TiXmlElement *section)
             el->QueryDoubleAttribute("proportion", &ns_optimiseProportion);
         }
     }
+
+    if ( (el = section->FirstChildElement("tolerance")) ) {
+        el->QueryDoubleAttribute("time", &tolTime);
+        el->QueryDoubleAttribute("current", &tolCurrent);
+        el->QueryDoubleAttribute("delta", &tolDelta);
+    }
 }
 
 void conf::WaveGenConfig::toXML(TiXmlElement *section) const
@@ -246,6 +255,12 @@ void conf::WaveGenConfig::toXML(TiXmlElement *section) const
     el->SetAttribute("generations", ns_ngenOptimise);
     el->SetDoubleAttribute("proportion", ns_optimiseProportion);
     ns->LinkEndChild(el);
+
+    el = new TiXmlElement("tolerance");
+    el->SetDoubleAttribute("time", tolTime);
+    el->SetDoubleAttribute("current", tolCurrent);
+    el->SetDoubleAttribute("delta", tolDelta);
+    section->LinkEndChild(el);
 }
 
 

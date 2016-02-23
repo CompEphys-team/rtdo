@@ -88,6 +88,7 @@ void reset(scalar *holding, double fac)
         sepCurrentHH[j] = 0;
         nSeparationHH[j] = 0;
         nSepCurrentHH[j] = 0;
+        sepDecayHH[j] = 0;
 
         tStartHH[j] = 0;
         tStartCurrentHH[j] = 0;

@@ -108,6 +108,10 @@ WavegenNS::WavegenNS(conf::Config *cfg) :
     clampGainHH = cfg->vc.gain;
     accessResistanceHH = cfg->vc.resistance;
 
+    timeToleranceHH = cfg->wg.tolTime;
+    currentToleranceHH = cfg->wg.tolCurrent;
+    deltaToleranceHH = cfg->wg.tolDelta;
+
     for ( int i = 0; i < NPARAM; i++ ) {
         sigmaAdjust[i] = 1;
     }
