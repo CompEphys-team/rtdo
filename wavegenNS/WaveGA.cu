@@ -196,7 +196,7 @@ void WavegenNS::adjustSigmas()
         }
     }
     for ( int i = 0; i < NPARAM; i++ ) {
-        cout << "Parameter " << (i+1) << " sigma adjustment: " << sigmaAdjust[i] << endl;
+        cout << cfg->model.obj->adjustableParams().at(i).name << " sigma adjustment: " << sigmaAdjust[i] << endl;
     }
     cout << endl;
 }
@@ -275,7 +275,7 @@ void WavegenNS::noveltySearch(bool *stopFlag)
     }
     
     for ( int i = 0; i < NPARAM; i++ ) {
-        cout << "Parameter " << (i+1) << ": " << (noveltyDB[i].size()-1) << " reference waves" << endl;
+        cout << cfg->model.obj->adjustableParams().at(i).name << ": " << (noveltyDB[i].size()-1) << " reference waves" << endl;
         if ( noveltyDB[i].size() == 1 ) {
             cout << "Waveforms for this parameter will be generated from scratch during optimisation. "
                  << "You may need to decrease the novelty threshold or fit this parameter using a different method." << endl;
@@ -313,6 +313,7 @@ void WavegenNS::optimiseAll(ostream &wavefile, ostream &currentfile, bool *stopF
         // Since procreateInitialisedPop does not alter the first few waves, it is safe to assume that stims[0] is the fittest:
         validate(stims[0], k, currentfile);
 
+        wavefile << "# " << cfg->model.obj->adjustableParams().at(k).name << endl;
         for ( int i = 0; i < NPARAM; i++ )
             wavefile << (i==k) << " ";
         for ( int i = 0; i < NPARAM; i++ )
@@ -344,7 +345,7 @@ void WavegenNS::optimise(int param, bool *stopFlag)
 
     // Optimise
     for (size_t generation = 0; generation < cfg->wg.ns_ngenOptimise && !*stopFlag; ++generation) {
-        cout << "Optimising parameter " << (param+1) << ", generation " << generation << endl;
+        cout << "Optimising parameter " << cfg->model.obj->adjustableParams().at(param).name << ", generation " << generation << endl;
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};
         for (double t = 0.0; t < SIM_TIME; t += DT) {
@@ -393,7 +394,7 @@ void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)
     currentfile << "#" << endl;
     currentfile << "Time\tVoltage\tReference";
     for ( int j = 0; j < NPARAM; j++ ) {
-        currentfile << "\tParam" << j;
+        currentfile << '\t' << cfg->model.obj->adjustableParams().at(j).name;
     }
     currentfile << endl;
 

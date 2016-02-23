@@ -46,7 +46,9 @@ set ytics mirror
 if (useParamList == 0) {
 	plot for [idx=first:last] file index 2*param using 1:idx+4 with lines lw (idx==param ? 2 : 1)
 } else {
-	plot for [idx in params]  file index 2*param using 1:idx+4 with lines lw (idx==param ? 2 : 1)
+	plot for [n=1:words(params)]  file index 2*param using 1:(column(word(params,n)+4)) \
+		with lines lw (word(params,n)==param ? 2 : 1) \
+		title columnhead(word(params,n)+4)
 }
 
 unset multiplot
