@@ -77,7 +77,8 @@ void load_stim(istream &is, vector<vector<double>> &pperturb, vector<vector<doub
     char buf[1024];
     while (is.good()) {
         prob.clear();
-        while (((is.peek() == '%') || (is.peek() == '\n') || (is.peek() == ' ')) && is.good()) { // remove comments
+        adjust.clear();
+        while (((is.peek() == '%') || (is.peek() == '\n') || (is.peek() == ' ') || (is.peek() == '#')) && is.good()) { // remove comments
             is.getline( buf, BUFSZ );
         }
         for (int i = 0; i < NPARAM; i++) {
