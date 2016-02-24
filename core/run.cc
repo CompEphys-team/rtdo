@@ -180,12 +180,12 @@ bool run_vclamp(bool *stopFlag)
     env.clearChannels();
     for ( Channel &c : config->io.channels ) {
         if ( c.ID() == config->vc.in ) {
-            env.addChannel(c);
             c.readOffset();
+            env.addChannel(c);
         }
         if ( c.ID() == config->vc.out ) {
-            env.addChannel(c);
             c.readOffset();
+            env.addChannel(c);
         }
     }
     env.setSupersamplingRate(config->io.ai_supersampling);
