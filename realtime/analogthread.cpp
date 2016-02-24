@@ -164,8 +164,8 @@ void *AnalogThread::outputFn()
         }
         if ( hasChannel && channel.waveformChanged() ) {
             const inputSpec &w = channel.waveform();
-            samples = std::vector<lsampl_t>(w.N + 1, 0);
-            times = std::vector<RTIME>(w.N + 1, 0);
+            samples.clear();
+            times.clear();
             samples.push_back(channel.convert(w.baseV));
             for ( int i = 0; i < w.N; i++ ) {
                 samples.push_back(channel.convert(w.V.at(i)));
