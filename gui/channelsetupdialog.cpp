@@ -43,6 +43,7 @@ ChannelSetupDialog::ChannelSetupDialog(QWidget *parent) :
     mapper->addMapping(ui->conversionFactor, ChannelEditorModel::ConversionFactor);
     mapper->addMapping(ui->offset, ChannelEditorModel::Offset);
     mapper->addMapping(ui->readOffsetSource, ChannelEditorModel::ReadOffsetSource, "currentIndex");
+    mapper->addMapping(ui->read_reset, ChannelEditorModel::ReadResetButton, "text");
     mapper->setSubmitPolicy(QDataWidgetMapper::AutoSubmit);
     QItemSelectionModel *sm = ui->channelList->selectionModel();
     connect(sm, SIGNAL(currentRowChanged(QModelIndex, QModelIndex)),
@@ -62,6 +63,12 @@ ChannelSetupDialog::ChannelSetupDialog(QWidget *parent) :
             chanList, SIGNAL(modelReset()));
     connect(this, SIGNAL(channelsUpdated()),
             offsetSources, SIGNAL(modelReset()));
+    connect(ui->read_reset, &QPushButton::clicked,
+            [=](){
+                double sample = ui->read_reset_val->value();
+                editor->read_reset(mapper->currentIndex(), sample);
+                ui->read_reset_val->setValue(sample);
+            });
 }
 
 ChannelSetupDialog::~ChannelSetupDialog()
@@ -114,6 +121,8 @@ void ChannelSetupDialog::removeChannel()
 void ChannelSetupDialog::selectionChanged(QModelIndex index, QModelIndex previous)
 {
     mapper->setCurrentIndex(index.row());
+    ui->read_reset_val->setValue(0.0);
+    ui->read_reset_val->clear();
 }
 
 

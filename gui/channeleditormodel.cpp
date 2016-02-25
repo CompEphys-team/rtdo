@@ -49,6 +49,12 @@ QVariant ChannelEditorModel::data(const QModelIndex & index, int role) const {
                 ++i;
             }
             return QVariant(-1);
+        case ReadResetButton:
+            if ( c.direction() == Channel::AnalogIn ) {
+                return QVariant("Read current value");
+            } else {
+                return QVariant("Reset output");
+            }
         default:
             return QVariant();
         }
@@ -123,6 +129,19 @@ bool ChannelEditorModel::removeRow(int row, const QModelIndex &parent) {
     endRemoveRows();
     emit channelsUpdated();
     return true;
+}
+
+void ChannelEditorModel::read_reset(int index, double &sample)
+{
+    Channel &c = config->io.channels.at(index);
+    c.readOffset();
+    QModelIndex idx = this->index(index, Offset);
+    emit dataChanged(idx, idx);
+    if ( c.direction() == Channel::AnalogIn ) {
+        c.read(sample, true);
+    } else {
+        c.write(sample);
+    }
 }
 
 int ChannelEditorModel::columnCount(const QModelIndex &) const

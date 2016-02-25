@@ -39,6 +39,7 @@ public:
         ConversionFactor,
         Offset,
         ReadOffsetSource,
+        ReadResetButton,
         FieldEnd_
     };
 
@@ -46,6 +47,9 @@ signals:
     void deviceChanged();
     void channelChanged();
     void channelsUpdated();
+
+public slots:
+    void read_reset(int index, double &sample);
 
 private:
     int columnCount(const QModelIndex &parent) const;
