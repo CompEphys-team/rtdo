@@ -62,12 +62,22 @@ bool XMLModel::load(string filename)
     }
 
     _vars.clear();
+    bool hasV = false;
     for ( el = hRoot.FirstChild("variable").Element(); el; el = el->NextSiblingElement("variable") ) {
         struct param p;
         p.name = el->Attribute("name");
         p.type = el->Attribute("type");
         el->QueryDoubleAttribute("value", &p.initial);
         _vars.push_back(p);
+
+        if ( !p.name.compare("V") ) {
+            hasV = true;
+            _baseV = p.initial;
+        }
+    }
+    if ( !hasV ) {
+        cerr << "Model fails to define a voltage variable V." << endl;
+        return false;
     }
 
     _params.clear();
@@ -107,7 +117,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         npop = 1;
     }
 
-    int nExtraVars = 2;
+    int nExtraVars = 1;
 
     if ( path.back() != '/' )
         path += "/";
@@ -115,7 +125,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << setprecision(precision) << scientific;
 
-    of << "#define NVAR " << _vars.size() + 1 << endl; // +1 for V
+    of << "#define NVAR " << _vars.size() << endl;
     of << "#define NPARAM " << _adjustableParams.size() << endl;
     switch( type ) {
     case VClamp:
@@ -146,7 +156,6 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << endl;
     of << "double variableIni[" << to_string(_vars.size() + _adjustableParams.size() + nExtraVars) << "] = {" << endl;
-    of << "  -60.0," << endl;
     for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it )
         of << "  " << it->initial << "," << endl;
     for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it )
@@ -183,9 +192,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "scalar *mparam[NPARAM];" << endl;
     of << "scalar *d_mparam[NPARAM];" << endl;
     of << "void rtdo_init_bridge() {" << endl;
-    of << "  mvar[0] = VHH;" << endl;
-    of << "  d_mvar[0] = d_VHH;" << endl;
-    int i = 1;
+    int i = 0;
     for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it, ++i ) {
         of << "mvar[" << i << "] = " << it->name << POPNAME << ";" << endl;
         of << "d_mvar[" << i << "] = d_" << it->name << POPNAME << ";" << endl;
@@ -206,8 +213,6 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "n.varTypes.clear();" << endl;
 
     of << endl;
-    of << "n.varNames.push_back(\"V\");" << endl;
-    of << "n.varTypes.push_back(\"scalar\");" << endl;
     for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it ) {
         of << "n.varNames.push_back(\"" << it->name << "\");" << endl;
         of << "n.varTypes.push_back(\"" << it->type << "\");" << endl;
@@ -534,8 +539,7 @@ void XMLModel::generateSimulator(XMLModel::outputType type, string path)
     of << "{" << endl;
     of << "\t" << scalar << " Isyn = 0;" << endl;
 
-    int i = 1;
-    of << "\t" << scalar << " &lV = variables[0];" << endl;
+    int i = 0;
     for ( param& v : _vars ) {
         of << "\t" << scalar << " &l" << v.name << " = variables[" << i << "];" << endl;
         ++i;

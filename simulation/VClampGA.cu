@@ -53,13 +53,16 @@ extern "C" int vclamp(conf::Config *cfg, bool *stopFlag, backlog::BacklogVirtual
     load_stim(is, pperturb, sigadjust, stims);
     for (int i = 0, k = pperturb.size(); i < k; i++) {
         for (int j = 0, l = pperturb[i].size(); j < l; j++) {
-            cerr << pperturb[i][j] << " ";
+            cout << pperturb[i][j] << " ";
         }
         for (int j = 0, l = pperturb[i].size(); j < l; j++) {
-            cerr << sigadjust[i][j] << " ";
+            cout << sigadjust[i][j] << " ";
         }
-		cerr << endl;
-		cerr << stims[i] << endl;
+        cout << endl;
+        cout << stims[i] << endl;
+        if ( stims[i].baseV != cfg->model.obj->baseV() )
+            cerr << "Warning: Base voltage mismatch between model (" << cfg->model.obj->baseV() << " mV) and waveform ("
+                 << stims[i].baseV << " mV)." << endl;
 	}
 
 	int Nstim = stims.size();

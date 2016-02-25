@@ -36,7 +36,7 @@ initial version: 2014-09-09
 // initial dispersion of V steps
 #define VSTEPINI 40.0
 // initial "baseline" for V steps
-#define VSTEP0 -60.0
+double VSTEP0 = -60.0;
 // initial maximum width of steps (ms)
 #define STEPWDINI 100.0
 // minimal position of first step
@@ -69,6 +69,7 @@ extern "C" inputSpec wavegen(conf::Config *cfg, int focusParam, bool *stopFlag)
 {
     double gaBalance = 1.0 / (NPARAM - 1.0);
     NGEN = cfg->wg.ngen;
+    VSTEP0 = cfg->model.obj->baseV();
 
 	//-----------------------------------------------------------------
     // Initialize population

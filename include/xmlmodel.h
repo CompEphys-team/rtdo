@@ -48,6 +48,7 @@ public:
     inline const std::vector<param> &adjustableParams() const { return _adjustableParams; }
     inline const std::vector<param> &params() const { return _params; }
     inline bool genn_float() const { return !genn_double; }
+    inline double baseV() const { return _baseV; }
 
 private:
     std::string _name;
@@ -57,6 +58,7 @@ private:
     std::vector<param> _params;
     int precision;
     bool genn_double;
+    double _baseV;
 };
 
 #endif // XMLMODEL_H

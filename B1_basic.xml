@@ -1,5 +1,6 @@
 <model name="B1_basic">
 	<precision digits="8" scalar="float"/>
+	<variable name="V" type="scalar" value="-53"/>
 	<variable name="m" type="scalar" value="0.0285961"/>
 	<variable name="h" type="scalar" value="0.9977761"/>
 	<variable name="nA" type="scalar" value="0.0172525"/>

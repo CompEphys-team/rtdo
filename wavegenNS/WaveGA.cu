@@ -36,7 +36,7 @@ initial version: 2014-09-09
 // initial dispersion of V steps
 #define VSTEPINI 40.0
 // initial "baseline" for V steps
-#define VSTEP0 -60.0
+double VSTEP0 = -60.0;
 // initial maximum width of steps (ms)
 #define STEPWDINI 100.0
 // minimal position of first step
@@ -104,6 +104,9 @@ WavegenNS::WavegenNS(conf::Config *cfg) :
     allocateMem();
     initialize();
     rtdo_init_bridge();
+
+    // If I ever start using more than one object at a time, this is going to have to go internal:
+    VSTEP0 = cfg->model.obj->baseV();
 
     clampGainHH = cfg->vc.gain;
     accessResistanceHH = cfg->vc.resistance;

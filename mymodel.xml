@@ -1,5 +1,6 @@
 <model name="mymodel">
 	<precision digits="6" scalar="float"/>
+	<variable name="V" type="scalar" value="-60"/>
 	<variable name="m" type="scalar" value="0.0529324"/>
 	<variable name="h" type="scalar" value="0.3176767"/>
 	<variable name="n" type="scalar" value="0.5961207"/>
