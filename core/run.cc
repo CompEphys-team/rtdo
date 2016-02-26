@@ -27,6 +27,7 @@ initial version: 2015-12-08
 #include "teestream.h"
 #include "wavegenNS.h"
 #include "backlog.h"
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -196,15 +197,35 @@ bool run_vclamp(bool *stopFlag)
     time_t tt = time(NULL);
     char timestr[32];
     strftime(timestr, 32, "%Y%m%d-%H%M", localtime(&tt));
-    string runtime_log = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
-            + config->model.obj->name() + "_" + timestr + "_vclamp_runstats.log";
-    cout << "Logging runtime statistics to " << runtime_log << endl;
+    string outdir = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
+            + timestr + "_" + config->model.obj->name() + "_vclamp";
+    if ( mkdir(outdir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) ) {
+        if ( errno == EEXIST ) {
+            outdir += '-';
+            int i;
+            for ( i = 1; mkdir(string(outdir + to_string(i)).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); i++ ) {}
+            outdir += to_string(i);
+        } else {
+            cerr << "Could not create output directory \"" << outdir << "\": mkdir returned " << errno << endl;
+            return false;
+        }
+    }
+    cout << "All outputs saved to " << outdir << "." << endl;
 
-    string models_log = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
-            + config->model.obj->name() + "_" + timestr + "_vclamp_models.log";
-    ofstream models_logf(models_log);
+    config->save(outdir + "/config_start.xml");
 
-    ofstream runtime_logf(runtime_log);
+    {
+        ifstream src(config->model.deffile);
+        ofstream dest(outdir + "/model.xml");
+        dest << src.rdbuf();
+    }
+    {
+        ifstream src(config->vc.wavefile);
+        ofstream dest(outdir + "/waveforms.stim");
+        dest << src.rdbuf();
+    }
+
+    ofstream runtime_logf(outdir + "/runstats.log");
     runtime_logf << "# Model: " << config->model.deffile << endl;
     runtime_logf << "# Stimulations: " << config->vc.wavefile << endl;
     runtime_logf << "# DT = " << config->io.dt << endl;
@@ -228,9 +249,12 @@ bool run_vclamp(bool *stopFlag)
 
     runtime_logf.close();
 
+    config->save(outdir + "/config_end.xml");
+
     // Dump final model set
     logp->score();
     logp->sort(backlog::BacklogVirtual::ErrScore, true);
+    ofstream models_logf(outdir + "/models.log");
     write_backlog(models_logf, logp, false);
     models_logf.close();
 
@@ -238,7 +262,8 @@ bool run_vclamp(bool *stopFlag)
     for ( backlog::LogEntry &e : logp->log ) {
         tested += (int)e.tested;
     }
-    cout << endl << "Fitting complete. " << tested << " models fully evaluated. All available models deposited in " << models_log << "." << endl;
+    cout << endl << "Fitting complete. " << tested << " models fully evaluated." << endl;
+    cout << "All outputs saved to " << outdir << "." << endl;
 
     logBreak(&logp);
 
