@@ -21,30 +21,37 @@ ChannelListModel::ChannelListModel(int displayflags, QObject *parent) :
 
 QVariant ChannelListModel::data(const QModelIndex &index, int role) const
 {
-    if ( role == Qt::DisplayRole && index.row() >= 0 ) {
-        Channel &c = config->io.channels.at(index.row());
-        QString type;
-        switch ( c.direction() ) {
-        case Channel::AnalogIn:  type = "in";  break;
-        case Channel::AnalogOut: type = "out"; break;
+    if ( role == Qt::DisplayRole ) {
+        if ( displayflags & None && index.row() == 0 ) {
+            return QString("None");
+        } else if ( index.row() >= 0 ) {
+            Channel &c = config->io.channels.at(index.row() - (displayflags & None ? 1 : 0));
+            QString type;
+            switch ( c.direction() ) {
+            case Channel::AnalogIn:  type = "in";  break;
+            case Channel::AnalogOut: type = "out"; break;
+            }
+            return QString("%1 (dev %2, %3 %4)")
+                    .arg(QString::fromStdString(c.name()))
+                    .arg(c.device())
+                    .arg(type)
+                    .arg(c.channel());
         }
-        return QString("%1 (dev %2, %3 %4)")
-                .arg(QString::fromStdString(c.name()))
-                .arg(c.device())
-                .arg(type)
-                .arg(c.channel());
     }
     return QVariant();
 }
 
 int ChannelListModel::rowCount(const QModelIndex &parent) const
 {
-    return config->io.channels.size();
+    return config->io.channels.size() + (displayflags & None ? 1 : 0);
 }
 
 Qt::ItemFlags ChannelListModel::flags(const QModelIndex &index) const
 {
-    Channel &c = config->io.channels.at(index.row());
+    if ( displayflags & None && index.row() == 0 )
+        return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+
+    Channel &c = config->io.channels.at(index.row() - (displayflags & None ? 1 : 0));
     if ( (displayflags & AnalogIn && c.direction() == Channel::AnalogIn) ||
          (displayflags & AnalogOut && c.direction() == Channel::AnalogOut) )
         return Qt::ItemIsEnabled | Qt::ItemIsSelectable;

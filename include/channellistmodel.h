@@ -23,7 +23,8 @@ public:
 
     enum DisplayFlags {
         AnalogIn = 0x1,
-        AnalogOut = 0x10
+        AnalogOut = 0x10,
+        None = 0x100
     };
 
     QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const;

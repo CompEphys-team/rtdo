@@ -23,7 +23,7 @@ ChannelSetupDialog::ChannelSetupDialog(QWidget *parent) :
     rangeModel(new DeviceRangeModel(mapper)),
     arefModel(new DeviceReferenceModel(mapper)),
     chanList(new ChannelListModel(ChannelListModel::AnalogIn | ChannelListModel::AnalogOut)),
-    offsetSources(new ChannelListModel(ChannelListModel::AnalogIn))
+    offsetSources(new ChannelListModel(ChannelListModel::AnalogIn | ChannelListModel::None))
 {
     ui->setupUi(this);
     ui->channel->setModel(channelModel);

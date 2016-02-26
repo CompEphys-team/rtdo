@@ -45,10 +45,10 @@ QVariant ChannelEditorModel::data(const QModelIndex & index, int role) const {
         case ReadOffsetSource:
             for ( Channel &search : config->io.channels ) {
                 if ( search.ID() == c.offsetSource() )
-                    return QVariant(i);
+                    return QVariant(i+1);
                 ++i;
             }
-            return QVariant(-1);
+            return QVariant(0);
         case ReadResetButton:
             if ( c.direction() == Channel::AnalogIn ) {
                 return QVariant("Read current value");
@@ -99,8 +99,8 @@ bool ChannelEditorModel::setData(const QModelIndex &index, const QVariant &value
         c.setOffset(value.toDouble());
         break;
     case ReadOffsetSource:
-        if ( value.toInt() >= 0 )
-            c.setOffsetSource(config->io.channels.at(value.toInt()).ID());
+        if ( value.toInt() > 0 )
+            c.setOffsetSource(config->io.channels.at(value.toInt()-1).ID());
         else
             c.setOffsetSource(0);
         break;
