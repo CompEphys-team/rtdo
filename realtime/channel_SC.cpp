@@ -61,18 +61,29 @@ public:
 
 
 // ------------------------------------- Channel implementation --------------------------------------
+std::string mbxname(Channel::Direction type, int deviceno, unsigned int channel) {
+    static char serial = '1';
+    std::stringstream s;
+    s << serial << (type == Channel::AnalogIn ? "i" : "o") << deviceno << channel;
+    if ( ++serial == ':' )
+        serial = '_';
+    else if ( serial == 'z' )
+        serial = '1';
+    return s.str();
+}
+
 Channel::Impl::Impl(Channel::Direction type, int deviceno, unsigned int channel, unsigned int range, Channel::Aref aref) :
     _deviceno(deviceno),
-    _deviceRC(RealtimeEnvironment::env().getDevice(deviceno, true)),
-    _deviceSC(RealtimeEnvironment::env().getDevice(deviceno, false)),
-    _subdevice(RealtimeEnvironment::env().getSubdevice(deviceno, type)),
+    _deviceRC(RealtimeEnvironment::env()->getDevice(deviceno, true)),
+    _deviceSC(RealtimeEnvironment::env()->getDevice(deviceno, false)),
+    _subdevice(RealtimeEnvironment::env()->getSubdevice(deviceno, type)),
     _channel(channel),
     _range(range),
     _aref(Impl::aref(aref)),
     _gain(1.0),
     _offset(0.0),
     offsetSrc(0),
-    q(Channel_MailboxSize, RealtimeQueue<lsampl_t>::Double),
+    q(Channel_MailboxSize, RealtimeQueue<lsampl_t>::Double, mbxname(type, deviceno, channel).c_str()),
     converter(new Converter(type, this))
 {}
 
@@ -263,7 +274,7 @@ bool Channel::setDirection(Channel::Direction type)
         return false;
     if ( _type == type )
         return true;
-    unsigned int subdev = RealtimeEnvironment::env().getSubdevice(pImpl->_deviceno, type);
+    unsigned int subdev = RealtimeEnvironment::env()->getSubdevice(pImpl->_deviceno, type);
     _type = type;
     pImpl->_subdevice = subdev;
     pImpl->sanitise(this, Impl::pSubdevice);
@@ -274,8 +285,8 @@ bool Channel::setDevice(int deviceno)
 {
     struct comedi_t_struct *sc, *rc;
     try {
-        sc = RealtimeEnvironment::env().getDevice(deviceno, false);
-        rc = RealtimeEnvironment::env().getDevice(deviceno, true);
+        sc = RealtimeEnvironment::env()->getDevice(deviceno, false);
+        rc = RealtimeEnvironment::env()->getDevice(deviceno, true);
     } catch (RealtimeException &e) {
         return false;
     }

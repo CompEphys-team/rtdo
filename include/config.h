@@ -29,6 +29,7 @@ namespace conf {
     class OutputConfig;
     class ModelConfig;
     class WaveGenConfig;
+    class RTConfig;
 }
 
 class conf::VCConfig {
@@ -116,6 +117,31 @@ private:
     void toXML(TiXmlElement *section) const;
 };
 
+class conf::RTConfig {
+    friend class conf::Config;
+public:
+    RTConfig();
+
+    unsigned long cpus_ai;
+    unsigned long cpus_ao;
+    unsigned long cpus_module;
+    unsigned long cpus_backlog;
+
+    int prio_ai;
+    int prio_ao;
+    int prio_module;
+    int prio_backlog;
+
+    int ssz_ai;
+    int ssz_ao;
+    int ssz_module;
+    int ssz_backlog;
+
+private:
+    void fromXML(TiXmlElement *section);
+    void toXML(TiXmlElement *section) const;
+};
+
 class conf::Config
 {
 public:
@@ -128,6 +154,8 @@ public:
     conf::OutputConfig output;
     conf::ModelConfig model;
     conf::WaveGenConfig wg;
+    conf::RTConfig rt;
+
 private:
     bool load(string filename);
 };

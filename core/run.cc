@@ -26,6 +26,7 @@ initial version: 2015-12-08
 #include "realtimeenvironment.h"
 #include "teestream.h"
 #include "wavegenNS.h"
+#include "backlog.h"
 
 using namespace std;
 
@@ -135,7 +136,7 @@ bool run_vclamp(bool *stopFlag)
         return false;
     }
 
-    RealtimeEnvironment &env = RealtimeEnvironment::env();
+    RealtimeEnvironment* &env = RealtimeEnvironment::env();
 
     void *lib;
     int (*libmain)(conf::Config*, bool *, backlog::BacklogVirtual *);
@@ -166,7 +167,7 @@ bool run_vclamp(bool *stopFlag)
             std::cerr << dlerror() << endl;
             return false;
         }
-        env.setSimulator(simF);
+        env->setSimulator(simF);
 
     } else {
         double (*simD)(double*, double*, double);
@@ -174,23 +175,23 @@ bool run_vclamp(bool *stopFlag)
             std::cerr << dlerror() << endl;
             return false;
         }
-        env.setSimulator(simD);
+        env->setSimulator(simD);
     }
 
-    env.clearChannels();
+    env->clearChannels();
     for ( Channel &c : config->io.channels ) {
         if ( c.ID() == config->vc.in ) {
             c.readOffset();
-            env.addChannel(c);
+            env->addChannel(c);
         }
         if ( c.ID() == config->vc.out ) {
             c.readOffset();
-            env.addChannel(c);
+            env->addChannel(c);
         }
     }
-    env.setSupersamplingRate(config->io.ai_supersampling);
-    env.setDT(config->io.dt);
-    env.useSimulator(false);
+    env->setSupersamplingRate(config->io.ai_supersampling);
+    env->setDT(config->io.dt);
+    env->useSimulator(false);
 
     time_t tt = time(NULL);
     char timestr[32];
@@ -251,7 +252,7 @@ bool run_wavegen(int focusParam, bool *stopFlag)
     if ( !stopFlag )
         stopFlag =& stopdummy;
 
-    RealtimeEnvironment &env = RealtimeEnvironment::env();
+    RealtimeEnvironment* &env = RealtimeEnvironment::env();
 
     void *lib;
     inputSpec (*wgmain)(conf::Config*, int, bool*);
@@ -276,7 +277,7 @@ bool run_wavegen(int focusParam, bool *stopFlag)
             std::cerr << dlerror() << endl;
             return false;
         }
-        env.setSimulator(simF);
+        env->setSimulator(simF);
 
     } else {
         double (*simD)(double*, double*, double);
@@ -284,11 +285,11 @@ bool run_wavegen(int focusParam, bool *stopFlag)
             std::cerr << dlerror() << endl;
             return false;
         }
-        env.setSimulator(simD);
+        env->setSimulator(simD);
     }
 
-    env.setDT(config->io.dt);
-    env.useSimulator(true);
+    env->setDT(config->io.dt);
+    env->useSimulator(true);
 
     if ( focusParam == -1 ) {
         string filename = config->output.dir + (config->output.dir.back()=='/' ? "" : "/")
@@ -334,7 +335,7 @@ bool run_wavegen_NS(bool *stopFlag)
     if ( !stopFlag )
         stopFlag =& stopdummy;
 
-    RealtimeEnvironment &env = RealtimeEnvironment::env();
+    RealtimeEnvironment* &env = RealtimeEnvironment::env();
 
     if ( !config->model.load(false) ) {
         cerr << "Error: Unable to load model file '" << config->model.deffile << "'." << endl;
@@ -364,7 +365,7 @@ bool run_wavegen_NS(bool *stopFlag)
             std::cerr << dlerror() << endl;
             return false;
         }
-        env.setSimulator(simF);
+        env->setSimulator(simF);
 
     } else {
         double (*simD)(double*, double*, double);
@@ -372,11 +373,11 @@ bool run_wavegen_NS(bool *stopFlag)
             std::cerr << dlerror() << endl;
             return false;
         }
-        env.setSimulator(simD);
+        env->setSimulator(simD);
     }
 
-    env.setDT(config->io.dt);
-    env.useSimulator(true);
+    env->setDT(config->io.dt);
+    env->useSimulator(true);
 
     time_t tt = time(NULL);
     char timestr[32];

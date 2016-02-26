@@ -14,6 +14,7 @@ initial version: 2016-02-01
 #include "run.h"
 #include "realtimethread.h"
 #include "realtimeenvironment.h"
+#include "config.h"
 
 Runner::Runner(XMLModel::outputType type, QObject *parent) :
     QObject(parent),
@@ -42,7 +43,7 @@ bool Runner::start()
 
     _running = true;
     _stop = false;
-    t.reset(new RealtimeThread(Runner::launchStatic, this, 20, 256*1024));
+    t.reset(new RealtimeThread(Runner::launchStatic, this, config->rt.prio_module, config->rt.ssz_module, config->rt.cpus_module));
 
     return true;
 }
@@ -69,7 +70,7 @@ void *Runner::launch()
         }
     } catch ( RealtimeException &e ) {
         std::cerr << "An exception occurred in the worker thread: " << e.what() << std::endl;
-        RealtimeEnvironment::env().pause();
+        RealtimeEnvironment::env()->pause();
     }
     _running = false;
     emit processCompleted(ret);

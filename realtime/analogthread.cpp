@@ -49,8 +49,10 @@ AnalogThread::AnalogThread(bool in, std::shared_ptr<RealtimeConditionVariable> s
     reportQ(Channel_MailboxSize, RealtimeQueue<RTIME>::Tenfold),
     running(false),
     exit(false),
-    t(new RealtimeThread(in ? launchIn : launchOut, this, AnalogThread_Priority, AnalogThread_StackSize, SCHED_FIFO,
-                         0, AnalogThread_CPUMask, nam2num(in ? "AIFUNC" : "AOFUNC")))
+    t(in ? new RealtimeThread(launchIn, this, config->rt.prio_ai, config->rt.ssz_ai, config->rt.cpus_ai,
+                              SCHED_FIFO, 0, nam2num("AIFUNC")) :
+          new RealtimeThread(launchOut, this, config->rt.prio_ao, config->rt.ssz_ao, config->rt.cpus_ao,
+                             SCHED_FIFO, 0, nam2num("AOFUNC")) )
 {}
 
 AnalogThread::~AnalogThread()
@@ -75,6 +77,8 @@ void *AnalogThread::inputFn()
         // Load new channel config
         preload.signal();
         load.wait();
+        if ( exit )
+            continue;
 
         if ( reloadChannels ) {
             rt_make_soft_real_time();
@@ -144,7 +148,7 @@ void *AnalogThread::outputFn()
 {
     int step;
     RTIME now, expected, toff;
-    Channel channel(Channel::AnalogOut);
+    Channel *channel = nullptr;
     bool hasChannel = false;
     std::vector<lsampl_t> samples;
     std::vector<RTIME> times;
@@ -153,22 +157,25 @@ void *AnalogThread::outputFn()
         // Load new channel config
         preload.signal();
         load.wait();
-        
+        if ( exit )
+            continue;
         
         rt_make_soft_real_time();
         if ( reloadChannels ) {
             if ( (hasChannel = !channels.empty()) ) {
-                channel = channels.at(0);
+                if ( channel == nullptr )
+                    channel = new Channel(Channel::AnalogOut); // Initialise some memory to copy to
+                *channel = channels.at(0); // Copy
             }
             reloadChannels = false;
         }
-        if ( hasChannel && channel.waveformChanged() ) {
-            const inputSpec &w = channel.waveform();
+        if ( hasChannel && channel->waveformChanged() ) {
+            const inputSpec &w = channel->waveform();
             samples.clear();
             times.clear();
-            samples.push_back(channel.convert(w.baseV));
+            samples.push_back(channel->convert(w.baseV));
             for ( int i = 0; i < w.N; i++ ) {
-                samples.push_back(channel.convert(w.V.at(i)));
+                samples.push_back(channel->convert(w.V.at(i)));
                 times.push_back(nano2count((RTIME)(1e6 * w.st.at(i))));
             }
             times.push_back(nano2count((RTIME)(1e6 * w.t)));
@@ -185,7 +192,7 @@ void *AnalogThread::outputFn()
         toff = rt_get_time();
         expected = toff + times.at(step = 0);
         while ( running ) {
-            if ( !channel.write(samples.at(step)) ) { // Fatal: Write failure
+            if ( !channel->write(samples.at(step)) ) { // Fatal: Write failure
                 std::cerr << "Error writing to AO, thread exited" << std::endl;
                 return (void *)EXIT_FAILURE;
             }
@@ -198,8 +205,8 @@ void *AnalogThread::outputFn()
                 rt_sleep(expected-now);
             }
 
-            if ( step == channel.waveform().N + 1 ) { // Return to base value before leaving
-                if ( !channel.write(samples.front()) ) { // Fatal: Write failure
+            if ( step == channel->waveform().N + 1 ) { // Return to base value before leaving
+                if ( !channel->write(samples.front()) ) { // Fatal: Write failure
                     std::cerr << "Error writing to AO, thread exited" << std::endl;
                     return (void *)EXIT_FAILURE;
                 }
@@ -209,6 +216,8 @@ void *AnalogThread::outputFn()
             expected = toff + times.at(step);
         }
     }
+
+    delete channel;
 
     return 0;
 }

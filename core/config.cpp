@@ -264,6 +264,80 @@ void conf::WaveGenConfig::toXML(TiXmlElement *section) const
 }
 
 
+conf::RTConfig::RTConfig() :
+    cpus_ai(0xFFFF),
+    cpus_ao(0xFFFF),
+    cpus_module(0xFFFF),
+    cpus_backlog(0xFFFF),
+    prio_ai(10),
+    prio_ao(10),
+    prio_module(20),
+    prio_backlog(80),
+    ssz_ai(8*1024),
+    ssz_ao(8*1024),
+    ssz_module(256*1024),
+    ssz_backlog(256*1024)
+{}
+
+void conf::RTConfig::fromXML(TiXmlElement *section)
+{
+    TiXmlElement *el;
+    const char *cpus;
+    if ( (el = section->FirstChildElement("analog_in")) ) {
+        if ( (cpus = el->Attribute("cpus")) )
+            cpus_ai = strtoul(cpus, nullptr, 0);
+        el->QueryIntAttribute("prio", &prio_ai);
+        el->QueryIntAttribute("stacksz", &ssz_ai);
+    }
+    if ( (el = section->FirstChildElement("analog_out")) ) {
+        if ( (cpus = el->Attribute("cpus")) )
+            cpus_ao = strtoul(cpus, nullptr, 0);
+        el->QueryIntAttribute("prio", &prio_ao);
+        el->QueryIntAttribute("stacksz", &ssz_ao);
+    }
+    if ( (el = section->FirstChildElement("module")) ) {
+        if ( (cpus = el->Attribute("cpus")) )
+            cpus_module = strtoul(cpus, nullptr, 0);
+        el->QueryIntAttribute("prio", &prio_module);
+        el->QueryIntAttribute("stacksz", &ssz_module);
+    }
+    if ( (el = section->FirstChildElement("backlog")) ) {
+        if ( (cpus = el->Attribute("cpus")) )
+            cpus_backlog = strtoul(cpus, nullptr, 0);
+        el->QueryIntAttribute("prio", &prio_backlog);
+        el->QueryIntAttribute("stacksz", &ssz_backlog);
+    }
+}
+
+void conf::RTConfig::toXML(TiXmlElement *section) const
+{
+    TiXmlElement *el;
+    el = new TiXmlElement("analog_in");
+    el->SetAttribute("cpus", cpus_ai);
+    el->SetAttribute("prio", prio_ai);
+    el->SetAttribute("stacksz", ssz_ai);
+    section->LinkEndChild(el);
+
+    el = new TiXmlElement("analog_out");
+    el->SetAttribute("cpus", cpus_ao);
+    el->SetAttribute("prio", prio_ao);
+    el->SetAttribute("stacksz", ssz_ao);
+    section->LinkEndChild(el);
+
+    el = new TiXmlElement("module");
+    el->SetAttribute("cpus", cpus_module);
+    el->SetAttribute("prio", prio_module);
+    el->SetAttribute("stacksz", ssz_module);
+    section->LinkEndChild(el);
+
+    el = new TiXmlElement("backlog");
+    el->SetAttribute("cpus", cpus_backlog);
+    el->SetAttribute("prio", prio_backlog);
+    el->SetAttribute("stacksz", ssz_backlog);
+    section->LinkEndChild(el);
+}
+
+
 conf::Config::Config(string filename)
 {
     if ( !filename.empty() ) {
@@ -312,6 +386,12 @@ bool conf::Config::save(string filename)
         wg.toXML(section);
     }
 
+    { // RT
+        section = new TiXmlElement("RTAI");
+        root->LinkEndChild(section);
+        rt.toXML(section);
+    }
+
     return doc.SaveFile(filename);
 }
 
@@ -328,6 +408,13 @@ bool conf::Config::load(string filename)
     if ( !el )
         return false;
     TiXmlHandle hRoot(el);
+
+    // RT
+    if ( (section = hRoot.FirstChild("RTAI").Element()) ) {
+        rt.fromXML(section);
+    }
+
+    RealtimeEnvironment::reboot();
 
     // I/O
     if ( (section = hRoot.FirstChild("io").Element()) ) {

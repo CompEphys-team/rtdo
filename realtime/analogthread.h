@@ -19,16 +19,6 @@ initial version: 2016-01-25
 #include "realtimeconditionvariable.h"
 #include "realtimequeue.h"
 
-#ifndef AnalogThread_CPUMask
-#define AnalogThread_CPUMask 0xFF
-#endif
-#ifndef AnalogThread_StackSize
-#define AnalogThread_StackSize (8*1024)
-#endif
-#ifndef AnalogThread_Priority
-#define AnalogThread_Priority 10
-#endif
-
 class AnalogThread
 {
 public:

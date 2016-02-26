@@ -51,12 +51,12 @@ void PerformanceDialog::apply()
 {
     int sup = ui->ai_supersampling->value();
     config->io.ai_supersampling = sup;
-    RealtimeEnvironment::env().setSupersamplingRate(sup);
+    RealtimeEnvironment::env()->setSupersamplingRate(sup);
 
     config->model.cycles = ui->simCycles->value();
 }
 
 void PerformanceDialog::on_reportingToggle_clicked()
 {
-    RealtimeEnvironment::env().setIdleTimeReporting(!(RealtimeEnvironment::env().idleTimeReporting()));
+    RealtimeEnvironment::env()->setIdleTimeReporting(!(RealtimeEnvironment::env()->idleTimeReporting()));
 }

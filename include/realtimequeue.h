@@ -16,7 +16,9 @@ initial version: 2016-02-04
 #include <memory>
 
 #ifdef CONFIG_RT
+extern "C" {
 #include <rtai_mbx.h>
+}
 #else
 #include <queue>
 #endif
@@ -33,7 +35,7 @@ public:
     enum SizeAdjustPolicy { Append, Double, Tenfold, NoAdjust };
 
     //!< Initialise a queue (RT: mailbox) for @a size instances of T. In non-RT builds, the arguments do nothing.
-    RealtimeQueue(int size = 1000, SizeAdjustPolicy policy = Double);
+    RealtimeQueue(int size = 1000, SizeAdjustPolicy policy = Double, const char *name = 0);
     ~RealtimeQueue();
 
     //!< Copy a queue, maintaining a common internal queue
@@ -92,8 +94,8 @@ private:
 // ---------------------- Implementations below, because templates -----------------------------------------------------
 #ifdef CONFIG_RT
 
-template <typename T> RealtimeQueue<T>::RealtimeQueue(int size, SizeAdjustPolicy p) :
-    mbx(rt_typed_mbx_init(0, size * sizeof(T), PRIO_Q), &rt_mbx_delete),
+template <typename T> RealtimeQueue<T>::RealtimeQueue(int size, SizeAdjustPolicy p, const char *name) :
+    mbx(rt_typed_mbx_init(name ? nam2num(name) : 0, size * sizeof(T), PRIO_Q), &rt_mbx_delete),
     size(new int(size)),
     overruns(new int(0)),
     pol(p)

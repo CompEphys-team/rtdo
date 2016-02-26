@@ -11,7 +11,7 @@ initial version: 2016-01-20
 
 --------------------------------------------------------------------------*/
 #include <algorithm>
-#include "shared.h"
+#include "backlog.h"
 #include "realtimethread.h"
 #include "realtimeconditionvariable.h"
 

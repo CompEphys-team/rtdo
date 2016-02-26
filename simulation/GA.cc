@@ -14,6 +14,7 @@ initial version: 2014-06-25
 #include <algorithm>
 #include <cmath>
 #include "shared.h"
+#include "backlog.h"
 
 int compareErrTupel( const void *x, const void *y )
 {

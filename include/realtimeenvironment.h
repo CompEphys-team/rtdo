@@ -21,10 +21,19 @@ initial version: 2016-01-25
 class RealtimeEnvironment
 {
 public:
-    inline static RealtimeEnvironment &env()
+    inline static RealtimeEnvironment* &env()
     {
-        static RealtimeEnvironment instance;
-        return instance;
+        if ( _instance == nullptr )
+            _instance = new RealtimeEnvironment();
+        return _instance;
+    }
+
+    //!< Reset the environment and reload subsidiary threads (AI/AO). WARNING: It is unsafe to do this while a module is running.
+    inline static void reboot()
+    {
+        if ( _instance != nullptr )
+            delete _instance;
+        _instance = new RealtimeEnvironment();
     }
 
     ~RealtimeEnvironment();
@@ -103,6 +112,8 @@ private:
     std::unique_ptr<Impl> pImpl;
 
     bool _useSim;
+
+    static RealtimeEnvironment *_instance;
 };
 
 

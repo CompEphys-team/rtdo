@@ -22,8 +22,8 @@ public:
      *  except for @a fn and @a arg.
      * @param priority goes from 0 (high) to 99 (low) in RTAI.
      */
-    RealtimeThread(void *(*fn)(void *), void *arg, int priority = 50, int stackSize = 0, int policy = SCHED_FIFO,
-                   int maxMessageSize = 0, int cpusAllowed = 0xFF, unsigned long name = 0);
+    RealtimeThread(void *(*fn)(void *), void *arg, int priority = 50, int stackSize = 0, int cpusAllowed = 0xFF,
+                   int policy = SCHED_FIFO, int maxMessageSize = 0, unsigned long name = 0);
     ~RealtimeThread();
 
     RealtimeThread(const RealtimeThread&) = delete;

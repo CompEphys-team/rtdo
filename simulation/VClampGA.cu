@@ -41,7 +41,7 @@ inline bool file_exists( const std::string& name )
 }
 
 extern "C" int vclamp(conf::Config *cfg, bool *stopFlag, backlog::BacklogVirtual *logger) {
-    RealtimeEnvironment &env = RealtimeEnvironment::env();
+    RealtimeEnvironment* &env = RealtimeEnvironment::env();
 
 	//-----------------------------------------------------------------
     // read the relevant stimulus patterns
@@ -105,8 +105,8 @@ extern "C" int vclamp(conf::Config *cfg, bool *stopFlag, backlog::BacklogVirtual
         simulatorVars[i] = variableIni[i];
     for ( int i = 0; i < NPARAM; i++ )
         simulatorParams[i] = aParamIni[i];
-    env.setSimulatorVariables(simulatorVars);
-    env.setSimulatorParameters(simulatorParams);
+    env->setSimulatorVariables(simulatorVars);
+    env->setSimulatorParameters(simulatorParams);
 
     t = 0.0;
 	int nextS = 0;
@@ -124,12 +124,12 @@ extern "C" int vclamp(conf::Config *cfg, bool *stopFlag, backlog::BacklogVirtual
         lt = 0.0;
         sn = 0;
 
-        env.setWaveform(I);
-        env.sync();
+        env->setWaveform(I);
+        env->sync();
 
         for (int iT = 0; iT < iTN; iT++) {
             oldt = lt;
-            IsynGHH = env.nextSample();
+            IsynGHH = env->nextSample();
             stepTimeGPU( t );
             t += DT;
             lt += DT;
@@ -139,7 +139,7 @@ extern "C" int vclamp(conf::Config *cfg, bool *stopFlag, backlog::BacklogVirtual
             }
         }
 
-        env.pause();
+        env->pause();
         logger->wait();
 
         CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );

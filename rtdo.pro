@@ -139,7 +139,8 @@ HEADERS  += \
     include/performancedialog.h \
     include/realtimequeue.h \
     include/teestream.h \
-    include/wavegenNS.h
+    include/wavegenNS.h \
+    include/backlog.h
 
 FORMS    += \
     gui/mainwindow.ui \

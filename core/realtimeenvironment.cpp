@@ -13,6 +13,8 @@ initial version: 2016-01-25
 #include "realtimeenvironment.h"
 #include "config.h"
 
+RealtimeEnvironment *RealtimeEnvironment::_instance = nullptr;
+
 class RealtimeEnvironment::Simulator
 {
 public:

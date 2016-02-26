@@ -83,11 +83,11 @@ ChannelSetupDialog::~ChannelSetupDialog()
 
 void ChannelSetupDialog::open()
 {
-    RealtimeEnvironment &env = RealtimeEnvironment::env();
+    RealtimeEnvironment* &env = RealtimeEnvironment::env();
     std::string name;
     for ( int i = 0; i < 32; ++i) { // Doubt there's anyone with more than 32 devices!
         try {
-            name = env.getDeviceName(i);
+            name = env->getDeviceName(i);
         } catch ( RealtimeException & ) {
             continue;
         }

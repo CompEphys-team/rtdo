@@ -16,7 +16,7 @@ initial version: 2016-01-25
 #include <memory>
 #include "shared.h"
 
-#ifndef ChannelImpl_MailboxSize
+#ifndef Channel_MailboxSize
 #define Channel_MailboxSize 1000
 #endif
 

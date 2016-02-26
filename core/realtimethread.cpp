@@ -89,8 +89,8 @@ private:
     }
 };
 
-RealtimeThread::RealtimeThread(void *(*fn)(void *), void *arg, int priority, int stackSize, int policy,
-                               int maxMessageSize, int cpusAllowed, unsigned long name) :
+RealtimeThread::RealtimeThread(void *(*fn)(void *), void *arg, int priority, int stackSize, int cpusAllowed,
+                               int policy, int maxMessageSize, unsigned long name) :
     pImpl(new Impl(fn, arg, priority, stackSize, policy, maxMessageSize, cpusAllowed, name))
 {}
 

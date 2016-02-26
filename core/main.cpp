@@ -77,8 +77,8 @@ const option::Descriptor usage[] =
 int main(int argc, char *argv[])
 {
     // Set up RT and config
-    RealtimeEnvironment::env();
     config = new conf::Config;
+    RealtimeEnvironment::reboot();
 
     argc-=(argc>0); argv+=(argc>0); // skip program name argv[0] if present
 
