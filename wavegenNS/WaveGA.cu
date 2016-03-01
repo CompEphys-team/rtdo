@@ -278,13 +278,13 @@ void WavegenNS::noveltySearch(bool *stopFlag)
     }
     
     for ( int i = 0; i < NPARAM; i++ ) {
-        cout << cfg->model.obj->adjustableParams().at(i).name << ": " << (noveltyDB[i].size()-1) << " reference waves" << endl;
-        if ( noveltyDB[i].size() == 1 ) {
+        noveltyDB[i].erase(noveltyDB[i].begin()); // Remove initial dummy
+        cout << cfg->model.obj->adjustableParams().at(i).name << ": " << noveltyDB[i].size() << " reference waves" << endl;
+        if ( !noveltyDB[i].size() ) {
             cout << "Waveforms for this parameter will be generated from scratch during optimisation. "
                  << "You may need to decrease the novelty threshold or fit this parameter using a different method." << endl;
-            noveltyDB[i].clear();
         } else {
-            double sums[NNOVELTY] = {}, maxV[NNOVELTY] = {};
+            double sums[NNOVELTY+1] = {}, maxV[NNOVELTY+1] = {};
             for ( noveltyBundle &p : noveltyDB[i] ) {
                 for ( int j = 0; j < NNOVELTY; j++ ) {
                     sums[j] += p.novelty[j];
@@ -292,18 +292,26 @@ void WavegenNS::noveltySearch(bool *stopFlag)
                         maxV[j] = p.novelty[j];
                     }
                 }
+                double f = p.fitness();
+                sums[NNOVELTY] += f;
+                if ( maxV[NNOVELTY] < f )
+                    maxV[NNOVELTY] = f;
             }
-            cout << "\t\texceed\tnExceed\tbest\tnBest\tseparation\tnSep" << endl;
+            cout << "\t\texceed\tnExceed\tbest\tnBest\tseparation\tnSep\tfitness" << endl;
             cout << "\tmean:";
-            for ( int j = 0; j < NNOVELTY; j++ ) {
-                cout << '\t' << sums[j]/(noveltyDB[i].size()-1);
+            for ( int j = 0; j < NNOVELTY+1; j++ ) {
+                cout << '\t' << sums[j]/noveltyDB[i].size();
             }
             cout << endl;
             cout << "\tmax (unc.):";
-            for ( int j = 0; j < NNOVELTY; j++ ) {
+            for ( int j = 0; j < NNOVELTY+1; j++ ) {
                 cout << '\t' << maxV[j];
             }
             cout << endl;
+            if ( maxV[NNOVELTY] == 0 ) {
+                cout << "Waveforms for this parameter will be generated from scratch during optimisation. "
+                     << "You may need to decrease the novelty threshold or fit this parameter using a different method." << endl;
+            }
         }
     }
 }
@@ -337,10 +345,12 @@ void WavegenNS::optimise(int param, bool *stopFlag)
     unsigned int VSize = NPOP*theSize( model.ftype );
 
     vector<inputSpec> initial;
-    initial.reserve(noveltyDB[param].size() * cfg->wg.ns_optimiseProportion);
-    sort(noveltyDB[param].begin(), noveltyDB[param].end(), fittestNovelty);
-    for ( int i = 0; i < noveltyDB[param].size() * cfg->wg.ns_optimiseProportion; i++ ) {
-        initial.push_back(noveltyDB[param].at(i).wave);
+    if ( noveltyDB[param].size() ) {
+        initial.reserve(noveltyDB[param].size() * cfg->wg.ns_optimiseProportion);
+        sort(noveltyDB[param].begin(), noveltyDB[param].end(), fittestNovelty);
+        for ( int i = 0; i < noveltyDB[param].size() * cfg->wg.ns_optimiseProportion && noveltyDB[param].at(i).fitness() > 0; i++ ) {
+            initial.push_back(noveltyDB[param].at(i).wave);
+        }
     }
 
     stims.clear();
