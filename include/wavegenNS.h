@@ -1,3 +1,15 @@
+/*--------------------------------------------------------------------------
+Author: Felix Kern
+
+Institute: School of Life Sciences
+University of Sussex
+Falmer, Brighton BN1 9QG, UK
+
+email to:  fbk21@sussex.ac.uk
+
+initial version: 2016-02-16
+
+--------------------------------------------------------------------------*/
 #ifndef WAVEGENNS_H
 #define WAVEGENNS_H
 #include <iostream>
