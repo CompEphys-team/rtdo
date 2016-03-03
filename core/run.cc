@@ -244,6 +244,9 @@ bool run_vclamp(bool *stopFlag)
         vc->initModel();
         vc->run(stopFlag);
 
+        cout << "Doing a full-cycle model evaluation before stopping, please wait..." << endl;
+        vc->cycle(false);
+
         config->save(outdir + "/config_end.xml");
 
         // Dump final model set

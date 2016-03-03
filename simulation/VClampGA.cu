@@ -33,6 +33,10 @@ public:
 
     void initModel();
     void run(bool *stopFlag);
+    void cycle(bool fit);
+
+private:
+    void runStim();
 };
 
 extern "C" Experiment *VClampCreate(conf::Config *cfg, int logSize, ostream &logOutput, size_t channel, size_t nchans)
@@ -90,6 +94,8 @@ void VClamp::initModel()
     }
     var_init_fullrange();
     t = 0.0;
+    epoch = 0;
+    nextS = 0;
 }
 
 void VClamp::run(bool *stopFlag)
@@ -108,39 +114,68 @@ void VClamp::run(bool *stopFlag)
 
     while ( !*stopFlag )
     {
-        inputSpec I = stims[nextS];
-        int iTN(I.t / DT);
-        double lt = 0.0;
-        int sn = 0;
-
-        stepVGHH = I.baseV;
-        otHH = t + I.ot;
-        oteHH = t + I.ot + I.dur;
-        clampGainHH = cfg->vc.gain;
-        accessResistanceHH = cfg->vc.resistance;
-        truevar_init();
-
-        _data->startSample(I, nextS);
-
-        for (int iT = 0; iT < iTN; iT++) {
-            double oldt = lt;
-            IsynGHH = _data->nextSample(channel);
-            stepTimeGPU( t );
-            t += DT;
-            lt += DT;
-            if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
-                stepVGHH = I.V[sn];
-                sn++;
-            }
-        }
-
-        _data->endSample();
-
+        runStim();
         CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
-
         procreateGeneric();
         ++epoch;
     }
+}
+
+void VClamp::runStim()
+{
+    inputSpec I = stims[nextS];
+    double lt = 0.0;
+    int sn = 0;
+
+    stepVGHH = I.baseV;
+    otHH = t + I.ot;
+    oteHH = t + I.ot + I.dur;
+    clampGainHH = cfg->vc.gain;
+    accessResistanceHH = cfg->vc.resistance;
+    truevar_init();
+
+    _data->startSample(I, nextS);
+
+    for (int iT = 0; iT < (I.t / DT); iT++) {
+        double oldt = lt;
+        IsynGHH = _data->nextSample(channel);
+        stepTimeGPU( t );
+        t += DT;
+        lt += DT;
+        if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
+            stepVGHH = I.V[sn];
+            sn++;
+        }
+    }
+
+    _data->endSample();
+}
+
+void VClamp::cycle(bool fit)
+{
+    errTupel errs[NPOP];
+    unsigned int VSize = NPOP*theSize( model.ftype );
+    for ( size_t i = 0; i < stims.size(); i++ ) {
+        nextS = i;
+        runStim();
+        CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
+        if ( fit ) {
+            procreateGeneric();
+        } else {
+            // Update log without fitting, using all models
+            logger->wait();
+            for (int i = 0; i < NPOP; i++) {
+                errs[i].id = i;
+                errs[i].err = errHH[i];
+            }
+            qsort( (void *)errs, NPOP, sizeof( errTupel ), compareErrTupel );
+            logger->touch(&errs[0], &errs[NPOP-1], epoch, nextS);
+        }
+        ++epoch;
+    }
+
+    if ( !fit )
+        logger->wait();
 }
 
 

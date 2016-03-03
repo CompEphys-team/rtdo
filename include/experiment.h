@@ -30,8 +30,14 @@ public:
 
     virtual ~Experiment() {}
 
+    //!< Initialises all models with random values and, if necessary, sets up the runtime environment. Resets the epoch and stimulation counters.
     virtual void initModel() = 0;
+
+    //!< Runs the genetic algorithm until the bool pointed to by @arg stopFlag is true, or other halting conditions are met
     virtual void run(bool *stopFlag) = 0;
+
+    //!< Applies each stimulation once. Useful for clamp tuning and for final model validation. Use @arg fit to turn model fitting on/off.
+    virtual void cycle(bool fit) = 0;
 
     inline shared_ptr<backlog::Backlog> log() const { return logger; }
     inline shared_ptr<ExperimentalData> data() const { return _data; }
