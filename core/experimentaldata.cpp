@@ -17,9 +17,6 @@ initial version: 2016-03-02
 #include "realtimeenvironment.h"
 #include "config.h"
 
-#define NUM_SAMPLES 10
-#define USE_MEDIAN true
-
 SingleChannelData::SingleChannelData(size_t nstim) :
     ExperimentalData(),
     responses(nstim),
@@ -32,7 +29,9 @@ void SingleChannelData::startSample(const inputSpec &wave, int stimulation)
 {
     stim = stimulation;
     samp = 0;
-    if ( responses.at(stim).size() < NUM_SAMPLES ) {
+    if ( !config->vc.cacheSize )
+        clear();
+    if ( responses.at(stim).size() < config->vc.cacheSize || !config->vc.cacheSize ) {
         sampling = true;
         RealtimeEnvironment::env()->setWaveform(wave);
         RealtimeEnvironment::env()->sync();
@@ -46,15 +45,15 @@ double SingleChannelData::nextSample(size_t channel)
 {
     double ret;
     if ( !sampling ) {
-        if ( USE_MEDIAN )
+        if ( config->vc.cacheUseMedian )
             ret = median.at(stim).at(samp);
         else
             ret = mean.at(stim).at(samp);
     } else {
         wip[samp] = RealtimeEnvironment::env()->nextSample(channel);
-        if ( USE_MEDIAN && median.at(stim).size() ) {
+        if ( config->vc.cacheUseMedian && median.at(stim).size() ) {
             ret = median.at(stim).at(samp);
-        } else if ( !USE_MEDIAN && mean.at(stim).size() ) {
+        } else if ( !config->vc.cacheUseMedian && mean.at(stim).size() ) {
             ret = mean.at(stim).at(samp);
         } else {
             ret = wip.at(samp);

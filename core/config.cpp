@@ -19,10 +19,12 @@ conf::VCConfig::VCConfig() :
     in(0),
     out(0),
     gain(1000),
-    resistance(5.0)
+    resistance(15.0),
+    cacheSize(10),
+    cacheUseMedian(true)
 {}
 
-void conf::VCConfig::fromXML(TiXmlElement *section, const conf::IOConfig &io) {
+void conf::VCConfig::fromXML(TiXmlElement *section) {
     section->QueryIntAttribute("in", &in);
     section->QueryIntAttribute("out", &out);
     section->QueryIntAttribute("popsize", &popsize);
@@ -35,9 +37,14 @@ void conf::VCConfig::fromXML(TiXmlElement *section, const conf::IOConfig &io) {
         el->QueryIntAttribute("gain", &gain);
         el->QueryDoubleAttribute("resistance", &resistance);
     }
+
+    if ( (el = section->FirstChildElement("cache")) ) {
+        el->QueryUnsignedAttribute("size", &cacheSize);
+        el->QueryBoolAttribute("use_median", &cacheUseMedian);
+    }
 }
 
-void conf::VCConfig::toXML(TiXmlElement *section, const conf::IOConfig &io) const
+void conf::VCConfig::toXML(TiXmlElement *section) const
 {
     section->SetAttribute("in", in);
     section->SetAttribute("out", out);
@@ -50,6 +57,11 @@ void conf::VCConfig::toXML(TiXmlElement *section, const conf::IOConfig &io) cons
     el = new TiXmlElement("clamp");
     el->SetAttribute("gain", gain);
     el->SetDoubleAttribute("resistance", resistance);
+    section->LinkEndChild(el);
+
+    el = new TiXmlElement("cache");
+    el->SetAttribute("size", cacheSize);
+    el->SetAttribute("use_median", cacheUseMedian ? "true" : "false");
     section->LinkEndChild(el);
 }
 
@@ -359,7 +371,7 @@ bool conf::Config::save(string filename)
     { // VC
         section = new TiXmlElement("voltageclamp");
         root->LinkEndChild(section);
-        vc.toXML(section, io);
+        vc.toXML(section);
     }
 
     { // I/O
@@ -423,7 +435,7 @@ bool conf::Config::load(string filename)
 
     // VC
     if ( (section = hRoot.FirstChild("voltageclamp").Element()) ) {
-        vc.fromXML(section, io);
+        vc.fromXML(section);
     }
 
     // Model

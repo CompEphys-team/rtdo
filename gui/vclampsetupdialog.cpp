@@ -61,6 +61,9 @@ void VClampSetupDialog::open()
     ui->waveformFile->setText(QString::fromStdString(config->vc.wavefile));
     ui->popSize->setValue(config->vc.popsize);
 
+    ui->cacheSize->setValue(config->vc.cacheSize);
+    ui->cacheUseMedian->setChecked(config->vc.cacheUseMedian);
+
     QDialog::open();
 }
 
@@ -74,6 +77,8 @@ void VClampSetupDialog::accept()
     config->vc.resistance = ui->resistance->value();
     config->vc.wavefile = ui->waveformFile->text().toStdString();
     config->vc.popsize = ui->popSize->value();
+    config->vc.cacheSize = (unsigned int)ui->cacheSize->value();
+    config->vc.cacheUseMedian = ui->cacheUseMedian->isChecked();
 
     QDialog::accept();
 }

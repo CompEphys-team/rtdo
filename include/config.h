@@ -46,9 +46,12 @@ public:
     int gain;
     double resistance;
 
+    unsigned int cacheSize;
+    bool cacheUseMedian;
+
 private:
-    void fromXML(TiXmlElement *section, const conf::IOConfig &io);
-    void toXML(TiXmlElement *section, const IOConfig &io) const;
+    void fromXML(TiXmlElement *section);
+    void toXML(TiXmlElement *section) const;
 };
 
 class conf::IOConfig {
