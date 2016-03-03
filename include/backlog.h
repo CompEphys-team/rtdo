@@ -53,7 +53,6 @@ public:
     virtual void score() = 0;
     virtual void sort(SortBy s, bool prioritiseTested = false) = 0;
     virtual void wait() = 0;
-    virtual void halt() = 0;
 
     int size;
     int nstims;
@@ -82,7 +81,6 @@ public:
     void score();
     void sort(SortBy s, bool prioritiseTested = false);
     void wait();
-    void halt();
 };
 
 }

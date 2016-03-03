@@ -91,14 +91,14 @@ SOURCES += core/main.cpp \
     core/realtimeconditionvariable.cpp \
     core/runner.cpp \
     gui/performancedialog.cpp \
-    core/teestream.cpp
+    core/teestream.cpp \
+    core/experimentaldata.cpp
 
 OTHER_FILES += \
     simulation/GNUmakefile \
     simulation/VClampGA.cu \
     simulation/VClampGA.h \
     simulation/helper.h \
-    simulation/GA.cc \
     simulation/backlog.cc
 
 OTHER_FILES += \
@@ -140,7 +140,9 @@ HEADERS  += \
     include/realtimequeue.h \
     include/teestream.h \
     include/wavegenNS.h \
-    include/backlog.h
+    include/backlog.h \
+    include/experiment.h \
+    include/experimentaldata.h
 
 FORMS    += \
     gui/mainwindow.ui \

@@ -28,6 +28,7 @@ initial version: 2015-12-08
 #include "wavegenNS.h"
 #include "backlog.h"
 #include <sys/stat.h>
+#include "experiment.h"
 
 using namespace std;
 
@@ -140,9 +141,9 @@ bool run_vclamp(bool *stopFlag)
     RealtimeEnvironment* &env = RealtimeEnvironment::env();
 
     void *lib;
-    int (*libmain)(conf::Config*, bool *, backlog::BacklogVirtual *);
-    backlog::BacklogVirtual *(*logMake)(int size, int nstim, ostream &out);
-    void (*logBreak)(backlog::BacklogVirtual **);
+
+    Experiment *(*vccreate)(conf::Config *cfg, int logSize, ostream &logOutput, size_t channel, size_t nchans);
+    void (*vcdestroy)(Experiment **);
 
     string fname = string(SOURCEDIR) + "/simulation/VClampGA.so";
     dlerror();
@@ -150,15 +151,11 @@ bool run_vclamp(bool *stopFlag)
         std::cerr << dlerror() << endl;
         return false;
     }
-    if ( !(*(void**)(&libmain) = dlsym(lib, "vclamp")) ) {
+    if ( !(*(void**)(&vccreate) = dlsym(lib, "VClampCreate")) ) {
         std::cerr << dlerror() << endl;
         return false;
     }
-    if ( !(*(void**)(&logMake) = dlsym(lib, "BacklogCreate")) ) {
-        std::cerr << dlerror() << endl;
-        return false;
-    }
-    if ( !(*(void**)(&logBreak) = dlsym(lib, "BacklogDestroy")) ) {
+    if ( !(*(void**)(&vcdestroy) = dlsym(lib, "VClampDestroy")) ) {
         std::cerr << dlerror() << endl;
         return false;
     }
@@ -241,31 +238,35 @@ bool run_vclamp(bool *stopFlag)
     runtime_logf << endl;
     teestream tee(runtime_logf, cout);
 
-    // Assumption: 1 stim per param
-    backlog::BacklogVirtual *logp = logMake(config->vc.popsize, config->model.obj->adjustableParams().size(), tee);
+    {
+        // Run!
+        Experiment *vc = vccreate(config, config->vc.popsize, tee, 0, 1);
+        vc->initModel();
+        vc->run(stopFlag);
 
-    // Run!
-    libmain(config, stopFlag, logp);
+        config->save(outdir + "/config_end.xml");
 
-    runtime_logf.close();
+        // Dump final model set
+        shared_ptr<backlog::BacklogVirtual> logp = vc->log();
+        logp->score();
+        logp->sort(backlog::BacklogVirtual::ErrScore, true);
+        ofstream models_logf(outdir + "/models.log");
+        write_backlog(models_logf, &*logp, false);
+        models_logf.close();
 
-    config->save(outdir + "/config_end.xml");
+        int tested = 0;
+        for ( backlog::LogEntry &e : logp->log ) {
+            tested += (int)e.tested;
+        }
 
-    // Dump final model set
-    logp->score();
-    logp->sort(backlog::BacklogVirtual::ErrScore, true);
-    ofstream models_logf(outdir + "/models.log");
-    write_backlog(models_logf, logp, false);
-    models_logf.close();
+        vcdestroy(&vc);
 
-    int tested = 0;
-    for ( backlog::LogEntry &e : logp->log ) {
-        tested += (int)e.tested;
+        runtime_logf.close();
+
+        cout << endl << "Fitting complete. " << tested << " models fully evaluated." << endl;
+        cout << "All outputs saved to " << outdir << "." << endl;
+
     }
-    cout << endl << "Fitting complete. " << tested << " models fully evaluated." << endl;
-    cout << "All outputs saved to " << outdir << "." << endl;
-
-    logBreak(&logp);
 
     dlclose(lib);
     return true;

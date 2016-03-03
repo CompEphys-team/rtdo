@@ -19,38 +19,40 @@ initial version: 2014-06-26
 //--------------------------------------------------------------------------
 #define _V_CLAMP
 #ifdef _V_CLAMP
-#define _CRTDBG_MAP_ALLOC
 #include "VClampGA.h"
 #include "realtimeenvironment.h"
-#include "config.h"
+#include "experiment.h"
 
-//--------------------------------------------------------------------------
-/*! \brief This function is the entry point for running the project
-*/
-//--------------------------------------------------------------------------
+static NNmodel model;
 
-inline bool file_exists( const std::string& name )
+class VClamp : public Experiment
 {
-	if (FILE *file = fopen( name.c_str(), "r" )) {
-		fclose( file );
-		return true;
-	}
-	else {
-		return false;
-	}
+public:
+    VClamp(conf::Config *cfg, int logSize, ostream &logOutput, size_t channel, size_t nchans);
+    ~VClamp() {}
+
+    void initModel();
+    void run(bool *stopFlag);
+};
+
+extern "C" Experiment *VClampCreate(conf::Config *cfg, int logSize, ostream &logOutput, size_t channel, size_t nchans)
+{
+    return new VClamp(cfg, logSize, logOutput, channel, nchans);
 }
 
-extern "C" int vclamp(conf::Config *cfg, bool *stopFlag, backlog::BacklogVirtual *logger) {
-    RealtimeEnvironment* &env = RealtimeEnvironment::env();
+extern "C" void VClampDestroy(Experiment **_this)
+{
+    delete *_this;
+    *_this = nullptr;
+}
 
-	//-----------------------------------------------------------------
-    // read the relevant stimulus patterns
-    vector<vector<double> > pperturb;
-    vector<vector<double> > sigadjust;
-	vector<inputSpec> stims;
-    inputSpec I;
+
+VClamp::VClamp(conf::Config *cfg, int logSize, ostream &logOutput, size_t channel, size_t nchans) :
+    Experiment(cfg, channel)
+{
     ifstream is(cfg->vc.wavefile);
     load_stim(is, pperturb, sigadjust, stims);
+    is.close();
     for (int i = 0, k = pperturb.size(); i < k; i++) {
         for (int j = 0, l = pperturb[i].size(); j < l; j++) {
             cout << pperturb[i][j] << " ";
@@ -63,73 +65,66 @@ extern "C" int vclamp(conf::Config *cfg, bool *stopFlag, backlog::BacklogVirtual
         if ( stims[i].baseV != cfg->model.obj->baseV() )
             cerr << "Warning: Base voltage mismatch between model (" << cfg->model.obj->baseV() << " mV) and waveform ("
                  << stims[i].baseV << " mV)." << endl;
-	}
+    }
 
-	int Nstim = stims.size();
-	vector<vector<double> > errbuf;
-	vector<double> eb( MAVGBUFSZ );
-	vector<double> mavg( Nstim );
-	vector<int> epos( Nstim );
-	vector<int> initial( Nstim );
-	for (int i = 0, k = Nstim; i < k; i++) {
-		errbuf.push_back( eb );
-		mavg[i] = 0;
-		epos[i] = 0;
-		initial[i] = 1;
-	}
+    int Nstim = stims.size();
+    errbuf = vector<vector<double>>(Nstim, vector<double>(MAVGBUFSZ));
+    mavg = vector<double>(Nstim, 0);
+    epos = vector<int>(Nstim, 0);
+    initial = vector<int>(Nstim, 1);
 
-	//-----------------------------------------------------------------
-	// build the neuronal circuitery
+    logger = make_shared<backlog::Backlog>(logSize, Nstim, logOutput);
+    if ( nchans > 1 )
+        _data = make_shared<MultiChannelData>(Nstim, nchans);
+    else
+        _data = make_shared<SingleChannelData>(Nstim);
+}
 
-	NNmodel model;
-    modelDefinition( model );
-	allocateMem();
-    initialize();
-    rtdo_init_bridge();
-    var_init_fullrange(); // initialize uniformly on large range
-    fprintf( stderr, "# neuronal circuitery built, start computation ... \n\n" );
-
-	//------------------------------------------------------------------
-	// output general parameters to output file and start the simulation
-
-	fprintf( stderr, "# We are running with fixed time step %f \n", DT );
-
-	int done = 0, sn;
-	unsigned int VSize = NPOP*theSize( model.ftype );
-	double lt, oldt;
-	double pertFac = 0.1;
-	int iTN;
-
-    scalar simulatorVars[NVAR], simulatorParams[NPARAM];
-    for ( int i = 0; i < NVAR; i++ )
-        simulatorVars[i] = variableIni[i];
-    for ( int i = 0; i < NPARAM; i++ )
-        simulatorParams[i] = aParamIni[i];
-    env->setSimulatorVariables(simulatorVars);
-    env->setSimulatorParameters(simulatorParams);
-
+void VClamp::initModel()
+{
+    if ( !model.final ) {
+        modelDefinition( model );
+        allocateMem();
+        initialize();
+        rtdo_init_bridge();
+    }
+    var_init_fullrange();
     t = 0.0;
-	int nextS = 0;
-    int generation = 0;
-    while (!done && !*stopFlag)
+}
+
+void VClamp::run(bool *stopFlag)
+{
+    if ( RealtimeEnvironment::env()->isSimulating() ) {
+        scalar simulatorVars[NVAR], simulatorParams[NPARAM];
+        for ( int i = 0; i < NVAR; i++ )
+            simulatorVars[i] = variableIni[i];
+        for ( int i = 0; i < NPARAM; i++ )
+            simulatorParams[i] = aParamIni[i];
+        RealtimeEnvironment::env()->setSimulatorVariables(simulatorVars);
+        RealtimeEnvironment::env()->setSimulatorParameters(simulatorParams);
+    }
+
+	unsigned int VSize = NPOP*theSize( model.ftype );
+
+    while ( !*stopFlag )
     {
-        truevar_init();
-        I = stims[nextS];
-        iTN = (int)(I.t / DT);
+        inputSpec I = stims[nextS];
+        int iTN(I.t / DT);
+        double lt = 0.0;
+        int sn = 0;
+
         stepVGHH = I.baseV;
         otHH = t + I.ot;
         oteHH = t + I.ot + I.dur;
         clampGainHH = cfg->vc.gain;
         accessResistanceHH = cfg->vc.resistance;
-        lt = 0.0;
-        sn = 0;
+        truevar_init();
 
-        env->setWaveform(I);
-        env->sync();
+        _data->startSample(I, nextS);
 
         for (int iT = 0; iT < iTN; iT++) {
-            oldt = lt;
-            IsynGHH = env->nextSample();
+            double oldt = lt;
+            IsynGHH = _data->nextSample(channel);
             stepTimeGPU( t );
             t += DT;
             lt += DT;
@@ -139,17 +134,79 @@ extern "C" int vclamp(conf::Config *cfg, bool *stopFlag, backlog::BacklogVirtual
             }
         }
 
-        env->pause();
-        logger->wait();
+        _data->endSample();
 
         CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
 
-        procreatePopPperturb( pertFac, pperturb, sigadjust, errbuf, epos, initial, mavg, nextS, Nstim, logger, generation++ ); //perturb for next step
+        procreateGeneric();
+        ++epoch;
+    }
+}
+
+
+void Experiment::procreateGeneric()
+{
+    logger->wait();
+
+    double amplitude = 0.1;
+    double tmavg, delErr;
+
+    static errTupel errs[NPOP];
+    static int limiter = 0;
+
+    for (int i = 0; i < NPOP; i++) {
+        errs[i].id = i;
+        errs[i].err = errHH[i];
+    }
+    qsort( (void *)errs, NPOP, sizeof( errTupel ), compareErrTupel );
+
+    int k = NPOP / 3;
+    logger->touch(&errs[0], &errs[k-1], epoch, nextS);
+
+    // update moving averages
+    epos[nextS] = (epos[nextS] + 1) % MAVGBUFSZ;
+    if (initial[nextS]) {
+        if (epos[nextS] == 0) {
+            initial[nextS] = 0;
+        }
+        delErr = 2 * errs[0].err;
+    }
+    else {
+        delErr = errbuf[nextS][epos[nextS]];
+        mavg[nextS] -= delErr;
+    }
+    errbuf[nextS][epos[nextS]] = errs[0].err;
+    mavg[nextS] += errbuf[nextS][epos[nextS]];
+    tmavg = mavg[nextS] / MAVGBUFSZ;
+
+    if (errs[0].err < tmavg*0.8) {
+        // we are getting better on this one -> adjust a different parameter combination
+        nextS = (nextS + 1) % stims.size();
+    }
+    if ( delErr > 1.01 * errs[0].err ) {
+        limiter = (limiter < 3 ? 0 : limiter-3);
+    }
+    if ( ++limiter > 5 ) {
+        // Stuck, move on
+        nextS = (nextS + 1) % stims.size();
+        limiter = 0;
     }
 
-    logger->halt();
-
-    fprintf( stderr, "DONE\n" );
-	return 0;
+    // First third: Elitism
+    // Second third: mutated elite
+    for (int i = k; i < 2 * k; i++) {
+        copy_var( errs[i - k].id, errs[i].id ); // copy good ones over bad ones
+        single_var_reinit_pperturb( errs[i].id, amplitude, pperturb[nextS], sigadjust[nextS] ); // jiggle the new copies a bit
+    }
+    // Third third: Mutations with quadratic preference
+    for (int i = 2 * k; i < NPOP; i++)
+    {
+        double p = R.n();
+        copy_var(errs[(int)(p*p * NPOP)].id, errs[i].id);
+        single_var_reinit_pperturb( errs[i].id, amplitude, pperturb[nextS], sigadjust[nextS] );
+    }
+    // Never ever: Add completely new models to a serial multiparameter fitting run
+    // Todo: Do some full reinitialisations in nextS to get out of local maxima
 }
+
 #endif

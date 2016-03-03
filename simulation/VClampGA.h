@@ -42,7 +42,6 @@ long long latest_uid = 0;
 #include "run.h"
 #include "helper.h"
 #include "backlog.cc"
-#include "GA.cc"
 
 #define RAND(Y,X) Y = Y * 1103515245 +12345;X= (unsigned int)(Y >> 16) & 32767
 

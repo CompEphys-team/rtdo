@@ -262,7 +262,8 @@ bool RealtimeEnvironment::idleTimeReporting() const
 
 class RealtimeEnvironment::Impl {};
 RealtimeEnvironment::RealtimeEnvironment() :
-    sImpl(new Simulator)
+    sImpl(new Simulator),
+    _useSim(true)
 {}
 
 RealtimeEnvironment::~RealtimeEnvironment() {}

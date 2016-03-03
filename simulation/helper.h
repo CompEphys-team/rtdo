@@ -12,10 +12,7 @@
 --------------------------------------------------------------------------*/
 
 #include <vector>
-#include <string>
 #include <istream>
-#include <bitset>
-#include <limits>
 
 void single_var_init_fullrange(int n)
 {
@@ -96,4 +93,14 @@ void load_stim(istream &is, vector<vector<double>> &pperturb, vector<vector<doub
             stims.push_back( I );
         }
     }
+}
+
+int compareErrTupel( const void *x, const void *y )
+{
+    // make sure NaN is largest
+    if (std::isnan( ((errTupel *)x)->err )) return 1;
+    if (std::isnan( ((errTupel *)y)->err )) return -1;
+    if (((errTupel *)x)->err < ((errTupel *)y)->err) return -1;
+    if (((errTupel *)x)->err > ( (errTupel *)y )->err) return 1;
+    return 0;
 }

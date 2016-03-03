@@ -85,6 +85,7 @@ public:
      * In non-RT builds, this function has no effect and returns false, as the environment is always in simulation mode.
      **/
     bool useSimulator(bool);
+    inline bool isSimulating() { return _useSim; }
 
     //!< Opens and returns a comedi device in hard/soft realtime [RT build only]
     struct comedi_t_struct *getDevice(int deviceno, bool RT);

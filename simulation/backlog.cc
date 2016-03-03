@@ -65,7 +65,12 @@ Backlog::Backlog(int size, int nstims, ostream &runtime_log) :
     BacklogVirtual(size, nstims, runtime_log)
 {}
 
-Backlog::~Backlog() {}
+Backlog::~Backlog()
+{
+    stop = true;
+    execGo.broadcast();
+    t.join();
+}
     
 void Backlog::touch(errTupel *first, errTupel *last, int generation, int stim)
 {
@@ -125,15 +130,6 @@ void Backlog::wait()
     if ( waiting ) {
         execDone.wait();
         waiting = false;
-    }
-}
-
-void Backlog::halt()
-{
-    if ( !stop ) {
-        stop = true;
-        wait();
-        t.join();
     }
 }
 
