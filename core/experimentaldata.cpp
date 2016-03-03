@@ -29,9 +29,7 @@ void SingleChannelData::startSample(const inputSpec &wave, int stimulation)
 {
     stim = stimulation;
     samp = 0;
-    if ( !config->vc.cacheSize )
-        clear();
-    if ( responses.at(stim).size() < config->vc.cacheSize || !config->vc.cacheSize ) {
+    if ( responses.at(stim).size() < size || !size ) {
         sampling = true;
         RealtimeEnvironment::env()->setWaveform(wave);
         RealtimeEnvironment::env()->sync();
@@ -103,6 +101,13 @@ void SingleChannelData::clear()
     }
 }
 
+void SingleChannelData::setSize(size_t cacheSize)
+{
+    if ( cacheSize < size )
+        clear();
+    size = cacheSize;
+}
+
 
 MultiChannelData::MultiChannelData(size_t nstim, size_t nchan) :
     ExperimentalData(),
@@ -147,6 +152,14 @@ void MultiChannelData::clear()
     for ( SingleChannelData &d : channels ) {
         d.clear();
     }
+}
+
+void MultiChannelData::setSize(size_t cacheSize)
+{
+    for ( SingleChannelData &d : channels ) {
+        d.setSize(cacheSize);
+    }
+    size = cacheSize;
 }
 
 

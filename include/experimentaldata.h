@@ -16,13 +16,16 @@ initial version: 2016-03-02
 #include <vector>
 #include <list>
 #include "shared.h"
+#include "config.h"
 
 using namespace std;
 
 class ExperimentalData
 {
 public:
-    ExperimentalData() {}
+    ExperimentalData() :
+        size(config->vc.cacheSize)
+    {}
 
     virtual void startSample(const inputSpec &wave, int stimulation) = 0;
     virtual void endSample() = 0;
@@ -30,6 +33,10 @@ public:
 
     virtual void calcAverages() = 0;
     virtual void clear() = 0;
+    virtual void setSize(size_t cacheSize) = 0;
+
+protected:
+    size_t size;
 };
 
 
@@ -49,6 +56,7 @@ public:
 
     void calcAverages();
     void clear();
+    void setSize(size_t cacheSize);
 
     //!< A vector of stimulations; a list of episodes; and finally, a vector of the samples of an episode
     //! In other words, a sample is responses[stimulation][episode][time].
@@ -80,6 +88,7 @@ public:
 
     void calcAverages();
     void clear();
+    void setSize(size_t cacheSize);
 
     vector<SingleChannelData> channels;
 };
