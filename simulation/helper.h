@@ -22,6 +22,15 @@ void single_var_init_fullrange(int n)
     uids[n] = ++latest_uid;
 }
 
+void single_var_reinit_pperturb_fullrange(int n, vector<double> &pperturb)
+{
+    for ( int i = 0; i < NPARAM; i++ ) {
+        if ( pperturb[i] > 0 && R.n() < pperturb[i] ) {
+            mparam[i][n] = aParamRange[2*i] + R.n() * (aParamRange[2*i+1] - aParamRange[2*i]);
+        }
+    }
+}
+
 void single_var_reinit_pperturb(int n, double fac, vector<double> &pperturb, vector<double> &sigadjust)
 {
     for ( int i = 0; i < NPARAM; i++ ) {

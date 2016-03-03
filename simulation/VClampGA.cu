@@ -233,15 +233,13 @@ void Experiment::procreateGeneric()
         copy_var( errs[i - k].id, errs[i].id ); // copy good ones over bad ones
         single_var_reinit_pperturb( errs[i].id, amplitude, pperturb[nextS], sigadjust[nextS] ); // jiggle the new copies a bit
     }
-    // Third third: Mutations with quadratic preference
+    // Third third: Elite with random reset in the current parameter
     for (int i = 2 * k; i < NPOP; i++)
     {
-        double p = R.n();
-        copy_var(errs[(int)(p*p * NPOP)].id, errs[i].id);
-        single_var_reinit_pperturb( errs[i].id, amplitude, pperturb[nextS], sigadjust[nextS] );
+        copy_var(errs[i - 2*k].id, errs[i].id);
+        single_var_reinit_pperturb_fullrange( errs[i].id, pperturb[nextS] );
     }
     // Never ever: Add completely new models to a serial multiparameter fitting run
-    // Todo: Do some full reinitialisations in nextS to get out of local maxima
 }
 
 #endif
