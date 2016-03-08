@@ -29,7 +29,7 @@ public:
     double errScore;
     double rankScore;
     int since;
-    long long uid;
+    unsigned long long uid;
     bool tested;
 };
 

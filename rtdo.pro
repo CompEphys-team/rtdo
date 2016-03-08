@@ -18,7 +18,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = rtdo
 TEMPLATE = app
 
-CONFIG(debug, release|debug):DEFINES += _DEBUG
+CONFIG(debug, release|debug):DEFINES += _DEBUG D_GLIBCXX_DEBUG
 
 realtime {
     DEFINES += CONFIG_RT

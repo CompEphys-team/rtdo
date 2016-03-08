@@ -33,8 +33,13 @@ initial version: 2015-12-08
 using namespace std;
 
 bool compile_model(XMLModel::outputType type) {
+#ifdef _DEBUG
+    string cxxflags = string("CXXFLAGS=\"$CXXFLAGS -std=c++11 -DDT=") + to_string(config->io.dt) + " -D_GLIBCXX_DEBUG\" ";
+    string nvccflags = string("NVCCFLAGS=\"$NVCCFLAGS -DDT=") + to_string(config->io.dt) + " -D_GLIBCXX_DEBUG\" ";
+#else
     string cxxflags = string("CXXFLAGS=\"$CXXFLAGS -std=c++11 -DDT=") + to_string(config->io.dt) + "\" ";
     string nvccflags = string("NVCCFLAGS=\"$NVCCFLAGS -DDT=") + to_string(config->io.dt) + "\" ";
+#endif
     int ret=0;
 
     int popsize=0;

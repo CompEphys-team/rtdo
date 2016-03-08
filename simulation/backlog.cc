@@ -52,7 +52,7 @@ LogEntry::LogEntry(int idx, int generation, int nstims) :
     errScore(0),
     rankScore(0),
     since(generation),
-    uid(uids[idx]),
+    uid(currentExperiment->models[idx].uid),
     tested(true)
 {
     int i = 0;
@@ -149,7 +149,7 @@ void BacklogVirtual::exec()
             int rank = 1;
             for ( errTupel *et = first; et <= last; ++et, ++rank ) {
                 // Enter new entry / refresh existing entry
-                target = uids[et->id];
+                target = currentExperiment->models[et->id].uid;
                 list<LogEntry>::iterator it = find_if(log.begin(), log.end(), uidMatch);
                 if ( it == log.end() ) {
                     tmp.push_back(LogEntry(et->id, generation, nstims));

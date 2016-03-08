@@ -18,8 +18,29 @@ initial version: 2016-02-16
 #include "experimentaldata.h"
 #include <memory>
 
+class Model
+{
+public:
+    int idx;
+    long long uid;
+    int parentIdx;
+    unsigned long long parentUid;
+    double errDiff;
+    vector<double> momentum;
+
+    static unsigned long long latestUid;
+
+    Model(int idx);
+
+    void diff();
+    void copy(int parentIdx);
+    void reinit(int stim);
+    void mutate(int stim, double fac, bool retainMomentum);
+};
+
 class Experiment
 {
+friend class Model;
 public:
     Experiment(conf::Config *cfg, size_t channel) :
         cfg(cfg),
@@ -41,6 +62,8 @@ public:
 
     inline shared_ptr<backlog::Backlog> log() const { return logger; }
     inline shared_ptr<ExperimentalData> data() const { return _data; }
+
+    vector<Model> models;
 
 protected:
     conf::Config *cfg;

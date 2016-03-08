@@ -13,56 +13,86 @@
 
 #include <vector>
 #include <istream>
+#include <math.h>
 
-void single_var_init_fullrange(int n)
+unsigned long long Model::latestUid = 0;
+
+Model::Model(int idx) :
+    idx(idx),
+    uid(++latestUid),
+    parentIdx(parentIdx),
+    parentUid(0),
+    errDiff(0.0),
+    momentum(currentExperiment->stims.size(), 0.0)
 {
     for ( int i = 0; i < NPARAM; i++ ) {
-        mparam[i][n] = aParamRange[2*i] + R.n() * (aParamRange[2*i+1] - aParamRange[2*i]); // uniform in allowed interval
+        mparam[i][idx] = aParamRange[2*i] + R.n() * (aParamRange[2*i+1] - aParamRange[2*i]);
     }
-    uids[n] = ++latest_uid;
 }
 
-void single_var_reinit_pperturb_fullrange(int n, vector<double> &pperturb)
+void Model::diff()
+{
+    if ( parentUid && currentExperiment->models[parentIdx].uid == parentUid ) {
+        errDiff = errHH[parentIdx] - errHH[idx];
+    }
+}
+
+void Model::copy(int parentIdx)
+{
+    uid = ++latestUid;
+    this->parentIdx = parentIdx;
+    parentUid = currentExperiment->models[parentIdx].uid;
+    errDiff = 0.0;
+    momentum = currentExperiment->models[parentIdx].momentum;
+    for ( int i = 0; i < NPARAM; i++ ) {
+        mparam[i][idx] = mparam[i][parentIdx];
+    }
+}
+
+void Model::reinit(int stim)
 {
     for ( int i = 0; i < NPARAM; i++ ) {
-        if ( pperturb[i] > 0 && R.n() < pperturb[i] ) {
-            mparam[i][n] = aParamRange[2*i] + R.n() * (aParamRange[2*i+1] - aParamRange[2*i]);
+        if ( currentExperiment->pperturb[stim][i] > 0 ) {
+            mparam[i][idx] = aParamRange[2*i] + R.n() * (aParamRange[2*i+1] - aParamRange[2*i]);
         }
     }
+    momentum[stim] = 0.0;
 }
 
-void single_var_reinit_pperturb(int n, double fac, vector<double> &pperturb, vector<double> &sigadjust)
+void Model::mutate(int stim, double fac, bool retainMomentum)
 {
+    if ( !retainMomentum || momentum[stim] == 0.0 ) { // Reset momentum
+        momentum[stim] = RG.n() * fac;
+    } else { // Adjust momentum
+        if ( currentExperiment->models[parentIdx].errDiff < 0 ) {
+            // My parent did better than its parent => Keep going in my parent's footsteps
+            momentum[stim] *= 2;
+        } else if ( currentExperiment->models[parentIdx].errDiff > 0 ) {
+            // My parent did worse than its parent => Turn around and go slower
+            momentum[stim] *= -0.3;
+        }
+        // If errDiff == 0 (stim transition), retain momentum without change
+    }
+
     for ( int i = 0; i < NPARAM; i++ ) {
-        if ( pperturb[i] > 0 && R.n() < pperturb[i] ) {
+        if ( currentExperiment->pperturb[stim][i] > 0
+             && (currentExperiment->pperturb[stim][i] == 1 || R.n() < currentExperiment->pperturb[stim][i]) ) {
             if ( aParamPMult[i] )
-                mparam[i][n] *= (1.0 + fac * aParamSigma[i] * sigadjust[i] * RG.n());
+                mparam[i][idx] *= (1.0 + aParamSigma[i] * currentExperiment->sigadjust[stim][i] * momentum[stim]);
             else
-                mparam[i][n] += fac * aParamSigma[i] * sigadjust[i] * RG.n();
+                mparam[i][idx] += aParamSigma[i] * currentExperiment->sigadjust[stim][i] * momentum[stim];
 
-            if ( mparam[i][n] < aParamRange[2*i] )
-                mparam[i][n] = aParamRange[2*i];
-            else if ( mparam[i][n] > aParamRange[2*i + 1] )
-                mparam[i][n] = aParamRange[2*i + 1];
+            if ( mparam[i][idx] < aParamRange[2*i] ) {
+                mparam[i][idx] = aParamRange[2*i];
+                momentum[stim] = fabs(RG.n()) * fac;
+            } else if ( mparam[i][idx] > aParamRange[2*i + 1] ) {
+                mparam[i][idx] = aParamRange[2*i + 1];
+                momentum[stim] = -fabs(RG.n()) * fac;
+            }
         }
     }
 }
 
-void copy_var(int src, int trg)
-{
-    for ( int i = 0; i < NPARAM; i++ ) {
-        mparam[i][trg] = mparam[i][src];
-    }
-    uids[trg] = ++latest_uid;
-}
-
-void var_init_fullrange()
-{
-  for (int n= 0; n < NPOP; n++) {
-    single_var_init_fullrange(n);
-  }
-  copyStateToDevice();	
-}
  
 void truevar_init()
 {
@@ -80,7 +110,7 @@ void load_stim(istream &is, vector<vector<double>> &pperturb, vector<vector<doub
     vector<double> prob;
     vector<double> adjust;
     inputSpec I;
-    char buf[1024];
+    char buf[BUFSZ];
     while (is.good()) {
         prob.clear();
         adjust.clear();

@@ -86,20 +86,27 @@ VClamp::VClamp(conf::Config *cfg, int logSize, ostream &logOutput, size_t channe
 
 void VClamp::initModel()
 {
+    currentExperiment = this;
     if ( !model.final ) {
         modelDefinition( model );
         allocateMem();
         initialize();
         rtdo_init_bridge();
     }
-    var_init_fullrange();
     t = 0.0;
     epoch = 0;
     nextS = 0;
+    models.clear();
+    models.reserve(NPOP);
+    for ( int i = 0; i < NPOP; i++ ) {
+        models.emplace_back(i);
+    }
+    copyStateToDevice();
 }
 
 void VClamp::run(bool *stopFlag)
 {
+    currentExperiment = this;
     if ( RealtimeEnvironment::env()->isSimulating() ) {
         scalar simulatorVars[NVAR], simulatorParams[NPARAM];
         for ( int i = 0; i < NVAR; i++ )
@@ -153,6 +160,7 @@ void VClamp::runStim()
 
 void VClamp::cycle(bool fit)
 {
+    currentExperiment = this;
     errTupel errs[NPOP];
     unsigned int VSize = NPOP*theSize( model.ftype );
     for ( size_t i = 0; i < stims.size(); i++ ) {
@@ -195,7 +203,7 @@ void Experiment::procreateGeneric()
     }
     qsort( (void *)errs, NPOP, sizeof( errTupel ), compareErrTupel );
 
-    int k = NPOP / 3;
+    int k = NPOP / 4;
     logger->touch(&errs[0], &errs[k-1], epoch, nextS);
 
     // update moving averages
@@ -214,9 +222,11 @@ void Experiment::procreateGeneric()
     mavg[nextS] += errbuf[nextS][epos[nextS]];
     tmavg = mavg[nextS] / MAVGBUFSZ;
 
+    bool nextSChanged = false;
     if (errs[0].err < tmavg*0.8) {
         // we are getting better on this one -> adjust a different parameter combination
         nextS = (nextS + 1) % stims.size();
+        nextSChanged = true;
     }
     if ( delErr > 1.01 * errs[0].err ) {
         limiter = (limiter < 3 ? 0 : limiter-3);
@@ -225,19 +235,34 @@ void Experiment::procreateGeneric()
         // Stuck, move on
         nextS = (nextS + 1) % stims.size();
         limiter = 0;
+        nextSChanged = true;
     }
 
-    // First third: Elitism
-    // Second third: mutated elite
-    for (int i = k; i < 2 * k; i++) {
-        copy_var( errs[i - k].id, errs[i].id ); // copy good ones over bad ones
-        single_var_reinit_pperturb( errs[i].id, amplitude, pperturb[nextS], sigadjust[nextS] ); // jiggle the new copies a bit
+    if ( nextSChanged ) {
+        for ( int i = 0; i < NPOP; i++ ) {
+            models[i].errDiff = 0;
+        }
+    } else {
+        for ( int i = 0; i < NPOP; i++ ) {
+            models[i].diff();
+        }
     }
-    // Third third: Elite with random reset in the current parameter
-    for (int i = 2 * k; i < NPOP; i++)
-    {
-        copy_var(errs[i - 2*k].id, errs[i].id);
-        single_var_reinit_pperturb_fullrange( errs[i].id, pperturb[nextS] );
+
+    // First quarter: Elitism, no action
+    // Second quarter: mutated elite without momentum
+    for (int i = k; i < 2 * k; i++) {
+        models[errs[i].id].copy(errs[i-k].id);
+        models[errs[i].id].mutate(nextS, amplitude, false);
+    }
+    // Third quarter: mutated elite with momentum
+    for (int i = 2 * k; i < 3 * k; i++) {
+        models[errs[i].id].copy(errs[i - 2*k].id);
+        models[errs[i].id].mutate(nextS, amplitude, true);
+    }
+    // Fourth quarter: Elite with random reset in the current parameter
+    for (int i = 3 * k; i < NPOP; i++) {
+        models[errs[i].id].copy(errs[i - 3*k].id);
+        models[errs[i].id].reinit(nextS);
     }
     // Never ever: Add completely new models to a serial multiparameter fitting run
 }

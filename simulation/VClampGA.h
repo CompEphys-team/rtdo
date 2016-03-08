@@ -35,11 +35,12 @@ randomGauss RG;
 #define BUFSZ 1024
 #define MAVGBUFSZ 10
 
-long long *uids = new long long[NPOP];
-long long latest_uid = 0;
-
+#include "experiment.h"
 #include "shared.h"
 #include "run.h"
+
+Experiment *currentExperiment;
+
 #include "helper.h"
 #include "backlog.cc"
 
