@@ -252,6 +252,9 @@ bool run_vclamp(bool *stopFlag)
         cout << "Doing a full-cycle model evaluation before stopping, please wait..." << endl;
         vc->cycle(false);
 
+        ofstream tracef(outdir + "/traces");
+        vc->data()->dump(tracef);
+
         config->save(outdir + "/config_end.xml");
 
         // Dump final model set

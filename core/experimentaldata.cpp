@@ -108,6 +108,55 @@ void SingleChannelData::setSize(size_t cacheSize)
     size = cacheSize;
 }
 
+void SingleChannelData::dump(ostream &os)
+{
+    for ( size_t i = 0; i < nstim; i++ ) {
+        if ( !responses.at(i).size() || !mean.at(i).size() || !median.at(i).size() ) {
+            cerr << "Skipping empty responses at index " << i << endl;
+            continue;
+        } else if ( responses.at(i).front().size() != mean.at(i).size() || mean.at(i).size() != median.at(i).size() ) {
+            cerr << "Skipping incongruously sized responses at index " << i << endl;
+            continue;
+        }
+        os << "# Stimulation " << i << endl;
+        os << "mean\tmedian";
+        for ( size_t j = 0; j < responses.at(i).size(); j++ ) {
+            os << "\t" << j;
+        }
+        os << endl;
+        for ( size_t k = 0; k < mean.at(i).size(); k++ ) {
+            os << mean[i][k] << '\t' << median[i][k];
+            for ( auto &v : responses.at(i) ) {
+                os << '\t' << v[k];
+            }
+            os << endl;
+        }
+        os << endl << endl;
+    }
+}
+
+void SingleChannelData::load(istream &is)
+{
+    clear();
+    char buffer[1024];
+    unsigned int ns = 0;
+    double tmp;
+    while ( is.good() ) {
+        while ( is.good() && (is.peek() == '#' || is.peek() == '\n') ) {
+            is.getline(buffer, 1024);
+            sscanf(buffer, "# Stimulation %u", &ns);
+        }
+        if ( ns > mean.size() ) {
+            continue;
+        }
+        is >> tmp;
+        mean[ns].push_back(tmp);
+        is >> tmp;
+        median[ns].push_back(tmp);
+        is.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+}
+
 
 MultiChannelData::MultiChannelData(size_t nstim, size_t nchan) :
     ExperimentalData(),
@@ -161,5 +210,4 @@ void MultiChannelData::setSize(size_t cacheSize)
     }
     size = cacheSize;
 }
-
 

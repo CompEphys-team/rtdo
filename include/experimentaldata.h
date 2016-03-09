@@ -35,6 +35,9 @@ public:
     virtual void clear() = 0;
     virtual void setSize(size_t cacheSize) = 0;
 
+    virtual void dump(ostream &os) = 0;
+    virtual void load(istream &is) = 0;
+
 protected:
     size_t size;
 };
@@ -57,6 +60,11 @@ public:
     void calcAverages();
     void clear();
     void setSize(size_t cacheSize);
+
+    //!< Dump columnar data to output stream
+    void dump(ostream &os);
+    //!< Load similar columnar data from input stream. Calls @fn clear(). Note, only mean and median are loaded.
+    void load(istream &is);
 
     //!< A vector of stimulations; a list of episodes; and finally, a vector of the samples of an episode
     //! In other words, a sample is responses[stimulation][episode][time].
@@ -89,6 +97,9 @@ public:
     void calcAverages();
     void clear();
     void setSize(size_t cacheSize);
+
+    inline void dump(ostream &os) { channels[0].dump(os); }
+    inline void load(istream &is) { channels[0].load(is); }
 
     vector<SingleChannelData> channels;
 };
