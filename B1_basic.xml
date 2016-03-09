@@ -39,7 +39,7 @@
 		<perturbation type="*" rate="0.1"/>
 	</adjustableParam>
 	<adjustableParam name="El" type="scalar" value="-20">
-		<range min="-100" max="50"/>
+		<range min="-100" max="100"/>
 		<perturbation type="+" rate="10"/>
 	</adjustableParam>
 
