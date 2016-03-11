@@ -118,6 +118,11 @@ void conf::IOConfig::fromXML(TiXmlElement *section)
             channels.back().setConversionFactor(gain);
             channels.back().setOffsetSource(src);
         }
+
+        // Zero output
+        if ( type == Channel::AnalogOut ) {
+            channels.back().write(0.0);
+        }
     }
 }
 
