@@ -59,7 +59,8 @@ void *Runner::launch()
     try {
         switch ( _type ) {
         case XMLModel::VClamp:
-            ret = run_vclamp(&_stop);
+            cerr << "Use of VClamp with Runner is no longer supported." << endl;
+            //ret = run_vclamp(&_stop);
             break;
         case XMLModel::WaveGen:
             ret = run_wavegen(-1, &_stop);

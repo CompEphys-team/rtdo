@@ -20,6 +20,7 @@ initial version: 2015-12-03
 #include "modelsetupdialog.h"
 #include "performancedialog.h"
 #include "runner.h"
+#include "module.h"
 
 namespace Ui {
 class MainWindow;
@@ -46,7 +47,7 @@ private slots:
 
     void on_vclamp_compile_clicked();
 
-    void vclampComplete(bool successfully);
+    void vclampComplete(int handle);
     void wavegenComplete(bool successfully);
     void wavegenNSComplete(bool successfully);
 
@@ -63,7 +64,7 @@ private:
     PerformanceDialog *performance;
 
     CompileRunner *compiler;
-    Runner *vclamp;
+    Module *module;
     Runner *wavegen;
     Runner *wavegenNS;
 };

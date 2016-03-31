@@ -92,7 +92,8 @@ SOURCES += core/main.cpp \
     core/runner.cpp \
     gui/performancedialog.cpp \
     core/teestream.cpp \
-    core/experimentaldata.cpp
+    core/experimentaldata.cpp \
+    core/module.cpp
 
 OTHER_FILES += \
     simulation/GNUmakefile \
@@ -142,7 +143,8 @@ HEADERS  += \
     include/wavegenNS.h \
     include/backlog.h \
     include/experiment.h \
-    include/experimentaldata.h
+    include/experimentaldata.h \
+    include/module.h
 
 FORMS    += \
     gui/mainwindow.ui \

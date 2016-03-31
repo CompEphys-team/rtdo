@@ -107,7 +107,7 @@ bool compile_model(XMLModel::outputType type) {
     return true;
 }
 
-void write_backlog(ofstream &file, backlog::BacklogVirtual *log, bool ignoreUntested)
+/*void write_backlog(ofstream &file, backlog::BacklogVirtual *log, bool ignoreUntested)
 {
     // Assumption: ordered 1-to-1 mapping from stimulations to parameters
     file << "# fully tested\tavg err\tavg rank" << endl
@@ -281,7 +281,7 @@ bool run_vclamp(bool *stopFlag)
 
     dlclose(lib);
     return true;
-}
+}*/
 
 bool run_wavegen(int focusParam, bool *stopFlag)
 {

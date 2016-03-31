@@ -43,6 +43,7 @@ class Experiment
 friend class Model;
 public:
     Experiment(conf::Config *cfg, size_t channel) :
+        stopFlag(false),
         cfg(cfg),
         epoch(0),
         nextS(0),
@@ -55,7 +56,7 @@ public:
     virtual void initModel() = 0;
 
     //!< Runs the genetic algorithm until the bool pointed to by @arg stopFlag is true, or other halting conditions are met
-    virtual void run(bool *stopFlag) = 0;
+    virtual void run() = 0;
 
     //!< Applies each stimulation once. Useful for clamp tuning and for final model validation. Use @arg fit to turn model fitting on/off.
     virtual void cycle(bool fit) = 0;
@@ -64,6 +65,8 @@ public:
     inline shared_ptr<ExperimentalData> data() const { return _data; }
 
     vector<Model> models;
+
+    bool stopFlag;
 
 protected:
     conf::Config *cfg;

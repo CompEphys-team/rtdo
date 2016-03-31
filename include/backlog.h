@@ -38,7 +38,7 @@ class BacklogVirtual
 public:
     enum SortBy { ErrScore, RankScore };
 
-    BacklogVirtual(int size, int nstims, std::ostream &runtime_log) :
+    BacklogVirtual(int size, int nstims, std::ostream *runtime_log) :
         size(size),
         nstims(nstims),
         log(std::list<LogEntry>(0)),
@@ -49,6 +49,18 @@ public:
     {}
     virtual ~BacklogVirtual() {}
 
+    void printHeader(std::string extras = string())
+    {
+        if ( extras.length() )
+            *out << extras << endl;
+        // Still blindly assuming an ordered 1-to-1 mapping from params to stims
+        *out << "# Epoch\tStimulation\tBest error\tMean error\terror SD";
+        for ( const XMLModel::param &p : config->model.obj->adjustableParams() ) {
+            *out << "\tBest model " << p.name << "\tMean " << p.name << "\t" << p.name << " SD";
+        }
+        *out << endl;
+    }
+
     virtual void touch(errTupel *first, errTupel *last, int generation, int stim) = 0;
     virtual void score() = 0;
     virtual void sort(SortBy s, bool prioritiseTested = false) = 0;
@@ -57,7 +69,7 @@ public:
     int size;
     int nstims;
     std::list<LogEntry> log;
-    std::ostream &out;
+    std::ostream *out;
 
 protected:
     static void *execStatic(void *_this);
@@ -75,7 +87,7 @@ protected:
 class Backlog : public BacklogVirtual
 {
 public:
-    Backlog(int size, int nstims, std::ostream &runtime_log);
+    Backlog(int size, int nstims, ostream *runtime_log);
     ~Backlog();
     void touch(errTupel *first, errTupel *last, int generation, int stim);
     void score();

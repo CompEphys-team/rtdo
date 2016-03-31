@@ -26,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent) :
     model_setup(new ModelSetupDialog),
     performance(new PerformanceDialog),
     compiler(new CompileRunner),
-    vclamp(new Runner(XMLModel::VClamp)),
+    module(nullptr),
     wavegen(new Runner(XMLModel::WaveGen)),
     wavegenNS(new Runner(XMLModel::WaveGenNoveltySearch))
 {
@@ -37,10 +37,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionWavegen_setup, SIGNAL(triggered()), wavegen_setup, SLOT(open()));
     connect(ui->actionModel_setup, SIGNAL(triggered()), model_setup, SLOT(open()));
     connect(ui->actionPerformance, SIGNAL(triggered()), performance, SLOT(open()));
-    connect(vclamp, SIGNAL(processCompleted(bool)), this, SLOT(vclampComplete(bool)));
     connect(wavegen, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
     connect(wavegenNS, SIGNAL(processCompleted(bool)), this, SLOT(wavegenNSComplete(bool)));
-    connect(ui->vclamp_stop, SIGNAL(clicked()), vclamp, SLOT(stop()));
     connect(ui->wavegen_stop, SIGNAL(clicked()), wavegen, SLOT(stop()));
     connect(ui->wavegen_stop_NS, SIGNAL(clicked()), wavegenNS, SLOT(stop()));
 
@@ -56,14 +54,25 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_vclamp_start_clicked()
 {
-    if ( !vclamp->start() )
-        return;
+    if ( !module ) {
+        try {
+            module = new Module();
+        } catch (runtime_error &e) {
+            cerr << "Failed to load module: " << e.what() << endl;
+            return;
+        }
+        connect(module, SIGNAL(complete(int)), this, SLOT(vclampComplete(int)));
+        connect(ui->vclamp_stop, SIGNAL(clicked()), module, SLOT(stop()));
+    }
+    module->push( [=](int) {
+        module->vclamp->run();
+    });
     ui->vclamp_compile->setEnabled(false);
     ui->vclamp_start->setEnabled(false);
     ui->vclamp_stop->setEnabled(true);
 }
 
-void MainWindow::vclampComplete(bool successfully)
+void MainWindow::vclampComplete(int handle)
 {
     ui->vclamp_compile->setEnabled(true);
     ui->vclamp_start->setEnabled(true);
@@ -73,6 +82,10 @@ void MainWindow::vclampComplete(bool successfully)
 void MainWindow::on_vclamp_compile_clicked()
 {
     QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
+    if ( module ) {
+        delete module;
+        module = nullptr;
+    }
     ui->vclamp_compile->setEnabled(false);
     ui->vclamp_start->setEnabled(false);
     compiler->setType(XMLModel::VClamp);

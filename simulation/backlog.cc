@@ -61,7 +61,7 @@ LogEntry::LogEntry(int idx, int generation, int nstims) :
     }
 }
 
-Backlog::Backlog(int size, int nstims, ostream &runtime_log) :
+Backlog::Backlog(int size, int nstims, ostream *runtime_log) :
     BacklogVirtual(size, nstims, runtime_log)
 {}
 
@@ -187,11 +187,11 @@ void BacklogVirtual::exec()
             sd.err[0] = sqrt(sd.err[0] / (rank-1));
 
             // Dump error & param mean/SD to file
-            out << generation << '\t' << stim << '\t' << tmp.begin()->err[stim] << '\t' << mean.err[0] << '\t' << sd.err[0];
+            *out << generation << '\t' << stim << '\t' << tmp.begin()->err[stim] << '\t' << mean.err[0] << '\t' << sd.err[0];
             for ( int i = 0; i < NPARAM; i++ ) {
-                out << '\t' << tmp.begin()->param[i] << '\t' << mean.param[i] << '\t' << sd.param[i];
+                *out << '\t' << tmp.begin()->param[i] << '\t' << mean.param[i] << '\t' << sd.param[i];
             }
-            out << endl;
+            *out << endl;
 
             // Replace outdated log with tmp
             log.clear();
@@ -205,7 +205,7 @@ void BacklogVirtual::exec()
 } // namespace backlog
 
 
-extern "C" backlog::BacklogVirtual *BacklogCreate(int size, int nstims, ostream &out) {
+extern "C" backlog::BacklogVirtual *BacklogCreate(int size, int nstims, ostream *out) {
     return new backlog::Backlog(size, nstims, out);
 }
 

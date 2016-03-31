@@ -32,7 +32,7 @@ public:
     ~VClamp() {}
 
     void initModel();
-    void run(bool *stopFlag);
+    void run();
     void cycle(bool fit);
 
 private:
@@ -77,7 +77,7 @@ VClamp::VClamp(conf::Config *cfg, int logSize, ostream &logOutput, size_t channe
     epos = vector<int>(Nstim, 0);
     initial = vector<int>(Nstim, 1);
 
-    logger = make_shared<backlog::Backlog>(logSize, Nstim, logOutput);
+    logger = make_shared<backlog::Backlog>(logSize, Nstim, &logOutput);
     if ( nchans > 1 )
         _data = make_shared<MultiChannelData>(Nstim, nchans);
     else
@@ -87,6 +87,7 @@ VClamp::VClamp(conf::Config *cfg, int logSize, ostream &logOutput, size_t channe
 void VClamp::initModel()
 {
     currentExperiment = this;
+    *(logger->out) << "# VClamp initialising" << endl;
     if ( !model.final ) {
         modelDefinition( model );
         allocateMem();
@@ -104,9 +105,10 @@ void VClamp::initModel()
     copyStateToDevice();
 }
 
-void VClamp::run(bool *stopFlag)
+void VClamp::run()
 {
     currentExperiment = this;
+    logger->printHeader("# VClamp running");
     if ( RealtimeEnvironment::env()->isSimulating() ) {
         scalar simulatorVars[NVAR], simulatorParams[NPARAM];
         for ( int i = 0; i < NVAR; i++ )
@@ -119,7 +121,7 @@ void VClamp::run(bool *stopFlag)
 
 	unsigned int VSize = NPOP*theSize( model.ftype );
 
-    while ( !*stopFlag )
+    while ( !stopFlag )
     {
         runStim();
         CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
@@ -161,9 +163,10 @@ void VClamp::runStim()
 void VClamp::cycle(bool fit)
 {
     currentExperiment = this;
+    logger->printHeader("# VClamp cycling");
     errTupel errs[NPOP];
     unsigned int VSize = NPOP*theSize( model.ftype );
-    for ( size_t i = 0; i < stims.size(); i++ ) {
+    for ( size_t i = 0; i < stims.size() && !stopFlag; i++ ) {
         nextS = i;
         runStim();
         CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
