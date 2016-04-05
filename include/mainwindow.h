@@ -14,6 +14,7 @@ initial version: 2015-12-03
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <memory>
 #include "channelsetupdialog.h"
 #include "vclampsetupdialog.h"
 #include "wavegensetupdialog.h"
@@ -35,38 +36,39 @@ public:
     ~MainWindow();
 
 private slots:
-    void on_vclamp_start_clicked();
-
+    // pSetup
+    void compile();
     void on_actionSave_configuration_triggered();
-
     void on_actionLoad_configuration_triggered();
 
+    // pWavegen
     void on_wavegen_start_clicked();
-
-    void on_wavegen_compile_clicked();
-
-    void on_vclamp_compile_clicked();
-
-    void vclampComplete(int handle);
-    void wavegenComplete(bool successfully);
-    void wavegenNSComplete(bool successfully);
-
-    void on_wavegen_compile_NS_clicked();
-
     void on_wavegen_start_NS_clicked();
+    void wavegenComplete(bool successfully);
+
+    // pExperiment
+    void qAction(QAction *action);
+    void actionComplete(int handle);
+
+    // page transitions
+    void on_pSetup2Experiment_clicked();
+    void on_pSetup2Wavegen_clicked();
+    void on_pWavegen2Setup_clicked();
+    void on_pExperiment2Setup_clicked();
 
 private:
-    Ui::MainWindow *ui;
-    ChannelSetupDialog *channel_setup;
-    VClampSetupDialog *vclamp_setup;
-    WavegenSetupDialog *wavegen_setup;
-    ModelSetupDialog *model_setup;
-    PerformanceDialog *performance;
+    unique_ptr<Ui::MainWindow> ui;
+    unique_ptr<ChannelSetupDialog> channel_setup;
+    unique_ptr<VClampSetupDialog> vclamp_setup;
+    unique_ptr<WavegenSetupDialog> wavegen_setup;
+    unique_ptr<ModelSetupDialog> model_setup;
+    unique_ptr<PerformanceDialog> performance;
 
-    CompileRunner *compiler;
+    unique_ptr<CompileRunner> compiler;
+    unique_ptr<Runner> wavegen;
+    unique_ptr<Runner> wavegenNS;
+
     Module *module;
-    Runner *wavegen;
-    Runner *wavegenNS;
 };
 
 #endif // MAINWINDOW_H

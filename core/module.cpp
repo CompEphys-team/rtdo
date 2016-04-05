@@ -26,8 +26,7 @@ Module::Module(QObject *parent) :
     lib(nullptr),
     handle_ctr(0),
     _exit(false),
-    _stop(true),
-    t(Module::execStatic, this, config->rt.prio_module, config->rt.ssz_module, config->rt.cpus_module)
+    _stop(true)
 {
     if ( !config->model.load(false) ) {
         string err = string("Unable to load model file '") + config->model.deffile + "'.";
@@ -80,6 +79,9 @@ Module::Module(QObject *parent) :
 
     vclamp = vccreate(config, config->vc.popsize, cout, 0, 1);
     vclamp->initModel();
+
+    // Start thread at the end, when all possible pitfalls are avoided
+    t.reset(new RealtimeThread(Module::execStatic, this, config->rt.prio_module, config->rt.ssz_module, config->rt.cpus_module));
 }
 
 Module::~Module()
@@ -87,7 +89,8 @@ Module::~Module()
     _exit = true;
     stop();
     sem.broadcast();
-    t.join();
+    t->join();
+    vclamp->log()->wait();
 
     void (*vcdestroy)(Experiment **);
     if ( !(*(void**)(&vcdestroy) = dlsym(lib, "VClampDestroy")) ) {

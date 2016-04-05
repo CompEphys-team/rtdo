@@ -14,6 +14,8 @@ initial version: 2015-12-03
 #include "ui_mainwindow.h"
 #include "run.h"
 #include <QFileDialog>
+#include <QMessageBox>
+#include <fstream>
 #include "config.h"
 #include "util.h"
 
@@ -26,21 +28,30 @@ MainWindow::MainWindow(QWidget *parent) :
     model_setup(new ModelSetupDialog),
     performance(new PerformanceDialog),
     compiler(new CompileRunner),
-    module(nullptr),
     wavegen(new Runner(XMLModel::WaveGen)),
-    wavegenNS(new Runner(XMLModel::WaveGenNoveltySearch))
+    wavegenNS(new Runner(XMLModel::WaveGenNoveltySearch)),
+    module(nullptr)
 {
     ui->setupUi(this);
-    connect(channel_setup, SIGNAL(channelsUpdated()), vclamp_setup, SIGNAL(channelsUpdated()));
-    connect(ui->actionVoltage_clamp, SIGNAL(triggered()), vclamp_setup, SLOT(open()));
-    connect(ui->actionChannel_setup, SIGNAL(triggered()), channel_setup, SLOT(open()));
-    connect(ui->actionWavegen_setup, SIGNAL(triggered()), wavegen_setup, SLOT(open()));
-    connect(ui->actionModel_setup, SIGNAL(triggered()), model_setup, SLOT(open()));
-    connect(ui->actionPerformance, SIGNAL(triggered()), performance, SLOT(open()));
-    connect(wavegen, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
-    connect(wavegenNS, SIGNAL(processCompleted(bool)), this, SLOT(wavegenNSComplete(bool)));
-    connect(ui->wavegen_stop, SIGNAL(clicked()), wavegen, SLOT(stop()));
-    connect(ui->wavegen_stop_NS, SIGNAL(clicked()), wavegenNS, SLOT(stop()));
+    ui->stackedWidget->setCurrentWidget(ui->pSetup);
+
+    connect(&*channel_setup, SIGNAL(channelsUpdated()), &*vclamp_setup, SIGNAL(channelsUpdated()));
+    connect(ui->actionVoltage_clamp, SIGNAL(triggered()), &*vclamp_setup, SLOT(open()));
+    connect(ui->actionChannel_setup, SIGNAL(triggered()), &*channel_setup, SLOT(open()));
+    connect(ui->actionWavegen_setup, SIGNAL(triggered()), &*wavegen_setup, SLOT(open()));
+    connect(ui->actionModel_setup, SIGNAL(triggered()), &*model_setup, SLOT(open()));
+    connect(ui->actionPerformance, SIGNAL(triggered()), &*performance, SLOT(open()));
+
+    connect(ui->vclamp_compile, SIGNAL(clicked(bool)), this, SLOT(compile()));
+    connect(ui->wavegen_compile, SIGNAL(clicked(bool)), this, SLOT(compile()));
+    connect(ui->wavegen_compile_NS, SIGNAL(clicked(bool)), this, SLOT(compile()));
+
+    connect(ui->wavegen_stop, SIGNAL(clicked()), &*wavegen, SLOT(stop()));
+    connect(ui->wavegen_stop, SIGNAL(clicked()), &*wavegenNS, SLOT(stop()));
+    connect(&*wavegen, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
+    connect(&*wavegenNS, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
+
+    connect(ui->menuActions, SIGNAL(triggered(QAction*)), this, SLOT(qAction(QAction*)));
 
 #ifndef CONFIG_RT
     ui->actionChannel_setup->setEnabled(false);
@@ -49,49 +60,24 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
-    delete ui;
+    delete module;
 }
 
-void MainWindow::on_vclamp_start_clicked()
-{
-    if ( !module ) {
-        try {
-            module = new Module();
-        } catch (runtime_error &e) {
-            cerr << "Failed to load module: " << e.what() << endl;
-            return;
-        }
-        connect(module, SIGNAL(complete(int)), this, SLOT(vclampComplete(int)));
-        connect(ui->vclamp_stop, SIGNAL(clicked()), module, SLOT(stop()));
-    }
-    module->push( [=](int) {
-        module->vclamp->run();
-    });
-    ui->vclamp_compile->setEnabled(false);
-    ui->vclamp_start->setEnabled(false);
-    ui->vclamp_stop->setEnabled(true);
-}
 
-void MainWindow::vclampComplete(int handle)
-{
-    ui->vclamp_compile->setEnabled(true);
-    ui->vclamp_start->setEnabled(true);
-    ui->vclamp_stop->setEnabled(false);
-}
-
-void MainWindow::on_vclamp_compile_clicked()
+// -------------------------------------------- pSetup -----------------------------------------------------------------
+void MainWindow::compile()
 {
     QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
-    if ( module ) {
-        delete module;
-        module = nullptr;
-    }
-    ui->vclamp_compile->setEnabled(false);
-    ui->vclamp_start->setEnabled(false);
-    compiler->setType(XMLModel::VClamp);
-    if ( compiler->start() )
-        ui->vclamp_start->setEnabled(true);
-    ui->vclamp_compile->setEnabled(true);
+    ui->pSetup->setEnabled(false);
+    QObject *snd = QObject::sender();
+    if ( snd == ui->vclamp_compile )
+        compiler->setType(XMLModel::VClamp);
+    else if ( snd == ui->wavegen_compile )
+        compiler->setType(XMLModel::WaveGen);
+    else if ( snd == ui->wavegen_compile_NS )
+        compiler->setType(XMLModel::WaveGenNoveltySearch);
+    compiler->start();
+    ui->pSetup->setEnabled(true);
     QApplication::restoreOverrideCursor();
 }
 
@@ -114,58 +100,137 @@ void MainWindow::on_actionLoad_configuration_triggered()
     config = new conf::Config(file.toStdString());
 }
 
+
+// -------------------------- pWavegen ---------------------------------------------------------------------------------
 void MainWindow::on_wavegen_start_clicked()
 {
     if ( !wavegen->start() )
         return;
-    ui->wavegen_compile->setEnabled(false);
     ui->wavegen_start->setEnabled(false);
+    ui->wavegen_start_NS->setEnabled(false);
+    ui->pWavegen2Setup->setEnabled(false);
     ui->wavegen_stop->setEnabled(true);
-}
-
-void MainWindow::wavegenComplete(bool successfully)
-{
-    ui->wavegen_compile->setEnabled(true);
-    ui->wavegen_start->setEnabled(true);
-    ui->wavegen_stop->setEnabled(false);
-}
-
-void MainWindow::on_wavegen_compile_clicked()
-{
-    QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
-    ui->wavegen_compile->setEnabled(false);
-    ui->wavegen_start->setEnabled(false);
-    compiler->setType(XMLModel::WaveGen);
-    if ( compiler->start() )
-        ui->wavegen_start->setEnabled(true);
-    ui->wavegen_compile->setEnabled(true);
-    QApplication::restoreOverrideCursor();
 }
 
 void MainWindow::on_wavegen_start_NS_clicked()
 {
     if ( !wavegenNS->start() )
         return;
-    ui->wavegen_compile_NS->setEnabled(false);
+    ui->wavegen_start->setEnabled(false);
     ui->wavegen_start_NS->setEnabled(false);
-    ui->wavegen_stop_NS->setEnabled(true);
+    ui->pWavegen2Setup->setEnabled(false);
+    ui->wavegen_stop->setEnabled(true);
 }
 
-void MainWindow::wavegenNSComplete(bool successfully)
+void MainWindow::wavegenComplete(bool successfully)
 {
-    ui->wavegen_compile_NS->setEnabled(true);
+    ui->wavegen_start->setEnabled(true);
     ui->wavegen_start_NS->setEnabled(true);
-    ui->wavegen_stop_NS->setEnabled(false);
+    ui->pWavegen2Setup->setEnabled(true);
+    ui->wavegen_stop->setEnabled(false);
 }
 
-void MainWindow::on_wavegen_compile_NS_clicked()
+
+// ------------------------------------ pExperiment -----------------------------------------------------------------------
+void MainWindow::qAction(QAction *action)
+{
+    int handle = -1;
+    if ( action == ui->actVCFrontload ) {
+        handle = module->push( [=](int) {
+            for ( unsigned int i = 0; i < config->vc.cacheSize && !module->vclamp->stopFlag; i++ )
+                module->vclamp->cycle(false);
+        });
+    } else if ( action == ui->actVCCycle ) {
+        handle = module->push( [=](int) {
+            module->vclamp->cycle(true);
+        });
+    } else if ( action == ui->actVCRun ) {
+        handle = module->push( [=](int) {
+            module->vclamp->run();
+        });
+    } else if ( action == ui->actModelsSaveAll ) {
+        handle = module->push( [=](int h) {
+            cerr << "Model saving NYI" << endl;
+//            shared_ptr<backlog::BacklogVirtual> logp = m->vclamp->log();
+//            logp->score();
+//            logp->sort(backlog::BacklogVirtual::ErrScore, true);
+//            ofstream models_logf(m.outdir + "/" + to_string(h) + "_models.log");
+//            write_backlog(models_logf, &*logp, false);
+        });
+    } else if ( action == ui->actModelsSaveEval ) {
+        handle = module->push( [=](int h) {
+            cerr << "Model saving NYI" << endl;
+        });
+    } else if ( action == ui->actTracesSave ) {
+        handle = module->push( [=](int h) {
+            ofstream tf(module->outdir + "/" + to_string(h) + ".traces");
+            module->vclamp->data()->dump(tf);
+        });
+    } else if ( action == ui->actTracesDrop ) {
+        handle = module->push( [=](int) {
+            module->vclamp->data()->clear();
+        });
+    }
+
+    QString label = QString("(%1) ").arg(handle);
+    QWidget *widget = action->associatedWidgets().first();
+    if ( widget ) {
+        QMenu *menu = dynamic_cast<QMenu*>(widget);
+        if ( menu )
+            label += menu->title() + QString(": ");
+    }
+    label += action->text();
+    QListWidgetItem *item = new QListWidgetItem(label, ui->actionQ);
+    item->setData(Qt::UserRole, QVariant(handle));
+}
+
+void MainWindow::actionComplete(int handle)
+{
+    QListWidgetItem *item = ui->actionQ->item(0);
+    while ( item && item->data(Qt::UserRole) <= handle ) {
+        delete item;
+        item = ui->actionQ->item(0);
+    }
+}
+
+
+// -------------------------------------------- page transitions ------------------------------------------------------------
+void MainWindow::on_pSetup2Experiment_clicked()
 {
     QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
-    ui->wavegen_compile_NS->setEnabled(false);
-    ui->wavegen_start_NS->setEnabled(false);
-    compiler->setType(XMLModel::WaveGenNoveltySearch);
-    if ( compiler->start() )
-        ui->wavegen_start_NS->setEnabled(true);
-    ui->wavegen_compile_NS->setEnabled(true);
+    try {
+        module = new Module(this);
+        connect(module, SIGNAL(complete(int)), this, SLOT(actionComplete(int)));
+        ui->menuActions->setEnabled(true);
+        ui->stackedWidget->setCurrentWidget(ui->pExperiment);
+    } catch ( runtime_error &e ) {
+        cerr << e.what() << endl;
+        module = nullptr;
+    }
     QApplication::restoreOverrideCursor();
+}
+
+void MainWindow::on_pSetup2Wavegen_clicked()
+{
+    ui->stackedWidget->setCurrentWidget(ui->pWavegen);
+}
+
+void MainWindow::on_pWavegen2Setup_clicked()
+{
+    ui->stackedWidget->setCurrentWidget(ui->pSetup);
+}
+
+void MainWindow::on_pExperiment2Setup_clicked()
+{
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Exit", "Exit experiment mode and discard unsaved progress?",
+                                  QMessageBox::Yes | QMessageBox::No);
+    if ( reply == QMessageBox::Yes ) {
+        QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
+        delete module;
+        module = nullptr;
+        QApplication::restoreOverrideCursor();
+        ui->menuActions->setEnabled(false);
+        ui->stackedWidget->setCurrentWidget(ui->pSetup);
+    }
 }

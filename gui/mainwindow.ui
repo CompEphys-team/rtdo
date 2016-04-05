@@ -14,113 +14,158 @@
    <string>Real-time Dynamic Observer</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <widget class="QWidget" name="layoutWidget">
+   <widget class="QStackedWidget" name="stackedWidget">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>50</y>
-      <width>476</width>
-      <height>33</height>
+      <y>0</y>
+      <width>731</width>
+      <height>461</height>
      </rect>
     </property>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QPushButton" name="wavegen_compile">
-       <property name="text">
-        <string>Compile waveform generator</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="wavegen_start">
-       <property name="text">
-        <string>Generate waveforms</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="wavegen_stop">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Interrupt</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="layoutWidget">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>467</width>
-      <height>33</height>
-     </rect>
+    <property name="currentIndex">
+     <number>2</number>
     </property>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QPushButton" name="vclamp_compile">
-       <property name="text">
-        <string>Compile voltage clamp</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="vclamp_start">
-       <property name="text">
-        <string>Start voltage clamp fitting</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="vclamp_stop">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Stop</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="layoutWidget_2">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>90</y>
-      <width>518</width>
-      <height>33</height>
-     </rect>
-    </property>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
-      <widget class="QPushButton" name="wavegen_compile_NS">
-       <property name="text">
-        <string>Compile NS waveform generator</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="wavegen_start_NS">
-       <property name="text">
-        <string>Generate NS waveforms</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="wavegen_stop_NS">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Interrupt</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QWidget" name="pSetup">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>238</width>
+        <height>107</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QPushButton" name="vclamp_compile">
+         <property name="text">
+          <string>Compile voltage clamp</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="wavegen_compile">
+         <property name="text">
+          <string>Compile waveform generator</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="wavegen_compile_NS">
+         <property name="text">
+          <string>Compile NS waveform generator</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>0</y>
+        <width>243</width>
+        <height>70</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QPushButton" name="pSetup2Experiment">
+         <property name="text">
+          <string>Go to experiment mode</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pSetup2Wavegen">
+         <property name="text">
+          <string>Go to waveform generation mode</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="pWavegen">
+     <widget class="QWidget" name="">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>185</width>
+        <height>107</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QPushButton" name="wavegen_start">
+         <property name="text">
+          <string>Generate waveforms</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="wavegen_start_NS">
+         <property name="text">
+          <string>Generate NS waveforms</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="wavegen_stop">
+         <property name="text">
+          <string>Interrupt</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QPushButton" name="pWavegen2Setup">
+      <property name="geometry">
+       <rect>
+        <x>230</x>
+        <y>0</y>
+        <width>122</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Return to setup</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="pExperiment">
+     <widget class="QListWidget" name="actionQ">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>256</width>
+        <height>192</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use the Actions menu to queue actions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="pExperiment2Setup">
+      <property name="geometry">
+       <rect>
+        <x>310</x>
+        <y>0</y>
+        <width>122</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Return to setup</string>
+      </property>
+     </widget>
+    </widget>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -145,7 +190,41 @@
     <addaction name="actionLoad_configuration"/>
     <addaction name="actionSave_configuration"/>
    </widget>
+   <widget class="QMenu" name="menuActions">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>Actions</string>
+    </property>
+    <widget class="QMenu" name="menuVoltage_clamp">
+     <property name="title">
+      <string>Voltage clamp</string>
+     </property>
+     <addaction name="actVCFrontload"/>
+     <addaction name="actVCCycle"/>
+     <addaction name="actVCRun"/>
+    </widget>
+    <widget class="QMenu" name="menuModels">
+     <property name="title">
+      <string>Models</string>
+     </property>
+     <addaction name="actModelsSaveAll"/>
+     <addaction name="actModelsSaveEval"/>
+    </widget>
+    <widget class="QMenu" name="menuTraces">
+     <property name="title">
+      <string>Traces</string>
+     </property>
+     <addaction name="actTracesDrop"/>
+     <addaction name="actTracesSave"/>
+    </widget>
+    <addaction name="menuVoltage_clamp"/>
+    <addaction name="menuModels"/>
+    <addaction name="menuTraces"/>
+   </widget>
    <addaction name="menuRTDO"/>
+   <addaction name="menuActions"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -189,6 +268,71 @@
   <action name="actionPerformance">
    <property name="text">
     <string>Performance...</string>
+   </property>
+  </action>
+  <action name="action_compileExp">
+   <property name="text">
+    <string>Live experiment</string>
+   </property>
+  </action>
+  <action name="action_compileGA">
+   <property name="text">
+    <string>GA waveform generation</string>
+   </property>
+  </action>
+  <action name="action_compileNS">
+   <property name="text">
+    <string>NS waveform generation</string>
+   </property>
+  </action>
+  <action name="action_loadExp">
+   <property name="text">
+    <string>Live experiment</string>
+   </property>
+  </action>
+  <action name="action_runGA">
+   <property name="text">
+    <string>GA waveform generation</string>
+   </property>
+  </action>
+  <action name="action_runNS">
+   <property name="text">
+    <string>NS waveform generation</string>
+   </property>
+  </action>
+  <action name="actVCFrontload">
+   <property name="text">
+    <string>Frontload cache</string>
+   </property>
+  </action>
+  <action name="actVCCycle">
+   <property name="text">
+    <string>Cycle stimulations</string>
+   </property>
+  </action>
+  <action name="actVCRun">
+   <property name="text">
+    <string>Fit models</string>
+   </property>
+  </action>
+  <action name="actModelsSaveAll">
+   <property name="text">
+    <string>Save to file</string>
+   </property>
+  </action>
+  <action name="actModelsSaveEval">
+   <property name="text">
+    <string>Save fully evaluated only</string>
+   </property>
+  </action>
+  <action name="actTracesDrop">
+   <property name="text">
+    <string>Drop</string>
+   </property>
+  </action>
+  <action name="actTracesSave">
+   <property name="text">
+    <string>Save to file</string>
    </property>
   </action>
  </widget>

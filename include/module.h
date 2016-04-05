@@ -16,6 +16,7 @@ initial version: 2016-03-14
 #include <QObject>
 #include <functional>
 #include <queue>
+#include <memory>
 #include "experiment.h"
 #include "realtimethread.h"
 #include "realtimeconditionvariable.h"
@@ -55,7 +56,7 @@ private:
 
     RealtimeConditionVariable sem;
     bool _exit, _stop;
-    RealtimeThread t;
+    std::unique_ptr<RealtimeThread> t;
 };
 
 #endif // MODULE_H

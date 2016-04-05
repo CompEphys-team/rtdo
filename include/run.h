@@ -19,7 +19,6 @@ initial version: 2015-12-08
 
 bool compile_model(XMLModel::outputType type);
 
-bool run_vclamp(bool *stopFlag = 0);
 bool run_wavegen(int focusParam = -1, bool *stopFlag = 0);
 bool run_wavegen_NS(bool *stopFlag = 0);
 
