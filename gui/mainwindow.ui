@@ -30,7 +30,7 @@
      <property name="enabled">
       <bool>true</bool>
      </property>
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -63,7 +63,7 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <property name="geometry">
        <rect>
         <x>270</x>
@@ -91,7 +91,7 @@
      </widget>
     </widget>
     <widget class="QWidget" name="pWavegen">
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -144,7 +144,7 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>256</width>
+        <width>251</width>
         <height>192</height>
        </rect>
       </property>
@@ -155,7 +155,7 @@
      <widget class="QPushButton" name="pExperiment2Setup">
       <property name="geometry">
        <rect>
-        <x>310</x>
+        <x>270</x>
         <y>0</y>
         <width>122</width>
         <height>31</height>
@@ -163,6 +163,48 @@
       </property>
       <property name="text">
        <string>Return to setup</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btnQStart">
+      <property name="geometry">
+       <rect>
+        <x>40</x>
+        <y>200</y>
+        <width>101</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btnQRemove">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>200</y>
+        <width>31</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>-</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btnQSkip">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>150</x>
+        <y>200</y>
+        <width>101</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Skip</string>
       </property>
      </widget>
     </widget>

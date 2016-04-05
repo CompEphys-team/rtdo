@@ -49,6 +49,9 @@ private slots:
     // pExperiment
     void qAction(QAction *action);
     void actionComplete(int handle);
+    void on_btnQRemove_clicked();
+    void on_btnQStart_clicked();
+    void on_btnQSkip_clicked();
 
     // page transitions
     void on_pSetup2Experiment_clicked();
@@ -57,7 +60,7 @@ private slots:
     void on_pExperiment2Setup_clicked();
 
 private:
-    unique_ptr<Ui::MainWindow> ui;
+    Ui::MainWindow *ui;
     unique_ptr<ChannelSetupDialog> channel_setup;
     unique_ptr<VClampSetupDialog> vclamp_setup;
     unique_ptr<WavegenSetupDialog> wavegen_setup;

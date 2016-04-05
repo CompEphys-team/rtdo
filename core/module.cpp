@@ -26,7 +26,8 @@ Module::Module(QObject *parent) :
     lib(nullptr),
     handle_ctr(0),
     _exit(false),
-    _stop(true)
+    _stop(true),
+    _busy(false)
 {
     if ( !config->model.load(false) ) {
         string err = string("Unable to load model file '") + config->model.deffile + "'.";
@@ -82,6 +83,7 @@ Module::Module(QObject *parent) :
 
     // Start thread at the end, when all possible pitfalls are avoided
     t.reset(new RealtimeThread(Module::execStatic, this, config->rt.prio_module, config->rt.ssz_module, config->rt.cpus_module));
+    lock.signal();
 }
 
 Module::~Module()
@@ -111,11 +113,14 @@ void Module::exec()
 {
     while ( !_exit ) {
         sem.wait();
-        vclamp->stopFlag = false;
-        while ( !_stop && q.size() ) {
-            // Todo: Improve q thread safety
+
+        lock.wait(); // Locked until vvvvvvvvvvvvvvvvvv
+        _busy = true;
+        while ( !_stop && q.size() ) { //    while
+            vclamp->stopFlag = false;
             auto p = q.front();
-            q.pop();
+            q.pop_front();
+            lock.signal(); // Lock ends ^^^^^^^^^^^^^^^
 
             // Tee output to new logfile
             ofstream logf(outdir + "/" + to_string(p.first) + "_results.log");
@@ -152,28 +157,83 @@ void Module::exec()
             tee.flush();
             vclamp->log()->out =& cout;
 
+            lock.wait(); // Locked until vvvvvvvvvvvvvvvvvvvvvvv
             emit complete(p.first);
-        }
+        } //                            end while
         _stop = true;
+        _busy = false;
+        lock.signal(); // Lock ends ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     }
 }
 
 int Module::push(std::function<void(int)> fn)
 {
+    lock.wait();
     int handle = ++handle_ctr;
-    q.push(make_pair(handle, fn));
-    _stop = false;
-    sem.signal();
+    q.push_back(make_pair(handle, fn));
+    lock.signal();
+
     return handle;
+}
+
+bool Module::erase(int handle)
+{
+    lock.wait();
+    bool ret = false;
+    for ( auto p = q.begin(); p != q.end(); ++p ) {
+        if ( p->first == handle ) {
+            q.erase(p);
+            ret = true;
+            break;
+        }
+    }
+    lock.signal();
+
+    return ret;
+}
+
+bool Module::busy()
+{
+    lock.wait();
+    bool ret = _busy;
+    lock.signal();
+
+    return ret;
+}
+
+size_t Module::qSize()
+{
+    lock.wait();
+    size_t ret = q.size();
+    lock.signal();
+
+    return ret;
+}
+
+void Module::start()
+{
+    lock.wait();
+    if ( !_busy && q.size() ) {
+        _stop = false;
+        sem.signal();
+    }
+    lock.signal();
 }
 
 void Module::stop()
 {
-    // Todo: Improve q thread safety
-    _stop = true;
-    while ( q.size() )
-        q.pop();
+    lock.wait();
     vclamp->stopFlag = true;
+    _stop = true;
+    q.clear();
+    lock.signal();
+}
+
+void Module::skip()
+{
+    lock.wait();
+    vclamp->stopFlag = true;
+    lock.signal();
 }
 
 

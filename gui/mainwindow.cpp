@@ -61,6 +61,7 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete module;
+    delete ui;
 }
 
 
@@ -190,6 +191,43 @@ void MainWindow::actionComplete(int handle)
     while ( item && item->data(Qt::UserRole) <= handle ) {
         delete item;
         item = ui->actionQ->item(0);
+    }
+
+    if ( !module->busy() ) {
+        ui->btnQStart->setText("Start");
+        ui->btnQSkip->setEnabled(false);
+    }
+}
+
+void MainWindow::on_btnQRemove_clicked()
+{
+    if ( ui->actionQ->currentIndex().row() > 0 || !module->busy() ) {
+        QListWidgetItem *item = ui->actionQ->currentItem();
+        if ( module->erase(item->data(Qt::UserRole).toInt()) )
+            delete item;
+    } else if ( ui->actionQ->currentIndex().row() == 0 ) {
+        on_btnQSkip_clicked();
+    }
+}
+
+void MainWindow::on_btnQStart_clicked()
+{
+    if ( module->busy() ) {
+        module->stop();
+        ui->actionQ->clear();
+    } else {
+        if ( module->qSize() ) {
+            module->start();
+            ui->btnQStart->setText("Stop");
+            ui->btnQSkip->setEnabled(true);
+        }
+    }
+}
+
+void MainWindow::on_btnQSkip_clicked()
+{
+    if ( module->busy() ) {
+        module->skip();
     }
 }
 
