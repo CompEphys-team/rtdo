@@ -138,14 +138,24 @@ void MainWindow::wavegenComplete(bool successfully)
 void MainWindow::qAction(QAction *action)
 {
     int handle = -1;
-    QString addendum;
+
+    QString label;
+    QWidget *widget = action->associatedWidgets().first();
+    if ( widget ) {
+        QMenu *menu = dynamic_cast<QMenu*>(widget);
+        if ( menu )
+            label += menu->title() + QString(": ");
+    }
+    label += action->text();
+
     if ( action == ui->actVCFrontload ) {
         QMessageBox::StandardButton reply;
         reply = QMessageBox::question(this, action->text(), "Fit models during this action?",
                                       QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
         if ( reply == QMessageBox::Cancel )
             return;
-        handle = module->push( [=](int) {
+        label += reply == QMessageBox::Yes ? ", fitting" : ", no fitting";
+        handle = module->push(label.toStdString(), [=](int) {
             for ( unsigned int i = 0; i < config->vc.cacheSize && !module->vclamp->stopFlag; i++ )
                 module->vclamp->cycle( reply == QMessageBox::Yes );
         });
@@ -155,7 +165,8 @@ void MainWindow::qAction(QAction *action)
                                       QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
         if ( reply == QMessageBox::Cancel )
             return;
-        handle = module->push( [=](int) {
+        label += reply == QMessageBox::Yes ? ", fitting" : ", no fitting";
+        handle = module->push(label.toStdString(), [=](int) {
             module->vclamp->cycle( reply == QMessageBox::Yes );
         });
     } else if ( action == ui->actVCRun ) {
@@ -163,41 +174,34 @@ void MainWindow::qAction(QAction *action)
         int nEpochs = QInputDialog::getInt(this, action->text(), "Number of epochs (0 = unlimited)", 0, 0, INT_MAX, 1, &ok);
         if ( !ok )
             return;
-        handle = module->push( [=](int) {
+        label += QString(", %1 epochs").arg(nEpochs);
+        handle = module->push(label.toStdString(), [=](int) {
             module->vclamp->run(nEpochs);
         });
     } else if ( action == ui->actModelsSaveAll ) {
-        handle = module->push( [=](int h) {
+        handle = module->push(label.toStdString(), [=](int h) {
             ofstream logf(module->outdir + "/" + to_string(h) + "_modelsAll.log");
             module->vclamp->log()->score();
             write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::ErrScore, true), false);
         });
     } else if ( action == ui->actModelsSaveEval ) {
-        handle = module->push( [=](int h) {
+        handle = module->push(label.toStdString(), [=](int h) {
             ofstream logf(module->outdir + "/" + to_string(h) + "_modelsEval.log");
             module->vclamp->log()->score();
             write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::ErrScore, true), true);
         });
     } else if ( action == ui->actTracesSave ) {
-        handle = module->push( [=](int h) {
+        handle = module->push(label.toStdString(), [=](int h) {
             ofstream tf(module->outdir + "/" + to_string(h) + ".traces");
             module->vclamp->data()->dump(tf);
         });
     } else if ( action == ui->actTracesDrop ) {
-        handle = module->push( [=](int) {
+        handle = module->push(label.toStdString(), [=](int) {
             module->vclamp->data()->clear();
         });
     }
 
-    QString label = QString("(%1) ").arg(handle);
-    QWidget *widget = action->associatedWidgets().first();
-    if ( widget ) {
-        QMenu *menu = dynamic_cast<QMenu*>(widget);
-        if ( menu )
-            label += menu->title() + QString(": ");
-    }
-    label += action->text();
-    QListWidgetItem *item = new QListWidgetItem(label, ui->actionQ);
+    QListWidgetItem *item = new QListWidgetItem(QString("(%1) %2").arg(handle).arg(label), ui->actionQ);
     item->setData(Qt::UserRole, QVariant(handle));
 }
 

@@ -28,9 +28,10 @@ public:
     Module(QObject *parent = nullptr);
     ~Module();
 
-    //!< Queue @arg fn to run on the Module thread. Returns a unique handle to the queued function.
-    //! @arg fn will typically be a lambda function containing a call to an Experiment function
-    int push(std::function<void(int handle)> fn);
+    //!< Queue @arg fn to run on the Module thread. Returns a unique handle to the queued function, which is also passed to it on execution.
+    //! @arg fn will typically be a lambda function containing a call to an Experiment function.
+    //! @arg logEntry is a human-readable string used in log entries.
+    int push(std::string logEntry, std::function<void(int handle)> fn);
 
     //!< Erase the action referred to by @arg handle. Can only affect actions that have not yet started.
     //! @return true if an action has been removed
@@ -62,9 +63,22 @@ private:
     static void *execStatic(void *);
     void exec();
 
+    struct action
+    {
+        int handle;
+        std::string logEntry;
+        std::function<void(int)> fn;
+
+        action(int h, std::string l, std::function<void(int)> f) :
+            handle(h),
+            logEntry(l),
+            fn(f)
+        {}
+    };
+
     void *lib;
 
-    std::deque<std::pair<int, std::function<void(int)>>> q;
+    std::deque<action> q;
 
     int handle_ctr;
 

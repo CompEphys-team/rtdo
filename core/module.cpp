@@ -111,6 +111,8 @@ void *Module::execStatic(void *_this)
 
 void Module::exec()
 {
+    ofstream actionLog(outdir + "/actions.log");
+
     while ( !_exit ) {
         sem.wait();
 
@@ -118,19 +120,20 @@ void Module::exec()
         _busy = true;
         while ( !_stop && q.size() ) { //    while
             vclamp->stopFlag = false;
-            auto p = q.front();
+            action p = q.front();
             q.pop_front();
             lock.signal(); // Lock ends ^^^^^^^^^^^^^^^
 
             // Tee output to new logfile
-            ofstream logf(outdir + "/" + to_string(p.first) + "_results.log");
+            ofstream logf(outdir + "/" + to_string(p.handle) + "_results.log");
             teestream tee(logf, cout);
             vclamp->log()->wait();
             vclamp->log()->out->flush();
             vclamp->log()->out =& tee;
+            tee << "# Action " << p.handle << ": <" << p.logEntry << "> begins..." << endl;
 
             // Save config
-            config->save(outdir + "/" + to_string(p.first) + "_config.xml");
+            config->save(outdir + "/" + to_string(p.handle) + "_config.xml");
 
             // Set up I/O
             RealtimeEnvironment *&env = RealtimeEnvironment::env();
@@ -150,15 +153,20 @@ void Module::exec()
             env->useSimulator(false);
 
             // Invoke
-            p.second(p.first);
+            p.fn(p.handle);
+
+            string status = vclamp->stopFlag ? "ended on user request" : "completed normally";
+            actionLog << p.handle << '\t' << p.logEntry << '\t' << status << endl;
 
             // Wait for backlog completion and revoke tee
             vclamp->log()->wait();
+            tee << "# Action " << p.handle << ": <" << p.logEntry << "> " << status << endl;
             tee.flush();
             vclamp->log()->out =& cout;
+            // tee and logf destroyed on loop end
 
             lock.wait(); // Locked until vvvvvvvvvvvvvvvvvvvvvvv
-            emit complete(p.first);
+            emit complete(p.handle);
         } //                            end while
         _stop = true;
         _busy = false;
@@ -166,11 +174,11 @@ void Module::exec()
     }
 }
 
-int Module::push(std::function<void(int)> fn)
+int Module::push(std::string logEntry, std::function<void(int)> fn)
 {
     lock.wait();
     int handle = ++handle_ctr;
-    q.push_back(make_pair(handle, fn));
+    q.push_back(action(handle, logEntry, fn));
     lock.signal();
 
     return handle;
@@ -181,7 +189,7 @@ bool Module::erase(int handle)
     lock.wait();
     bool ret = false;
     for ( auto p = q.begin(); p != q.end(); ++p ) {
-        if ( p->first == handle ) {
+        if ( p->handle == handle ) {
             q.erase(p);
             ret = true;
             break;

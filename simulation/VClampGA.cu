@@ -129,9 +129,6 @@ void VClamp::run(int nEpochs)
         procreateGeneric();
         ++epoch;
     }
-
-    logger->wait();
-    *logger->out << "# VClamp run ended on " << (stopFlag ? "user request" : "epoch count") << endl;
 }
 
 void VClamp::runStim()
@@ -168,7 +165,7 @@ void VClamp::cycle(bool fit)
 {
     currentExperiment = this;
     logger->printHeader("# VClamp cycling");
-    errTupel errs[NPOP];
+    errTupel errs[fit ? 1 : NPOP];
     unsigned int VSize = NPOP*theSize( model.ftype );
     for ( size_t i = 0; i < stims.size() && !stopFlag; i++ ) {
         nextS = i;
@@ -189,8 +186,8 @@ void VClamp::cycle(bool fit)
         ++epoch;
     }
 
-    logger->wait();
-    *logger->out << "# VClamp cycle ended " << (stopFlag ? "on user request" : "normally") << endl;
+    if ( !fit )
+        logger->wait();
 }
 
 
