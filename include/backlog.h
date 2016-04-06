@@ -63,7 +63,7 @@ public:
 
     virtual void touch(errTupel *first, errTupel *last, int generation, int stim) = 0;
     virtual void score() = 0;
-    virtual void sort(SortBy s, bool prioritiseTested = false) = 0;
+    virtual std::vector<const LogEntry*> sort(SortBy s, bool prioritiseTested = false) const = 0;
     virtual void wait() = 0;
 
     int size;
@@ -91,7 +91,7 @@ public:
     ~Backlog();
     void touch(errTupel *first, errTupel *last, int generation, int stim);
     void score();
-    void sort(SortBy s, bool prioritiseTested = false);
+    std::vector<const LogEntry *> sort(SortBy s, bool prioritiseTested = false) const;
     void wait();
 };
 

@@ -25,19 +25,15 @@ bool uidMatch(LogEntry &e)
     return e.uid == target;
 }
 
-bool compareErrScore(const LogEntry &lhs, const LogEntry &rhs)
+bool prioritiseTested;
+bool compareErrScore(const LogEntry *lhs, const LogEntry *rhs)
 {
-    return lhs.errScore < rhs.errScore;
+    return (prioritiseTested && lhs->tested && !rhs->tested) || (lhs->errScore < rhs->errScore);
 }
 
-bool compareRankScore(const LogEntry &lhs, const LogEntry &rhs)
+bool compareRankScore(const LogEntry *lhs, const LogEntry *rhs)
 {
-    return lhs.rankScore < rhs.rankScore;
-}
-
-bool compareTested(const LogEntry &lhs, const LogEntry &rhs)
-{
-    return lhs.tested && !rhs.tested;
+    return (prioritiseTested && lhs->tested && !rhs->tested) || (lhs->rankScore < rhs->rankScore);
 }
 
 LogEntry::LogEntry() : // Default construction for dummy entries, i.e. mean/sd in BacklogVirtual::exec
@@ -109,20 +105,26 @@ void Backlog::score()
     }
 }
 
-void Backlog::sort(SortBy s, bool prioritiseTested)
+std::vector<const LogEntry *> Backlog::sort(SortBy s, bool _prioritiseTested) const
 {
+    std::vector<const LogEntry*> ret(log.size());
+    auto rit = ret.begin();
+    auto lit = log.begin();
+    for ( ; lit != log.end(); ++rit, ++lit ) {
+        *rit = &*lit;
+    }
+
+    prioritiseTested = _prioritiseTested;
     switch ( s ) {
     case ErrScore:
-        log.sort(compareErrScore);
+        std::sort(ret.begin(), ret.end(), compareErrScore);
         break;
     case RankScore:
-        log.sort(compareRankScore);
+        std::sort(ret.begin(), ret.end(), compareRankScore);
         break;
     }
 
-    if ( prioritiseTested ) {
-        log.sort(compareTested);
-    }
+    return ret;
 }
 
 void Backlog::wait()

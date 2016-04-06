@@ -18,6 +18,7 @@ initial version: 2015-12-03
 #include <fstream>
 #include "config.h"
 #include "util.h"
+#include "backlog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -143,7 +144,7 @@ void MainWindow::qAction(QAction *action)
         });
     } else if ( action == ui->actVCCycle ) {
         handle = module->push( [=](int) {
-            module->vclamp->cycle(true);
+            module->vclamp->cycle(false);
         });
     } else if ( action == ui->actVCRun ) {
         handle = module->push( [=](int) {
@@ -151,16 +152,15 @@ void MainWindow::qAction(QAction *action)
         });
     } else if ( action == ui->actModelsSaveAll ) {
         handle = module->push( [=](int h) {
-            cerr << "Model saving NYI" << endl;
-//            shared_ptr<backlog::BacklogVirtual> logp = m->vclamp->log();
-//            logp->score();
-//            logp->sort(backlog::BacklogVirtual::ErrScore, true);
-//            ofstream models_logf(m.outdir + "/" + to_string(h) + "_models.log");
-//            write_backlog(models_logf, &*logp, false);
+            ofstream logf(module->outdir + "/" + to_string(h) + "_modelsAll.log");
+            module->vclamp->log()->score();
+            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::ErrScore, true), false);
         });
     } else if ( action == ui->actModelsSaveEval ) {
         handle = module->push( [=](int h) {
-            cerr << "Model saving NYI" << endl;
+            ofstream logf(module->outdir + "/" + to_string(h) + "_modelsEval.log");
+            module->vclamp->log()->score();
+            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::ErrScore, true), true);
         });
     } else if ( action == ui->actTracesSave ) {
         handle = module->push( [=](int h) {
