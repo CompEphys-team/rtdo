@@ -15,6 +15,7 @@ initial version: 2015-12-03
 #include "run.h"
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QInputDialog>
 #include <fstream>
 #include "config.h"
 #include "util.h"
@@ -137,18 +138,33 @@ void MainWindow::wavegenComplete(bool successfully)
 void MainWindow::qAction(QAction *action)
 {
     int handle = -1;
+    QString addendum;
     if ( action == ui->actVCFrontload ) {
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question(this, action->text(), "Fit models during this action?",
+                                      QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+        if ( reply == QMessageBox::Cancel )
+            return;
         handle = module->push( [=](int) {
             for ( unsigned int i = 0; i < config->vc.cacheSize && !module->vclamp->stopFlag; i++ )
-                module->vclamp->cycle(false);
+                module->vclamp->cycle( reply == QMessageBox::Yes );
         });
     } else if ( action == ui->actVCCycle ) {
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question(this, action->text(), "Fit models during this action?",
+                                      QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+        if ( reply == QMessageBox::Cancel )
+            return;
         handle = module->push( [=](int) {
-            module->vclamp->cycle(false);
+            module->vclamp->cycle( reply == QMessageBox::Yes );
         });
     } else if ( action == ui->actVCRun ) {
+        bool ok;
+        int nEpochs = QInputDialog::getInt(this, action->text(), "Number of epochs (0 = unlimited)", 0, 0, INT_MAX, 1, &ok);
+        if ( !ok )
+            return;
         handle = module->push( [=](int) {
-            module->vclamp->run();
+            module->vclamp->run(nEpochs);
         });
     } else if ( action == ui->actModelsSaveAll ) {
         handle = module->push( [=](int h) {

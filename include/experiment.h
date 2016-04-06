@@ -56,7 +56,7 @@ public:
     virtual void initModel() = 0;
 
     //!< Runs the genetic algorithm until the bool pointed to by @arg stopFlag is true, or other halting conditions are met
-    virtual void run() = 0;
+    virtual void run(int nEpochs = 0) = 0;
 
     //!< Applies each stimulation once. Useful for clamp tuning and for final model validation. Use @arg fit to turn model fitting on/off.
     virtual void cycle(bool fit) = 0;

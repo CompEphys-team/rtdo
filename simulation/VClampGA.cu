@@ -32,7 +32,7 @@ public:
     ~VClamp() {}
 
     void initModel();
-    void run();
+    void run(int nEpochs = 0);
     void cycle(bool fit);
 
 private:
@@ -105,7 +105,7 @@ void VClamp::initModel()
     copyStateToDevice();
 }
 
-void VClamp::run()
+void VClamp::run(int nEpochs)
 {
     currentExperiment = this;
     logger->printHeader("# VClamp running");
@@ -121,13 +121,17 @@ void VClamp::run()
 
 	unsigned int VSize = NPOP*theSize( model.ftype );
 
-    while ( !stopFlag )
+    int epEnd = epoch + nEpochs;
+    while ( !stopFlag && (!nEpochs || epoch < epEnd) )
     {
         runStim();
         CHECK_CUDA_ERRORS( cudaMemcpy( errHH, d_errHH, VSize, cudaMemcpyDeviceToHost ) );
         procreateGeneric();
         ++epoch;
     }
+
+    logger->wait();
+    *logger->out << "# VClamp run ended on " << (stopFlag ? "user request" : "epoch count") << endl;
 }
 
 void VClamp::runStim()
@@ -185,8 +189,8 @@ void VClamp::cycle(bool fit)
         ++epoch;
     }
 
-    if ( !fit )
-        logger->wait();
+    logger->wait();
+    *logger->out << "# VClamp cycle ended " << (stopFlag ? "on user request" : "normally") << endl;
 }
 
 
