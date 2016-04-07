@@ -80,6 +80,8 @@ void VClampSetupDialog::accept()
     config->vc.cacheSize = (unsigned int)ui->cacheSize->value();
     config->vc.cacheUseMedian = ui->cacheUseMedian->isChecked();
 
+    emit configChanged();
+
     QDialog::accept();
 }
 

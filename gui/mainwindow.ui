@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>755</width>
+    <width>931</width>
     <height>532</height>
    </rect>
   </property>
@@ -19,7 +19,7 @@
      <rect>
       <x>10</x>
       <y>0</y>
-      <width>731</width>
+      <width>911</width>
       <height>461</height>
      </rect>
     </property>
@@ -144,7 +144,7 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>251</width>
+        <width>561</width>
         <height>192</height>
        </rect>
       </property>
@@ -155,8 +155,8 @@
      <widget class="QPushButton" name="pExperiment2Setup">
       <property name="geometry">
        <rect>
-        <x>270</x>
-        <y>0</y>
+        <x>790</x>
+        <y>430</y>
         <width>122</width>
         <height>31</height>
        </rect>
@@ -207,6 +207,91 @@
        <string>Skip</string>
       </property>
      </widget>
+     <widget class="QFrame" name="frame">
+      <property name="geometry">
+       <rect>
+        <x>570</x>
+        <y>0</y>
+        <width>341</width>
+        <height>131</height>
+       </rect>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <widget class="QWidget" name="layoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>321</width>
+         <height>111</height>
+        </rect>
+       </property>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Access resistance (MΩ)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Voltage clamp gain (V/V)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1" colspan="2">
+         <widget class="QSpinBox" name="VCGain">
+          <property name="maximum">
+           <number>10000</number>
+          </property>
+          <property name="singleStep">
+           <number>100</number>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1" colspan="2">
+         <widget class="QDoubleSpinBox" name="VCResistance">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Access resistance is the total resistance of the current electrode, including headstage resistors, if any.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="font">
+           <font>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Voltage clamp setup</string>
+          </property>
+          <property name="textFormat">
+           <enum>Qt::AutoText</enum>
+          </property>
+          <property name="scaledContents">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1" colspan="2">
+         <widget class="QPushButton" name="VCApply">
+          <property name="text">
+           <string>Apply</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
     </widget>
    </widget>
   </widget>
@@ -215,11 +300,11 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>755</width>
+     <width>931</width>
      <height>27</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuRTDO">
+   <widget class="QMenu" name="menuConfig">
     <property name="title">
      <string>Configure</string>
     </property>
@@ -265,7 +350,7 @@
     <addaction name="menuModels"/>
     <addaction name="menuTraces"/>
    </widget>
-   <addaction name="menuRTDO"/>
+   <addaction name="menuConfig"/>
    <addaction name="menuActions"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">

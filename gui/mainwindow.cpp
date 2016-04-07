@@ -24,11 +24,11 @@ initial version: 2015-12-03
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    channel_setup(new ChannelSetupDialog),
-    vclamp_setup(new VClampSetupDialog),
-    wavegen_setup(new WavegenSetupDialog),
-    model_setup(new ModelSetupDialog),
-    performance(new PerformanceDialog),
+    channel_setup(new ChannelSetupDialog(this)),
+    vclamp_setup(new VClampSetupDialog(this)),
+    wavegen_setup(new WavegenSetupDialog(this)),
+    model_setup(new ModelSetupDialog(this)),
+    performance(new PerformanceDialog(this)),
     compiler(new CompileRunner),
     wavegen(new Runner(XMLModel::WaveGen)),
     wavegenNS(new Runner(XMLModel::WaveGenNoveltySearch)),
@@ -55,6 +55,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->menuActions, SIGNAL(triggered(QAction*)), this, SLOT(qAction(QAction*)));
 
+    // Todo: Config should probably emit its own signal.
+    connect(&*vclamp_setup, SIGNAL(configChanged()), this, SLOT(updateConfigFields()));
+    connect(this, SIGNAL(configChanged()), this, SLOT(updateConfigFields()));
+
 #ifndef CONFIG_RT
     ui->actionChannel_setup->setEnabled(false);
 #endif
@@ -64,6 +68,12 @@ MainWindow::~MainWindow()
 {
     delete module;
     delete ui;
+}
+
+void MainWindow::updateConfigFields()
+{
+    ui->VCGain->setValue(config->vc.gain);
+    ui->VCResistance->setValue(config->vc.resistance);
 }
 
 
@@ -86,7 +96,7 @@ void MainWindow::compile()
 
 void MainWindow::on_actionSave_configuration_triggered()
 {
-    QString file = QFileDialog::getSaveFileName(0, QString("Select configuration file..."), QString(), QString("*.xml"));
+    QString file = QFileDialog::getSaveFileName(this, QString("Select configuration file..."), QString(), QString("*.xml"));
     if ( file.isEmpty() )
         return;
     if ( !file.endsWith(".xml") )
@@ -96,11 +106,12 @@ void MainWindow::on_actionSave_configuration_triggered()
 
 void MainWindow::on_actionLoad_configuration_triggered()
 {
-    QString file = QFileDialog::getOpenFileName(0, QString("Select configuration file..."), QString(), QString("*.xml"));
+    QString file = QFileDialog::getOpenFileName(this, QString("Select configuration file..."), QString(), QString("*.xml"));
     if ( file.isEmpty() )
         return;
     delete config;
     config = new conf::Config(file.toStdString());
+    emit configChanged();
 }
 
 
@@ -135,6 +146,7 @@ void MainWindow::wavegenComplete(bool successfully)
 
 
 // ------------------------------------ pExperiment -----------------------------------------------------------------------
+//******** Actions ***********
 void MainWindow::qAction(QAction *action)
 {
     int handle = -1;
@@ -251,6 +263,14 @@ void MainWindow::on_btnQSkip_clicked()
     }
 }
 
+// ********* Voltage clamp config **************
+void MainWindow::on_VCApply_clicked()
+{
+    config->vc.gain = ui->VCGain->value();
+    config->vc.resistance = ui->VCResistance->value();
+    emit configChanged();
+}
+
 
 // -------------------------------------------- page transitions ------------------------------------------------------------
 void MainWindow::on_pSetup2Experiment_clicked()
@@ -260,6 +280,7 @@ void MainWindow::on_pSetup2Experiment_clicked()
         module = new Module(this);
         connect(module, SIGNAL(complete(int)), this, SLOT(actionComplete(int)));
         ui->menuActions->setEnabled(true);
+        ui->menuConfig->setEnabled(false);
         ui->stackedWidget->setCurrentWidget(ui->pExperiment);
     } catch ( runtime_error &e ) {
         cerr << e.what() << endl;
@@ -289,6 +310,7 @@ void MainWindow::on_pExperiment2Setup_clicked()
         module = nullptr;
         QApplication::restoreOverrideCursor();
         ui->menuActions->setEnabled(false);
+        ui->menuConfig->setEnabled(true);
         ui->stackedWidget->setCurrentWidget(ui->pSetup);
     }
 }

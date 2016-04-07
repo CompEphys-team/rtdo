@@ -35,6 +35,12 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+public slots:
+    void updateConfigFields();
+
+signals:
+    void configChanged();
+
 private slots:
     // pSetup
     void compile();
@@ -53,11 +59,14 @@ private slots:
     void on_btnQStart_clicked();
     void on_btnQSkip_clicked();
 
+    void on_VCApply_clicked();
+
     // page transitions
     void on_pSetup2Experiment_clicked();
     void on_pSetup2Wavegen_clicked();
     void on_pWavegen2Setup_clicked();
     void on_pExperiment2Setup_clicked();
+
 
 private:
     Ui::MainWindow *ui;

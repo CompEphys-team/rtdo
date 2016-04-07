@@ -30,6 +30,7 @@ public:
 
 signals:
     void channelsUpdated();
+    void configChanged();
 
 public slots:
     void open();
