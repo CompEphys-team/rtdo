@@ -60,13 +60,13 @@ private slots:
     void on_btnQSkip_clicked();
 
     void on_VCApply_clicked();
+    void zeroOutputs();
 
     // page transitions
     void on_pSetup2Experiment_clicked();
     void on_pSetup2Wavegen_clicked();
     void on_pWavegen2Setup_clicked();
     void on_pExperiment2Setup_clicked();
-
 
 private:
     Ui::MainWindow *ui;

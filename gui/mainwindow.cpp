@@ -55,6 +55,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->menuActions, SIGNAL(triggered(QAction*)), this, SLOT(qAction(QAction*)));
     connect(ui->VCApply, SIGNAL(clicked(bool)), &*vclamp_setup, SLOT(open()));
+    connect(ui->btnZeroOutputs, SIGNAL(clicked(bool)), this, SLOT(zeroOutputs()));
 
     // Todo: Config should probably emit its own signal.
     connect(&*vclamp_setup, SIGNAL(configChanged()), this, SLOT(updateConfigFields()));
@@ -272,6 +273,18 @@ void MainWindow::on_VCApply_clicked()
     emit configChanged();
 }
 
+void MainWindow::zeroOutputs()
+{
+    for ( const Channel &c : config->io.channels ) {
+        if ( c.direction() == Channel::AnalogOut ) {
+            if ( c.offsetSource() )
+                c.zero();
+            else
+                c.write(0.0);
+        }
+    }
+}
+
 
 // -------------------------------------------- page transitions ------------------------------------------------------------
 void MainWindow::on_pSetup2Experiment_clicked()
@@ -280,6 +293,7 @@ void MainWindow::on_pSetup2Experiment_clicked()
     try {
         module = new Module(this);
         connect(module, SIGNAL(complete(int)), this, SLOT(actionComplete(int)));
+        zeroOutputs();
         ui->menuActions->setEnabled(true);
         ui->menuConfig->setEnabled(false);
         vclamp_setup->setExperimentMode(true);
@@ -311,6 +325,7 @@ void MainWindow::on_pExperiment2Setup_clicked()
         delete module;
         module = nullptr;
         QApplication::restoreOverrideCursor();
+        ui->actionQ->clear();
         ui->menuActions->setEnabled(false);
         ui->menuConfig->setEnabled(true);
         vclamp_setup->setExperimentMode(false);
