@@ -85,6 +85,14 @@ void VClampSetupDialog::accept()
     QDialog::accept();
 }
 
+void VClampSetupDialog::setExperimentMode(bool on)
+{
+    ui->waveformFile->setDisabled(on);
+    ui->waveformBrowse->setDisabled(on);
+    ui->popSize->setDisabled(on);
+    ui->cacheSize->setDisabled(on);
+}
+
 void VClampSetupDialog::on_waveformBrowse_clicked()
 {
     QString file, dir;

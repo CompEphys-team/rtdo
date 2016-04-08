@@ -54,6 +54,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&*wavegenNS, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
 
     connect(ui->menuActions, SIGNAL(triggered(QAction*)), this, SLOT(qAction(QAction*)));
+    connect(ui->VCApply, SIGNAL(clicked(bool)), &*vclamp_setup, SLOT(open()));
 
     // Todo: Config should probably emit its own signal.
     connect(&*vclamp_setup, SIGNAL(configChanged()), this, SLOT(updateConfigFields()));
@@ -281,6 +282,7 @@ void MainWindow::on_pSetup2Experiment_clicked()
         connect(module, SIGNAL(complete(int)), this, SLOT(actionComplete(int)));
         ui->menuActions->setEnabled(true);
         ui->menuConfig->setEnabled(false);
+        vclamp_setup->setExperimentMode(true);
         ui->stackedWidget->setCurrentWidget(ui->pExperiment);
     } catch ( runtime_error &e ) {
         cerr << e.what() << endl;
@@ -311,6 +313,7 @@ void MainWindow::on_pExperiment2Setup_clicked()
         QApplication::restoreOverrideCursor();
         ui->menuActions->setEnabled(false);
         ui->menuConfig->setEnabled(true);
+        vclamp_setup->setExperimentMode(false);
         ui->stackedWidget->setCurrentWidget(ui->pSetup);
     }
 }

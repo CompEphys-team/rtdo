@@ -35,6 +35,7 @@ signals:
 public slots:
     void open();
     void accept();
+    void setExperimentMode(bool);
 
 private slots:
     void on_waveformBrowse_clicked();
