@@ -63,6 +63,7 @@ void Channel::readOffset() {}
 bool Channel::read(lsampl_t &sample, bool hint) const { return false; }
 bool Channel::write(lsampl_t sample) const { return false; }
 void Channel::put(lsampl_t &sample) {}
+bool Channel::zero() const { return false; }
 
 #endif
 

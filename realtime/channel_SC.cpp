@@ -353,6 +353,18 @@ void Channel::put(lsampl_t &sample)
     pImpl->q.push(sample, false);
 }
 
+bool Channel::zero() const
+{
+    bool ret = false;
+    if ( _type == AnalogOut ) {
+        double offset = pImpl->_offset;
+        pImpl->_offset = 0;
+        ret = write(convert(0.0));
+        pImpl->_offset = offset;
+    }
+    return ret;
+}
+
 void Channel::flush()
 {
     pImpl->q.flush();

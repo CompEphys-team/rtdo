@@ -121,7 +121,7 @@ void conf::IOConfig::fromXML(TiXmlElement *section)
 
         // Zero output
         if ( type == Channel::AnalogOut ) {
-            channels.back().write(0.0);
+            channels.back().zero();
         }
     }
 }

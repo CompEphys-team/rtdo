@@ -106,6 +106,7 @@ public:
     bool read(lsampl_t &sample, bool hint = false) const; //!< Acquires a sample from this channel
     bool write(lsampl_t sample) const; //!< Writes the specified sample to analog out
     void put(lsampl_t &sample); //!< Adds @a sample to the input channel's read queue
+    bool zero() const; //!< Output channels only: Reset the output to zero, disregarding any offset
 
     /** Query & reset - caution, resetting may cause output to go out of sync with the set waveform.
      * Calling this function from outside of waveform consumers is not recommended.
