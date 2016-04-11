@@ -110,24 +110,22 @@ bool compile_model(XMLModel::outputType type) {
 void write_backlog(ofstream &file, const std::vector<const backlog::LogEntry *> sorted, bool ignoreUntested)
 {
     // Assumption: ordered 1-to-1 mapping from stimulations to parameters
-    file << "# fully tested\tfinal rank\tavg err\tavg rank" << endl
-         << "#\t" << "param"
-         << '\t' << "value"
-         << '\t' << "error"
-         << '\t' << "rank"
-         << endl
-         << endl;
+    file << "# fully tested\tfinal rank\tavg err\tavg rank";
+    for ( auto p : config->model.obj->adjustableParams() ) {
+        file << '\t' << p.name << " value"
+             << '\t' << p.name << " err"
+             << '\t' << p.name << " rank";
+    }
+    file << endl;
     int finalRank = 0;
     for ( auto *e : sorted ) {
         if ( ignoreUntested && !e->tested )
             continue;
-        file << e->tested << '\t' << ++finalRank << '\t' << e->errScore << '\t' << e->rankScore << endl;
+        file << e->tested << '\t' << ++finalRank << '\t' << e->errScore << '\t' << e->rankScore;
         for ( size_t i = 0; i < config->model.obj->adjustableParams().size(); i++ ) {
-            file << '\t' << config->model.obj->adjustableParams().at(i).name
-                 << '\t' << e->param.at(i)
+            file << '\t' << e->param.at(i)
                  << '\t' << e->err.at(i)
-                 << '\t' << e->rank.at(i)
-                 << endl;
+                 << '\t' << e->rank.at(i);
         }
         file << endl;
     }
