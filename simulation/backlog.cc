@@ -28,12 +28,24 @@ bool uidMatch(LogEntry &e)
 bool prioritiseTested;
 bool compareErrScore(const LogEntry *lhs, const LogEntry *rhs)
 {
-    return (prioritiseTested && lhs->tested && !rhs->tested) || (lhs->errScore < rhs->errScore);
+    if ( prioritiseTested && lhs->tested != rhs->tested ) {
+        return lhs->tested;
+    }
+    if ( lhs->errScore != rhs->errScore )
+        return lhs->errScore < rhs->errScore;
+    else
+        return lhs->rankScore < rhs->rankScore;
 }
 
 bool compareRankScore(const LogEntry *lhs, const LogEntry *rhs)
 {
-    return (prioritiseTested && lhs->tested && !rhs->tested) || (lhs->rankScore < rhs->rankScore);
+    if ( prioritiseTested && lhs->tested != rhs->tested ) {
+        return lhs->tested; // => !rhs->tested
+    }
+    if ( lhs->rankScore != rhs->rankScore )
+        return lhs->rankScore < rhs->rankScore;
+    else // rankScores are equal, fall back to errScore
+        return lhs->errScore < rhs->errScore;
 }
 
 LogEntry::LogEntry() : // Default construction for dummy entries, i.e. mean/sd in BacklogVirtual::exec

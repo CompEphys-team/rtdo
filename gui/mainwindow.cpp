@@ -196,13 +196,13 @@ void MainWindow::qAction(QAction *action)
         handle = module->push(label.toStdString(), [=](int h) {
             ofstream logf(module->outdir + "/" + to_string(h) + "_modelsAll.log");
             module->vclamp->log()->score();
-            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::ErrScore, true), false);
+            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::RankScore, true), false);
         });
     } else if ( action == ui->actModelsSaveEval ) {
         handle = module->push(label.toStdString(), [=](int h) {
             ofstream logf(module->outdir + "/" + to_string(h) + "_modelsEval.log");
             module->vclamp->log()->score();
-            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::ErrScore, true), true);
+            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::RankScore, true), true);
         });
     } else if ( action == ui->actTracesSave ) {
         handle = module->push(label.toStdString(), [=](int h) {
