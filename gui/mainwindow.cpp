@@ -285,6 +285,29 @@ void MainWindow::zeroOutputs()
     }
 }
 
+// ************** Misc ****************************
+void MainWindow::on_pExperimentReset_clicked()
+{
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Reset", "Reset experiment mode and discard unsaved progress?",
+                                  QMessageBox::Yes | QMessageBox::No);
+    if ( reply == QMessageBox::Yes ) {
+        QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
+        delete module;
+        ui->actionQ->clear();
+        try {
+            module = new Module(this);
+            connect(module, SIGNAL(complete(int)), this, SLOT(actionComplete(int)));
+            zeroOutputs();
+        } catch (runtime_error &e ) {
+            cerr << e.what() << endl;
+            module = nullptr;
+            pExp2Setup();
+        }
+    }
+    QApplication::restoreOverrideCursor();
+}
+
 
 // -------------------------------------------- page transitions ------------------------------------------------------------
 void MainWindow::on_pSetup2Experiment_clicked()
@@ -326,9 +349,14 @@ void MainWindow::on_pExperiment2Setup_clicked()
         module = nullptr;
         QApplication::restoreOverrideCursor();
         ui->actionQ->clear();
-        ui->menuActions->setEnabled(false);
-        ui->menuConfig->setEnabled(true);
-        vclamp_setup->setExperimentMode(false);
-        ui->stackedWidget->setCurrentWidget(ui->pSetup);
+        pExp2Setup();
     }
+}
+
+void MainWindow::pExp2Setup()
+{
+    ui->menuActions->setEnabled(false);
+    ui->menuConfig->setEnabled(true);
+    vclamp_setup->setExperimentMode(false);
+    ui->stackedWidget->setCurrentWidget(ui->pSetup);
 }
