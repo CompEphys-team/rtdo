@@ -237,7 +237,7 @@ void MainWindow::on_btnQRemove_clicked()
 {
     if ( ui->actionQ->currentIndex().row() > 0 || !module->busy() ) {
         QListWidgetItem *item = ui->actionQ->currentItem();
-        if ( module->erase(item->data(Qt::UserRole).toInt()) )
+        if ( item && module->erase(item->data(Qt::UserRole).toInt()) )
             delete item;
     } else if ( ui->actionQ->currentIndex().row() == 0 ) {
         on_btnQSkip_clicked();
