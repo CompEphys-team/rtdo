@@ -25,6 +25,7 @@ Module::Module(QObject *parent) :
     vclamp(nullptr),
     lib(nullptr),
     handle_ctr(0),
+    firstrun(true),
     _exit(false),
     _stop(true),
     _busy(false)
@@ -48,6 +49,16 @@ Module::Module(QObject *parent) :
         throw runtime_error(err);
     }
 
+    vclamp = vccreate(config, config->vc.popsize, cout, 0, 1);
+    vclamp->initModel();
+
+    // Start thread at the end, when all possible pitfalls are avoided
+    t.reset(new RealtimeThread(Module::execStatic, this, config->rt.prio_module, config->rt.ssz_module, config->rt.cpus_module));
+    lock.signal();
+}
+
+bool Module::initOutput()
+{
     time_t tt = time(NULL);
     char timestr[32];
     strftime(timestr, 32, "%Y%m%d-%H%M", localtime(&tt));
@@ -60,9 +71,9 @@ Module::Module(QObject *parent) :
             for ( i = 1; mkdir(string(outdir + to_string(i)).c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH); i++ ) {}
             outdir += to_string(i);
         } else {
-            string err = string("Could not create output directory \"") + outdir + "\": mkdir returned " + to_string(errno);
-            dlclose(lib);
-            throw runtime_error(err);
+            cerr << "Could not create output directory \"" << outdir << "\": mkdir returned " << errno << endl;
+            cerr << "Make sure the output path exists with appropriate permissions and try again." << endl;
+            return false;
         }
     }
     cout << "All outputs saved to " << outdir << "." << endl;
@@ -78,12 +89,7 @@ Module::Module(QObject *parent) :
         dest << src.rdbuf();
     }
 
-    vclamp = vccreate(config, config->vc.popsize, cout, 0, 1);
-    vclamp->initModel();
-
-    // Start thread at the end, when all possible pitfalls are avoided
-    t.reset(new RealtimeThread(Module::execStatic, this, config->rt.prio_module, config->rt.ssz_module, config->rt.cpus_module));
-    lock.signal();
+    return true;
 }
 
 Module::~Module()
@@ -117,6 +123,16 @@ void Module::exec()
         sem.wait();
 
         lock.wait(); // Locked until vvvvvvvvvvvvvvvvvv
+
+        if ( firstrun && !_stop && q.size() ) {
+            if ( !initOutput() ) {
+                _stop = true;
+            } else {
+                firstrun = false;
+                emit outdirSet();
+            }
+        }
+
         _busy = true;
         while ( !_stop && q.size() ) { //    while
             vclamp->stopFlag = false;

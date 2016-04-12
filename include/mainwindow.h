@@ -62,7 +62,9 @@ private slots:
     void on_VCApply_clicked();
     void zeroOutputs();
 
+    bool pExpInit();
     void on_pExperimentReset_clicked();
+    void outdirSet();
 
     // page transitions
     void on_pSetup2Experiment_clicked();

@@ -58,10 +58,12 @@ public slots:
 
 signals:
     void complete(int handle);
+    void outdirSet();
 
 private:
     static void *execStatic(void *);
     void exec();
+    bool initOutput();
 
     struct action
     {
@@ -81,6 +83,7 @@ private:
     std::deque<action> q;
 
     int handle_ctr;
+    bool firstrun;
 
     RealtimeConditionVariable sem, lock;
     bool _exit, _stop, _busy;

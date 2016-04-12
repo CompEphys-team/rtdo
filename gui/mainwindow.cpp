@@ -286,6 +286,22 @@ void MainWindow::zeroOutputs()
 }
 
 // ************** Misc ****************************
+bool MainWindow::pExpInit()
+{
+    try {
+        module = new Module(this);
+    } catch (runtime_error &e ) {
+        cerr << e.what() << endl;
+        module = nullptr;
+        return false;
+    }
+    connect(module, SIGNAL(complete(int)), this, SLOT(actionComplete(int)));
+    connect(module, SIGNAL(outdirSet()), this, SLOT(outdirSet()));
+    zeroOutputs();
+    ui->outdirDisplay->clear();
+    return true;
+}
+
 void MainWindow::on_pExperimentReset_clicked()
 {
     QMessageBox::StandardButton reply;
@@ -295,17 +311,15 @@ void MainWindow::on_pExperimentReset_clicked()
         QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
         delete module;
         ui->actionQ->clear();
-        try {
-            module = new Module(this);
-            connect(module, SIGNAL(complete(int)), this, SLOT(actionComplete(int)));
-            zeroOutputs();
-        } catch (runtime_error &e ) {
-            cerr << e.what() << endl;
-            module = nullptr;
+        if ( !pExpInit() )
             pExp2Setup();
-        }
     }
     QApplication::restoreOverrideCursor();
+}
+
+void MainWindow::outdirSet()
+{
+    ui->outdirDisplay->setText(QString::fromStdString(module->outdir));
 }
 
 
@@ -313,17 +327,11 @@ void MainWindow::on_pExperimentReset_clicked()
 void MainWindow::on_pSetup2Experiment_clicked()
 {
     QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
-    try {
-        module = new Module(this);
-        connect(module, SIGNAL(complete(int)), this, SLOT(actionComplete(int)));
-        zeroOutputs();
+    if ( pExpInit() ) {
         ui->menuActions->setEnabled(true);
         ui->menuConfig->setEnabled(false);
         vclamp_setup->setExperimentMode(true);
         ui->stackedWidget->setCurrentWidget(ui->pExperiment);
-    } catch ( runtime_error &e ) {
-        cerr << e.what() << endl;
-        module = nullptr;
     }
     QApplication::restoreOverrideCursor();
 }
@@ -347,9 +355,9 @@ void MainWindow::on_pExperiment2Setup_clicked()
         QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
         delete module;
         module = nullptr;
-        QApplication::restoreOverrideCursor();
         ui->actionQ->clear();
         pExp2Setup();
+        QApplication::restoreOverrideCursor();
     }
 }
 
