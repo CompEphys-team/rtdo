@@ -343,6 +343,42 @@
        <bool>true</bool>
       </property>
      </widget>
+     <widget class="QPlainTextEdit" name="notesArea">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>240</y>
+        <width>561</width>
+        <height>181</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btnNotesLoad">
+      <property name="geometry">
+       <rect>
+        <x>360</x>
+        <y>200</y>
+        <width>103</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Load notes...</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btnNotesSave">
+      <property name="geometry">
+       <rect>
+        <x>470</x>
+        <y>200</y>
+        <width>92</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Save notes</string>
+      </property>
+     </widget>
     </widget>
    </widget>
   </widget>

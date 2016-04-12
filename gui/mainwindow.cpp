@@ -16,6 +16,7 @@ initial version: 2015-12-03
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QTextStream>
 #include <fstream>
 #include "config.h"
 #include "util.h"
@@ -56,6 +57,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->menuActions, SIGNAL(triggered(QAction*)), this, SLOT(qAction(QAction*)));
     connect(ui->VCApply, SIGNAL(clicked(bool)), &*vclamp_setup, SLOT(open()));
     connect(ui->btnZeroOutputs, SIGNAL(clicked(bool)), this, SLOT(zeroOutputs()));
+
+    connect(ui->notesArea, &QPlainTextEdit::modificationChanged, [=](bool y){
+        ui->btnNotesSave->setEnabled(y && !module->outdir.empty());
+    });
 
     // Todo: Config should probably emit its own signal.
     connect(&*vclamp_setup, SIGNAL(configChanged()), this, SLOT(updateConfigFields()));
@@ -285,6 +290,35 @@ void MainWindow::zeroOutputs()
     }
 }
 
+// *************** Notes **********************
+void MainWindow::on_btnNotesLoad_clicked()
+{
+    QString filename = QFileDialog::getOpenFileName(this, QString("Select note template..."),
+                                                    QString::fromStdString(config->output.dir), QString("*.txt"));
+    if ( filename.isEmpty() )
+        return;
+    QFile file(filename);
+    if ( !file.open(QFile::ReadOnly | QFile::Text) ) {
+        cerr << "Failed to read from file " << filename.toStdString() << endl;
+        return;
+    }
+    ui->notesArea->document()->setPlainText(file.readAll());
+}
+
+void MainWindow::on_btnNotesSave_clicked()
+{
+    QString filename = QString::fromStdString(module->outdir + "/notes.txt");
+    QFile file(filename);
+    if ( !file.open(QFile::WriteOnly | QFile::Text) ) {
+        cerr << "Failed to write to file " << filename.toStdString() << endl;
+        return;
+    }
+    QTextStream out(&file);
+    out << ui->notesArea->document()->toPlainText();
+    ui->notesArea->document()->setModified(false);
+    cout << "Saved notes to " << filename.toStdString() << endl;
+}
+
 // ************** Misc ****************************
 bool MainWindow::pExpInit()
 {
@@ -299,6 +333,7 @@ bool MainWindow::pExpInit()
     connect(module, SIGNAL(outdirSet()), this, SLOT(outdirSet()));
     zeroOutputs();
     ui->outdirDisplay->clear();
+    ui->btnNotesSave->setEnabled(false);
     return true;
 }
 
@@ -320,6 +355,7 @@ void MainWindow::on_pExperimentReset_clicked()
 void MainWindow::outdirSet()
 {
     ui->outdirDisplay->setText(QString::fromStdString(module->outdir));
+    ui->btnNotesSave->setEnabled(!ui->notesArea->document()->isEmpty());
 }
 
 

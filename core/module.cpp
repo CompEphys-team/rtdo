@@ -23,6 +23,7 @@ initial version: 2016-03-14
 Module::Module(QObject *parent) :
     QObject(parent),
     vclamp(nullptr),
+    outdir(""),
     lib(nullptr),
     handle_ctr(0),
     firstrun(true),

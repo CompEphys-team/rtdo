@@ -66,6 +66,9 @@ private slots:
     void on_pExperimentReset_clicked();
     void outdirSet();
 
+    void on_btnNotesLoad_clicked();
+    void on_btnNotesSave_clicked();
+
     // page transitions
     void on_pSetup2Experiment_clicked();
     void on_pSetup2Wavegen_clicked();
