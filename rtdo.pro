@@ -93,7 +93,8 @@ SOURCES += core/main.cpp \
     gui/performancedialog.cpp \
     core/teestream.cpp \
     core/experimentaldata.cpp \
-    core/module.cpp
+    core/module.cpp \
+    gui/actionlistmodel.cpp
 
 OTHER_FILES += \
     simulation/GNUmakefile \
@@ -144,7 +145,8 @@ HEADERS  += \
     include/backlog.h \
     include/experiment.h \
     include/experimentaldata.h \
-    include/module.h
+    include/module.h \
+    include/actionlistmodel.h
 
 FORMS    += \
     gui/mainwindow.ui \

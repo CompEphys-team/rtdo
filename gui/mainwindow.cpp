@@ -17,10 +17,7 @@ initial version: 2015-12-03
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTextStream>
-#include <fstream>
 #include "config.h"
-#include "util.h"
-#include "backlog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -33,7 +30,8 @@ MainWindow::MainWindow(QWidget *parent) :
     compiler(new CompileRunner),
     wavegen(new Runner(XMLModel::WaveGen)),
     wavegenNS(new Runner(XMLModel::WaveGenNoveltySearch)),
-    module(nullptr)
+    module(nullptr),
+    protocol(nullptr)
 {
     ui->setupUi(this);
     ui->stackedWidget->setCurrentWidget(ui->pSetup);
@@ -156,82 +154,39 @@ void MainWindow::wavegenComplete(bool successfully)
 //******** Actions ***********
 void MainWindow::qAction(QAction *action)
 {
-    int handle = -1;
-
-    QString label;
-    QWidget *widget = action->associatedWidgets().first();
-    if ( widget ) {
-        QMenu *menu = dynamic_cast<QMenu*>(widget);
-        if ( menu )
-            label += menu->title() + QString(": ");
-    }
-    label += action->text();
-
     if ( action == ui->actVCFrontload ) {
         QMessageBox::StandardButton reply;
         reply = QMessageBox::question(this, action->text(), "Fit models during this action?",
                                       QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
         if ( reply == QMessageBox::Cancel )
             return;
-        label += reply == QMessageBox::Yes ? ", fitting" : ", no fitting";
-        handle = module->push(label.toStdString(), [=](int) {
-            for ( unsigned int i = 0; i < config->vc.cacheSize && !module->vclamp->stopFlag; i++ )
-                module->vclamp->cycle( reply == QMessageBox::Yes );
-        });
+        protocol->appendItem(ActionListModel::VCFrontload, reply == QMessageBox::Yes);
     } else if ( action == ui->actVCCycle ) {
         QMessageBox::StandardButton reply;
         reply = QMessageBox::question(this, action->text(), "Fit models during this action?",
                                       QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
         if ( reply == QMessageBox::Cancel )
             return;
-        label += reply == QMessageBox::Yes ? ", fitting" : ", no fitting";
-        handle = module->push(label.toStdString(), [=](int) {
-            module->vclamp->cycle( reply == QMessageBox::Yes );
-        });
+        protocol->appendItem(ActionListModel::VCCycle, reply == QMessageBox::Yes);
     } else if ( action == ui->actVCRun ) {
         bool ok;
         int nEpochs = QInputDialog::getInt(this, action->text(), "Number of epochs (0 = unlimited)", 0, 0, INT_MAX, 1, &ok);
         if ( !ok )
             return;
-        label += QString(", %1 epochs").arg(nEpochs);
-        handle = module->push(label.toStdString(), [=](int) {
-            module->vclamp->run(nEpochs);
-        });
+        protocol->appendItem(ActionListModel::VCRun, nEpochs);
     } else if ( action == ui->actModelsSaveAll ) {
-        handle = module->push(label.toStdString(), [=](int h) {
-            ofstream logf(module->outdir + "/" + to_string(h) + "_modelsAll.log");
-            module->vclamp->log()->score();
-            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::RankScore, true), false);
-        });
+        protocol->appendItem(ActionListModel::ModelsSaveAll);
     } else if ( action == ui->actModelsSaveEval ) {
-        handle = module->push(label.toStdString(), [=](int h) {
-            ofstream logf(module->outdir + "/" + to_string(h) + "_modelsEval.log");
-            module->vclamp->log()->score();
-            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::RankScore, true), true);
-        });
+        protocol->appendItem(ActionListModel::ModelsSaveEval);
     } else if ( action == ui->actTracesSave ) {
-        handle = module->push(label.toStdString(), [=](int h) {
-            ofstream tf(module->outdir + "/" + to_string(h) + ".traces");
-            module->vclamp->data()->dump(tf);
-        });
+        protocol->appendItem(ActionListModel::TracesSave);
     } else if ( action == ui->actTracesDrop ) {
-        handle = module->push(label.toStdString(), [=](int) {
-            module->vclamp->data()->clear();
-        });
+        protocol->appendItem(ActionListModel::TracesDrop);
     }
-
-    QListWidgetItem *item = new QListWidgetItem(QString("(%1) %2").arg(handle).arg(label), ui->actionQ);
-    item->setData(Qt::UserRole, QVariant(handle));
 }
 
 void MainWindow::actionComplete(int handle)
 {
-    QListWidgetItem *item = ui->actionQ->item(0);
-    while ( item && item->data(Qt::UserRole) <= handle ) {
-        delete item;
-        item = ui->actionQ->item(0);
-    }
-
     if ( !module->busy() ) {
         ui->btnQStart->setText("Start");
         ui->btnQSkip->setEnabled(false);
@@ -240,20 +195,14 @@ void MainWindow::actionComplete(int handle)
 
 void MainWindow::on_btnQRemove_clicked()
 {
-    if ( ui->actionQ->currentIndex().row() > 0 || !module->busy() ) {
-        QListWidgetItem *item = ui->actionQ->currentItem();
-        if ( item && module->erase(item->data(Qt::UserRole).toInt()) )
-            delete item;
-    } else if ( ui->actionQ->currentIndex().row() == 0 ) {
-        on_btnQSkip_clicked();
-    }
+    protocol->removeItem(ui->actionQ->currentIndex());
 }
 
 void MainWindow::on_btnQStart_clicked()
 {
     if ( module->busy() ) {
         module->stop();
-        ui->actionQ->clear();
+        protocol->clear();
     } else {
         if ( module->qSize() ) {
             module->start();
@@ -265,9 +214,7 @@ void MainWindow::on_btnQStart_clicked()
 
 void MainWindow::on_btnQSkip_clicked()
 {
-    if ( module->busy() ) {
-        module->skip();
-    }
+    protocol->removeItem(ui->actionQ->indexAt(QPoint(0,0)));
 }
 
 // ********* Voltage clamp config **************
@@ -324,6 +271,7 @@ bool MainWindow::pExpInit()
 {
     try {
         module = new Module(this);
+        protocol = new ActionListModel(module);
     } catch (runtime_error &e ) {
         cerr << e.what() << endl;
         module = nullptr;
@@ -334,6 +282,7 @@ bool MainWindow::pExpInit()
     zeroOutputs();
     ui->outdirDisplay->clear();
     ui->btnNotesSave->setEnabled(false);
+    ui->actionQ->setModel(protocol);
     return true;
 }
 
@@ -344,8 +293,10 @@ void MainWindow::on_pExperimentReset_clicked()
                                   QMessageBox::Yes | QMessageBox::No);
     if ( reply == QMessageBox::Yes ) {
         QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
+        delete protocol;
         delete module;
-        ui->actionQ->clear();
+        protocol = nullptr;
+        module = nullptr;
         if ( !pExpInit() )
             pExp2Setup();
     }
@@ -389,9 +340,10 @@ void MainWindow::on_pExperiment2Setup_clicked()
                                   QMessageBox::Yes | QMessageBox::No);
     if ( reply == QMessageBox::Yes ) {
         QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
+        delete protocol;
         delete module;
+        protocol = nullptr;
         module = nullptr;
-        ui->actionQ->clear();
         pExp2Setup();
         QApplication::restoreOverrideCursor();
     }

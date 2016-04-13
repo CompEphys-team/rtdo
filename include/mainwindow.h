@@ -22,6 +22,7 @@ initial version: 2015-12-03
 #include "performancedialog.h"
 #include "runner.h"
 #include "module.h"
+#include "actionlistmodel.h"
 
 namespace Ui {
 class MainWindow;
@@ -90,6 +91,7 @@ private:
     unique_ptr<Runner> wavegenNS;
 
     Module *module;
+    ActionListModel *protocol;
 };
 
 #endif // MAINWINDOW_H

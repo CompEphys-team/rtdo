@@ -139,7 +139,7 @@
      </widget>
     </widget>
     <widget class="QWidget" name="pExperiment">
-     <widget class="QListWidget" name="actionQ">
+     <widget class="QListView" name="actionQ">
       <property name="geometry">
        <rect>
         <x>0</x>
