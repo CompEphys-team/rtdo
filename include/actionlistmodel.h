@@ -27,13 +27,14 @@ public:
     int rowCount(const QModelIndex & parent = QModelIndex()) const;
 
     enum Action {
-        VCFrontload,
-        VCCycle,
-        VCRun,
-        ModelsSaveAll,
-        ModelsSaveEval,
-        TracesSave,
-        TracesDrop
+        Invalid = 0,
+        VCFrontload = 1,
+        VCCycle = 2,
+        VCRun = 3,
+        ModelsSaveAll = 11,
+        ModelsSaveEval = 12,
+        TracesSave = 21,
+        TracesDrop = 22
     };
 
 public slots:
@@ -41,6 +42,9 @@ public slots:
     void actionComplete(int handle);
     void removeItem(const QModelIndex &index);
     void clear();
+
+    bool save(std::string filename);
+    bool load(std::string filename);
 
 private:
     Module *module;

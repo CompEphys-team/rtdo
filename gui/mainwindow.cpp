@@ -182,6 +182,20 @@ void MainWindow::qAction(QAction *action)
         protocol->appendItem(ActionListModel::TracesSave);
     } else if ( action == ui->actTracesDrop ) {
         protocol->appendItem(ActionListModel::TracesDrop);
+    } else if ( action == ui->actionSave_protocol ) {
+        QString file = QFileDialog::getSaveFileName(this, QString("Select protocol file..."), QString(), QString("*.xml"));
+        if ( !file.isEmpty() ) {
+            if ( !file.endsWith(".xml") )
+                file.append(".xml");
+            if ( !protocol->save(file.toStdString()) )
+                cerr << "Failed to write protocol to " << file.toStdString() << endl;
+        }
+    } else if ( action == ui->actionLoad_protocol ) {
+        QString file = QFileDialog::getOpenFileName(this, QString("Select protocol file..."), QString(), QString("*.xml"));
+        if ( !file.isEmpty() ) {
+            if ( !protocol->load(file.toStdString()) )
+                cerr << "Failed to open protocol from " << file.toStdString() << endl;
+        }
     }
 }
 

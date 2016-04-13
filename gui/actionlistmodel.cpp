@@ -124,6 +124,41 @@ void ActionListModel::clear()
     endRemoveRows();
 }
 
+bool ActionListModel::save(string filename)
+{
+    TiXmlDocument doc;
+    doc.LinkEndChild(new TiXmlDeclaration("1.0", "", ""));
+    TiXmlElement *root = new TiXmlElement("rtdoProtocol");
+    doc.LinkEndChild(root);
+
+    for ( auto it = actions.begin(); it != actions.end(); ++it ) {
+        TiXmlElement *actionElement = new TiXmlElement("action");
+        actionElement->SetAttribute("arg", it->arg);
+        actionElement->LinkEndChild(new TiXmlText(std::to_string(static_cast<int>(it->action))));
+        root->LinkEndChild(actionElement);
+    }
+
+    return doc.SaveFile(filename);
+}
+
+bool ActionListModel::load(string filename)
+{
+    TiXmlDocument doc;
+    doc.LoadFile(filename);
+    TiXmlHandle hDoc(&doc);
+    TiXmlElement *root = hDoc.FirstChildElement("rtdoProtocol").Element();
+    if ( !root )
+        return false;
+
+    for ( TiXmlElement *el = root->FirstChildElement("action"); el; el = el->NextSiblingElement("action") ) {
+        Action action = static_cast<Action>(atoi(el->GetText()));
+        int arg;
+        el->QueryIntAttribute("arg", &arg);
+        appendItem(action, arg);
+    }
+    return true;
+}
+
 QString ActionListModel::qlabel(ActionListModel::ActionStruct a)
 {
     QString prefix = QString("%1: ").arg(a.handle);
