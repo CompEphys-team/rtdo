@@ -330,7 +330,11 @@ void MainWindow::on_pSetup2Experiment_clicked()
     QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
     if ( pExpInit() ) {
         ui->menuActions->setEnabled(true);
-        ui->menuConfig->setEnabled(false);
+        ui->actionChannel_setup->setEnabled(false);
+        ui->actionModel_setup->setEnabled(false);
+        ui->actionWavegen_setup->setEnabled(false);
+        ui->actionLoad_configuration->setEnabled(false);
+        ui->actionSave_configuration->setEnabled(false);
         vclamp_setup->setExperimentMode(true);
         ui->stackedWidget->setCurrentWidget(ui->pExperiment);
     }
@@ -366,7 +370,11 @@ void MainWindow::on_pExperiment2Setup_clicked()
 void MainWindow::pExp2Setup()
 {
     ui->menuActions->setEnabled(false);
-    ui->menuConfig->setEnabled(true);
+    ui->actionChannel_setup->setEnabled(true);
+    ui->actionModel_setup->setEnabled(true);
+    ui->actionWavegen_setup->setEnabled(true);
+    ui->actionLoad_configuration->setEnabled(true);
+    ui->actionSave_configuration->setEnabled(true);
     vclamp_setup->setExperimentMode(false);
     ui->stackedWidget->setCurrentWidget(ui->pSetup);
 }
