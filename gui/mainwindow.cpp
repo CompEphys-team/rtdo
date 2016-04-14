@@ -204,6 +204,8 @@ void MainWindow::actionComplete(int handle)
     if ( !module->busy() ) {
         ui->btnQStart->setText("Start");
         ui->btnQSkip->setEnabled(false);
+        ui->pExperiment2Setup->setEnabled(true);
+        ui->pExperimentReset->setEnabled(true);
     }
 }
 
@@ -222,6 +224,8 @@ void MainWindow::on_btnQStart_clicked()
             module->start();
             ui->btnQStart->setText("Stop");
             ui->btnQSkip->setEnabled(true);
+            ui->pExperiment2Setup->setEnabled(false);
+            ui->pExperimentReset->setEnabled(false);
         }
     }
 }
