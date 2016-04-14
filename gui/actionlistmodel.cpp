@@ -69,14 +69,14 @@ void ActionListModel::appendItem(ActionListModel::Action a, int arg)
         });
         break;
     case TracesDrop:
-        as.handle = module->push(label(as), [=](int h) {
-            ofstream tf(module->outdir + "/" + to_string(h) + ".traces");
-            module->vclamp->data()->dump(tf);
+        as.handle = module->push(label(as), [=](int) {
+            module->vclamp->data()->clear();
         });
         break;
     case TracesSave:
-        as.handle = module->push(label(as), [=](int) {
-            module->vclamp->data()->clear();
+        as.handle = module->push(label(as), [=](int h) {
+            ofstream tf(module->outdir + "/" + to_string(h) + ".traces");
+            module->vclamp->data()->dump(tf);
         });
         break;
     default:
@@ -161,7 +161,9 @@ bool ActionListModel::load(string filename)
 
 QString ActionListModel::qlabel(ActionListModel::ActionStruct a)
 {
-    QString prefix = QString("%1: ").arg(a.handle);
+    QString prefix("");
+    if ( a.handle > 0 )
+        prefix = QString("%1: ").arg(a.handle);
     switch ( a.action ) {
     case VCFrontload: return prefix + "Voltage clamp: Frontload stimulations, " + (a.arg ? QString("fitting") : QString("invariant"));
     case VCCycle: return prefix + "Voltage clamp: Cycle stimulations, " + (a.arg ? QString("fitting") : QString("invariant"));

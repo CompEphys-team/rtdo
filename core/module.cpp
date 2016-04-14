@@ -118,7 +118,7 @@ void *Module::execStatic(void *_this)
 
 void Module::exec()
 {
-    ofstream actionLog(outdir + "/actions.log");
+    ofstream actionLog;
 
     while ( !_exit ) {
         sem.wait();
@@ -130,6 +130,7 @@ void Module::exec()
                 _stop = true;
             } else {
                 firstrun = false;
+                actionLog.open(outdir + "/actions.log");
                 emit outdirSet();
             }
         }
