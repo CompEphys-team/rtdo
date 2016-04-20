@@ -31,6 +31,7 @@ public:
     int since;
     unsigned long long uid;
     bool tested;
+    int idx;
 };
 
 class BacklogVirtual

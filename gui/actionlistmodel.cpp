@@ -68,6 +68,44 @@ void ActionListModel::appendItem(ActionListModel::Action a, int arg)
             write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::RankScore, true), true);
         });
         break;
+    case ModelStimulate:
+        as.handle = module->push(label(as), [=](int h) {
+            module->vclamp->log()->score();
+            auto sorted = module->vclamp->log()->sort(backlog::BacklogVirtual::RankScore, true);
+            if ( sorted.empty() ) {
+                cerr << "No models on record" << endl;
+                return;
+            }
+
+            ofstream tf(module->outdir + "/" + to_string(h) + "_sim.traces");
+            const backlog::LogEntry *entry = sorted.front();
+
+            tf << "# Traces from model:" << endl;
+            vector<const backlog::LogEntry*> tmp(1, entry);
+            write_backlog(tf, tmp, false);
+
+            vector<vector<double>> traces = module->vclamp->stimulateModel(entry->idx);
+            tf << endl << endl << "Time";
+            for ( size_t i = 0; i < traces.size(); i++ ) {
+                tf << '\t' << "Stimulation_" << i;
+            }
+            tf << endl;
+            for ( size_t n = traces.size(), i = 0; n > 0; i++ ) { // Output data in columns, pad unequal lengths with '.' for gnuplotting
+                n = traces.size();
+                tf << (i * config->io.dt);
+                for ( vector<double> &it : traces ) {
+                    tf << '\t';
+                    if ( it.size() <= i ) {
+                        tf << '.';
+                        --n;
+                    } else {
+                        tf << it.at(i);
+                    }
+                }
+                tf << endl;
+            }
+        });
+        break;
     case TracesDrop:
         as.handle = module->push(label(as), [=](int) {
             module->vclamp->data()->clear();
@@ -170,6 +208,7 @@ QString ActionListModel::qlabel(ActionListModel::ActionStruct a)
     case VCRun: return prefix + "Voltage clamp: Fit models, " + (a.arg ? QString("%1 epochs").arg(a.arg) : "indefinitely");
     case ModelsSaveAll: return prefix + "Save all models";
     case ModelsSaveEval: return prefix + "Save evaluated models";
+    case ModelStimulate: return prefix + "Stimulate best model";
     case TracesDrop: return prefix + "Drop traces";
     case TracesSave: return prefix + "Save traces";
     default: return prefix + "Unknown action";

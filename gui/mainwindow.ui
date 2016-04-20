@@ -425,6 +425,7 @@
      </property>
      <addaction name="actModelsSaveAll"/>
      <addaction name="actModelsSaveEval"/>
+     <addaction name="actModelStimulate"/>
     </widget>
     <widget class="QMenu" name="menuTraces">
      <property name="title">
@@ -560,6 +561,14 @@
   <action name="actionLoad_protocol">
    <property name="text">
     <string>Load protocol...</string>
+   </property>
+  </action>
+  <action name="actModelStimulate">
+   <property name="text">
+    <string>Stimulate best</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Stimulate the best model with all waveforms, saving its responses to a file&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </action>
  </widget>

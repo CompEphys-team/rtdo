@@ -35,6 +35,8 @@ public:
     void run(int nEpochs = 0);
     void cycle(bool fit);
 
+    vector<vector<double>> stimulateModel(int idx);
+
 private:
     void runStim();
 };
@@ -188,6 +190,47 @@ void VClamp::cycle(bool fit)
 
     if ( !fit )
         logger->wait();
+}
+
+vector<vector<double>> VClamp::stimulateModel(int idx)
+{
+    // As this is a local simulation only, do not update globals such as t, currentExperiment, or VClamp::nextS
+    *(logger->out) << "# VClamp stimulating model index " << idx << endl;
+    vector<vector<double>> traces;
+    for ( size_t i = 0; i < stims.size() && !stopFlag; i++ ) {
+        inputSpec I = stims[i];
+        double lt = -I.t;
+        int sn = 0;
+        int tmax = I.t / DT;
+        vector<double> trace(tmax);
+
+        stepVGHH = I.baseV;
+        clampGainHH = cfg->vc.gain;
+        accessResistanceHH = cfg->vc.resistance;
+
+        scalar simulatorVars[NVAR], simulatorParams[NPARAM];
+        for ( int i = 0; i < NVAR; i++ )
+            simulatorVars[i] = variableIni[i];
+        for ( int i = 0; i < NPARAM; i++ )
+            simulatorParams[i] = mparam[i][idx];
+
+        for (int iT = -tmax; iT < tmax; iT++) { // Start at negative t to achieve steady state by lt=0
+            double oldt = lt;
+            IsynGHH = simulateSingleNeuron(simulatorVars, simulatorParams, stepVGHH);
+            lt += DT;
+            if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
+                stepVGHH = I.V[sn];
+                sn++;
+            }
+            if ( iT >= 0 ) {
+                trace[iT] = IsynGHH;
+            }
+        }
+
+        traces.push_back(trace);
+    }
+
+    return traces;
 }
 
 

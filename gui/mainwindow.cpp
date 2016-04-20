@@ -178,6 +178,8 @@ void MainWindow::qAction(QAction *action)
         protocol->appendItem(ActionListModel::ModelsSaveAll);
     } else if ( action == ui->actModelsSaveEval ) {
         protocol->appendItem(ActionListModel::ModelsSaveEval);
+    } else if ( action == ui->actModelStimulate ) {
+        protocol->appendItem(ActionListModel::ModelStimulate);
     } else if ( action == ui->actTracesSave ) {
         protocol->appendItem(ActionListModel::TracesSave);
     } else if ( action == ui->actTracesDrop ) {

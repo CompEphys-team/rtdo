@@ -33,6 +33,7 @@ public:
         VCRun = 3,
         ModelsSaveAll = 11,
         ModelsSaveEval = 12,
+        ModelStimulate = 13,
         TracesSave = 21,
         TracesDrop = 22
     };

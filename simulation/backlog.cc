@@ -61,7 +61,8 @@ LogEntry::LogEntry(int idx, int generation, int nstims) :
     rankScore(0),
     since(generation),
     uid(currentExperiment->models[idx].uid),
-    tested(true)
+    tested(true),
+    idx(idx)
 {
     int i = 0;
     for ( double &p : param ) {

@@ -61,6 +61,9 @@ public:
     //!< Applies each stimulation once. Useful for clamp tuning and for final model validation. Use @arg fit to turn model fitting on/off.
     virtual void cycle(bool fit) = 0;
 
+    //!< Evaluate the model indicated by @arg idx for each stimulation, returning its response traces
+    virtual vector<vector<double>> stimulateModel(int idx) = 0;
+
     inline shared_ptr<backlog::Backlog> log() const { return logger; }
     inline shared_ptr<ExperimentalData> data() const { return _data; }
 
