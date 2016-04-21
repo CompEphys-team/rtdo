@@ -77,7 +77,7 @@ void ActionListModel::appendItem(ActionListModel::Action a, int arg)
                 return;
             }
 
-            ofstream tf(module->outdir + "/" + to_string(h) + "_sim.traces");
+            ofstream tf(module->outdir + "/" + to_string(h) + ".simtrace");
             const backlog::LogEntry *entry = sorted.front();
 
             tf << "# Traces from model:" << endl;

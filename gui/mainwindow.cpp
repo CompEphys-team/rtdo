@@ -329,7 +329,7 @@ void MainWindow::offlineAction(QAction *action)
 
         module->vclamp->injectModel(params, 0);
 
-        ofstream tf(filename + ".winner.traces");
+        ofstream tf(filename + ".winner.simtrace");
         tf << "# Traces from best model, see top-ranked model in parent file" << endl;
 
         vector<vector<double>> traces = module->vclamp->stimulateModel(0);
