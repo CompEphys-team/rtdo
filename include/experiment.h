@@ -68,6 +68,9 @@ public:
     //! Does not update GA characteristics. Use with caution.
     virtual void injectModel(std::vector<double> params, int idx) = 0;
 
+    //!< Set a parameter to the given value across all models, and prevent further perturbation. Not currently reversible.
+    virtual void fixParameter(int paramIdx, double value) = 0;
+
     inline shared_ptr<backlog::Backlog> log() const { return logger; }
     inline shared_ptr<ExperimentalData> data() const { return _data; }
 

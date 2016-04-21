@@ -35,11 +35,12 @@ public:
         ModelsSaveEval = 12,
         ModelStimulate = 13,
         TracesSave = 21,
-        TracesDrop = 22
+        TracesDrop = 22,
+        ParamFix = 31
     };
 
 public slots:
-    void appendItem(Action a, int arg = 0);
+    void appendItem(Action a, int arg = 0, double darg = 0.0);
     void actionComplete(int handle);
     void removeItem(const QModelIndex &index);
     void clear();
@@ -54,6 +55,7 @@ private:
         Action action;
         int arg;
         int handle;
+        double darg;
     };
 
     std::deque<ActionStruct> actions;

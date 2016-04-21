@@ -34,9 +34,9 @@ int ActionListModel::rowCount(const QModelIndex &parent) const
     return actions.size();
 }
 
-void ActionListModel::appendItem(ActionListModel::Action a, int arg)
+void ActionListModel::appendItem(ActionListModel::Action a, int arg, double darg)
 {
-    ActionStruct as {a, arg, 0};
+    ActionStruct as {a, arg, 0, darg};
     switch ( a ) {
     case VCFrontload:
         as.handle = module->push(label(as), [=](int) {
@@ -117,6 +117,11 @@ void ActionListModel::appendItem(ActionListModel::Action a, int arg)
             module->vclamp->data()->dump(tf);
         });
         break;
+    case ParamFix:
+        as.handle = module->push(label(as), [=](int) {
+            module->vclamp->fixParameter(as.arg, as.darg);
+        });
+        break;
     default:
         return;
     }
@@ -172,6 +177,7 @@ bool ActionListModel::save(string filename)
     for ( auto it = actions.begin(); it != actions.end(); ++it ) {
         TiXmlElement *actionElement = new TiXmlElement("action");
         actionElement->SetAttribute("arg", it->arg);
+        actionElement->SetDoubleAttribute("darg", it->darg);
         actionElement->LinkEndChild(new TiXmlText(std::to_string(static_cast<int>(it->action))));
         root->LinkEndChild(actionElement);
     }
@@ -190,9 +196,11 @@ bool ActionListModel::load(string filename)
 
     for ( TiXmlElement *el = root->FirstChildElement("action"); el; el = el->NextSiblingElement("action") ) {
         Action action = static_cast<Action>(atoi(el->GetText()));
-        int arg;
+        int arg = 0;
+        double darg = 0.0;
         el->QueryIntAttribute("arg", &arg);
-        appendItem(action, arg);
+        el->QueryDoubleAttribute("darg", &darg);
+        appendItem(action, arg, darg);
     }
     return true;
 }
@@ -211,6 +219,9 @@ QString ActionListModel::qlabel(ActionListModel::ActionStruct a)
     case ModelStimulate: return prefix + "Stimulate best model";
     case TracesDrop: return prefix + "Drop traces";
     case TracesSave: return prefix + "Save traces";
+    case ParamFix: return prefix + QString("Fix parameter %1 to %2")\
+                .arg(QString::fromStdString(config->model.obj->adjustableParams().at(a.arg).name))\
+                .arg(a.darg);
     default: return prefix + "Unknown action";
     }
 }

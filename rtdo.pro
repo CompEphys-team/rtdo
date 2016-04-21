@@ -94,7 +94,8 @@ SOURCES += core/main.cpp \
     core/teestream.cpp \
     core/experimentaldata.cpp \
     core/module.cpp \
-    gui/actionlistmodel.cpp
+    gui/actionlistmodel.cpp \
+    gui/fixparamdialog.cpp
 
 OTHER_FILES += \
     simulation/GNUmakefile \
@@ -146,7 +147,8 @@ HEADERS  += \
     include/experiment.h \
     include/experimentaldata.h \
     include/module.h \
-    include/actionlistmodel.h
+    include/actionlistmodel.h \
+    include/fixparamdialog.h
 
 FORMS    += \
     gui/mainwindow.ui \
@@ -154,7 +156,8 @@ FORMS    += \
     gui/vclampsetupdialog.ui \
     gui/wavegensetupdialog.ui \
     gui/modelsetupdialog.ui \
-    gui/performancedialog.ui
+    gui/performancedialog.ui \
+    gui/fixparamdialog.ui
 
 LIBS     += -rdynamic -ldl
 

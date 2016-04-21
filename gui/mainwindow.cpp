@@ -21,6 +21,7 @@ initial version: 2015-12-03
 #include "config.h"
 #include "util.h"
 #include <fstream>
+#include "fixparamdialog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -191,6 +192,11 @@ void MainWindow::qAction(QAction *action)
         protocol->appendItem(ActionListModel::TracesSave);
     } else if ( action == ui->actTracesDrop ) {
         protocol->appendItem(ActionListModel::TracesDrop);
+    } else if ( action == ui->actParamFix ) {
+        FixParamDialog fpd(this);
+        if ( fpd.exec() != QDialog::Accepted || fpd.param < 0 )
+            return;
+        protocol->appendItem(ActionListModel::ParamFix, fpd.param, fpd.value);
     } else if ( action == ui->actionSave_protocol ) {
         QString file = QFileDialog::getSaveFileName(this, QString("Select protocol file..."), QString(), QString("*.xml"));
         if ( !file.isEmpty() ) {

@@ -22,6 +22,7 @@ initial version: 2014-06-26
 #include "VClampGA.h"
 #include "realtimeenvironment.h"
 #include "experiment.h"
+#include <numeric>
 
 static NNmodel model;
 
@@ -36,8 +37,8 @@ public:
     void cycle(bool fit);
 
     vector<vector<double>> stimulateModel(int idx);
-
     void injectModel(vector<double> params, int idx);
+    void fixParameter(int paramIdx, double value);
 
 private:
     void runStim();
@@ -249,6 +250,16 @@ void VClamp::injectModel(std::vector<double> params, int idx)
         mparam[i++][idx] = p;
 }
 
+void VClamp::fixParameter(int paramIdx, double value)
+{
+    for ( int i = 0; i < NPOP; i++ ) {
+        mparam[paramIdx][i] = value;
+    }
+    for ( auto &p : pperturb ) {
+        p.at(paramIdx) = 0;
+    }
+}
+
 
 void Experiment::procreateGeneric()
 {
@@ -305,6 +316,10 @@ void Experiment::procreateGeneric()
         for ( int i = 0; i < NPOP; i++ ) {
             models[i].errDiff = 0;
         }
+
+        // Skip waveforms with no fitting component
+        while ( std::accumulate(pperturb.at(nextS).begin(), pperturb.at(nextS).end(), 0.0) == 0.0 )
+            nextS = (nextS + 1) % stims.size();
     } else {
         for ( int i = 0; i < NPOP; i++ ) {
             models[i].diff();
