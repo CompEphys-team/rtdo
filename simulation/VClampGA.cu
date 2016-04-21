@@ -37,6 +37,8 @@ public:
 
     vector<vector<double>> stimulateModel(int idx);
 
+    void injectModel(vector<double> params, int idx);
+
 private:
     void runStim();
 };
@@ -210,9 +212,16 @@ vector<vector<double>> VClamp::stimulateModel(int idx)
 
         scalar simulatorVars[NVAR], simulatorParams[NPARAM];
         for ( int i = 0; i < NVAR; i++ )
-            simulatorVars[i] = variableIni[i];
+            simulatorVars[i] = mvar[i][idx];
         for ( int i = 0; i < NPARAM; i++ )
             simulatorParams[i] = mparam[i][idx];
+
+        // Attempt to foil instabilities
+        if ( std::isnan(simulateSingleNeuron(simulatorVars, simulatorParams, stepVGHH)) ) {
+            for ( int i = 0; i < NVAR; i++ ) {
+                simulatorVars[i] = 0.0;
+            }
+        }
 
         for (int iT = -tmax; iT < tmax; iT++) { // Start at negative t to achieve steady state by lt=0
             double oldt = lt;
@@ -231,6 +240,13 @@ vector<vector<double>> VClamp::stimulateModel(int idx)
     }
 
     return traces;
+}
+
+void VClamp::injectModel(std::vector<double> params, int idx)
+{
+    int i = 0;
+    for ( double &p : params )
+        mparam[i++][idx] = p;
 }
 
 

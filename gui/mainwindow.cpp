@@ -17,7 +17,10 @@ initial version: 2015-12-03
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTextStream>
+#include <QCheckBox>
 #include "config.h"
+#include "util.h"
+#include <fstream>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -31,10 +34,13 @@ MainWindow::MainWindow(QWidget *parent) :
     wavegen(new Runner(XMLModel::WaveGen)),
     wavegenNS(new Runner(XMLModel::WaveGenNoveltySearch)),
     module(nullptr),
-    protocol(nullptr)
+    protocol(nullptr),
+    offlineNoAsk(false)
 {
     ui->setupUi(this);
     ui->stackedWidget->setCurrentWidget(ui->pSetup);
+    ui->menuActions->setEnabled(false);
+    ui->menuOffline->setEnabled(false);
 
     connect(&*channel_setup, SIGNAL(channelsUpdated()), &*vclamp_setup, SIGNAL(channelsUpdated()));
     connect(ui->actionVoltage_clamp, SIGNAL(triggered()), &*vclamp_setup, SLOT(open()));
@@ -53,6 +59,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&*wavegenNS, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
 
     connect(ui->menuActions, SIGNAL(triggered(QAction*)), this, SLOT(qAction(QAction*)));
+    connect(ui->menuOffline, SIGNAL(triggered(QAction*)), this, SLOT(offlineAction(QAction*)));
     connect(ui->VCApply, SIGNAL(clicked(bool)), &*vclamp_setup, SLOT(open()));
     connect(ui->btnZeroOutputs, SIGNAL(clicked(bool)), this, SLOT(zeroOutputs()));
 
@@ -286,6 +293,68 @@ void MainWindow::on_btnNotesSave_clicked()
     cout << "Saved notes to " << filename.toStdString() << endl;
 }
 
+// ******************** Offline ******************************
+void MainWindow::offlineAction(QAction *action)
+{
+    if ( !offlineNoAsk ) {
+        QMessageBox mb(QMessageBox::Warning,
+                       "Offline action",
+                       "Offline actions interferes with live progress. Continue and discard unsaved progress?",
+                       QMessageBox::Yes | QMessageBox::No);
+        QCheckBox *cb = new QCheckBox("Don't ask again");
+        mb.setCheckBox(cb);
+        mb.exec();
+        if ( mb.result() == QMessageBox::No )
+            return;
+
+        if ( cb->isChecked() )
+            offlineNoAsk = true;
+    }
+
+    if ( action == ui->offline_stimulateBest ) {
+        string filename = QFileDialog::getOpenFileName(this, QString("Select model dump..."),
+                                                        QString(), QString("*_modelsAll.log *_modelsEval.log")).toStdString();
+        if ( filename.empty() )
+            return;
+
+        config = new conf::Config(filename.substr(0, filename.find_last_of('_')) + "_config.xml");
+        emit configChanged();
+
+        delete module;
+        module = new Module(this);
+        ui->outdirDisplay->setText(dirname(filename));
+
+        ifstream file(filename);
+        vector<double> params = read_model_dump(file, 1);
+
+        module->vclamp->injectModel(params, 0);
+
+        ofstream tf(filename + ".winner.traces");
+        tf << "# Traces from best model, see top-ranked model in parent file" << endl;
+
+        vector<vector<double>> traces = module->vclamp->stimulateModel(0);
+        tf << endl << endl << "Time";
+        for ( size_t i = 0; i < traces.size(); i++ ) {
+            tf << '\t' << "Stimulation_" << i;
+        }
+        tf << endl;
+        for ( size_t n = traces.size(), i = 0; n > 0; i++ ) { // Output data in columns, pad unequal lengths with '.' for gnuplotting
+            n = traces.size();
+            tf << (i * config->io.dt);
+            for ( vector<double> &it : traces ) {
+                tf << '\t';
+                if ( it.size() <= i ) {
+                    tf << '.';
+                    --n;
+                } else {
+                    tf << it.at(i);
+                }
+            }
+            tf << endl;
+        }
+    }
+}
+
 // ************** Misc ****************************
 bool MainWindow::pExpInit()
 {
@@ -336,6 +405,7 @@ void MainWindow::on_pSetup2Experiment_clicked()
     QApplication::setOverrideCursor(QCursor(Qt::BusyCursor));
     if ( pExpInit() ) {
         ui->menuActions->setEnabled(true);
+        ui->menuOffline->setEnabled(true);
         ui->actionChannel_setup->setEnabled(false);
         ui->actionModel_setup->setEnabled(false);
         ui->actionWavegen_setup->setEnabled(false);
@@ -376,6 +446,7 @@ void MainWindow::on_pExperiment2Setup_clicked()
 void MainWindow::pExp2Setup()
 {
     ui->menuActions->setEnabled(false);
+    ui->menuOffline->setEnabled(false);
     ui->actionChannel_setup->setEnabled(true);
     ui->actionModel_setup->setEnabled(true);
     ui->actionWavegen_setup->setEnabled(true);

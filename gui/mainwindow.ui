@@ -405,9 +405,6 @@
     <addaction name="actionSave_configuration"/>
    </widget>
    <widget class="QMenu" name="menuActions">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
     <property name="title">
      <string>Actions</string>
     </property>
@@ -441,8 +438,15 @@
     <addaction name="actionSave_protocol"/>
     <addaction name="actionLoad_protocol"/>
    </widget>
+   <widget class="QMenu" name="menuOffline">
+    <property name="title">
+     <string>Offline</string>
+    </property>
+    <addaction name="offline_stimulateBest"/>
+   </widget>
    <addaction name="menuConfig"/>
    <addaction name="menuActions"/>
+   <addaction name="menuOffline"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -569,6 +573,14 @@
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Stimulate the best model with all waveforms, saving its responses to a file&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </action>
+  <action name="offline_stimulateBest">
+   <property name="text">
+    <string>Stimulate best model from file...</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Loads the highest-ranked model from a file and applies each stimulation in turn, recording the responses in &amp;lt;modelfile&amp;gt;.winner.traces&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </action>
  </widget>

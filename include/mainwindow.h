@@ -70,6 +70,8 @@ private slots:
     void on_btnNotesLoad_clicked();
     void on_btnNotesSave_clicked();
 
+    void offlineAction(QAction *action);
+
     // page transitions
     void on_pSetup2Experiment_clicked();
     void on_pSetup2Wavegen_clicked();
@@ -92,6 +94,8 @@ private:
 
     Module *module;
     ActionListModel *protocol;
+
+    bool offlineNoAsk;
 };
 
 #endif // MAINWINDOW_H

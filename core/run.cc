@@ -131,6 +131,28 @@ void write_backlog(ofstream &file, const std::vector<const backlog::LogEntry *> 
     }
 }
 
+std::vector<double> read_model_dump(ifstream &file, int rank)
+{
+    // Extract a parameter set from output of @fn write_backlog. Comes with no guarantees...
+    char buffer[1024];
+    file.getline(buffer, 1024);
+    double tmp = 0;
+    file >> tmp >> tmp;
+    while ( file.good() && tmp != rank ) {
+        file.getline(buffer, 1024);
+        file >> tmp >> tmp;
+    }
+
+    vector<double> ret(config->model.obj->adjustableParams().size());
+    if ( !file.good() )
+        return ret;
+    file >> tmp >> tmp;
+    for ( size_t i = 0; i < ret.size(); i++ ) {
+        file >> ret[i] >> tmp >> tmp;
+    }
+    return ret;
+}
+
 bool run_wavegen(int focusParam, bool *stopFlag)
 {
     bool stopdummy = false;

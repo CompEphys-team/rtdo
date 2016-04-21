@@ -64,6 +64,10 @@ public:
     //!< Evaluate the model indicated by @arg idx for each stimulation, returning its response traces
     virtual vector<vector<double>> stimulateModel(int idx) = 0;
 
+    //!< Inject a parameter set into the live model database at the indicated index, overwriting any previous tenant.
+    //! Does not update GA characteristics. Use with caution.
+    virtual void injectModel(std::vector<double> params, int idx) = 0;
+
     inline shared_ptr<backlog::Backlog> log() const { return logger; }
     inline shared_ptr<ExperimentalData> data() const { return _data; }
 
