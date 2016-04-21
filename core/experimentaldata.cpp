@@ -114,10 +114,11 @@ void SingleChannelData::setSize(size_t cacheSize)
 void SingleChannelData::dump(ostream &os)
 {
     for ( size_t i = 0; i < nstim; i++ ) {
-        if ( !responses.at(i).size() || !mean.at(i).size() || !median.at(i).size() ) {
-            cerr << "Skipping empty responses at index " << i << endl;
+        if ( !mean.at(i).size() || !median.at(i).size() ) {
+            cerr << "Skipping empty dataset at index " << i << endl;
             continue;
-        } else if ( responses.at(i).front().size() != mean.at(i).size() || mean.at(i).size() != median.at(i).size() ) {
+        } else if ( (responses.at(i).size() && responses.at(i).front().size() != mean.at(i).size())
+                    || mean.at(i).size() != median.at(i).size() ) {
             cerr << "Skipping incongruously sized responses at index " << i << endl;
             continue;
         }
