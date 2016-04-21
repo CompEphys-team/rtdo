@@ -443,6 +443,7 @@
      <string>Offline</string>
     </property>
     <addaction name="offline_stimulateBest"/>
+    <addaction name="offline_loadTraces"/>
    </widget>
    <addaction name="menuConfig"/>
    <addaction name="menuActions"/>
@@ -581,6 +582,11 @@
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Loads the highest-ranked model from a file and applies each stimulation in turn, recording the responses in &amp;lt;modelfile&amp;gt;.winner.traces&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </action>
+  <action name="offline_loadTraces">
+   <property name="text">
+    <string>Load traces...</string>
    </property>
   </action>
  </widget>

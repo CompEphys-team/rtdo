@@ -320,9 +320,14 @@ void MainWindow::offlineAction(QAction *action)
         config = new conf::Config(filename.substr(0, filename.find_last_of('_')) + "_config.xml");
         emit configChanged();
 
+        delete protocol;
         delete module;
-        module = new Module(this);
-        ui->outdirDisplay->setText(dirname(filename));
+        protocol = nullptr;
+        module = nullptr;
+        if ( !pExpInit() )
+            pExp2Setup();
+
+        ui->outdirDisplay->setText(QString("Loaded ") + QString::fromStdString(filename));
 
         ifstream file(filename);
         vector<double> params = read_model_dump(file, 1);
@@ -352,6 +357,33 @@ void MainWindow::offlineAction(QAction *action)
             }
             tf << endl;
         }
+    } else if ( action == ui->offline_loadTraces ) {
+        string filename = QFileDialog::getOpenFileName(this, QString("Select trace file..."),
+                                                        QString(), QString("*.traces")).toStdString();
+        if ( filename.empty() )
+            return;
+
+        config = new conf::Config(filename.substr(0, filename.find_last_of('.')) + "_config.xml");
+        emit configChanged();
+
+        delete protocol;
+        delete module;
+        protocol = nullptr;
+        module = nullptr;
+        if ( !pExpInit() )
+            pExp2Setup();
+
+        ui->outdirDisplay->setText(QString("Loaded ") + QString::fromStdString(filename));
+
+        QFile file(dirname(filename) + "/notes.txt");
+        if ( file.open(QFile::ReadOnly | QFile::Text) ) {
+            ui->notesArea->document()->setPlainText(file.readAll());
+        }
+
+        ifstream tf(filename);
+        module->vclamp->data()->load(tf);
+
+        cout << "Loading complete. You may now proceed as usual; output will be saved to a new directory." << endl;
     }
 }
 
