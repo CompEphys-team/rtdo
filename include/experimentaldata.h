@@ -79,6 +79,8 @@ private:
     int samp;
     int stim;
     bool sampling;
+
+    bool lockSampling;
 };
 
 

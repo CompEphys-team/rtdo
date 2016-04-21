@@ -22,14 +22,15 @@ SingleChannelData::SingleChannelData(size_t nstim) :
     responses(nstim),
     mean(nstim),
     median(nstim),
-    nstim(nstim)
+    nstim(nstim),
+    lockSampling(false)
 {}
 
 void SingleChannelData::startSample(const inputSpec &wave, int stimulation)
 {
     stim = stimulation;
     samp = 0;
-    if ( responses.at(stim).size() < size || !size ) {
+    if ( !lockSampling && (responses.at(stim).size() < size || !size) ) {
         sampling = true;
         RealtimeEnvironment::env()->setWaveform(wave);
         RealtimeEnvironment::env()->sync();
@@ -99,6 +100,7 @@ void SingleChannelData::clear()
         mean[i].clear();
         median[i].clear();
     }
+    lockSampling = false;
 }
 
 void SingleChannelData::setSize(size_t cacheSize)
@@ -106,6 +108,7 @@ void SingleChannelData::setSize(size_t cacheSize)
     if ( cacheSize < size )
         clear();
     size = cacheSize;
+    lockSampling = false;
 }
 
 void SingleChannelData::dump(ostream &os)
@@ -144,17 +147,21 @@ void SingleChannelData::load(istream &is)
     while ( is.good() ) {
         while ( is.good() && (is.peek() == '#' || is.peek() == '\n') ) {
             is.getline(buffer, 1024);
-            sscanf(buffer, "# Stimulation %u", &ns);
         }
+        sscanf(buffer, "# Stimulation %u", &ns);
         if ( ns > mean.size() ) {
             continue;
         }
-        is >> tmp;
-        mean[ns].push_back(tmp);
-        is >> tmp;
-        median[ns].push_back(tmp);
-        is.ignore(numeric_limits<streamsize>::max(), '\n');
+        is.getline(buffer, 1024); // Skip header
+        while ( is.good() && is.peek() != '\n' ) {
+            is >> tmp;
+            mean[ns].push_back(tmp);
+            is >> tmp;
+            median[ns].push_back(tmp);
+            is.getline(buffer, 1024); // Skip individual responses
+        }
     }
+    lockSampling = true;
 }
 
 
