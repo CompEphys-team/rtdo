@@ -22,6 +22,8 @@ initial version: 2015-12-03
 #include "util.h"
 #include <fstream>
 #include "fixparamdialog.h"
+#include <unistd.h>
+#include <sys/stat.h>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -75,10 +77,58 @@ MainWindow::MainWindow(QWidget *parent) :
 #ifndef CONFIG_RT
     ui->actionChannel_setup->setEnabled(false);
 #endif
+
+    const char *home = getenv("HOME");
+    QFile recentCfgFile(QString(home)+"/.rtdo/recentConfig");
+    if ( recentCfgFile.open(QIODevice::ReadOnly | QIODevice::Text) ) {
+        QTextStream s(&recentCfgFile);
+        QString line;
+        while ( s.readLineInto(&line) ) {
+            if ( !access(line.toStdString().c_str(), R_OK) ) {
+                recentConfigs << line;
+            }
+        }
+        if ( recentConfigs.size() ) {
+            config = new conf::Config(recentConfigs.first().toStdString());
+            emit configChanged();
+            updateRecent(&recentConfigs);
+        }
+    }
+    QFile recentProtFile(QString(home)+"/.rtdo/recentProtocols");
+    if ( recentProtFile.open(QIODevice::ReadOnly | QIODevice::Text) ) {
+        QTextStream s(&recentProtFile);
+        QString line;
+        while ( s.readLineInto(&line) ) {
+            if ( !access(line.toStdString().c_str(), R_OK) ) {
+                recentProtocols << line;
+            }
+        }
+        if ( recentProtocols.size() )
+            updateRecent(&recentProtocols);
+    }
 }
 
 MainWindow::~MainWindow()
 {
+    const char *home = getenv("HOME");
+    if ( access((QString(home)+"/.rtdo").toLocal8Bit().constData(), F_OK) ) {
+        mkdir((QString(home)+"/.rtdo").toLocal8Bit().constData(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    }
+    QFile recentCfgFile(QString(home)+"/.rtdo/recentConfig");
+    if ( recentCfgFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text) ) {
+        QTextStream s(&recentCfgFile);
+        for ( QString str : recentConfigs ) {
+            s << str << endl;
+        }
+    }
+    QFile recentProtFile(QString(home)+"/.rtdo/recentProtocols");
+    if ( recentProtFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text) ) {
+        QTextStream s(&recentProtFile);
+        for ( QString str : recentProtocols ) {
+            s << str << endl;
+        }
+    }
+
     delete module;
     delete ui;
 }
@@ -115,6 +165,8 @@ void MainWindow::on_actionSave_configuration_triggered()
     if ( !file.endsWith(".xml") )
         file.append(".xml");
     config->save(file.toStdString());
+
+    updateRecent(&recentConfigs, file);
 }
 
 void MainWindow::on_actionLoad_configuration_triggered()
@@ -125,6 +177,17 @@ void MainWindow::on_actionLoad_configuration_triggered()
     delete config;
     config = new conf::Config(file.toStdString());
     emit configChanged();
+
+    updateRecent(&recentConfigs, file);
+}
+
+void MainWindow::loadRecentConfiguration()
+{
+    QAction *action = qobject_cast<QAction *>(sender());
+    QString file = action->data().toString();
+    config = new conf::Config(file.toStdString());
+    emit configChanged();
+    updateRecent(&recentConfigs, file);
 }
 
 
@@ -204,12 +267,21 @@ void MainWindow::qAction(QAction *action)
                 file.append(".xml");
             if ( !protocol->save(file.toStdString()) )
                 cerr << "Failed to write protocol to " << file.toStdString() << endl;
+            else
+                updateRecent(&recentProtocols, file);
         }
-    } else if ( action == ui->actionLoad_protocol ) {
-        QString file = QFileDialog::getOpenFileName(this, QString("Select protocol file..."), QString(), QString("*.xml"));
+    } else { // Load protocol (recent or "...")
+        QString file;
+        if ( action == ui->actionLoad_protocol ) {
+            file = QFileDialog::getOpenFileName(this, QString("Select protocol file..."), QString(), QString("*.xml"));
+        } else {
+            file = action->data().toString();
+        }
         if ( !file.isEmpty() ) {
             if ( !protocol->load(file.toStdString()) )
                 cerr << "Failed to open protocol from " << file.toStdString() << endl;
+            else
+                updateRecent(&recentProtocols, file);
         }
     }
 }
@@ -454,11 +526,10 @@ void MainWindow::on_pSetup2Experiment_clicked()
     if ( pExpInit() ) {
         ui->menuActions->setEnabled(true);
         ui->menuOffline->setEnabled(true);
-        ui->actionChannel_setup->setEnabled(false);
-        ui->actionModel_setup->setEnabled(false);
-        ui->actionWavegen_setup->setEnabled(false);
-        ui->actionLoad_configuration->setEnabled(false);
-        ui->actionSave_configuration->setEnabled(false);
+        for ( QAction *a : ui->menuConfig->actions() ) {
+            if ( a != ui->actionVoltage_clamp && a != ui->actionPerformance )
+                a->setEnabled(false);
+        }
         vclamp_setup->setExperimentMode(true);
         ui->stackedWidget->setCurrentWidget(ui->pExperiment);
     }
@@ -495,11 +566,59 @@ void MainWindow::pExp2Setup()
 {
     ui->menuActions->setEnabled(false);
     ui->menuOffline->setEnabled(false);
-    ui->actionChannel_setup->setEnabled(true);
-    ui->actionModel_setup->setEnabled(true);
-    ui->actionWavegen_setup->setEnabled(true);
-    ui->actionLoad_configuration->setEnabled(true);
-    ui->actionSave_configuration->setEnabled(true);
+    for ( QAction *a : ui->menuConfig->actions() ) {
+        if ( a != ui->actionVoltage_clamp && a != ui->actionPerformance )
+            a->setEnabled(true);
+    }
     vclamp_setup->setExperimentMode(false);
     ui->stackedWidget->setCurrentWidget(ui->pSetup);
+}
+
+
+// -------------------------------------------- Miscellaneous ------------------------------------------------------------
+void MainWindow::updateRecent(QStringList *list, QString entry)
+{
+    if ( entry.size() )
+        list->push_front(entry);
+    list->removeDuplicates();
+    while ( list->size() > 5 )
+        list->pop_back();
+
+    QMenu *m;
+    QAction *head = nullptr;
+    QAction *tail = nullptr;
+    if ( list == &recentConfigs ) {
+        m = ui->menuConfig;
+        head = ui->actionLoad_configuration;
+    } else if ( list == &recentProtocols ) {
+        m = ui->menuActions;
+        head = ui->actionLoad_protocol;
+    } else {
+        return;
+    }
+
+    bool skip = (head != nullptr);
+    for ( QAction *a : m->actions() ) {
+        if ( skip && a != head )
+            continue;
+        if ( a == head ) {
+            skip = false;
+            continue;
+        }
+        if ( a == tail )
+            break;
+        m->removeAction(a);
+        skip = false;
+    }
+
+    int i = 0;
+    for ( QString s : *list ) {
+        QAction *a = new QAction(QString("&%1 %2").arg(++i).arg(basename_nosuffix(s)), this);
+        a->setData(s);
+        a->setToolTip(s);
+        m->insertAction(tail, a);
+
+        if ( m == ui->menuConfig )
+            connect(a, SIGNAL(triggered(bool)), this, SLOT(loadRecentConfiguration()));
+    }
 }

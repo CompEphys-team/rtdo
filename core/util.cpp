@@ -37,6 +37,11 @@ string basename_nosuffix(const string &path) {
     }
 }
 
+QString basename_nosuffix(QString &path)
+{
+    return QString::fromStdString(basename_nosuffix(path.toStdString()));
+}
+
 ostream &operator<<(ostream &os, inputSpec &I) {
     os << I.t << " " << I.ot << " " << I.dur << " " << I.baseV << " " << I.N << " ";
     for (int i = 0; i < I.N; i++) {

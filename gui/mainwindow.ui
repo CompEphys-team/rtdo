@@ -401,8 +401,8 @@
     <addaction name="actionWavegen_setup"/>
     <addaction name="actionPerformance"/>
     <addaction name="separator"/>
-    <addaction name="actionLoad_configuration"/>
     <addaction name="actionSave_configuration"/>
+    <addaction name="actionLoad_configuration"/>
    </widget>
    <widget class="QMenu" name="menuActions">
     <property name="title">

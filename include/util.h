@@ -19,5 +19,6 @@ QString dirname(QString path);
 QString dirname(std::string path);
 
 std::string basename_nosuffix(const std::string &path);
+QString basename_nosuffix(QString &path);
 
 #endif // UTIL_H

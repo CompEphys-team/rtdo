@@ -23,6 +23,7 @@ initial version: 2015-12-03
 #include "runner.h"
 #include "module.h"
 #include "actionlistmodel.h"
+#include <QStringList>
 
 namespace Ui {
 class MainWindow;
@@ -47,6 +48,7 @@ private slots:
     void compile();
     void on_actionSave_configuration_triggered();
     void on_actionLoad_configuration_triggered();
+    void loadRecentConfiguration();
 
     // pWavegen
     void on_wavegen_start_clicked();
@@ -80,6 +82,9 @@ private slots:
 
     void pExp2Setup();
 
+    // Misc
+    void updateRecent(QStringList *list, QString entry = QString());
+
 private:
     Ui::MainWindow *ui;
     unique_ptr<ChannelSetupDialog> channel_setup;
@@ -96,6 +101,9 @@ private:
     ActionListModel *protocol;
 
     bool offlineNoAsk;
+
+    QStringList recentConfigs;
+    QStringList recentProtocols;
 };
 
 #endif // MAINWINDOW_H
