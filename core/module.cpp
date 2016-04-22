@@ -27,6 +27,7 @@ Module::Module(QObject *parent) :
     lib(nullptr),
     handle_ctr(0),
     firstrun(true),
+    _append(false),
     _exit(false),
     _stop(true),
     _busy(false)
@@ -125,6 +126,11 @@ void Module::exec()
 
         lock.wait(); // Locked until vvvvvvvvvvvvvvvvvv
 
+        if ( _append && firstrun ) {
+            firstrun = false;
+            actionLog.open(outdir + "/actions.log", ios_base::out | ios_base::app);
+            emit outdirSet();
+        }
         if ( firstrun && !_stop && q.size() ) {
             if ( !initOutput() ) {
                 _stop = true;
@@ -216,6 +222,30 @@ bool Module::erase(int handle)
     lock.signal();
 
     return ret;
+}
+
+bool Module::append(string directory)
+{
+    if ( !firstrun || handle_ctr > 0 )
+        return false;
+    if ( directory.back() == '/' )
+        directory.erase(directory.end()-1);
+
+    char buffer[1024];
+    unsigned int last = 0;
+    ifstream oldLog(directory + "/actions.log");
+    while ( oldLog.good() ) {
+        oldLog.getline(buffer, 1024);
+        sscanf(buffer, "%u ", &last);
+    }
+    if ( !last )
+        return false;
+
+    handle_ctr = last;
+    _append = true;
+    outdir = directory;
+    push(string("Append output to ") + directory, [](int){});
+    return true;
 }
 
 bool Module::busy()

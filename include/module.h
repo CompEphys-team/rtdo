@@ -37,6 +37,10 @@ public:
     //! @return true if an action has been removed
     bool erase(int handle);
 
+    //!< Append output to the indicated directory, provided there is an existing action log there.
+    //! Fails if actions have already been queued, or if no valid action log was found.
+    bool append(std::string directory);
+
     bool busy();
     size_t qSize();
 
@@ -84,6 +88,7 @@ private:
 
     int handle_ctr;
     bool firstrun;
+    bool _append;
 
     RealtimeConditionVariable sem, lock;
     bool _exit, _stop, _busy;

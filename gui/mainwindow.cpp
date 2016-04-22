@@ -389,7 +389,17 @@ void MainWindow::offlineAction(QAction *action)
         ifstream tf(filename);
         module->vclamp->data()->load(tf);
 
-        cout << "Loading complete. You may now proceed as usual; output will be saved to a new directory." << endl;
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question(this, "Append outputs", "Add outputs to existing directory?",
+                                      QMessageBox::Yes | QMessageBox::No);
+        string saveLoc("saved to a new directory");
+        if ( reply == QMessageBox::Yes ) {
+            if ( module->append(dirname(filename).toStdString()) )
+                saveLoc = "appended to the existing directory";
+            else
+                cerr << "Append failed." << endl;
+        }
+        cout << "Loading complete. You may now proceed as usual; output will be " << saveLoc << "." << endl;
     }
 }
 
