@@ -80,7 +80,6 @@ void ActionListModel::appendItem(ActionListModel::Action a, int arg, double darg
             ofstream tf(module->outdir + "/" + to_string(h) + ".simtrace");
             const backlog::LogEntry *entry = sorted.front();
 
-            tf << "# Traces from model:" << endl;
             vector<const backlog::LogEntry*> tmp(1, entry);
             write_backlog(tf, tmp, false);
 
