@@ -1,0 +1,37 @@
+#!/bin/bash
+p=(gNa   ENa   gKA   gKB   gA   EK   gL   EL    C)
+l=("0"   "0"   "0"   "0"   "0"  "*"  "0"  "*<0" "0")
+h=("*"   "*"   "*"   "*"   "*"  "0"  "*"  "0<*" "*")
+v=(7     35    1.44  2.88  12   -67  0.02 -20   3.5)
+u=("μS"  "mV"  "μS"  "μS"  "μS" "mV" "μS" "mV"  "nF")
+for i in ${!p[@]}; do
+	#rm "${p[$i]}.plt"
+	echo "set terminal svg enhanced" >> "${p[$i]}.plt"
+	echo "set output '${p[$i]}.svg'" >> "${p[$i]}.plt"
+	echo "unset key" >> "${p[$i]}.plt"
+	echo "set xrange [-0.5:3.5]" >> "${p[$i]}.plt"
+	echo "set ylabel \"${u[$i]}\"" >> "${p[$i]}.plt"
+	echo "set yrange [${l[$i]}:${h[$i]}]" >> "${p[$i]}.plt"
+	echo "unset xtics" >> "${p[$i]}.plt"
+	echo "set title '${p[$i]}'" >> "${p[$i]}.plt"
+	echo "set xtics ('Original model' 0, 'Fully fitted' 1, 'Fixed ENa/EK/C' 2, 'Fixed gNa/ENa' 3)" >> "${p[$i]}.plt"
+	echo "plot \"<echo '0 ${v[$i]}'\" w p lc -1 pt 13, \\" >> "${p[$i]}.plt"
+done
+
+j=1
+for dir in `ls -d 2016*`; do
+	ft="`ls $dir/*_modelsAll.log -1 | tail -1`"
+	fx="`ls -t $dir/*.simtrace | grep '[0-9]\.simtrace$' | tail -1`"
+	na="`ls -t $dir/*.simtrace | grep '[0-9]\.simtrace$' | head -1`"
+	for i in ${!p[@]}; do
+		echo "\"$ft\" u (1):(\$0==0 ? \$$((3*$i+5)) : NaN) pt $j lc $j, \\" >> "${p[$i]}.plt"
+		echo "\"$fx\" index 0 u (2):$((3*$i+5)) pt $j lc $j, \\" >> "${p[$i]}.plt"
+		echo "\"$na\" index 0 u (3):$((3*$i+5)) pt $j lc $j, \\" >> "${p[$i]}.plt"
+	done
+	((j++))
+done
+
+for i in ${p[@]}; do
+	gnuplot "$i.plt"
+	rm "$i.plt"
+done

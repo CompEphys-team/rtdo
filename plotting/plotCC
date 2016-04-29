@@ -1,0 +1,30 @@
+#!/bin/bash
+cat > tmp.plt <<-EOF
+	set terminal "svg"
+	set output outfile
+	set xtics ("0" 1000,"1" 3000,"1.5" 5000,"2" 7000,"5" 9000,"10" 11000)
+	unset key
+	set xlabel "Injected current (nA)"
+	set ylabel "Membrane potential (mV)"
+	set title tt.' under current clamp'
+
+	plot for [i=1:words(files)] word(files,i) using 1:3 w lines
+EOF
+
+for dir in `ls -d 2016*`; do
+	ft1=$(ls $dir/*log.CC.simtrace -1 | tail -1)
+	fx1=$(ls -t $dir/*.simtrace.CC.simtrace | tail -1)
+	na1=$(ls -t $dir/*.simtrace.CC.simtrace | head -1)
+	ft="$ft $ft1"
+	fx="$fx $fx1"
+	na="$na $na1"
+	
+	gnuplot -e "files='$ft1'; outfile='$dir/figures/fitted.svg'; tt='Fully fitted model'" tmp.plt
+	gnuplot -e "files='$fx1'; outfile='$dir/figures/fixed.svg'; tt='Fixed ENa/EK/C model'" tmp.plt
+	gnuplot -e "files='$na1'; outfile='$dir/figures/fixedNa.svg'; tt='Fixed gNa/ENa model'" tmp.plt
+done
+
+gnuplot -e "files='$ft'; outfile='fitted.svg'; tt='Fully fitted models'" tmp.plt
+gnuplot -e "files='$fx'; outfile='fixed.svg'; tt='Fixed ENa/EK/C models'" tmp.plt
+gnuplot -e "files='$na'; outfile='fixedNa.svg'; tt='Fixed gNa/ENa models'" tmp.plt
+rm tmp.plt
