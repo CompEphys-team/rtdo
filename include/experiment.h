@@ -71,6 +71,9 @@ public:
     //!< Set a parameter to the given value across all models, and prevent further perturbation. Not currently reversible.
     virtual void fixParameter(int paramIdx, double value) = 0;
 
+    //!< Run a CPU simulation of the model at the indicated index, interpreting @arg I as a current clamp stimulus
+    virtual vector<double> getCCVoltageTrace(inputSpec I, int idx) = 0;
+
     inline shared_ptr<backlog::Backlog> log() const { return logger; }
     inline shared_ptr<ExperimentalData> data() const { return _data; }
 

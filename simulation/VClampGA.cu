@@ -40,6 +40,8 @@ public:
     void injectModel(vector<double> params, int idx);
     void fixParameter(int paramIdx, double value);
 
+    vector<double> getCCVoltageTrace(inputSpec I, int idx);
+
 private:
     void runStim();
 };
@@ -142,6 +144,7 @@ void VClamp::runStim()
     double lt = 0.0;
     int sn = 0;
 
+    VCHH = true;
     stepVGHH = I.baseV;
     otHH = t + I.ot;
     oteHH = t + I.ot + I.dur;
@@ -207,6 +210,7 @@ vector<vector<double>> VClamp::stimulateModel(int idx)
         int tmax = I.t / DT;
         vector<double> trace(tmax);
 
+        VCHH = true;
         stepVGHH = I.baseV;
         clampGainHH = cfg->vc.gain;
         accessResistanceHH = cfg->vc.resistance;
@@ -258,6 +262,45 @@ void VClamp::fixParameter(int paramIdx, double value)
     for ( auto &p : pperturb ) {
         p.at(paramIdx) = 0;
     }
+}
+
+vector<double> VClamp::getCCVoltageTrace(inputSpec I, int idx)
+{
+    double lt = -2000;
+    int sn = 0;
+    int tmax = I.t / DT;
+    vector<double> trace(tmax);
+
+    int i = 0, voltIdx = 0;
+    for ( auto v : config->model.obj->vars() ) {
+        if ( !v.name.compare("V") )
+            voltIdx = i;
+        ++i;
+    }
+
+    VCHH = false;
+    IsynGHH = I.baseV;
+
+    scalar simulatorVars[NVAR], simulatorParams[NPARAM];
+    for ( int i = 0; i < NVAR; i++ )
+        simulatorVars[i] = mvar[i][idx];
+    for ( int i = 0; i < NPARAM; i++ )
+        simulatorParams[i] = mparam[i][idx];
+
+    for (int iT = lt/DT; iT < tmax; iT++) {
+        double oldt = lt;
+        simulateSingleNeuron(simulatorVars, simulatorParams, stepVGHH);
+        lt += DT;
+        if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
+            IsynGHH = I.V[sn];
+            sn++;
+        }
+        if ( iT >= 0 ) {
+            trace[iT] = simulatorVars[voltIdx];
+        }
+    }
+
+    return trace;
 }
 
 

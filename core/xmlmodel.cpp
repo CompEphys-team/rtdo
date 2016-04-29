@@ -246,7 +246,11 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "unsigned int mt;" << endl
            << "scalar mdt= DT/$(simCycles);" << endl
            << "for (mt=0; mt < $(simCycles); mt++) {" << endl
-           << "  Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl
+           << "  if ( $(VC) ) {" << endl
+           << "    Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl
+           << "  } else {" << endl
+           << "    Isyn = $(IsynG);" << endl
+           << "  }" << endl
            << code << endl
            << "}" << endl
            << CUTMARK << endl
@@ -424,6 +428,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"IsynG\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameters.push_back(\"VC\");" << endl;
+        of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"bool\");" << endl;
         break;
     case WaveGen:
         of << "n.varNames.push_back(\"stepVG\");" << endl;
