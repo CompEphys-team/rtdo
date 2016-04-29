@@ -450,6 +450,7 @@
      <string>Offline</string>
     </property>
     <addaction name="offline_stimulateBest"/>
+    <addaction name="offline_stimulateBestCC"/>
     <addaction name="offline_loadTraces"/>
    </widget>
    <addaction name="menuConfig"/>
@@ -599,6 +600,11 @@
   <action name="actParamFix">
    <property name="text">
     <string>Fix...</string>
+   </property>
+  </action>
+  <action name="offline_stimulateBestCC">
+   <property name="text">
+    <string>Stimulate model with current clamp waveform...</string>
    </property>
   </action>
  </widget>

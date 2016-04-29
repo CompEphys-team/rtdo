@@ -472,6 +472,65 @@ void MainWindow::offlineAction(QAction *action)
                 cerr << "Append failed." << endl;
         }
         cout << "Loading complete. You may now proceed as usual; output will be " << saveLoc << "." << endl;
+    } else if ( action == ui->offline_stimulateBestCC ) {
+        string filename = QFileDialog::getOpenFileName(this, QString("Select model dump..."),
+                                                        QString(), QString("*_modelsAll.log *_modelsEval.log *.simtrace")).toStdString();
+        if ( filename.empty() )
+            return;
+
+        string stimfilename = QFileDialog::getOpenFileName(this, QString("Select current clamp stimulation..."),
+                                                           QString(), QString("*.stim")).toStdString();
+        if ( stimfilename.empty() )
+            return;
+
+        if ( !filename.compare(filename.find_last_of('.'), string::npos, ".simtrace") )
+            config = new conf::Config(filename.substr(0, filename.find_last_of('.')) + "_config.xml");
+        else
+            config = new conf::Config(filename.substr(0, filename.find_last_of('_')) + "_config.xml");
+        emit configChanged();
+
+        delete protocol;
+        delete module;
+        protocol = nullptr;
+        module = nullptr;
+        if ( !pExpInit() )
+            pExp2Setup();
+
+        ui->outdirDisplay->setText(QString("Loaded ") + QString::fromStdString(filename));
+
+        ifstream file(filename);
+        vector<double> params = read_model_dump(file, 1);
+        file.close();
+
+        module->vclamp->injectModel(params, 0);
+
+        file.open(stimfilename);
+        char buffer[1024];
+        while (((file.peek() == '%') || (file.peek() == '\n') || (file.peek() == ' ') || (file.peek() == '#')) && file.good()) { // remove comments
+            file.getline( buffer, 1024 );
+        }
+
+        inputSpec wave;
+        file >> wave;
+
+        vector<double> trace = module->vclamp->getCCVoltageTrace(wave, 0);
+
+        filename += ".CC.simtrace";
+        ofstream tf(filename);
+        tf << "# Traces from best model, see top-ranked model in parent file" << endl;
+        tf << endl << endl << "Time\tInput_current\tMembrane_potential" << endl;
+        double t = 0.0;
+        double I = wave.baseV;
+        int sn = 0;
+        for ( double V : trace ) {
+            tf << t << '\t' << I << '\t' << V << endl;
+            t += config->io.dt;
+            if ( sn < wave.N && t > wave.st.at(sn) ) {
+                I = wave.V.at(sn++);
+            }
+        }
+
+        ui->outdirDisplay->setText(QString::fromStdString(filename));
     }
 }
 
