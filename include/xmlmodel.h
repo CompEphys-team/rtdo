@@ -39,6 +39,11 @@ public:
         bool multiplicative;
     };
 
+    struct Current {
+        std::string name;
+        std::string code;
+    };
+
     std::string generateDefinition(enum outputType type, int npop, std::string path, bool single = false);
     void generateSimulator(enum outputType type, std::string path);
 
@@ -47,6 +52,7 @@ public:
     inline const std::vector<param> &vars() const { return _vars; }
     inline const std::vector<param> &adjustableParams() const { return _adjustableParams; }
     inline const std::vector<param> &params() const { return _params; }
+    inline const std::vector<Current> &currents() const { return _currents; }
     inline bool genn_float() const { return !genn_double; }
     inline double baseV() const { return _baseV; }
 
@@ -56,6 +62,7 @@ private:
     std::vector<param> _vars;
     std::vector<param> _adjustableParams;
     std::vector<param> _params;
+    std::vector<Current> _currents;
     int precision;
     bool genn_double;
     double _baseV;

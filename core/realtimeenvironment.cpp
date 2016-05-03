@@ -20,8 +20,8 @@ class RealtimeEnvironment::Simulator
 public:
     inputSpec waveform;
     bool useFloat;
-    double (*simDouble)(double*, double*, double);
-    float (*simFloat)(float *, float *, float);
+    double (*simDouble)(double*, double*, double*, double);
+    float (*simFloat)(float*, float*, float*, float);
     double *simVarsDouble, *simParamsDouble;
     float *simVarsFloat, *simParamsFloat;
     double DT;
@@ -35,9 +35,14 @@ public:
 
     double nextSample()
     {
-        double sample = useFloat
-                ? simFloat(simVarsFloat, simParamsFloat, stepV)
-                : simDouble(simVarsDouble, simParamsDouble, stepV);
+        double sample;
+        if ( useFloat ) {
+            float currents[config->model.obj->currents().size()];
+            sample = simFloat(simVarsFloat, simParamsFloat, currents, stepV);
+        } else {
+            double currents[config->model.obj->currents().size()];
+            sample = simDouble(simVarsDouble, simParamsDouble, currents, stepV);
+        }
         lt += DT;
         if ((sn < waveform.N) && (((lt - DT < waveform.st[sn]) && (lt >= waveform.st[sn])) || (waveform.st[sn] == 0))) {
             stepV = waveform.V[sn];
@@ -58,13 +63,13 @@ void RealtimeEnvironment::setDT(double dt)
     sImpl->DT = dt;
 }
 
-void RealtimeEnvironment::setSimulator(double (*fn)(double *, double *, double))
+void RealtimeEnvironment::setSimulator(double (*fn)(double *, double *, double *, double))
 {
     sImpl->simDouble = fn;
     sImpl->useFloat = false;
 }
 
-void RealtimeEnvironment::setSimulator(float (*fn)(float *, float *, float))
+void RealtimeEnvironment::setSimulator(float (*fn)(float *, float *, float *, float))
 {
     sImpl->simFloat = fn;
     sImpl->useFloat = true;

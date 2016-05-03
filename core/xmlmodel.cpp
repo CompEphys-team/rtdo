@@ -106,6 +106,14 @@ bool XMLModel::load(string filename)
         _adjustableParams.push_back(p);
     }
 
+    _currents.clear();
+    for ( el = hRoot.FirstChild("current").Element(); el; el = el->NextSiblingElement("current") ) {
+        struct Current c;
+        c.name = el->Attribute("name");
+        c.code = string(el->GetText());
+        _currents.push_back(c);
+    }
+
     return true;
 }
 
@@ -127,6 +135,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << "#define NVAR " << _vars.size() << endl;
     of << "#define NPARAM " << _adjustableParams.size() << endl;
+    of << "#define NCURRENTS " << _currents.size() << endl;
     switch( type ) {
     case VClamp:
         of << "#define NPOP " << npop << endl;
@@ -138,7 +147,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
             npop *= (_adjustableParams.size() + 1);
         }
         of << "#define NPOP " << npop << endl;
-        nExtraVars += 2;
+        nExtraVars += 2 + _currents.size();
         break;
     case WaveGenNoveltySearch:
         of << "#define GAPOP " << npop << endl;
@@ -146,7 +155,7 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
             npop *= (_adjustableParams.size() + 1);
         }
         of << "#define NPOP " << npop << endl;
-        nExtraVars += 17;
+        nExtraVars += 17 + _currents.size();
         break;
     }
 
@@ -191,6 +200,10 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     of << "scalar *d_mvar[NVAR];" << endl;
     of << "scalar *mparam[NPARAM];" << endl;
     of << "scalar *d_mparam[NPARAM];" << endl;
+    if ( type == WaveGen || type == WaveGenNoveltySearch ) {
+        of << "scalar *mcurrents[NCURRENTS];" << endl;
+        of << "scalar *d_mcurrents[NCURRENTS];" << endl;
+    }
     of << "void rtdo_init_bridge() {" << endl;
     int i = 0;
     for ( vector<param>::iterator it = _vars.begin(); it != _vars.end(); ++it, ++i ) {
@@ -201,6 +214,13 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
     for ( vector<param>::iterator it = _adjustableParams.begin(); it != _adjustableParams.end(); ++it, ++i ) {
         of << "mparam[" << i << "] = " << it->name << POPNAME << ";" << endl;
         of << "d_mparam[" << i << "] = d_" << it->name << POPNAME << ";" << endl;
+    }
+    i = 0;
+    if ( type == WaveGen || type == WaveGenNoveltySearch ) {
+        for ( vector<Current>::iterator it = _currents.begin(); it != _currents.end(); ++it, ++i ) {
+            of << "mcurrents[" << i << "] = " << it->name << POPNAME << ";" << endl;
+            of << "d_mcurrents[" << i << "] = d_" << it->name << POPNAME << ";" << endl;
+        }
     }
     of << "}" << endl;
     of << "#endif" << endl;
@@ -241,8 +261,11 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     switch ( type ) {
     case VClamp:
-        of << "n.simCode = R\"EOF(" << endl
-           << CUTMARK << endl
+        of << "n.simCode = R\"EOF(" << endl;
+        for ( Current c : _currents ) {
+            of << "scalar " << c.name << ";" << endl;
+        }
+        of << CUTMARK << endl
            << "unsigned int mt;" << endl
            << "scalar mdt= DT/$(simCycles);" << endl
            << "for (mt=0; mt < $(simCycles); mt++) {" << endl
@@ -250,14 +273,20 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "    Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl
            << "  } else {" << endl
            << "    Isyn = $(IsynG);" << endl
-           << "  }" << endl
-           << code << endl
+           << "  }" << endl;
+        for ( Current c : _currents ) {
+            of << "  " << c.name << " = " << c.code << ";" << endl;
+        }
+        of << code << endl
            << "}" << endl
            << CUTMARK << endl
            << "if ((t > $(ot)) && (t < $(ote))) {" << endl
            << "  $(err) += abs(Isyn-$(IsynG));" << endl
            << "}" << endl
            << ")EOF\";" << endl;
+        for ( Current c : _currents ) {
+            of << "substitute( n.simCode, tS(\"$(" << c.name << ")\"), tS(\"" << c.name << "\") );" << endl;
+        }
         break;
     case WaveGen:
         of << "n.simCode = R\"EOF(" << endl
@@ -265,8 +294,11 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "unsigned int mt;" << endl
            << "scalar mdt= DT/$(simCycles);" << endl
            << "for (mt=0; mt < $(simCycles); mt++) {" << endl
-           << "  Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl
-           << code << endl
+           << "  Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl;
+        for ( Current c : _currents ) {
+            of << "  $(" << c.name << ") = " << c.code << ";" << endl;
+        }
+        of << code << endl
            << "#ifndef _" << modelname << "_neuronFnct_cc" << endl // Don't compile this part in calcNeuronsCPU
            << "#ifdef _" << modelname << "_neuronKrnl_cc" << endl // Also, don't compile in simulateSingleNeuron
            << "  __shared__ double IsynShare[" + to_string(_adjustableParams.size() + 1) + "];" << endl
@@ -293,8 +325,11 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
            << "unsigned int mt;" << endl
            << "scalar mdt= DT/$(simCycles);" << endl
            << "for (mt=0; mt < $(simCycles); mt++) {" << endl
-           << "  Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl
-           << code << endl
+           << "  Isyn = ($(clampGain)*($(stepVG)-$(V)) - $(V)) / $(accessResistance);" << endl;
+        for ( Current c : _currents ) {
+          of << "  $(" << c.name << ") = " << c.code << ";" << endl;
+        }
+        of << code << endl
            << "#ifndef _" << modelname << "_neuronFnct_cc" << endl // Don't compile this part in calcNeuronsCPU
            << "#ifdef _" << modelname << "_neuronKrnl_cc" << endl // Also, don't compile in simulateSingleNeuron
            << "  __shared__ double IsynShare[" + to_string(_adjustableParams.size() + 1) + "];" << endl
@@ -432,6 +467,10 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"bool\");" << endl;
         break;
     case WaveGen:
+        for ( Current c : _currents ) {
+            of << "n.varNames.push_back(\"" << c.name << "\");" << endl;
+            of << "n.varTypes.push_back(\"scalar\");" << endl;
+        }
         of << "n.varNames.push_back(\"stepVG\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
         of << "n.varNames.push_back(\"ote\");" << endl;
@@ -442,6 +481,10 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "learnBlkSz = 1;" << endl;
         break;
     case WaveGenNoveltySearch:
+        for ( Current c : _currents ) {
+            of << "n.varNames.push_back(\"" << c.name << "\");" << endl;
+            of << "n.varTypes.push_back(\"scalar\");" << endl;
+        }
         of << "n.varNames.push_back(\"stepVG\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
 
@@ -541,6 +584,7 @@ void XMLModel::generateSimulator(XMLModel::outputType type, string path)
     of << "extern \"C\" " << scalar << " simulateSingleNeuron("
        << scalar << " *variables, "
        << scalar << " *adjustableParams, "
+       << scalar << " *currents, "
        << scalar << " lstepVG)" << endl;
     of << "{" << endl;
     of << "\t" << scalar << " Isyn = 0;" << endl;
@@ -553,6 +597,14 @@ void XMLModel::generateSimulator(XMLModel::outputType type, string path)
     i = 0;
     for ( param &p : _adjustableParams ) {
         of << "\t" << scalar << " l" << p.name << " = adjustableParams[" << i << "];" << endl;
+        ++i;
+    }
+    i = 0;
+    for ( Current &c : _currents ) {
+        if ( type == WaveGen || type == WaveGenNoveltySearch )
+            of << "\t" << scalar << " l" << c.name << " = currents[" << i << "];" << endl;
+        else
+            of << "\t" << scalar << " " << c.name << " = currents[" << i << "];" << endl;
         ++i;
     }
     of << endl;

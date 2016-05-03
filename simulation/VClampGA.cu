@@ -215,14 +215,14 @@ vector<vector<double>> VClamp::stimulateModel(int idx)
         clampGainHH = cfg->vc.gain;
         accessResistanceHH = cfg->vc.resistance;
 
-        scalar simulatorVars[NVAR], simulatorParams[NPARAM];
+        scalar simulatorVars[NVAR], simulatorParams[NPARAM], currents[NCURRENTS];
         for ( int i = 0; i < NVAR; i++ )
             simulatorVars[i] = mvar[i][idx];
         for ( int i = 0; i < NPARAM; i++ )
             simulatorParams[i] = mparam[i][idx];
 
         // Attempt to foil instabilities
-        if ( std::isnan(simulateSingleNeuron(simulatorVars, simulatorParams, stepVGHH)) ) {
+        if ( std::isnan(simulateSingleNeuron(simulatorVars, simulatorParams, currents, stepVGHH)) ) {
             for ( int i = 0; i < NVAR; i++ ) {
                 simulatorVars[i] = 0.0;
             }
@@ -230,7 +230,7 @@ vector<vector<double>> VClamp::stimulateModel(int idx)
 
         for (int iT = -tmax; iT < tmax; iT++) { // Start at negative t to achieve steady state by lt=0
             double oldt = lt;
-            IsynGHH = simulateSingleNeuron(simulatorVars, simulatorParams, stepVGHH);
+            IsynGHH = simulateSingleNeuron(simulatorVars, simulatorParams, currents, stepVGHH);
             lt += DT;
             if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
                 stepVGHH = I.V[sn];
@@ -281,7 +281,7 @@ vector<double> VClamp::getCCVoltageTrace(inputSpec I, int idx)
     VCHH = false;
     IsynGHH = I.baseV;
 
-    scalar simulatorVars[NVAR], simulatorParams[NPARAM];
+    scalar simulatorVars[NVAR], simulatorParams[NPARAM], currents[NCURRENTS];
     for ( int i = 0; i < NVAR; i++ )
         simulatorVars[i] = mvar[i][idx];
     for ( int i = 0; i < NPARAM; i++ )
@@ -289,7 +289,7 @@ vector<double> VClamp::getCCVoltageTrace(inputSpec I, int idx)
 
     for (int iT = lt/DT; iT < tmax; iT++) {
         double oldt = lt;
-        simulateSingleNeuron(simulatorVars, simulatorParams, stepVGHH);
+        simulateSingleNeuron(simulatorVars, simulatorParams, currents, stepVGHH);
         lt += DT;
         if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
             IsynGHH = I.V[sn];

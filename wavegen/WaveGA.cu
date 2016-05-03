@@ -91,13 +91,13 @@ extern "C" inputSpec wavegen(conf::Config *cfg, int focusParam, bool *stopFlag)
 	
     //------------------------------------------------------
     // Get steady-state variable values at holding potential
-    scalar holdingVar[NVAR], singleParamIni[NPARAM];
+    scalar holdingVar[NVAR], singleParamIni[NPARAM], currents[NCURRENTS];
     for ( int i = 0; i < NVAR; i++ )
         holdingVar[i] = mvar[i][0];
     for ( int i = 0; i < NPARAM; i++ )
         singleParamIni[i] = mparam[i][0];
     for ( double t = 0.0; t < 10000.0; t += DT ) {
-        simulateSingleNeuron(holdingVar, singleParamIni, VSTEP0);
+        simulateSingleNeuron(holdingVar, singleParamIni, currents, VSTEP0);
     }
 
 	unsigned int VSize = NPOP*theSize( model.ftype );

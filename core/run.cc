@@ -179,7 +179,7 @@ bool run_wavegen(int focusParam, bool *stopFlag)
         return false;
     }
     if ( config->model.obj->genn_float() ) {
-        float (*simF)(float*, float*, float);
+        float (*simF)(float*, float*, float*, float);
         if ( !(*(void**)(&simF) = dlsym(lib, "simulateSingleNeuron")) ) {
             std::cerr << dlerror() << endl;
             return false;
@@ -187,7 +187,7 @@ bool run_wavegen(int focusParam, bool *stopFlag)
         env->setSimulator(simF);
 
     } else {
-        double (*simD)(double*, double*, double);
+        double (*simD)(double*, double*, double*, double);
         if ( !(*(void**)(&simD) = dlsym(lib, "simulateSingleNeuron")) ) {
             std::cerr << dlerror() << endl;
             return false;
@@ -267,7 +267,7 @@ bool run_wavegen_NS(bool *stopFlag)
         return false;
     }
     if ( config->model.obj->genn_float() ) {
-        float (*simF)(float*, float*, float);
+        float (*simF)(float*, float*, float*, float);
         if ( !(*(void**)(&simF) = dlsym(lib, "simulateSingleNeuron")) ) {
             std::cerr << dlerror() << endl;
             return false;
@@ -275,7 +275,7 @@ bool run_wavegen_NS(bool *stopFlag)
         env->setSimulator(simF);
 
     } else {
-        double (*simD)(double*, double*, double);
+        double (*simD)(double*, double*, double*, double);
         if ( !(*(void**)(&simD) = dlsym(lib, "simulateSingleNeuron")) ) {
             std::cerr << dlerror() << endl;
             return false;

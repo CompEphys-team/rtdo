@@ -124,8 +124,9 @@ WavegenNS::WavegenNS(conf::Config *cfg) :
         holdingVar[i] = mvar[i][0];
     for ( int i = 0; i < NPARAM; i++ )
         singleParamIni[i] = mparam[i][0];
+    scalar currents[NCURRENTS];
     for ( double t = 0.0; t < 10000.0; t += DT ) {
-        simulateSingleNeuron(holdingVar, singleParamIni, VSTEP0);
+        simulateSingleNeuron(holdingVar, singleParamIni, currents, VSTEP0);
     }
 }
 
@@ -409,6 +410,9 @@ void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)
     for ( int j = 0; j < NPARAM; j++ ) {
         currentfile << '\t' << cfg->model.obj->adjustableParams().at(j).name;
     }
+    for ( int j = 0; j < NCURRENTS; j++ ) {
+        currentfile << '\t' << cfg->model.obj->currents().at(j).name;
+    }
     currentfile << endl;
 
     // Run one epoch, writing current to $(err) and recording observation window start/end
@@ -433,6 +437,10 @@ void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)
         currentfile << t << '\t' << stepVGHH[0];
         for ( int j = 0; j < NPARAM + 1; j++ ) {
             currentfile << '\t' << current[j];
+        }
+        for ( int j = 0; j < NCURRENTS; j++ ) {
+            CHECK_CUDA_ERRORS( cudaMemcpy(mcurrents[j], d_mcurrents[j], theSize(model.ftype), cudaMemcpyDeviceToHost) );
+            currentfile << '\t' << mcurrents[j][0];
         }
         currentfile << endl;
     }

@@ -78,8 +78,8 @@ public:
     /** Set the function to use as a simulator. Float and double versions are mutually exclusive, the latest set will be used.
      * If set from within GeNN code, the scalar version is acceptable and indeed preferable, see comment to @fn setSimulatorVariables.
      **/
-    void setSimulator(double (*fn)(double*, double*, double));
-    void setSimulator(float (*fn)(float *, float *, float));
+    void setSimulator(double (*fn)(double*, double*, double*, double));
+    void setSimulator(float (*fn)(float*, float*, float*, float));
 
     /** Switch between simulation and RT mode. Returns true if successful.
      * In non-RT builds, this function has no effect and returns false, as the environment is always in simulation mode.
