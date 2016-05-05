@@ -42,6 +42,8 @@ public:
 
     vector<double> getCCVoltageTrace(inputSpec I, int idx);
 
+    void setLog(std::ostream *out, std::string closingMessage = string());
+
 private:
     void runStim();
 };
@@ -301,6 +303,14 @@ vector<double> VClamp::getCCVoltageTrace(inputSpec I, int idx)
     }
 
     return trace;
+}
+
+void VClamp::setLog(std::ostream *out, std::string closingMessage)
+{
+    logger->wait();
+    *logger->out << closingMessage;
+    logger->out->flush();
+    logger->out = out;
 }
 
 

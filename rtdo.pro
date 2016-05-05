@@ -95,7 +95,8 @@ SOURCES += core/main.cpp \
     core/experimentaldata.cpp \
     core/module.cpp \
     gui/actionlistmodel.cpp \
-    gui/fixparamdialog.cpp
+    gui/fixparamdialog.cpp \
+    core/modulestatic.cpp
 
 OTHER_FILES += \
     simulation/GNUmakefile \

@@ -11,7 +11,6 @@ initial version: 2016-03-14
 
 --------------------------------------------------------------------------*/
 #include "module.h"
-#include <dlfcn.h>
 #include <ctime>
 #include <sys/stat.h>
 #include <stdexcept>
@@ -37,22 +36,8 @@ Module::Module(QObject *parent) :
         throw runtime_error(err);
     }
 
-    string fname = string(SOURCEDIR) + "/simulation/VClampGA.so";
-    dlerror();
-    if ( ! (lib = dlopen(fname.c_str(), RTLD_NOW)) ) {
-        string err(dlerror());
-        throw runtime_error(err);
-    }
-
-    Experiment *(*vccreate)(conf::Config *cfg, int logSize, ostream &logOutput, size_t channel, size_t nchans);
-    if ( !(*(void**)(&vccreate) = dlsym(lib, "VClampCreate")) ) {
-        string err(dlerror());
-        dlclose(lib);
-        throw runtime_error(err);
-    }
-
-    vclamp = vccreate(config, config->vc.popsize, cout, 0, 1);
-    vclamp->initModel();
+    lib = Experiment::openLibrary();
+    vclamp = Experiment::create(lib);
 
     // Start thread at the end, when all possible pitfalls are avoided
     t.reset(new RealtimeThread(Module::execStatic, this, config->rt.prio_module, config->rt.ssz_module, config->rt.cpus_module));
@@ -100,15 +85,10 @@ Module::~Module()
     stop();
     sem.broadcast();
     t->join();
-    vclamp->log()->wait();
+    vclamp->setLog(&cout);
 
-    void (*vcdestroy)(Experiment **);
-    if ( !(*(void**)(&vcdestroy) = dlsym(lib, "VClampDestroy")) ) {
-        string err(dlerror());
-        throw runtime_error(err);
-    }
-    vcdestroy(&vclamp);
-    dlclose(lib);
+    Experiment::destroy(lib, &vclamp);
+    Experiment::closeLibrary(lib);
 }
 
 void *Module::execStatic(void *_this)
@@ -151,9 +131,7 @@ void Module::exec()
             // Tee output to new logfile
             ofstream logf(outdir + "/" + to_string(p.handle) + "_results.log");
             teestream tee(logf, cout);
-            vclamp->log()->wait();
-            vclamp->log()->out->flush();
-            vclamp->log()->out =& tee;
+            vclamp->setLog(&tee);
             tee << "# Action " << p.handle << ": <" << p.logEntry << "> begins..." << endl;
 
             // Save config
@@ -182,11 +160,10 @@ void Module::exec()
             string status = vclamp->stopFlag ? "ended on user request" : "completed normally";
             actionLog << p.handle << '\t' << p.logEntry << '\t' << status << endl;
 
-            // Wait for backlog completion and revoke tee
-            vclamp->log()->wait();
-            tee << "# Action " << p.handle << ": <" << p.logEntry << "> " << status << endl;
-            tee.flush();
-            vclamp->log()->out =& cout;
+            // Reset output stream
+            stringstream closing;
+            closing << "# Action " << p.handle << ": <" << p.logEntry << "> " << status << endl;
+            vclamp->setLog(&cout, closing.str());
             // tee and logf destroyed on loop end
 
             lock.wait(); // Locked until vvvvvvvvvvvvvvvvvvvvvvv

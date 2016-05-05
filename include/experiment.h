@@ -52,6 +52,11 @@ public:
 
     virtual ~Experiment() {}
 
+    static void *openLibrary();
+    static void closeLibrary(void *lib);
+    static Experiment *create(void *lib);
+    static void destroy(void *lib, Experiment **exp);
+
     //!< Initialises all models with random values and, if necessary, sets up the runtime environment. Resets the epoch and stimulation counters.
     virtual void initModel() = 0;
 
@@ -73,6 +78,8 @@ public:
 
     //!< Run a CPU simulation of the model at the indicated index, interpreting @arg I as a current clamp stimulus
     virtual vector<double> getCCVoltageTrace(inputSpec I, int idx) = 0;
+
+    virtual void setLog(ostream *out, string closingMessage = string()) = 0;
 
     inline shared_ptr<backlog::Backlog> log() const { return logger; }
     inline shared_ptr<ExperimentalData> data() const { return _data; }
