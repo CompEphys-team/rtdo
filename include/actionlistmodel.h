@@ -21,7 +21,7 @@ class ActionListModel : public QAbstractListModel
 {
     Q_OBJECT
 public:
-    ActionListModel(Module *module, QObject *parent = 0);
+    ActionListModel(Module<Experiment> *module, QObject *parent = 0);
 
     QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const;
     int rowCount(const QModelIndex & parent = QModelIndex()) const;
@@ -49,7 +49,7 @@ public slots:
     bool load(std::string filename);
 
 private:
-    Module *module;
+    Module<Experiment> *module;
 
     struct ActionStruct {
         Action action;

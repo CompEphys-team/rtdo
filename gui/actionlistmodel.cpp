@@ -14,7 +14,7 @@ initial version: 2016-04-13
 #include <fstream>
 #include "run.h"
 
-ActionListModel::ActionListModel(Module *module, QObject *parent) :
+ActionListModel::ActionListModel(Module<Experiment> *module, QObject *parent) :
     QAbstractListModel(parent),
     module(module)
 {
@@ -40,38 +40,38 @@ void ActionListModel::appendItem(ActionListModel::Action a, int arg, double darg
     switch ( a ) {
     case VCFrontload:
         as.handle = module->push(label(as), [=](int) {
-            for ( unsigned int i = 0; i < config->vc.cacheSize && !module->vclamp->stopFlag; i++ )
-                module->vclamp->cycle(arg);
+            for ( unsigned int i = 0; i < config->vc.cacheSize && !module->obj->stopFlag; i++ )
+                module->obj->cycle(arg);
         });
         break;
     case VCCycle:
         as.handle = module->push(label(as), [=](int) {
-            module->vclamp->cycle(arg);
+            module->obj->cycle(arg);
         });
         break;
     case VCRun:
         as.handle = module->push(label(as), [=](int) {
-            module->vclamp->run(arg);
+            module->obj->run(arg);
         });
         break;
     case ModelsSaveAll:
         as.handle = module->push(label(as), [=](int h) {
             ofstream logf(module->outdir + "/" + to_string(h) + "_modelsAll.log");
-            module->vclamp->log()->score();
-            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::RankScore, true), false);
+            module->obj->log()->score();
+            write_backlog(logf, module->obj->log()->sort(backlog::BacklogVirtual::RankScore, true), false);
         });
         break;
     case ModelsSaveEval:
         as.handle = module->push(label(as), [=](int h) {
             ofstream logf(module->outdir + "/" + to_string(h) + "_modelsEval.log");
-            module->vclamp->log()->score();
-            write_backlog(logf, module->vclamp->log()->sort(backlog::BacklogVirtual::RankScore, true), true);
+            module->obj->log()->score();
+            write_backlog(logf, module->obj->log()->sort(backlog::BacklogVirtual::RankScore, true), true);
         });
         break;
     case ModelStimulate:
         as.handle = module->push(label(as), [=](int h) {
-            module->vclamp->log()->score();
-            auto sorted = module->vclamp->log()->sort(backlog::BacklogVirtual::RankScore, true);
+            module->obj->log()->score();
+            auto sorted = module->obj->log()->sort(backlog::BacklogVirtual::RankScore, true);
             if ( sorted.empty() ) {
                 cerr << "No models on record" << endl;
                 return;
@@ -83,7 +83,7 @@ void ActionListModel::appendItem(ActionListModel::Action a, int arg, double darg
             vector<const backlog::LogEntry*> tmp(1, entry);
             write_backlog(tf, tmp, false);
 
-            vector<vector<double>> traces = module->vclamp->stimulateModel(entry->idx);
+            vector<vector<double>> traces = module->obj->stimulateModel(entry->idx);
             tf << endl << endl << "Time";
             for ( size_t i = 0; i < traces.size(); i++ ) {
                 tf << '\t' << "Stimulation_" << i;
@@ -107,18 +107,18 @@ void ActionListModel::appendItem(ActionListModel::Action a, int arg, double darg
         break;
     case TracesDrop:
         as.handle = module->push(label(as), [=](int) {
-            module->vclamp->data()->clear();
+            module->obj->data()->clear();
         });
         break;
     case TracesSave:
         as.handle = module->push(label(as), [=](int h) {
             ofstream tf(module->outdir + "/" + to_string(h) + ".traces");
-            module->vclamp->data()->dump(tf);
+            module->obj->data()->dump(tf);
         });
         break;
     case ParamFix:
         as.handle = module->push(label(as), [=](int) {
-            module->vclamp->fixParameter(as.arg, as.darg);
+            module->obj->fixParameter(as.arg, as.darg);
         });
         break;
     default:

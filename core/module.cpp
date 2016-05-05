@@ -19,9 +19,10 @@ initial version: 2016-03-14
 #include "realtimeenvironment.h"
 #include "teestream.h"
 
-Module::Module(QObject *parent) :
-    QObject(parent),
-    vclamp(nullptr),
+template <class T>
+Module<T>::Module(QObject *parent) :
+    VirtualModule(parent),
+    obj(nullptr),
     outdir(""),
     lib(nullptr),
     handle_ctr(0),
@@ -36,15 +37,16 @@ Module::Module(QObject *parent) :
         throw runtime_error(err);
     }
 
-    lib = Experiment::openLibrary();
-    vclamp = Experiment::create(lib);
+    lib = T::openLibrary();
+    obj = T::create(lib);
 
     // Start thread at the end, when all possible pitfalls are avoided
     t.reset(new RealtimeThread(Module::execStatic, this, config->rt.prio_module, config->rt.ssz_module, config->rt.cpus_module));
     lock.signal();
 }
 
-bool Module::initOutput()
+template <class T>
+bool Module<T>::initOutput()
 {
     time_t tt = time(NULL);
     char timestr[32];
@@ -79,25 +81,28 @@ bool Module::initOutput()
     return true;
 }
 
-Module::~Module()
+template <class T>
+Module<T>::~Module()
 {
     _exit = true;
     stop();
     sem.broadcast();
     t->join();
-    vclamp->setLog(&cout);
+    obj->setLog(&cout);
 
-    Experiment::destroy(lib, &vclamp);
-    Experiment::closeLibrary(lib);
+    T::destroy(lib, &obj);
+    T::closeLibrary(lib);
 }
 
-void *Module::execStatic(void *_this)
+template <class T>
+void *Module<T>::execStatic(void *_this)
 {
     ((Module *)_this)->exec();
     return nullptr;
 }
 
-void Module::exec()
+template <class T>
+void Module<T>::exec()
 {
     ofstream actionLog;
 
@@ -123,7 +128,7 @@ void Module::exec()
 
         _busy = true;
         while ( !_stop && q.size() ) { //    while
-            vclamp->stopFlag = false;
+            obj->stopFlag = false;
             action p = q.front();
             q.pop_front();
             lock.signal(); // Lock ends ^^^^^^^^^^^^^^^
@@ -131,7 +136,7 @@ void Module::exec()
             // Tee output to new logfile
             ofstream logf(outdir + "/" + to_string(p.handle) + "_results.log");
             teestream tee(logf, cout);
-            vclamp->setLog(&tee);
+            obj->setLog(&tee);
             tee << "# Action " << p.handle << ": <" << p.logEntry << "> begins..." << endl;
 
             // Save config
@@ -157,13 +162,13 @@ void Module::exec()
             // Invoke
             p.fn(p.handle);
 
-            string status = vclamp->stopFlag ? "ended on user request" : "completed normally";
+            string status = obj->stopFlag ? "ended on user request" : "completed normally";
             actionLog << p.handle << '\t' << p.logEntry << '\t' << status << endl;
 
             // Reset output stream
             stringstream closing;
             closing << "# Action " << p.handle << ": <" << p.logEntry << "> " << status << endl;
-            vclamp->setLog(&cout, closing.str());
+            obj->setLog(&cout, closing.str());
             // tee and logf destroyed on loop end
 
             lock.wait(); // Locked until vvvvvvvvvvvvvvvvvvvvvvv
@@ -175,7 +180,8 @@ void Module::exec()
     }
 }
 
-int Module::push(std::string logEntry, std::function<void(int)> fn)
+template <class T>
+int Module<T>::push(std::string logEntry, std::function<void(int)> fn)
 {
     lock.wait();
     int handle = ++handle_ctr;
@@ -185,7 +191,8 @@ int Module::push(std::string logEntry, std::function<void(int)> fn)
     return handle;
 }
 
-bool Module::erase(int handle)
+template <class T>
+bool Module<T>::erase(int handle)
 {
     lock.wait();
     bool ret = false;
@@ -201,7 +208,8 @@ bool Module::erase(int handle)
     return ret;
 }
 
-bool Module::append(string directory)
+template <class T>
+bool Module<T>::append(string directory)
 {
     if ( !firstrun || handle_ctr > 0 )
         return false;
@@ -225,7 +233,8 @@ bool Module::append(string directory)
     return true;
 }
 
-bool Module::busy()
+template <class T>
+bool Module<T>::busy()
 {
     lock.wait();
     bool ret = _busy;
@@ -234,7 +243,8 @@ bool Module::busy()
     return ret;
 }
 
-size_t Module::qSize()
+template <class T>
+size_t Module<T>::qSize()
 {
     lock.wait();
     size_t ret = q.size();
@@ -243,7 +253,8 @@ size_t Module::qSize()
     return ret;
 }
 
-void Module::start()
+template <class T>
+void Module<T>::start()
 {
     lock.wait();
     if ( !_busy && q.size() ) {
@@ -253,20 +264,22 @@ void Module::start()
     lock.signal();
 }
 
-void Module::stop()
+template <class T>
+void Module<T>::stop()
 {
     lock.wait();
-    vclamp->stopFlag = true;
+    obj->stopFlag = true;
     _stop = true;
     q.clear();
     lock.signal();
 }
 
-void Module::skip()
+template <class T>
+void Module<T>::skip()
 {
     lock.wait();
-    vclamp->stopFlag = true;
+    obj->stopFlag = true;
     lock.signal();
 }
 
-
+template class Module<Experiment>;

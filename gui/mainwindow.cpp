@@ -410,12 +410,12 @@ void MainWindow::offlineAction(QAction *action)
         ifstream file(filename);
         vector<double> params = read_model_dump(file, 1);
 
-        module->vclamp->injectModel(params, 0);
+        module->obj->injectModel(params, 0);
 
         ofstream tf(filename + ".winner.simtrace");
         tf << "# Traces from best model, see top-ranked model in parent file" << endl;
 
-        vector<vector<double>> traces = module->vclamp->stimulateModel(0);
+        vector<vector<double>> traces = module->obj->stimulateModel(0);
         tf << endl << endl << "Time";
         for ( size_t i = 0; i < traces.size(); i++ ) {
             tf << '\t' << "Stimulation_" << i;
@@ -459,7 +459,7 @@ void MainWindow::offlineAction(QAction *action)
         }
 
         ifstream tf(filename);
-        module->vclamp->data()->load(tf);
+        module->obj->data()->load(tf);
 
         QMessageBox::StandardButton reply;
         reply = QMessageBox::question(this, "Append outputs", "Add outputs to existing directory?",
@@ -502,7 +502,7 @@ void MainWindow::offlineAction(QAction *action)
         vector<double> params = read_model_dump(file, 1);
         file.close();
 
-        module->vclamp->injectModel(params, 0);
+        module->obj->injectModel(params, 0);
 
         file.open(stimfilename);
         char buffer[1024];
@@ -513,7 +513,7 @@ void MainWindow::offlineAction(QAction *action)
         inputSpec wave;
         file >> wave;
 
-        vector<double> trace = module->vclamp->getCCVoltageTrace(wave, 0);
+        vector<double> trace = module->obj->getCCVoltageTrace(wave, 0);
 
         filename += ".CC.simtrace";
         ofstream tf(filename);
@@ -538,7 +538,7 @@ void MainWindow::offlineAction(QAction *action)
 bool MainWindow::pExpInit()
 {
     try {
-        module = new Module(this);
+        module = new Module<Experiment>(this);
         protocol = new ActionListModel(module);
     } catch (runtime_error &e ) {
         cerr << e.what() << endl;

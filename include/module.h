@@ -21,9 +21,27 @@ initial version: 2016-03-14
 #include "realtimethread.h"
 #include "realtimeconditionvariable.h"
 
-class Module : public QObject
+class VirtualModule : public QObject
 {
     Q_OBJECT
+public:
+    explicit VirtualModule(QObject *parent = nullptr) :
+        QObject(parent)
+    {}
+
+public slots:
+    virtual void start() = 0;
+    virtual void stop() = 0;
+    virtual void skip() = 0;
+
+signals:
+    void complete(int handle);
+    void outdirSet();
+};
+
+template <class T>
+class Module : public VirtualModule
+{
 public:
     Module(QObject *parent = nullptr);
     ~Module();
@@ -44,11 +62,10 @@ public:
     bool busy();
     size_t qSize();
 
-    Experiment *vclamp;
+    T *obj;
 
     std::string outdir;
 
-public slots:
     //!< Start executing queued actions
     void start();
 
@@ -59,10 +76,6 @@ public slots:
     //!< Interrupt the current action, continuing execution of the queue. Returns immediately without waiting for results.
     //! Effectively, this only raises the Experiment stopFlag, so actions that do not depend on this will continue uninterrupted.
     void skip();
-
-signals:
-    void complete(int handle);
-    void outdirSet();
 
 private:
     static void *execStatic(void *);

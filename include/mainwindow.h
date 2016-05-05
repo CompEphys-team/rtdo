@@ -97,7 +97,7 @@ private:
     unique_ptr<Runner> wavegen;
     unique_ptr<Runner> wavegenNS;
 
-    Module *module;
+    Module<Experiment> *module;
     ActionListModel *protocol;
 
     bool offlineNoAsk;
