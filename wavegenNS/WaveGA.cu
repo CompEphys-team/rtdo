@@ -75,6 +75,7 @@ public:
     void optimiseAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag);
     void optimise(int param, bool *stopFlag);
     void validate(inputSpec &stim, int param, std::ostream &currentfile);
+    inputSpec validate(inputSpec &stim, vector<vector<double>> &Isyns, vector<vector<double>> &modelCurrents, int param = 0);
 
 private:
     vector<inputSpec> stims;
@@ -460,4 +461,65 @@ void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)
     currentfile << "# Observation window for the above:" << endl;
     currentfile << "start\tend" << endl;
     currentfile << stim.ot << '\t' << (stim.ot+stim.dur) << endl << endl << endl;
+}
+
+inputSpec WavegenNS::validate(inputSpec &stim, vector<vector<double>> &Isyns, vector<vector<double>> &modelCurrents, int param)
+{
+    Isyns.clear();
+    modelCurrents.clear();
+    Isyns.resize(NPARAM+1, vector<double>(SIM_TIME/DT, 0.0));
+    modelCurrents.resize(NCURRENTS, vector<double>(SIM_TIME/DT, 0.0));
+
+    stageHH = stObservationWindowSeparation;
+    reset(holdingVar, pertFac);
+    noveltyBundle prevNB{}, cumNB{};
+    size_t sn = 0;
+    unsigned int VSize = (NPARAM + 1) * theSize(model.ftype);
+    int iT = 0;
+    for ( double t = 0.0; t < SIM_TIME; t += DT, ++iT ) {
+        stepTimeGPU(t);
+        if ((sn < stim.N) && ((t - DT < stim.st[sn]) && (t >= stim.st[sn]) || (stim.st[sn] == 0)))
+        {
+            for (size_t j = 0; j < NPARAM + 1; ++j) {
+                scalar tmp = stim.V[sn];
+                CHECK_CUDA_ERRORS( cudaMemcpy( &d_stepVGHH[j], &tmp, theSize(model.ftype), cudaMemcpyHostToDevice ) );
+            }
+            ++sn;
+        }
+        CHECK_CUDA_ERRORS( cudaMemcpy(errHH, d_errHH, VSize, cudaMemcpyDeviceToHost) );
+        for ( int j = 0; j < NPARAM + 1; j++ ) {
+            Isyns[j][iT] = errHH[j];
+        }
+        for ( int j = 0; j < NCURRENTS; j++ ) {
+            CHECK_CUDA_ERRORS( cudaMemcpy(mcurrents[j], d_mcurrents[j], theSize(model.ftype), cudaMemcpyDeviceToHost) );
+            modelCurrents[j][iT] = mcurrents[j][0];
+        }
+
+        if ( t+DT > stim.ot && t < stim.ot + stim.dur ) {
+            // Grab only the fitness-relevant values
+            CHECK_CUDA_ERRORS( cudaMemcpy( separationHH, d_separationHH, VSize, cudaMemcpyDeviceToHost ) );
+            CHECK_CUDA_ERRORS( cudaMemcpy( nSeparationHH, d_nSeparationHH, VSize, cudaMemcpyDeviceToHost ) );
+            noveltyBundle tmp(param + 1);
+            if ( t > stim.ot )
+                for ( int j = 0; j < NNOVELTY; j++ )
+                    if ( tmp.novelty[j] > prevNB.novelty[j] )
+                        cumNB.novelty[j] += tmp.novelty[j] - prevNB.novelty[j];
+            prevNB = tmp;
+        }
+    }
+
+    CHECK_CUDA_ERRORS( cudaMemcpy( separationHH, d_separationHH, VSize, cudaMemcpyDeviceToHost ) );
+    CHECK_CUDA_ERRORS( cudaMemcpy( nSeparationHH, d_nSeparationHH, VSize, cudaMemcpyDeviceToHost ) );
+    CHECK_CUDA_ERRORS( cudaMemcpy( tStartHH, d_tStartHH, VSize, cudaMemcpyDeviceToHost ) );
+    CHECK_CUDA_ERRORS( cudaMemcpy( tEndHH, d_tEndHH, VSize, cudaMemcpyDeviceToHost ) );
+
+    noveltyBundle tmp(param + 1);
+    inputSpec ret(stim);
+    ret.fit = tmp.fitness();
+    ret.ot = tStartHH[param + 1];
+    ret.dur = tEndHH[param + 1] - ret.ot;
+
+    stim.fit = cumNB.fitness();
+
+    return ret;
 }
