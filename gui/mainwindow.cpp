@@ -205,9 +205,11 @@ void MainWindow::on_wavegen_start_NS_clicked()
 {
     try {
         wgmodule = new Module<WavegenNSVirtual>(this);
+        protocol = new Protocol<WavegenNSVirtual>(wgmodule, this);
     } catch (runtime_error &e ) {
         cerr << e.what() << endl;
         wgmodule = nullptr;
+        protocol = nullptr;
         return;
     }
     connect(wgmodule, SIGNAL(complete(int)), this, SLOT(wavegenComplete()));
@@ -218,18 +220,22 @@ void MainWindow::on_wavegen_start_NS_clicked()
     ui->pWavegen2Setup->setEnabled(false);
     ui->wavegen_stop->setEnabled(true);
 
-    wgmodule->push("runAll", [=](int){
-        std::ofstream wf(wgmodule->outdir + "/wave.stim");
-        std::ofstream cf(wgmodule->outdir + "/currents.log");
-        wgmodule->obj->runAll(wf, cf);
-    });
+    protocol->appendItem(ActionListModel::SigmaAdjust);
+    protocol->appendItem(ActionListModel::NoveltySearch);
+    protocol->appendItem(ActionListModel::OptimiseAllWaves);
+
     wgmodule->start();
 }
 
 void MainWindow::wavegenComplete()
 {
+    if ( wgmodule->busy() )
+        return;
+
     delete wgmodule;
+    delete protocol;
     wgmodule = nullptr;
+    protocol = nullptr;
 
     ui->wavegen_start->setEnabled(true);
     ui->wavegen_start_NS->setEnabled(true);
@@ -556,7 +562,7 @@ bool MainWindow::pExpInit()
 {
     try {
         module = new Module<Experiment>(this);
-        protocol = new ActionListModel(module);
+        protocol = new Protocol<Experiment>(module);
     } catch (runtime_error &e ) {
         cerr << e.what() << endl;
         module = nullptr;

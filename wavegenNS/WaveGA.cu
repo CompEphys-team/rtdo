@@ -73,7 +73,7 @@ public:
     void adjustSigmas();
     void noveltySearch(bool *stopFlag = nullptr);
     void optimiseAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag = nullptr);
-    void optimise(int param, bool *stopFlag = nullptr);
+    void optimise(int param, ostream &wavefile, ostream &currentfile, bool *stopFlag = nullptr);
     void validate(inputSpec &stim, int param, std::ostream &currentfile);
     inputSpec validate(inputSpec &stim, vector<vector<double>> &Isyns, vector<vector<double>> &modelCurrents, int param = 0);
 
@@ -330,21 +330,11 @@ void WavegenNS::optimiseAll(ostream &wavefile, ostream &currentfile, bool *stopF
         stopFlag =& this->stopFlag;
 
     for ( int k = 0; k < NPARAM && !*stopFlag; k++ ) {
-        optimise(k, stopFlag);
-
-        // Since procreateInitialisedPop does not alter the first few waves, it is safe to assume that stims[0] is the fittest:
-        validate(stims[0], k, currentfile);
-
-        wavefile << "# " << cfg->model.obj->adjustableParams().at(k).name << endl;
-        for ( int i = 0; i < NPARAM; i++ )
-            wavefile << (i==k) << " ";
-        for ( int i = 0; i < NPARAM; i++ )
-            wavefile << sigmaAdjust[i] << " ";
-        wavefile << stims[0] << endl;
+        optimise(k, wavefile, currentfile, stopFlag);
     }
 }
 
-void WavegenNS::optimise(int param, bool *stopFlag)
+void WavegenNS::optimise(int param, ostream &wavefile, ostream &currentfile, bool *stopFlag)
 {
     if ( !stopFlag )
         stopFlag =& this->stopFlag;
@@ -398,6 +388,16 @@ void WavegenNS::optimise(int param, bool *stopFlag)
         procreateInitialisedPop( stims, initial );
         *log << stims[0] << endl;
     }
+
+    // Since procreateInitialisedPop does not alter the first few waves, it is safe to assume that stims[0] is the fittest:
+    validate(stims[0], param, currentfile);
+
+    wavefile << "# " << cfg->model.obj->adjustableParams().at(param).name << endl;
+    for ( int i = 0; i < NPARAM; i++ )
+        wavefile << (i==param) << " ";
+    for ( int i = 0; i < NPARAM; i++ )
+        wavefile << sigmaAdjust[i] << " ";
+    wavefile << stims[0] << endl;
 }
 
 void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)

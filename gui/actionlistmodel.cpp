@@ -14,8 +14,13 @@ initial version: 2016-04-13
 #include <fstream>
 #include "run.h"
 
-ActionListModel::ActionListModel(Module<Experiment> *module, QObject *parent) :
-    QAbstractListModel(parent),
+ActionListModel::ActionListModel(QObject *parent) :
+    QAbstractListModel(parent)
+{}
+
+template <class T>
+Protocol<T>::Protocol(Module<T> *module, QObject *parent) :
+    ActionListModel(parent),
     module(module)
 {
     connect(module, SIGNAL(complete(int)), this, SLOT(actionComplete(int)));
@@ -34,7 +39,8 @@ int ActionListModel::rowCount(const QModelIndex &parent) const
     return actions.size();
 }
 
-void ActionListModel::appendItem(ActionListModel::Action a, int arg, double darg)
+template <>
+void Protocol<Experiment>::appendItem(Action a, int arg, double darg)
 {
     ActionStruct as {a, arg, 0, darg};
     switch ( a ) {
@@ -122,6 +128,49 @@ void ActionListModel::appendItem(ActionListModel::Action a, int arg, double darg
         });
         break;
     default:
+        cerr << "Invalid action for this protocol type: " << a << endl;
+        return;
+    }
+
+    int r = rowCount();
+    beginInsertRows(QModelIndex(), r, r+1);
+    actions.push_back(as);
+    endInsertRows();
+}
+
+template<>
+void Protocol<WavegenNSVirtual>::appendItem(Action a, int arg, double darg)
+{
+    ActionStruct as {a, arg, 0, darg};
+    switch ( a ) {
+    case SigmaAdjust:
+        as.handle = module->push(label(as), [=](int) {
+            module->obj->adjustSigmas();
+        });
+        break;
+    case NoveltySearch:
+        as.handle = module->push(label(as), [=](int) {
+            module->obj->noveltySearch();
+        });
+        break;
+    case OptimiseWave:
+        as.handle = module->push(label(as), [=](int h) {
+            ofstream wf(module->outdir + "/" + to_string(h) + "_" + config->model.obj->adjustableParams().at(as.arg).name + ".stim");
+            ofstream cf(module->outdir + "/" + to_string(h) + "_" + config->model.obj->adjustableParams().at(as.arg).name + "currents.log");
+            module->obj->optimise(as.arg, wf, cf);
+        });
+        break;
+    case OptimiseAllWaves:
+        as.handle = module->push(label(as), [=](int h) {
+            ofstream wf(module->outdir + "/" + to_string(h) + ".stim");
+            ofstream cf(module->outdir + "/" + to_string(h) + "_currents.log");
+            module->obj->optimiseAll(wf, cf);
+        });
+        break;
+    case VCWaveCurrents:
+        cerr << "VCWaveCurrents NYI" << endl;
+    default:
+        cerr << "Invalid action for this protocol type: " << a << endl;
         return;
     }
 
@@ -144,7 +193,8 @@ void ActionListModel::actionComplete(int handle)
     }
 }
 
-void ActionListModel::removeItem(const QModelIndex &index)
+template <class T>
+void Protocol<T>::removeItem(const QModelIndex &index)
 {
     if ( !index.isValid() )
         return;
@@ -221,6 +271,13 @@ QString ActionListModel::qlabel(ActionListModel::ActionStruct a)
     case ParamFix: return prefix + QString("Fix parameter %1 to %2")\
                 .arg(QString::fromStdString(config->model.obj->adjustableParams().at(a.arg).name))\
                 .arg(a.darg);
+
+    case SigmaAdjust: return prefix + "Adjust parameter sigmas";
+    case NoveltySearch: return prefix + "Novelty search for waveforms";
+    case OptimiseWave: return prefix + QString("Evolve waveforms for parameter %1")\
+                .arg(QString::fromStdString(config->model.obj->adjustableParams().at(a.arg).name));
+    case OptimiseAllWaves: return prefix + "Evolve waveforms for all parameters";
+    case VCWaveCurrents: return "Calculate currents under voltage clamp waveform";
     default: return prefix + "Unknown action";
     }
 }
@@ -230,3 +287,5 @@ std::string ActionListModel::label(ActionStruct a)
     return qlabel(a).toStdString();
 }
 
+template class Protocol<Experiment>;
+template class Protocol<WavegenNSVirtual>;

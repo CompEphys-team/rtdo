@@ -36,7 +36,7 @@ public:
     virtual void adjustSigmas() = 0;
     virtual void noveltySearch(bool *stopFlag = nullptr) = 0;
     virtual void optimiseAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag = nullptr) = 0;
-    virtual void optimise(int param, bool *stopFlag = nullptr) = 0;
+    virtual void optimise(int param, ostream &wavefile, ostream &currentfile, bool *stopFlag = nullptr) = 0;
     virtual void validate(inputSpec &stim, int param, std::ostream &currentfile) = 0;
 
     //!< Validate @arg stim, returning currents of the original and detuned models in @arg Isyns, and model-defined currents in @arg modelCurrents.
