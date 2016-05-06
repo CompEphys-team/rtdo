@@ -35,7 +35,7 @@ MainWindow::MainWindow(QWidget *parent) :
     performance(new PerformanceDialog(this)),
     compiler(new CompileRunner),
     wavegen(new Runner(XMLModel::WaveGen)),
-    wavegenNS(new Runner(XMLModel::WaveGenNoveltySearch)),
+    wgmodule(nullptr),
     module(nullptr),
     protocol(nullptr),
     offlineNoAsk(false)
@@ -57,9 +57,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->wavegen_compile_NS, SIGNAL(clicked(bool)), this, SLOT(compile()));
 
     connect(ui->wavegen_stop, SIGNAL(clicked()), &*wavegen, SLOT(stop()));
-    connect(ui->wavegen_stop, SIGNAL(clicked()), &*wavegenNS, SLOT(stop()));
-    connect(&*wavegen, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
-    connect(&*wavegenNS, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete(bool)));
+    connect(&*wavegen, SIGNAL(processCompleted(bool)), this, SLOT(wavegenComplete()));
 
     connect(ui->menuActions, SIGNAL(triggered(QAction*)), this, SLOT(qAction(QAction*)));
     connect(ui->menuOffline, SIGNAL(triggered(QAction*)), this, SLOT(offlineAction(QAction*)));
@@ -129,6 +127,7 @@ MainWindow::~MainWindow()
         }
     }
 
+    delete wgmodule;
     delete module;
     delete ui;
 }
@@ -204,16 +203,34 @@ void MainWindow::on_wavegen_start_clicked()
 
 void MainWindow::on_wavegen_start_NS_clicked()
 {
-    if ( !wavegenNS->start() )
+    try {
+        wgmodule = new Module<WavegenNSVirtual>(this);
+    } catch (runtime_error &e ) {
+        cerr << e.what() << endl;
+        wgmodule = nullptr;
         return;
+    }
+    connect(wgmodule, SIGNAL(complete(int)), this, SLOT(wavegenComplete()));
+    connect(ui->wavegen_stop, SIGNAL(clicked(bool)), wgmodule, SLOT(stop()));
+
     ui->wavegen_start->setEnabled(false);
     ui->wavegen_start_NS->setEnabled(false);
     ui->pWavegen2Setup->setEnabled(false);
     ui->wavegen_stop->setEnabled(true);
+
+    wgmodule->push("runAll", [=](int){
+        std::ofstream wf(wgmodule->outdir + "/wave.stim");
+        std::ofstream cf(wgmodule->outdir + "/currents.log");
+        wgmodule->obj->runAll(wf, cf);
+    });
+    wgmodule->start();
 }
 
-void MainWindow::wavegenComplete(bool successfully)
+void MainWindow::wavegenComplete()
 {
+    delete wgmodule;
+    wgmodule = nullptr;
+
     ui->wavegen_start->setEnabled(true);
     ui->wavegen_start_NS->setEnabled(true);
     ui->pWavegen2Setup->setEnabled(true);

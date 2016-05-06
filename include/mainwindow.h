@@ -53,7 +53,7 @@ private slots:
     // pWavegen
     void on_wavegen_start_clicked();
     void on_wavegen_start_NS_clicked();
-    void wavegenComplete(bool successfully);
+    void wavegenComplete();
 
     // pExperiment
     void qAction(QAction *action);
@@ -95,7 +95,8 @@ private:
 
     unique_ptr<CompileRunner> compiler;
     unique_ptr<Runner> wavegen;
-    unique_ptr<Runner> wavegenNS;
+
+    Module<WavegenNSVirtual> *wgmodule;
 
     Module<Experiment> *module;
     ActionListModel *protocol;
