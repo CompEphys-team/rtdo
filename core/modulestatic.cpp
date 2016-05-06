@@ -11,6 +11,7 @@ initial version: 2016-05-05
 
 --------------------------------------------------------------------------*/
 #include "experiment.h"
+#include "wavegenNS.h"
 #include <dlfcn.h>
 
 void *Experiment::openLibrary()
@@ -52,3 +53,60 @@ void Experiment::destroy(void *lib, Experiment **exp)
     vcdestroy(exp);
 }
 
+
+void *WavegenNSVirtual::openLibrary()
+{
+    dlerror();
+    void *lib;
+    if ( ! (lib = dlopen(SOURCEDIR "/wavegenNS/WaveGen.so", RTLD_NOW)) ) {
+        throw runtime_error(dlerror());
+    }
+    return lib;
+}
+
+void WavegenNSVirtual::closeLibrary(void *lib)
+{
+    dlclose(lib);
+}
+
+WavegenNSVirtual *WavegenNSVirtual::create(void *lib)
+{
+    WavegenNSVirtual *exp;
+    WavegenNSVirtual *(*wgcreate)(conf::Config *cfg);
+    dlerror();
+    if ( !(*(void**)(&wgcreate) = dlsym(lib, "WavegenCreate")) ) {
+        string err(dlerror());
+        dlclose(lib);
+        throw runtime_error(err);
+    }
+    if ( config->model.obj->genn_float() ) {
+        float (*simF)(float*, float*, float*, float);
+        if ( !(*(void**)(&simF) = dlsym(lib, "simulateSingleNeuron")) ) {
+            string err(dlerror());
+            dlclose(lib);
+            throw runtime_error(err);
+        }
+        RealtimeEnvironment::env()->setSimulator(simF);
+
+    } else {
+        double (*simD)(double*, double*, double*, double);
+        if ( !(*(void**)(&simD) = dlsym(lib, "simulateSingleNeuron")) ) {
+            string err(dlerror());
+            dlclose(lib);
+            throw runtime_error(err);
+        }
+        RealtimeEnvironment::env()->setSimulator(simD);
+    }
+
+    exp = wgcreate(config);
+    return exp;
+}
+
+void WavegenNSVirtual::destroy(void *lib, WavegenNSVirtual **exp)
+{
+    void (*wgdestroy)(WavegenNSVirtual **);
+    if ( !(*(void**)(&wgdestroy) = dlsym(lib, "WavegenDestroy")) ) {
+        throw runtime_error(dlerror());
+    }
+    wgdestroy(exp);
+}

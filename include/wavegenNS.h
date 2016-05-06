@@ -19,14 +19,24 @@ initial version: 2016-02-16
 class WavegenNSVirtual
 {
 public:
-    WavegenNSVirtual(conf::Config *cfg) : cfg(cfg) {}
+    WavegenNSVirtual(conf::Config *cfg) :
+        stopFlag(false),
+        cfg(cfg),
+        log(&cout)
+    {}
+
     virtual ~WavegenNSVirtual() {}
 
-    virtual void runAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag) = 0;
+    static void *openLibrary();
+    static void closeLibrary(void *lib);
+    static WavegenNSVirtual *create(void *lib);
+    static void destroy(void *lib, WavegenNSVirtual **exp);
+
+    virtual void runAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag = nullptr) = 0;
     virtual void adjustSigmas() = 0;
-    virtual void noveltySearch(bool *stopFlag) = 0;
-    virtual void optimiseAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag) = 0;
-    virtual void optimise(int param, bool *stopFlag) = 0;
+    virtual void noveltySearch(bool *stopFlag = nullptr) = 0;
+    virtual void optimiseAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag = nullptr) = 0;
+    virtual void optimise(int param, bool *stopFlag = nullptr) = 0;
     virtual void validate(inputSpec &stim, int param, std::ostream &currentfile) = 0;
 
     //!< Validate @arg stim, returning currents of the original and detuned models in @arg Isyns, and model-defined currents in @arg modelCurrents.
@@ -35,8 +45,18 @@ public:
     //! Does not affect the database of evolved models.
     virtual inputSpec validate(inputSpec &stim, vector<vector<double>> &Isyns, vector<vector<double>> &modelCurrents, int param = 0) = 0;
 
+    virtual void setLog(ostream *out, string closingMessage = string())
+    {
+        *log << closingMessage;
+        log->flush();
+        log = out;
+    }
+
+    bool stopFlag;
+
 protected:
     conf::Config *cfg;
+    std::ostream *log;
 };
 
 #endif // WAVEGENNS_H

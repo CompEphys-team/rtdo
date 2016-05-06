@@ -69,11 +69,11 @@ public:
     WavegenNS(conf::Config *cfg);
     ~WavegenNS() {}
 
-    void runAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag);
+    void runAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag = nullptr);
     void adjustSigmas();
-    void noveltySearch(bool *stopFlag);
-    void optimiseAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag);
-    void optimise(int param, bool *stopFlag);
+    void noveltySearch(bool *stopFlag = nullptr);
+    void optimiseAll(std::ostream &wavefile, std::ostream &currentfile, bool *stopFlag = nullptr);
+    void optimise(int param, bool *stopFlag = nullptr);
     void validate(inputSpec &stim, int param, std::ostream &currentfile);
     inputSpec validate(inputSpec &stim, vector<vector<double>> &Isyns, vector<vector<double>> &modelCurrents, int param = 0);
 
@@ -133,6 +133,9 @@ WavegenNS::WavegenNS(conf::Config *cfg) :
 
 void WavegenNS::runAll(ostream &wavefile, ostream &currentfile, bool *stopFlag)
 {
+    if ( !stopFlag )
+        stopFlag =& this->stopFlag;
+
     adjustSigmas();
     noveltySearch(stopFlag);
     optimiseAll(wavefile, currentfile, stopFlag);
@@ -159,7 +162,7 @@ void WavegenNS::adjustSigmas()
     wave_pop_init( stims, GAPOP );
 
     // Stage: Adjust sigmas to detune with similar results:
-    cout << "Adjusting parameter sigmas..." << endl;
+    *log << "Adjusting parameter sigmas..." << endl;
     for ( int r = 0; r < 2; r++ ) {
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};
@@ -201,13 +204,16 @@ void WavegenNS::adjustSigmas()
         }
     }
     for ( int i = 0; i < NPARAM; i++ ) {
-        cout << cfg->model.obj->adjustableParams().at(i).name << " sigma adjustment: " << sigmaAdjust[i] << endl;
+        *log << cfg->model.obj->adjustableParams().at(i).name << " sigma adjustment: " << sigmaAdjust[i] << endl;
     }
-    cout << endl;
+    *log << endl;
 }
 
 void WavegenNS::noveltySearch(bool *stopFlag)
 {
+    if ( !stopFlag )
+        stopFlag =& this->stopFlag;
+
     unsigned int VSize = NPOP*theSize( model.ftype );
     for ( int i = 0; i < NPARAM; i++ ) {
         noveltyDB[i].push_back(noveltyBundle());
@@ -226,7 +232,7 @@ void WavegenNS::noveltySearch(bool *stopFlag)
 
     // Stage: Novelty search
     for ( size_t generation = 0; generation < cfg->wg.ngen && !*stopFlag; ++generation ) {
-        cout << "Novelty search, generation " << generation << endl;
+        *log << "Novelty search, generation " << generation << endl;
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};
         for (double t = 0.0; t < SIM_TIME; t += DT) {
@@ -274,16 +280,16 @@ void WavegenNS::noveltySearch(bool *stopFlag)
                 }
             }
         }
-        cout << "Average novelty value: " << (avgNovelty / GAPOP) << ", " << numNew << " new waves" << endl;
+        *log << "Average novelty value: " << (avgNovelty / GAPOP) << ", " << numNew << " new waves" << endl;
 
         procreatePop(stims);
     }
     
     for ( int i = 0; i < NPARAM; i++ ) {
         noveltyDB[i].erase(noveltyDB[i].begin()); // Remove initial dummy
-        cout << cfg->model.obj->adjustableParams().at(i).name << ": " << noveltyDB[i].size() << " reference waves" << endl;
+        *log << cfg->model.obj->adjustableParams().at(i).name << ": " << noveltyDB[i].size() << " reference waves" << endl;
         if ( !noveltyDB[i].size() ) {
-            cout << "Waveforms for this parameter will be generated from scratch during optimisation. "
+            *log << "Waveforms for this parameter will be generated from scratch during optimisation. "
                  << "You may need to decrease the novelty threshold or fit this parameter using a different method." << endl;
         } else {
             double sums[NNOVELTY+1] = {}, maxV[NNOVELTY+1] = {};
@@ -299,19 +305,19 @@ void WavegenNS::noveltySearch(bool *stopFlag)
                 if ( maxV[NNOVELTY] < f )
                     maxV[NNOVELTY] = f;
             }
-            cout << "\t\texceed\tnExceed\tbest\tnBest\tseparation\tnSep\tfitness" << endl;
-            cout << "\tmean:";
+            *log << "\t\texceed\tnExceed\tbest\tnBest\tseparation\tnSep\tfitness" << endl;
+            *log << "\tmean:";
             for ( int j = 0; j < NNOVELTY+1; j++ ) {
-                cout << '\t' << sums[j]/noveltyDB[i].size();
+                *log << '\t' << sums[j]/noveltyDB[i].size();
             }
-            cout << endl;
-            cout << "\tmax (unc.):";
+            *log << endl;
+            *log << "\tmax (unc.):";
             for ( int j = 0; j < NNOVELTY+1; j++ ) {
-                cout << '\t' << maxV[j];
+                *log << '\t' << maxV[j];
             }
-            cout << endl;
+            *log << endl;
             if ( maxV[NNOVELTY] == 0 ) {
-                cout << "Waveforms for this parameter will be generated from scratch during optimisation. "
+                *log << "Waveforms for this parameter will be generated from scratch during optimisation. "
                      << "You may need to decrease the novelty threshold or fit this parameter using a different method." << endl;
             }
         }
@@ -320,6 +326,9 @@ void WavegenNS::noveltySearch(bool *stopFlag)
 
 void WavegenNS::optimiseAll(ostream &wavefile, ostream &currentfile, bool *stopFlag)
 {
+    if ( !stopFlag )
+        stopFlag =& this->stopFlag;
+
     for ( int k = 0; k < NPARAM && !*stopFlag; k++ ) {
         optimise(k, stopFlag);
 
@@ -337,6 +346,9 @@ void WavegenNS::optimiseAll(ostream &wavefile, ostream &currentfile, bool *stopF
 
 void WavegenNS::optimise(int param, bool *stopFlag)
 {
+    if ( !stopFlag )
+        stopFlag =& this->stopFlag;
+
     stageHH = stWaveformOptimise;
     calcBestHH = false;
     calcExceedHH = false;
@@ -360,7 +372,7 @@ void WavegenNS::optimise(int param, bool *stopFlag)
 
     // Optimise
     for (size_t generation = 0; generation < cfg->wg.ns_ngenOptimise && !*stopFlag; ++generation) {
-        cout << "Optimising parameter " << cfg->model.obj->adjustableParams().at(param).name << ", generation " << generation << endl;
+        *log << "Optimising parameter " << cfg->model.obj->adjustableParams().at(param).name << ", generation " << generation << endl;
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};
         for (double t = 0.0; t < SIM_TIME; t += DT) {
@@ -384,7 +396,7 @@ void WavegenNS::optimise(int param, bool *stopFlag)
             stims[i].fit = tmp.fitness();
         }
         procreateInitialisedPop( stims, initial );
-        cout << stims[0] << endl;
+        *log << stims[0] << endl;
     }
 }
 

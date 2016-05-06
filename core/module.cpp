@@ -283,3 +283,4 @@ void Module<T>::skip()
 }
 
 template class Module<Experiment>;
+template class Module<WavegenNSVirtual>;

@@ -17,9 +17,12 @@ initial version: 2016-03-14
 #include <functional>
 #include <deque>
 #include <memory>
-#include "experiment.h"
 #include "realtimethread.h"
 #include "realtimeconditionvariable.h"
+
+// Template is instantiated for:
+#include "experiment.h"
+#include "wavegenNS.h"
 
 class VirtualModule : public QObject
 {
