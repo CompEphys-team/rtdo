@@ -84,6 +84,7 @@ private:
     static void *execStatic(void *);
     void exec();
     bool initOutput();
+    void copyFiles();
 
     struct action
     {

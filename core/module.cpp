@@ -67,6 +67,22 @@ bool Module<T>::initOutput()
     }
     cout << "All outputs saved to " << outdir << "." << endl;
 
+    copyFiles();
+
+    return true;
+}
+
+template <class T>
+void Module<T>::copyFiles()
+{
+    ifstream src(config->model.deffile);
+    ofstream dest(outdir + "/model.xml");
+    dest << src.rdbuf();
+}
+
+template<>
+void Module<Experiment>::copyFiles()
+{
     {
         ifstream src(config->model.deffile);
         ofstream dest(outdir + "/model.xml");
@@ -77,8 +93,6 @@ bool Module<T>::initOutput()
         ofstream dest(outdir + "/waveforms.stim");
         dest << src.rdbuf();
     }
-
-    return true;
 }
 
 template <class T>
