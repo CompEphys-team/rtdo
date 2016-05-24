@@ -602,9 +602,9 @@ void XMLModel::generateSimulator(XMLModel::outputType type, string path)
     i = 0;
     for ( Current &c : _currents ) {
         if ( type == WaveGen || type == WaveGenNoveltySearch )
-            of << "\t" << scalar << " l" << c.name << " = currents[" << i << "];" << endl;
+            of << "\t" << scalar << " &l" << c.name << " = currents[" << i << "];" << endl;
         else
-            of << "\t" << scalar << " " << c.name << " = currents[" << i << "];" << endl;
+            of << "\t" << scalar << " &" << c.name << " = currents[" << i << "];" << endl;
         ++i;
     }
     of << endl;
