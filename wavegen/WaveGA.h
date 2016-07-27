@@ -23,11 +23,11 @@
 #include <fstream>
 
 using namespace std;
-#include "hr_time.cpp"
+#include "hr_time.h"
 #include "utils.h" // for CHECK_CUDA_ERRORS
 #include <cuda_runtime.h>
-#include "numlib/randomGen.h"
-#include "numlib/gauss.h"
+#include "randomGen.h"
+#include "gauss.h"
 #include "run.h"
 
 randomGen R;

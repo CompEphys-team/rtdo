@@ -14,9 +14,8 @@
 EXECUTABLE	:= WaveGen.so
 SOURCES		:= WaveGA.cu
 
-CXXFLAGS	:= -fPIC
-NVCCFLAGS	+= --compiler-options "-fPIC" --std c++11
-LINK_FLAGS	:= -shared -lc
+SHARED          := 1
+
 INCLUDE_FLAGS   += -I../include \
 		   -I../lib/include
 

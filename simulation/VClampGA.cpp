@@ -159,8 +159,7 @@ void VClamp::runStim()
     for (int iT = 0; iT < (I.t / DT); iT++) {
         double oldt = lt;
         IsynGHH = _data->nextSample(channel);
-        stepTimeGPU( t );
-        t += DT;
+        stepTimeGPU();
         lt += DT;
         if ((sn < I.N) && ((oldt < I.st[sn]) && (lt >= I.st[sn]) || (I.st[sn] == 0))) {
             stepVGHH = I.V[sn];

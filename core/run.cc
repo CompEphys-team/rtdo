@@ -33,15 +33,7 @@ initial version: 2015-12-08
 using namespace std;
 
 bool compile_model(XMLModel::outputType type) {
-#ifdef _DEBUG
-    string cxxflags = string("CXXFLAGS=\"$CXXFLAGS -std=c++11 -DDT=") + to_string(config->io.dt) + " -D_GLIBCXX_DEBUG\" ";
-    string nvccflags = string("NVCCFLAGS=\"$NVCCFLAGS -DDT=") + to_string(config->io.dt) + " -D_GLIBCXX_DEBUG\" ";
-#else
-    string cxxflags = string("CXXFLAGS=\"$CXXFLAGS -std=c++11 -DDT=") + to_string(config->io.dt) + "\" ";
-    string nvccflags = string("NVCCFLAGS=\"$NVCCFLAGS -DDT=") + to_string(config->io.dt) + "\" ";
-#endif
     int ret=0;
-
     int popsize=0;
     string simulator(SOURCEDIR);
     switch ( type ) {
@@ -65,8 +57,9 @@ bool compile_model(XMLModel::outputType type) {
     }
 
     string modelname = config->model.obj->generateDefinition(type, popsize, INSTANCEDIR);
+    string modelpath = string(INSTANCEDIR) + "/" + modelname;
 
-    string cmd = string("cd ") + INSTANCEDIR + " && " + cxxflags + "buildmodel.sh " + modelname + " 0 2>&1";
+    string cmd = string("cd ") + INSTANCEDIR + " && " + "genn-buildmodel.sh -s " + modelname + ".cc 2>&1";
     cout << cmd << endl;
     FILE *is = popen(cmd.c_str(), "r");
     char buffer[1024];
@@ -85,17 +78,14 @@ bool compile_model(XMLModel::outputType type) {
     config->model.obj->generateSimulator(type, INSTANCEDIR);
 
     // Compile it all
-    string includeflags = string("INCLUDE_FLAGS='")
-            + "-include " + INSTANCEDIR + "/" + modelname + "_CODE/runner.cc "
-            + "-include " + INSTANCEDIR + "/" + modelname + ".cc' ";
+    cmd = string("cd ") + simulator
+            + " && make clean SIM_CODE=" + modelpath + "_CODE"
+            + " && INCLUDE_FLAGS='"
+                + "-include " + modelpath + "_CODE/definitions.h "
+                + "-include " + modelpath + ".cc'"
+            + " make SIM_CODE=" + modelpath + "_CODE";
 #ifdef _DEBUG
-    cmd = string("cd ") + simulator
-            + " && " + "make clean -I " + INSTANCEDIR
-            + " && " + cxxflags + nvccflags + includeflags + "make debug -I " + INSTANCEDIR;
-#else
-    cmd = string("cd ") + simulator
-            + " && " + "make clean -I " + INSTANCEDIR
-            + " && " + cxxflags + nvccflags + includeflags + "make release -I " + INSTANCEDIR;
+    cmd += " DEBUG=1";
 #endif
     cout << cmd << endl;
     if ( (ret = system(cmd.c_str())) ) {

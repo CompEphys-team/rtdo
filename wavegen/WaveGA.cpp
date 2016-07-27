@@ -132,7 +132,7 @@ extern "C" inputSpec wavegen(conf::Config *cfg, int focusParam, bool *stopFlag)
 		}
 		for (double t = 0.0; t < SIM_TIME; t += DT)
         {
-            stepTimeGPU( t );
+            stepTimeGPU();
 
 			for (size_t i = 0; i < stims.size(); ++i)
 			{

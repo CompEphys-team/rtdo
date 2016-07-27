@@ -23,12 +23,12 @@
 #include <fstream>
 
 using namespace std;
-#include "hr_time.cpp"
+#include "hr_time.h"
 
 #include "utils.h" // for CHECK_CUDA_ERRORS
 #include <cuda_runtime.h>
-#include "numlib/randomGen.h"
-#include "numlib/gauss.h"
+#include "randomGen.h"
+#include "gauss.h"
 randomGen R;
 randomGauss RG;
 
@@ -45,7 +45,3 @@ Experiment *currentExperiment;
 #include "backlog.cc"
 
 #define RAND(Y,X) Y = Y * 1103515245 +12345;X= (unsigned int)(Y >> 16) & 32767
-
-// and some global variables
-double t= 0.0f;
-unsigned int iT= 0;

@@ -161,7 +161,8 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
 
     of << endl;
     of << "#include \"modelSpec.h\"" << endl;
-    of << "#include \"modelSpec.cc\"" << endl;
+    of << "#include \"global.h\"" << endl;
+    of << "#include \"stringUtils.h\"" << endl;
 
     of << endl;
     of << "double variableIni[" << to_string(_vars.size() + _adjustableParams.size() + nExtraVars) << "] = {" << endl;
@@ -475,10 +476,12 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.varTypes.push_back(\"scalar\");" << endl;
         of << "n.varNames.push_back(\"ote\");" << endl;
         of << "n.varTypes.push_back(\"scalar\");" << endl;
-        of << "optimiseBlockSize = 0;" << endl;
-        of << "neuronBlkSz = " << to_string(_adjustableParams.size() + 1) << ";" << endl;
-        of << "synapseBlkSz = 1;" << endl;
-        of << "learnBlkSz = 1;" << endl;
+
+        // Global preferences
+        of << "GENN_PREFERENCES::optimiseBlockSize = 0;" << endl;
+        of << "GENN_PREFERENCES::neuronBlockSize = " << to_string(_adjustableParams.size() + 1) << ";" << endl;
+        of << "GENN_PREFERENCES::synapseBlockSize = 1;" << endl;
+        of << "GENN_PREFERENCES::learningBlockSize = 1;" << endl;
         break;
     case WaveGenNoveltySearch:
         for ( Current c : _currents ) {
@@ -551,17 +554,26 @@ std::string XMLModel::generateDefinition(XMLModel::outputType type, int npop, st
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"scalar\");" << endl;
         of << "n.extraGlobalNeuronKernelParameters.push_back(\"stage\");" << endl;
         of << "n.extraGlobalNeuronKernelParameterTypes.push_back(\"int\");" << endl;
-        of << "optimiseBlockSize = 0;" << endl;
-        of << "neuronBlkSz = " << to_string(_adjustableParams.size() + 1) << ";" << endl;
-        of << "synapseBlkSz = 1;" << endl;
-        of << "learnBlkSz = 1;" << endl;
+
+        // Global preferences
+        of << "GENN_PREFERENCES::optimiseBlockSize = 0;" << endl;
+        of << "GENN_PREFERENCES::neuronBlockSize = " << to_string(_adjustableParams.size() + 1) << ";" << endl;
+        of << "GENN_PREFERENCES::synapseBlockSize = 1;" << endl;
+        of << "GENN_PREFERENCES::learningBlockSize = 1;" << endl;
         break;
     }
+
+#ifdef _DEBUG
+        of << "GENN_PREFERENCES::debugCode = true;" << endl;
+#else
+        of << "GENN_PREFERENCES::optimizeCode = true;" << endl;
+#endif
 
     of << endl;
     of << "n.thresholdConditionCode = (\"false\");" << endl;
     of << "int modelNum = nModels.size();" << endl;
     of << "nModels.push_back(n);" << endl;
+    of << "model.setDT(" << to_string(config->io.dt) << ");" << endl;
     of << "model.setName(\"" << modelname << "\");" << endl;
     of << "model.setPrecision(" << (genn_double ? "GENN_DOUBLE" : "GENN_FLOAT") << ");" << endl;
     of << "model.addNeuronPopulation(\"" << POPNAME << "\", " << npop << ", modelNum, fixedParamIni, variableIni);" << endl;

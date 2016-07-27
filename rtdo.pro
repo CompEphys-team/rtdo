@@ -100,20 +100,20 @@ SOURCES += core/main.cpp \
 
 OTHER_FILES += \
     simulation/GNUmakefile \
-    simulation/VClampGA.cu \
+    simulation/VClampGA.cpp \
     simulation/VClampGA.h \
     simulation/helper.h \
     simulation/backlog.cc
 
 OTHER_FILES += \
     wavegen/GNUmakefile \
-    wavegen/WaveGA.cu \
+    wavegen/WaveGA.cpp \
     wavegen/WaveGA.h \
     wavegen/waveHelper.h
 
 OTHER_FILES += \
     wavegenNS/GNUmakefile \
-    wavegenNS/WaveGA.cu \
+    wavegenNS/WaveGA.cpp \
     wavegenNS/WaveGA.h \
     wavegenNS/waveHelper.h
 

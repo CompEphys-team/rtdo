@@ -167,7 +167,7 @@ void WavegenNS::adjustSigmas()
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};
         for (double t = 0.0; t < SIM_TIME; t += DT) {
-            stepTimeGPU(t);
+            stepTimeGPU();
             for (size_t i = 0; i < GAPOP; ++i) {
                 if ((sn[i] < stims[i].N) && ((t - DT < stims[i].st[sn[i]]) && (t >= stims[i].st[sn[i]]) || (stims[i].st[sn[i]] == 0)))
                 {
@@ -236,7 +236,7 @@ void WavegenNS::noveltySearch(bool *stopFlag)
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};
         for (double t = 0.0; t < SIM_TIME; t += DT) {
-            stepTimeGPU(t);
+            stepTimeGPU();
             for (size_t i = 0; i < GAPOP; ++i) {
                 if ((sn[i] < stims[i].N) && ((t - DT < stims[i].st[sn[i]]) && (t >= stims[i].st[sn[i]]) || (stims[i].st[sn[i]] == 0)))
                 {
@@ -366,7 +366,7 @@ void WavegenNS::optimise(int param, ostream &wavefile, ostream &currentfile, boo
         reset(holdingVar, pertFac);
         size_t sn[GAPOP] = {};
         for (double t = 0.0; t < SIM_TIME; t += DT) {
-            stepTimeGPU(t);
+            stepTimeGPU();
             for (size_t i = 0; i < GAPOP; ++i) {
                 if ((sn[i] < stims[i].N) && ((t - DT < stims[i].st[sn[i]]) && (t >= stims[i].st[sn[i]]) || (stims[i].st[sn[i]] == 0)))
                 {
@@ -436,7 +436,7 @@ void WavegenNS::validate(inputSpec &stim, int param, ostream &currentfile)
     unsigned int VSize = (NPARAM + 1) * theSize(model.ftype);
     int iT = 0;
     for ( double t = 0.0; t < SIM_TIME; t += DT, ++iT ) {
-        stepTimeGPU(t);
+        stepTimeGPU();
         if ((sn < stim.N) && ((t - DT < stim.st[sn]) && (t >= stim.st[sn]) || (stim.st[sn] == 0)))
         {
             for (size_t j = 0; j < NPARAM + 1; ++j) {
@@ -489,7 +489,7 @@ inputSpec WavegenNS::validate(inputSpec &stim, vector<vector<double>> &Isyns, ve
     unsigned int VSize = (NPARAM + 1) * theSize(model.ftype);
     int iT = 0;
     for ( double t = 0.0; t < SIM_TIME; t += DT, ++iT ) {
-        stepTimeGPU(t);
+        stepTimeGPU();
         if ((sn < stim.N) && ((t - DT < stim.st[sn]) && (t >= stim.st[sn]) || (stim.st[sn] == 0)))
         {
             for (size_t j = 0; j < NPARAM + 1; ++j) {
