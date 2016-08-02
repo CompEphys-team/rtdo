@@ -15,6 +15,7 @@ initial version: 2016-01-20
 
 #include <string>
 #include <vector>
+#include <fstream>
 
 class XMLModel
 {
@@ -30,6 +31,8 @@ public:
     };
 
     struct param {
+        param() {}
+        param(std::string n, std::string t = "scalar") : name(n), type(t) {}
         std::string name;
         std::string type;
         double initial;
@@ -66,6 +69,15 @@ private:
     int precision;
     bool genn_double;
     double _baseV;
+
+    void gendef_variables(std::ofstream &of, int nExtraVars, bool addCurrents);
+    void gendef_pushVar(std::ofstream &of, const param &p);
+    void gendef_pushParam(std::ofstream &of, const param &p);
+    void gendef_pushGlobalParam(std::ofstream &of, const param &p);
+
+    void gendef_VClamp(std::ofstream &of, int npop, std::string modelname);
+    void gendef_wavegen(std::ofstream &of, int npop, std::string modelname);
+    void gendef_wavegenNS(std::ofstream &of, int npop, std::string modelname);
 };
 
 #endif // XMLMODEL_H
