@@ -33,7 +33,6 @@ void ModelSetupDialog::open()
     ui->modelfile->setText(QString::fromStdString(config->model.deffile));
     ui->outdir->setText(QString::fromStdString(config->output.dir));
     ui->dt->setValue(config->io.dt);
-    ui->simCycles->setValue(config->model.cycles);
     QDialog::open();
 }
 
@@ -42,7 +41,6 @@ void ModelSetupDialog::accept()
     config->model.deffile = ui->modelfile->text().toStdString();
     config->output.dir = ui->outdir->text().toStdString();
     config->io.dt = ui->dt->value();
-    config->model.cycles = ui->simCycles->value();
     QDialog::accept();
 }
 

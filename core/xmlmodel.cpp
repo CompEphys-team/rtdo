@@ -270,7 +270,7 @@ void XMLModel::gendef_VClamp(ofstream &of, int npop, string modelname)
 
     gendef_pushVar(of, param("err"));
 
-    gendef_pushParam(of, param("simCycles"));
+    gendef_pushGlobalParam(of, param("simCycles", "int"));
 
     gendef_pushGlobalParam(of, param("ot"));
     gendef_pushGlobalParam(of, param("clampGain"));

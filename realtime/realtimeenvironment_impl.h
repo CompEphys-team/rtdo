@@ -56,6 +56,8 @@ public:
 
     int nSyncs;
     int supersamplingRecommend;
+
+    RTIME last_sync_ns;
 };
 
 #endif // REALTIMEENVIRONMENT_IMPL_H

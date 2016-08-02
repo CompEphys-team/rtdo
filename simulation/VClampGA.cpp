@@ -152,6 +152,7 @@ void VClamp::runStim()
     oteHH = t + I.ot + I.dur;
     clampGainHH = cfg->vc.gain;
     accessResistanceHH = cfg->vc.resistance;
+    simCyclesHH = cfg->model.cycles;
     truevar_init();
 
     _data->startSample(I, nextS);
@@ -166,6 +167,9 @@ void VClamp::runStim()
             sn++;
         }
     }
+
+    if ( RealtimeEnvironment::env()->idleTimeReporting() )
+        cudaDeviceSynchronize();
 
     _data->endSample();
 }

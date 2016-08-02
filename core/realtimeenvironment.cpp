@@ -160,6 +160,7 @@ void RealtimeEnvironment::sync()
                      << "Maximum recommended supersampling rate: " << (int)(pImpl->supersamplingRecommend / pImpl->nSyncs) << endl;
                 rt_make_hard_real_time();
             }
+            pImpl->last_sync_ns = rt_get_time_ns();
         }
         pImpl->in->reportQ.flush();
 
@@ -185,6 +186,11 @@ void RealtimeEnvironment::pause()
     if ( !_useSim ) {
         pImpl->in->pause();
         pImpl->out->pause();
+
+        if ( pImpl->in->reporting ) {
+            float wall = (rt_get_time_ns() - pImpl->last_sync_ns) * 1e-6;
+            cout << "Wall clock time / simulation time: " << wall / sImpl->waveform.t << endl;
+        }
     }
 }
 
