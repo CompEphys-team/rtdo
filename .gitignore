@@ -1,9 +1,2 @@
 *.calibrate
-vclamp/generate
-vclamp/run
-vclamp/model/HHVClamp_CODE/
-vclamp/wave_output
 *.pro.user
-*.o
-*.so
-models/*
