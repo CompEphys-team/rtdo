@@ -24,16 +24,23 @@ CONFIG(usedouble): DEFINES += USEDOUBLE
 SOURCES += \
     src/core/main.cpp\
     src/gui/mainwindow.cpp \
+    src/drivers/daq.cpp \
     src/core/types.cpp \
+    src/drivers/daqcache.cpp \
+    src/drivers/comediconverter.cpp \
     src/core/metamodel.cpp \
     src/core/kernelhelper.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
+    src/include/daq.h \
     src/include/types.h \
     src/include/thread.h \
     src/include/conditionvariable.h \
     src/include/queue.h \
+    src/include/daqcache.h \
+    src/include/comediconverter.h \
+    src/include/comedidaq.h \
     src/include/metamodel.h \
     src/include/kernelhelper.h
 
@@ -126,7 +133,8 @@ QMAKE_CXXFLAGS += \
 SOURCES += \
     src/realtime/thread.cpp \
     src/realtime/conditionvariable.cpp \
-    src/realtime/queue.cpp
+    src/realtime/queue.cpp \
+    src/drivers/rtcomedidaq.cpp
 
 LIBS += -L. -lRC_kcomedilxrt -pthread
 
@@ -135,4 +143,5 @@ SOURCES += \
     src/nonrealtime/thread.cpp \
     src/nonrealtime/conditionvariable.cpp \
     src/nonrealtime/queue.cpp \
+    src/drivers/comedidaq.cpp
 }

@@ -26,6 +26,46 @@ struct Stimulation
     bool operator==(const Stimulation &other) const;
 };
 
+struct ChnData
+{
+    bool active;
+    unsigned int idx;
+    unsigned int range;
+    unsigned int aref;
+    double gain;
+    double offset;
+};
+
+struct inChnData : public ChnData
+{
+
+};
+
+struct outChnData : public ChnData
+{
+
+};
+
+struct DAQData
+{
+    double dt;
+    inChnData currentChn;
+    inChnData voltageChn;
+    outChnData stimChn;
+};
+
+struct CacheData
+{
+    unsigned int numTraces;
+    bool averageWhileCollecting;
+    bool useMedian;
+};
+
+struct ComediData : public DAQData
+{
+    std::string devname;
+};
+
 struct ThreadData
 {
     int priority;
