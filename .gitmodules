@@ -1,3 +1,11 @@
 [submodule "lib/gnuplot-iostream"]
 	path = lib/gnuplot-iostream
 	url = https://github.com/dstahlke/gnuplot-iostream.git
+[submodule "lib/tinyxml2"]
+	path = lib/tinyxml2
+	url = https://github.com/leethomason/tinyxml2.git
+	ignore = dirty
+[submodule "lib/genn"]
+	path = lib/genn
+	url = https://github.com/kernfel/genn.git
+	ignore = dirty
