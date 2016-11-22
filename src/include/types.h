@@ -26,6 +26,16 @@ struct Stimulation
     bool operator==(const Stimulation &other) const;
 };
 
+struct ThreadData
+{
+    int priority;
+    int stackSize;
+    int cpusAllowed;
+    int policy;
+    int maxMessageSize;
+    unsigned long name;
+};
+
 enum class IntegrationMethod { ForwardEuler, RungeKutta4 };
 enum class ModuleType { Experiment = 0, Wavegen = 1 };
 struct ModelData {

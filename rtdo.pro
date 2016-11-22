@@ -31,13 +31,16 @@ SOURCES += \
 HEADERS  += \
     src/include/mainwindow.h \
     src/include/types.h \
+    src/include/thread.h \
+    src/include/conditionvariable.h \
+    src/include/queue.h \
     src/include/metamodel.h \
     src/include/kernelhelper.h
 
 FORMS    += \
     src/gui/mainwindow.ui
 
-LIBS     += -rdynamic -ldl
+LIBS     += -rdynamic -ldl -lcomedi
 
 DEFINES += CORE_INCLUDE_PATH='\\"$${PWD}/src/include\\"'
 
@@ -82,3 +85,54 @@ PRE_TARGETDEPS += $$libTinyXML.target
 CLEAN_DEPS += cleanTinyXML
 LIBS += -L$$libTinyXML.path -ltinyxml2
 INCLUDEPATH += $$libTinyXML.path
+
+
+# RTAI/Comedi
+realtime {
+RTAI_LIBDIR = /usr/realtime/lib # Location of libkcomedilxrt.a
+RC_HEADER = RC_rtai_comedi.h # Header file replacing rtai_comedi.h with a prefixed version
+
+RC_syms.target = RC.syms
+RC_syms.depends = $${RTAI_LIBDIR}/libkcomedilxrt.a
+RC_syms.commands = nm $$RC_syms.depends | grep \'\\bcomedi\' | awk \'\$\$3 {print \$\$3 \" RC_\" \$\$3}\' > $$RC_syms.target
+
+RC_header.target = $${OUT_PWD}/$$RC_HEADER
+RC_header.depends = RC_syms
+RC_header.commands = awk \'{print \"$${LITERAL_HASH}define \" \$\$0}\' $$RC_syms.target > $$RC_header.target; \
+    echo \'$${LITERAL_HASH}ifdef __cplusplus\'                                         >> $$RC_header.target; \
+    echo \'extern \"C\" {\'                                                            >> $$RC_header.target; \
+    echo \'$${LITERAL_HASH}endif\'                                                     >> $$RC_header.target; \
+    echo \'$${LITERAL_HASH}include <rtai_comedi.h>\'                                   >> $$RC_header.target; \
+    echo \'$${LITERAL_HASH}ifdef __cplusplus\'                                         >> $$RC_header.target; \
+    echo \'}\'                                                                         >> $$RC_header.target; \
+    echo \'$${LITERAL_HASH}endif\'                                                     >> $$RC_header.target; \
+    awk \'{print \"$${LITERAL_HASH}undef \" \$\$1}\' $$RC_syms.target                  >> $$RC_header.target
+
+RC_kcomedilxrt.target = libRC_kcomedilxrt.a
+RC_kcomedilxrt.depends = RC_syms
+RC_kcomedilxrt.commands = objcopy --redefine-syms=$$RC_syms.target $$RC_syms.depends $$RC_kcomedilxrt.target
+
+RC_clean.commands = rm -rf $$RC_header.target $$RC_syms.target $$RC_kcomedilxrt.target
+
+QMAKE_EXTRA_TARGETS += RC_kcomedilxrt RC_syms RC_header RC_clean
+PRE_TARGETDEPS += $$RC_header.target $$RC_kcomedilxrt.target
+CLEAN_DEPS += RC_clean
+
+DEFINES += BUILD_RT
+
+QMAKE_CXXFLAGS += \
+    -isystem /usr/realtime/include
+
+SOURCES += \
+    src/realtime/thread.cpp \
+    src/realtime/conditionvariable.cpp \
+    src/realtime/queue.cpp
+
+LIBS += -L. -lRC_kcomedilxrt -pthread
+
+} else { # !realtime
+SOURCES += \
+    src/nonrealtime/thread.cpp \
+    src/nonrealtime/conditionvariable.cpp \
+    src/nonrealtime/queue.cpp \
+}
