@@ -234,8 +234,6 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
         variableIni.push_back(0.0);
     }
 
-    n.supportCode = bridge(globals, vars);
-
     stringstream ss;
     ss << R"EOF(
 scalar mdt = DT/$(simCycles);
@@ -337,6 +335,8 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
             cfg.npop *= p.wgPermutations + 1;
         }
     }
+
+    n.supportCode = bridge(globals, vars);
 
     int numModels = nModels.size();
     nModels.push_back(n);
@@ -501,6 +501,10 @@ std::string MetaModel::bridge(std::vector<Variable> const& globals, std::vector<
     ss << endl;
 
     ss << "void populate(MetaModel &m) {" << endl;
+    if ( cfg.type == ModuleType::Experiment )
+        ss << "    GeNN_Bridge::NPOP = " << cfg.npop << ";" << endl;
+    else
+        ss << "    GeNN_Bridge::NPOP = " << cfg.npop * (adjustableParams.size()+1) << ";" << endl;
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
         ss << "    m.stateVariables[" << i++ << "].v = " << v.name << HH << ";" << endl;

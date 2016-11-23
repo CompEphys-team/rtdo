@@ -9,6 +9,7 @@ void (*init)(MetaModel&);
 void (*reset)(void);
 
 // Global
+size_t NPOP;
 scalar *t;
 unsigned long long *iT;
 

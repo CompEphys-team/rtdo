@@ -29,7 +29,8 @@ SOURCES += \
     src/drivers/daqcache.cpp \
     src/drivers/comediconverter.cpp \
     src/core/metamodel.cpp \
-    src/core/kernelhelper.cpp
+    src/core/kernelhelper.cpp \
+    src/core/wavegen.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -42,7 +43,8 @@ HEADERS  += \
     src/include/comediconverter.h \
     src/include/comedidaq.h \
     src/include/metamodel.h \
-    src/include/kernelhelper.h
+    src/include/kernelhelper.h \
+    src/include/wavegen.h
 
 FORMS    += \
     src/gui/mainwindow.ui
