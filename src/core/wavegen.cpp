@@ -283,38 +283,33 @@ Stimulation Wavegen::getRandomStim()
 {
     Stimulation I;
     int failedPos, failedAgain = 0;
-    bool failed;
     I.baseV = p.baseV;
-    I.dur = p.duration;
-    I.N = stepDist(gen);
+    I.duration = p.duration;
+    int n = stepDist(gen);
 tryagain:
-    failed = false;
     failedPos = 0;
     if ( failedAgain++ > 2*p.maxSteps ) {
         failedAgain = 0;
-        --I.N;
+        --n;
     }
-    I.st.clear();
-    for ( int i = 0; i < I.N; i++ ) {
-        double st = timeDist(gen);
-        for ( double const& t : I.st ) {
-            if ( fabs(t - st) < p.minStepLength ) {
-                if ( ++failedPos > 2*p.maxSteps )
-                    goto tryagain;
-                failed = true;
+    I.steps.clear();
+    for ( int i = 0; i < n; i++ ) {
+        double t = timeDist(gen);
+        for ( Stimulation::Step s : I.steps ) {
+            if ( fabs(s.t - t) < p.minStepLength ) {
+                ++failedPos;
                 break;
+            } else {
+                failedPos = 0;
             }
         }
-        if ( failed ) {
+        if ( failedPos ) {
+            if ( failedPos > 2*p.maxSteps )
+                goto tryagain;
             --i;
-            failed = false;
             continue;
         }
-        I.st.push_back(st);
-    }
-    for ( int i = 0; i < I.N; i++ ) {
-        I.V.push_back(VDist(gen));
-        I.ramp.push_back(coinflip(gen));
+        I.steps.push_back(Stimulation::Step{t, VDist(gen), (bool)(coinflip(gen))});
     }
     return I;
 }

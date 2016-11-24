@@ -30,7 +30,7 @@ void ComediDAQ::run(Stimulation s)
     currentStim = s;
     qI.flush();
     qV.flush();
-    int qSize = currentStim.t / p->dt + 1;
+    int qSize = currentStim.duration / p->dt + 1;
     qI.resize(qSize);
     qV.resize(qSize);
     ready.signal();
@@ -84,13 +84,13 @@ void *ComediDAQ::launch()
     inChnData V, I;
     outChnData O;
     lsampl_t vSamp, iSamp, V0, VRamp, VRampDelta;
-    struct Stim {
+    struct Step {
         RTIME t;
         lsampl_t V;
         bool ramp;
     };
-    std::vector<Stim> stims;
-    std::vector<Stim>::iterator stimIter;
+    std::vector<Step> steps;
+    std::vector<Step>::iterator stepIter;
     while ( live ) {
         ready.wait();
 
@@ -113,22 +113,25 @@ void *ComediDAQ::launch()
         dt = nano2count((RTIME)(1e6 * p->dt));
 
         // AO setup
-        stims.resize(currentStim.N + 1);
-        for ( int i = 0; i < currentStim.N; i++ ) {
-            RTIME actualT = nano2count((RTIME)(1e6 * currentStim.st.at(i)));
-            RTIME nsteps = (RTIME) actualT / dt;
-            // Round Stim.t to nearest sampling time:
-            stims[i] = Stim { (actualT % dt) > dt/2 ? (nsteps+1) * dt : nsteps * dt,
-                              conO.toSamp(currentStim.V[i]),
-                              currentStim.ramp[i] };
+        steps.reserve(currentStim.steps.size() + 1);
+        // Convert Stimulation::Step t/V to RTIME/lsampl_t
+        for ( const Stimulation::Step &s : currentStim.steps ) {
+            steps.push_back( Step {
+                dt * (RTIME)(nano2count((RTIME)(1e6 * s.t)) / dt), // Round down
+                conO.toSamp(s.V),
+                s.ramp
+            });
         }
-        stims[currentStim.N] = Stim { nano2count((RTIME)(1e6 * currentStim.t)),
-                                      conO.toSamp(currentStim.baseV),
-                                      false };
-        stimIter = stims.begin();
-        if ( stimIter->ramp ) {
+        // Add an additional non-ramp step to return to base voltage:
+        steps.push_back( Step {
+            nano2count((RTIME)(1e6 * currentStim.duration)),
+            conO.toSamp(currentStim.baseV),
+            false
+        });
+        stepIter = steps.begin();
+        if ( stepIter->ramp ) {
             VRamp = V0;
-            VRampDelta = (stimIter->V - VRamp) / (stimIter->t / dt);
+            VRampDelta = (stepIter->V - VRamp) / (stepIter->t / dt);
         }
 
         reltime = 0;
@@ -154,16 +157,16 @@ void *ComediDAQ::launch()
 
             // AO
             if ( O.active ) {
-                if ( stimIter->t == reltime ) {
-                    RC_comedi_data_write(dev, aodev, O.idx, O.range, O.aref, stimIter->V);
-                    ++stimIter;
-                    if ( stimIter == stims.end() ) {
+                if ( stepIter->t == reltime ) {
+                    RC_comedi_data_write(dev, aodev, O.idx, O.range, O.aref, stepIter->V);
+                    ++stepIter;
+                    if ( stepIter == steps.end() ) {
                         O.active = false;
-                    } else if ( stimIter->ramp ) {
-                        VRamp = (stimIter-1)->V;
-                        VRampDelta = (stimIter->V - VRamp) / ((stimIter->t - reltime) / dt);
+                    } else if ( stepIter->ramp ) {
+                        VRamp = (stepIter-1)->V;
+                        VRampDelta = (stepIter->V - VRamp) / ((stepIter->t - reltime) / dt);
                     }
-                } else if ( stimIter->ramp ) {
+                } else if ( stepIter->ramp ) {
                     VRamp += VRampDelta;
                     RC_comedi_data_write(dev, aodev, O.idx, O.range, O.aref, VRamp);
                 }

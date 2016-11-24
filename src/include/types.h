@@ -14,14 +14,19 @@ typedef float scalar;
 
 struct Stimulation
 {
-    double t;
-    double ot;
-    double dur;
+    double duration;
+    double tObsBegin;
+    double tObsEnd;
     double baseV;
-    int N;
-    std::vector<double> st;
-    std::vector<double> V;
-    std::vector<bool> ramp;
+
+    struct Step
+    {
+        double t;
+        double V;
+        bool ramp;
+        bool operator==(const Step &other) const;
+    };
+    std::vector<Step> steps;
 
     bool operator==(const Stimulation &other) const;
 };
