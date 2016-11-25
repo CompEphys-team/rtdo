@@ -44,7 +44,8 @@ HEADERS  += \
     src/include/comedidaq.h \
     src/include/metamodel.h \
     src/include/kernelhelper.h \
-    src/include/wavegen.h
+    src/include/wavegen.h \
+    src/include/cuda_helper.h
 
 FORMS    += \
     src/gui/mainwindow.ui

@@ -2,6 +2,7 @@
 #include <chrono>
 #include <algorithm>
 #include <cassert>
+#include "cuda_helper.h"
 
 using namespace GeNN_Bridge;
 
