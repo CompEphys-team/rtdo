@@ -23,6 +23,11 @@ public:
     std::vector<AdjustableParam> adjustableParams;
     std::vector<Variable> currents;
 
+    int numGroupsPerBlock; //!< Wavegen only: Exposes the number of model groups interleaved in each block.
+    int numGroups; //!< Wavegen only: Exposes the total number of model groups.
+    int numBlocks; //!< Wavegen only: Exposes the total number of thread blocks, all of which are fully occupied.
+    /// Note: A "group" consists of nParams+1 models: A base model, and one detuned model in each parameter.
+
 protected:
     std::string _name;
     std::vector<Variable> _params;

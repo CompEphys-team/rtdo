@@ -5,6 +5,7 @@
 #include "global.h"
 #include "stringUtils.h"
 #include <sstream>
+#include "cuda_helper.h"
 
 #define HH "HH"
 
@@ -234,6 +235,41 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
         variableIni.push_back(0.0);
     }
 
+    // Allocate model groups such that target param models go into a single warp:
+    // i.e., model groups are interleaved with stride (numGroupsPerBlock = warpsize/2^n, n>=0),
+    // which means that models detuned in a given parameter are warp-aligned.
+    cudaDeviceProp prop;
+    int deviceCount, maxThreadsPerBlock = 0;
+    CHECK_CUDA_ERRORS(cudaGetDeviceCount(&deviceCount));
+    for (int device = 0; device < deviceCount; device++) {
+        CHECK_CUDA_ERRORS(cudaSetDevice(device));
+        CHECK_CUDA_ERRORS(cudaGetDeviceProperties(&prop, device));
+        if ( prop.maxThreadsPerBlock > maxThreadsPerBlock ) {
+            // somewhat arbitrarily pick a device with the most threads per block - a.k.a no support for multiGPU.
+            maxThreadsPerBlock = prop.maxThreadsPerBlock;
+            numGroupsPerBlock = prop.warpSize;
+            GENN_PREFERENCES::defaultDevice = device;
+        }
+    }
+    while ( adjustableParams.size() + 1 > maxThreadsPerBlock / numGroupsPerBlock )
+        numGroupsPerBlock /= 2;
+    GENN_PREFERENCES::autoChooseDevice = 0;
+    GENN_PREFERENCES::optimiseBlockSize = 0;
+    GENN_PREFERENCES::neuronBlockSize = numGroupsPerBlock * (adjustableParams.size() + 1);
+
+    if ( cfg.permute ) {
+        numGroups = 1;
+        for ( AdjustableParam &p : adjustableParams ) {
+            numGroups *= p.wgPermutations + 1;
+        }
+    } else {
+        numGroups = cfg.npop;
+    }
+    // Round up to nearest multiple of numGroupsPerBlock to achieve full occupancy and regular interleaving:
+    numGroups = ((numGroups + numGroupsPerBlock - 1) / numGroupsPerBlock) * numGroupsPerBlock;
+    numBlocks = numGroups / numGroupsPerBlock;
+
+
     stringstream ss;
     ss << R"EOF(
 scalar mdt = DT/$(simCycles);
@@ -242,32 +278,38 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
 )EOF";
     ss << kernel("    ") << endl;
     ss << "#ifndef _" << name() << "_neuronFnct_cc" << endl; // Don't compile this part in calcNeuronsCPU
+    ss << "#define NGROUPS " << numGroupsPerBlock << endl;
+    ss << "#define BLOCKSIZE " << GENN_PREFERENCES::neuronBlockSize << endl;
     ss <<   R"EOF(
-    __shared__ double errShare[NPARAM+1];
-    __shared__ double IsynShare[NPARAM+1];
     if ( $(getErr) ) {
-        IsynShare[threadIdx.x] = Isyn;
+        const int groupID = id % NGROUPS;
+        const int paramID = (id % BLOCKSIZE) / NGROUPS;
+        __shared__ double errShare[BLOCKSIZE];
+        errShare[paramID*NGROUPS + groupID] = Isyn;
         __syncthreads();
 
-        // Get deviation from the base model
-        scalar err = abs(Isyn-IsynShare[0]);
-        $(err) += err * mdt;
-        errShare[threadIdx.x] = err;
+        // Get deviation from the base model (paramID==0)
+        scalar err;
+        if ( paramID ) {
+            err = abs(Isyn - errShare[groupID]);
+            $(err) += err * mdt;
+            errShare[paramID*NGROUPS + groupID] = err;
+        }
         __syncthreads();
 
-        if ( threadIdx.x == $(targetParam) ) {
+        if ( paramID == $(targetParam) ) {
             scalar next = 0.;
             scalar total = 0.;
             for ( int i = 1; i < NPARAM+1; i++ ) {
-                total += errShare[i];
-                if ( i == threadIdx.x )
+                total += errShare[i*NGROUPS + groupID];
+                if ( i == paramID )
                     continue;
-                if ( errShare[i] > err ) {
+                if ( errShare[i*NGROUPS + groupID] > err ) {
                     next = -1.f;
                     break;
                 }
-                if ( errShare[i] > next )
-                    next = errShare[i];
+                if ( errShare[i*NGROUPS + groupID] > next )
+                    next = errShare[i*NGROUPS + groupID];
             }
             if ( (next < 0. && $(cCyclesWon)) || ($(final) && mt == $(simCycles)-1 && next >= 0.) ) {
             //    a bubble has just ended     or  this is the final cycle and a bubble is still open
@@ -329,21 +371,11 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
 
     n.simCode = ss.str();
 
-    if ( cfg.permute ) {
-        cfg.npop = 1;
-        for ( AdjustableParam &p : adjustableParams ) {
-            cfg.npop *= p.wgPermutations + 1;
-        }
-    }
-
     n.supportCode = bridge(globals, vars);
 
     int numModels = nModels.size();
     nModels.push_back(n);
     m.addNeuronPopulation(HH, cfg.npop * (adjustableParams.size()+1), numModels, fixedParamIni, variableIni);
-
-    GENN_PREFERENCES::optimiseBlockSize = 0;
-    GENN_PREFERENCES::neuronBlockSize = adjustableParams.size() + 1;
 }
 
 void MetaModel::generate(NNmodel &m)

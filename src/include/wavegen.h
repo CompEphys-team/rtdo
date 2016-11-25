@@ -56,9 +56,8 @@ public:
 
 protected:
     MetaModel &m;
-    int nBlocks;
-    int blockSize;
-    int nModels;
+    int blockSize; //!< Number of models (not groups!) per thread block
+    int nModels; //!< Total number of models
 
     /**
      * @brief getRandomStim generates a fully randomised stimulation according to the Wavegen's StimulationData
