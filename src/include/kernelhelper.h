@@ -6,11 +6,56 @@
 
 namespace GeNN_Bridge {
 
+struct WaveStats
+{
+    struct Bubble //!< Streak of winning over all other deviations.
+    {
+        int cycles; //!< Number of cycles won (= target param err > other param errs)
+        scalar tEnd; //!< Time at end
+        scalar abs; //!< Absolute distance to the next param err down (= target err - next err)
+        scalar rel; //!< Relative distance to the next param err down (= (target err - next err)/next err)
+        scalar meanAbs; //!< Absolute distance to mean param err
+        scalar meanRel; //!< Relative distance to mean param err
+    };
+
+    int bubbles; // Number of bubbles
+    Bubble totalBubble;
+    Bubble currentBubble;
+    Bubble longestBubble;
+    Bubble bestAbsBubble;
+    Bubble bestRelBubble;
+    Bubble bestMeanAbsBubble;
+    Bubble bestMeanRelBubble;
+
+    struct Bud //!< Streak of winning over the mean deviation, rather than over all other deviations. May include bubbles.
+    {
+        int cycles; //!< Number of cycles over mean
+        scalar tEnd; //!< Time at end
+        scalar meanAbs; //!< Total absolute distance to mean
+        scalar meanRel; //!< Total relative distance to mean (= (target err - mean err) / mean err)
+        scalar shortfallAbs; //!< Total distance from winner (= target err - top err), note: piecewise negative where a bud is not also a bubble
+        scalar shortfallRel; //!< Total relative distance from winner (= (target err - top err) / top err), note: may cross zero
+    };
+
+    int buds; // Number of buds
+    Bud totalBud;
+    Bud currentBud;
+    Bud longestBud;
+    Bud bestMeanAbsBud;
+    Bud bestMeanRelBud;
+    Bud bestShortfallAbsBud;
+    Bud bestShortfallRelBud;
+};
+
+extern WaveStats *wavestats;
+extern WaveStats *d_wavestats;
+
 extern void (*push)(void);
 extern void (*pull)(void);
 extern void (*step)(void);
 extern void (*init)(MetaModel&);
 extern void (*reset)(void);
+extern void (*pullStats)(void);
 
 extern size_t NPOP;
 extern scalar *t;
@@ -34,75 +79,45 @@ extern scalar * Vmem;
 extern scalar * d_Vmem;
 extern bool * getErr;
 extern bool * d_getErr;
-extern int * bubbles;
-extern int * d_bubbles;
-extern int * cyclesWon;
-extern int * d_cyclesWon;
-extern scalar * wonByAbs;
-extern scalar * d_wonByAbs;
-extern scalar * wonByRel;
-extern scalar * d_wonByRel;
-extern scalar * wonOverMean;
-extern scalar * d_wonOverMean;
-extern int * cCyclesWon;
-extern int * d_cCyclesWon;
-extern scalar * cWonByAbs;
-extern scalar * d_cWonByAbs;
-extern scalar * cWonByRel;
-extern scalar * d_cWonByRel;
-extern scalar * cWonOverMean;
-extern scalar * d_cWonOverMean;
-extern int * bCyclesWon;
-extern int * d_bCyclesWon;
-extern scalar * bCyclesWonT;
-extern scalar * d_bCyclesWonT;
-extern scalar * bCyclesWonA;
-extern scalar * d_bCyclesWonA;
-extern scalar * bCyclesWonR;
-extern scalar * d_bCyclesWonR;
-extern scalar * bCyclesWonM;
-extern scalar * d_bCyclesWonM;
-extern scalar * bWonByAbs;
-extern scalar * d_bWonByAbs;
-extern scalar * bWonByAbsT;
-extern scalar * d_bWonByAbsT;
-extern int * bWonByAbsC;
-extern int * d_bWonByAbsC;
-extern scalar * bWonByAbsR;
-extern scalar * d_bWonByAbsR;
-extern scalar * bWonByAbsM;
-extern scalar * d_bWonByAbsM;
-extern scalar * bWonByRel;
-extern scalar * d_bWonByRel;
-extern scalar * bWonByRelT;
-extern scalar * d_bWonByRelT;
-extern int * bWonByRelC;
-extern int * d_bWonByRelC;
-extern scalar * bWonByRelA;
-extern scalar * d_bWonByRelA;
-extern scalar * bWonByRelM;
-extern scalar * d_bWonByRelM;
-extern scalar * bWonOverMean;
-extern scalar * d_bWonOverMean;
-extern scalar * bWonOverMeanT;
-extern scalar * d_bWonOverMeanT;
-extern int * bWonOverMeanC;
-extern int * d_bWonOverMeanC;
-extern scalar * bWonOverMeanA;
-extern scalar * d_bWonOverMeanA;
-extern scalar * bWonOverMeanR;
-extern scalar * d_bWonOverMeanR;
 }
 
 #ifdef RUNNER_CC_COMPILE
 // Model-independent, but GeNN-presence-dependent bridge code
+
+__device__ GeNN_Bridge::WaveStats *dd_wavestats;
+
+void allocateStats()
+{
+    using namespace GeNN_Bridge;
+    cudaHostAlloc(&wavestats, NGROUPS * sizeof(WaveStats), cudaHostAllocPortable);
+        deviceMemAllocate(&d_wavestats, dd_wavestats, NGROUPS * sizeof(WaveStats));
+}
+void clearStats()
+{
+    using namespace GeNN_Bridge;
+    for ( unsigned i = 0; i < NGROUPS; i++ )
+        wavestats[i] = {0};
+    CHECK_CUDA_ERRORS(cudaMemcpy(d_wavestats, wavestats, NGROUPS * sizeof(WaveStats), cudaMemcpyHostToDevice))
+}
+void pullStats()
+{
+    using namespace GeNN_Bridge;
+    CHECK_CUDA_ERRORS(cudaMemcpy(wavestats, d_wavestats, NGROUPS * sizeof(WaveStats), cudaMemcpyDeviceToHost))
+}
+void freeStats()
+{
+    cudaFreeHost(GeNN_Bridge::wavestats);
+    CHECK_CUDA_ERRORS(cudaFree(GeNN_Bridge::d_wavestats));
+}
 
 void populate(MetaModel &m); // Defined in GeNN-produced support_code.h
 
 void libManualInit(MetaModel &m) // Must be called separately (through GeNN_Bridge::init())
 {
     allocateMem();
+    allocateStats();
     initialize();
+    clearStats();
     populate(m);
 }
 
@@ -121,11 +136,14 @@ void __attribute__ ((constructor)) libInit()
 void libExit()
 {
     freeMem();
+    freeStats();
+    cudaDeviceReset();
     GeNN_Bridge::init = 0;
     GeNN_Bridge::push = 0;
     GeNN_Bridge::pull = 0;
     GeNN_Bridge::step = 0;
     GeNN_Bridge::reset = 0;
+    GeNN_Bridge::pullStats = 0;
 
     GeNN_Bridge::t = 0;
     GeNN_Bridge::iT = 0;

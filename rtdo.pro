@@ -32,6 +32,8 @@ SOURCES += \
     src/core/kernelhelper.cpp \
     src/core/wavegen.cpp
 
+OTHER_FILES += src/include/supportcode.cu
+
 HEADERS  += \
     src/include/mainwindow.h \
     src/include/daq.h \

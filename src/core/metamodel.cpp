@@ -180,48 +180,7 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
     std::vector<Variable> vars = {
         Variable("Vmem"),
         Variable("err"),
-        Variable("getErr", "", "bool"),
-        Variable("bubbles", "", "int"), // Number of bubbles
-
-        // Totals
-        Variable("cyclesWon", "", "int"), // Number of cycles won (= target param err > other param errs)
-        Variable("wonByAbs"), // Absolute distance to the next param err down (= target err - next err)
-        Variable("wonByRel"), // Relative distance to the next param err down (= (target err - next err)/next err)
-        Variable("wonOverMean"), // Relative distance to mean param err
-
-        // Current winning streak ("bubble")
-        Variable("cCyclesWon", "", "int"),
-        Variable("cWonByAbs"),
-        Variable("cWonByRel"),
-        Variable("cWonOverMean"),
-
-        // Longest bubble
-        Variable("bCyclesWon", "", "int"),
-        Variable("bCyclesWonT"), // Time at end
-        Variable("bCyclesWonA"), // Absolute distance to next param err within this bubble
-        Variable("bCyclesWonR"), // Relative distance to next param err within this bubble
-        Variable("bCyclesWonM"), // Relative distance to mean param err within this bubble
-
-        // Greatest absolute distance bubble
-        Variable("bWonByAbs"),
-        Variable("bWonByAbsT"),
-        Variable("bWonByAbsC", "", "int"), // Number of cycles within bubble
-        Variable("bWonByAbsR"),
-        Variable("bWonByAbsM"),
-
-        // Greatest relative distance to next bubble
-        Variable("bWonByRel"),
-        Variable("bWonByRelT"),
-        Variable("bWonByRelC", "", "int"),
-        Variable("bWonByRelA"),
-        Variable("bWonByRelM"),
-
-        // Greatest relative distance to mean bubble
-        Variable("bWonOverMean"),
-        Variable("bWonOverMeanT"),
-        Variable("bWonOverMeanC", "", "int"),
-        Variable("bWonOverMeanA"),
-        Variable("bWonOverMeanR")
+        Variable("getErr", "", "bool")
     };
     for ( Variable &v : vars ) {
         n.varNames.push_back(v.name);
@@ -251,7 +210,7 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
             GENN_PREFERENCES::defaultDevice = device;
         }
     }
-    while ( adjustableParams.size() + 1 > maxThreadsPerBlock / numGroupsPerBlock )
+    while ( (int)adjustableParams.size() + 1 > maxThreadsPerBlock / numGroupsPerBlock )
         numGroupsPerBlock /= 2;
     GENN_PREFERENCES::autoChooseDevice = 0;
     GENN_PREFERENCES::optimiseBlockSize = 0;
@@ -269,27 +228,32 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
     numGroups = ((numGroups + numGroupsPerBlock - 1) / numGroupsPerBlock) * numGroupsPerBlock;
     numBlocks = numGroups / numGroupsPerBlock;
 
-
     stringstream ss;
+    ss << endl << "#ifndef _" << name() << "_neuronFnct_cc" << endl; // No Wavegen on the CPU
     ss << R"EOF(
+const int groupID = id % NGROUPS;                       // Block-local group id
+const int group = groupID + (id/BLOCKSIZE) * NGROUPS;   // Global group id
+const int paramID = (id % BLOCKSIZE) / NGROUPS;
+GeNN_Bridge::WaveStats stats;
+if ( $(getErr) && paramID == $(targetParam) ) // Preload for @fn processStats - other threads don't need this
+    stats = dd_wavestats[group];
+
 scalar mdt = DT/$(simCycles);
 for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
     Isyn = ($(clampGain)*($(Vmem)-$(V)) - $(V)) / $(accessResistance);
 )EOF";
     ss << kernel("    ") << endl;
-    ss << "#ifndef _" << name() << "_neuronFnct_cc" << endl; // Don't compile this part in calcNeuronsCPU
-    ss << "#define NGROUPS " << numGroupsPerBlock << endl;
-    ss << "#define BLOCKSIZE " << GENN_PREFERENCES::neuronBlockSize << endl;
     ss <<   R"EOF(
     if ( $(getErr) ) {
-        const int groupID = id % NGROUPS;
-        const int paramID = (id % BLOCKSIZE) / NGROUPS;
         __shared__ double errShare[BLOCKSIZE];
-        errShare[paramID*NGROUPS + groupID] = Isyn;
+        scalar err;
+
+        // Make base model (paramID==0) Isyn available
+        if ( !paramID )
+            errShare[groupID] = Isyn;
         __syncthreads();
 
-        // Get deviation from the base model (paramID==0)
-        scalar err;
+        // Get deviation from the base model
         if ( paramID ) {
             err = abs(Isyn - errShare[groupID]);
             $(err) += err * mdt;
@@ -297,6 +261,7 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
         }
         __syncthreads();
 
+        // Collect statistics for target param
         if ( paramID == $(targetParam) ) {
             scalar next = 0.;
             scalar total = 0.;
@@ -304,69 +269,20 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
                 total += errShare[i*NGROUPS + groupID];
                 if ( i == paramID )
                     continue;
-                if ( errShare[i*NGROUPS + groupID] > err ) {
-                    next = -1.f;
-                    break;
-                }
                 if ( errShare[i*NGROUPS + groupID] > next )
                     next = errShare[i*NGROUPS + groupID];
             }
-            if ( (next < 0. && $(cCyclesWon)) || ($(final) && mt == $(simCycles)-1 && next >= 0.) ) {
-            //    a bubble has just ended     or  this is the final cycle and a bubble is still open
-            // ==> Close the bubble, collect stats
-                $(bubbles)++;
-                if ( $(cCyclesWon) > $(bCyclesWon) ) {
-                    $(bCyclesWon) = $(cCyclesWon);
-                    $(bCyclesWonT) = t + mt*mdt;
-                    $(bCyclesWonA) = $(cWonByAbs);
-                    $(bCyclesWonR) = $(cWonByRel);
-                    $(bCyclesWonM) = $(cWonOverMean);
-                }
-                if ( $(cWonByAbs) > $(bWonByAbs) ) {
-                    $(bWonByAbs) = $(cWonByAbs);
-                    $(bWonByAbsT) = t + mt*mdt;
-                    $(bWonByAbsC) = $(cCyclesWon);
-                    $(bWonByAbsR) = $(cWonByRel);
-                    $(bWonByAbsM) = $(cWonOverMean);
-                }
-                if ( $(cWonByRel) > $(bWonByRel) ) {
-                    $(bWonByRel) = $(cWonByRel);
-                    $(bWonByRelT) = t + mt*mdt;
-                    $(bWonByRelC) = $(cCyclesWon);
-                    $(bWonByRelA) = $(cWonByAbs);
-                    $(bWonByRelM) = $(cWonOverMean);
-                }
-                if ( $(cWonOverMean) > $(bWonOverMean) ) {
-                    $(bWonOverMean) = $(cWonOverMean);
-                    $(bWonOverMeanT) = t + mt*mdt;
-                    $(bWonOverMeanC) = $(cCyclesWon);
-                    $(bWonOverMeanA) = $(cWonByAbs);
-                    $(bWonOverMeanR) = $(cWonByRel);
-                }
-                $(cCyclesWon) = 0;
-                $(cWonByAbs) = 0.;
-                $(cWonByRel) = 0.;
-                $(cWonOverMean) = 0.;
-            } else if ( next >= 0. ) { // Process open bubble
-                $(cyclesWon)++;
-                $(cCyclesWon)++;
-                $(wonByAbs) += err;
-                $(cWonByAbs) += err;
-                {
-                    scalar rel = 1 - err / (total/NPARAM);
-                    $(wonOverMean) += rel;
-                    $(cWonOverMean) += rel;
-                }
-                if ( next > 0. ) {
-                    scalar rel = 1 - err / next;
-                    $(wonByRel) += rel;
-                    $(cWonByRel) += rel;
-                }
-            }
+            processStats(err, next, total / NPARAM, t + mt*mdt, stats, $(final) && mt == $(simCycles)-1 );
         }
     }
+} // end for mt
+
+if ( $(getErr) && paramID == $(targetParam) )
+    dd_wavestats[group] = stats;
+
+#else
+Isyn += 0.; // Squelch Wunused in neuronFnct.cc
 #endif
-}
 )EOF";
 
     n.simCode = ss.str();
@@ -526,10 +442,13 @@ std::string MetaModel::bridge(std::vector<Variable> const& globals, std::vector<
     std::stringstream ss;
 
     ss << "} // break namespace for STL includes:" << endl;
-    ss << "#include \"kernelhelper.h\"" << endl;
-    ss << "#include \"definitions.h\"" << endl;
+    ss << "#define NGROUPS " << numGroupsPerBlock << endl;
+    ss << "#define BLOCKSIZE " << GENN_PREFERENCES::neuronBlockSize << endl;
     ss << "#define NVAR " << stateVariables.size() << endl;
     ss << "#define NPARAM " << adjustableParams.size() << endl;
+    ss << "#include \"kernelhelper.h\"" << endl;
+    ss << "#include \"definitions.h\"" << endl;
+    ss << "#include \"supportcode.cu\"" << endl;
     ss << endl;
 
     ss << "void populate(MetaModel &m) {" << endl;
