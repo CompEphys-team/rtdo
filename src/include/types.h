@@ -121,5 +121,30 @@ struct AdjustableParam : public Variable {
     bool wgNormal;
 };
 
+struct StimulationData
+{
+    int minSteps;
+    int maxSteps;
+    double minStepLength;
+    double duration;
+    scalar minVoltage;
+    scalar maxVoltage;
+    scalar baseV;
+};
+
+struct RunData
+{
+    int simCycles;
+    double clampGain;
+    double accessResistance;
+    double settleTime; // Duration of initial simulation run to get settled state variable values
+};
+
+struct WavegenData : public RunData
+{
+    int numSigmaAdjustWaveforms; // Number of random waveforms used to normalise the perturbation rate.
+                                 // If the MetaModel is not permuted, this number is rounded up to the
+                                 // nearest multiple of the population size
+};
 
 #endif // TYPES_H

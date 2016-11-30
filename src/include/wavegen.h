@@ -9,7 +9,7 @@
 class Wavegen
 {
 public:
-    Wavegen(MetaModel &m);
+    Wavegen(MetaModel &m, const StimulationData &p, const WavegenData &r);
 
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.
@@ -53,6 +53,9 @@ public:
     void stimulate(const Stimulation * stim);
 
     void search();
+
+    StimulationData p;
+    WavegenData r;
 
 protected:
     MetaModel &m;

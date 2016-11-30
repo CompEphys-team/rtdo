@@ -6,37 +6,9 @@
 
 using namespace GeNN_Bridge;
 
-struct StimulationData
-{
-    int minSteps;
-    int maxSteps;
-    double minStepLength;
-    double duration;
-    scalar minVoltage;
-    scalar maxVoltage;
-
-    scalar baseV;
-};
-StimulationData p;
-
-struct RunData
-{
-    int simCycles;
-    double clampGain;
-    double accessResistance;
-    double settleTime; // Duration of initial simulation run to get settled state variable values
-};
-
-struct WavegenData : public RunData
-{
-    int numSigmaAdjustWaveforms; // Number of random waveforms used to normalise the perturbation rate.
-                                 // If the MetaModel is not permuted, this number is rounded up to the
-                                 // nearest multiple of the population size
-};
-WavegenData r;
-
-
-Wavegen::Wavegen(MetaModel &m) :
+Wavegen::Wavegen(MetaModel &m, const StimulationData &p, const WavegenData &r) :
+    p(p),
+    r(r),
     m(m),
     blockSize(m.numGroupsPerBlock * (m.adjustableParams.size() + 1)),
     nModels(m.numGroups * (m.adjustableParams.size() + 1)),
