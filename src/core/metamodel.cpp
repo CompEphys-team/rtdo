@@ -291,7 +291,7 @@ Isyn += 0.; // Squelch Wunused in neuronFnct.cc
 
     int numModels = nModels.size();
     nModels.push_back(n);
-    m.addNeuronPopulation(HH, cfg.npop * (adjustableParams.size()+1), numModels, fixedParamIni, variableIni);
+    m.addNeuronPopulation(HH, numGroups * (adjustableParams.size()+1), numModels, fixedParamIni, variableIni);
 }
 
 void MetaModel::generate(NNmodel &m)
@@ -455,7 +455,7 @@ std::string MetaModel::bridge(std::vector<Variable> const& globals, std::vector<
     if ( cfg.type == ModuleType::Experiment )
         ss << "    GeNN_Bridge::NPOP = " << cfg.npop << ";" << endl;
     else
-        ss << "    GeNN_Bridge::NPOP = " << cfg.npop * (adjustableParams.size()+1) << ";" << endl;
+        ss << "    GeNN_Bridge::NPOP = " << numGroups * (adjustableParams.size()+1) << ";" << endl;
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
         ss << "    m.stateVariables[" << i++ << "].v = " << v.name << HH << ";" << endl;
