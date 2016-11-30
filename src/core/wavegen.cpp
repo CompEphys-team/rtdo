@@ -121,8 +121,7 @@ void Wavegen::permute()
         // This algorithm is designed to maintain sanity rather than memory locality, so it hits each
         // model group in turn, skipping from warp to warp to fill out that group before moving to the next one.
         for ( int group = 0, permutation = p.wgPermutations; group < numPermutedGroups; group++ ) {
-            int offset = group % m.numGroupsPerBlock           // Group index within the block
-                    + (group/m.numGroupsPerBlock) * blockSize; // Offset of the block this group belongs to
+            int offset = baseModelIndex(group);
             if ( group % stride == 0)
                 permutation = (permutation + 1) % (p.wgPermutations + 1);
             for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
@@ -130,8 +129,7 @@ void Wavegen::permute()
             }
         }
         for ( int randomGroup = 0; randomGroup < numRandomGroups; randomGroup++ ) {
-            int offset = (randomGroup+numPermutedGroups) % m.numGroupsPerBlock // Group index within the block
-                    + (m.numBlocks-1) * blockSize;                             // Offset of the last block
+            int offset = baseModelIndex(randomGroup+numPermutedGroups);
             for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
                 p[i*m.numGroupsPerBlock + offset] = values.at(p.wgPermutations + 1 + randomGroup);
             }
@@ -149,10 +147,8 @@ void Wavegen::detune()
     for ( AdjustableParam &p : m.adjustableParams ) {
         scalar sigma = p.sigma * sigmaAdjust[k] + (p.multiplicative ? 1 : 0);
         for ( int group = 0, paramOffset = ++k * m.numGroupsPerBlock; group < m.numGroups; group++ ) {
-            int groupIndexInBlock = group % m.numGroupsPerBlock,
-                blockOffset       = blockSize * (group / m.numGroupsPerBlock),
-                tuned             = blockOffset + groupIndexInBlock,               // The index of the tuned/base model
-                detune            = blockOffset + groupIndexInBlock + paramOffset; // The index of the model being detuned
+            int tuned             = baseModelIndex(group),  // The index of the tuned/base model
+                detune            = tuned + paramOffset;    // The index of the model being detuned
             scalar newp;
             if ( p.multiplicative ) {
                 newp = p[tuned] * sigma; // Get original value from base model & detune
@@ -188,9 +184,7 @@ void Wavegen::settle()
         auto iter = settled.begin();
         for ( StateVariable &v : m.stateVariables ) {
             for ( int group = 0; group < m.numGroups; group++ ) {
-                int offset = group % m.numGroupsPerBlock           // Group index within the block
-                        + (group/m.numGroupsPerBlock) * blockSize; // Offset of the block this group belongs to
-                (*iter)[group] = v[offset];
+                (*iter)[group] = v[baseModelIndex(group)];
             }
             ++iter;
         }

@@ -69,6 +69,15 @@ protected:
      */
     static std::vector<double> getSigmaMaxima(const MetaModel &m);
 
+    /**
+     * @brief baseModelIndex calculates the modelspace index of a given group's tuned model.
+     * @param group The global group index
+     */
+    inline int baseModelIndex(int group) const {
+        return group % m.numGroupsPerBlock                 // Group index within the block
+                + (group/m.numGroupsPerBlock) * blockSize; // Modelspace offset of the block this group belongs to
+    }
+
     std::default_random_engine gen;
     std::uniform_int_distribution<int> stepDist;
     std::uniform_int_distribution<int> coinflip;
