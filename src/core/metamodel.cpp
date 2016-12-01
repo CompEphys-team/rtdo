@@ -77,9 +77,10 @@ MetaModel::MetaModel(std::string xmlfile)
 ///     <range min="5" max="10" />              <!-- Permissible value range, edges inclusive -->
 ///     <perturbation rate="0.2" type="*|+|multiplicative|additive (default)" />
 ///                 <!-- Learning rate for this parameter (max change for +/additive, stddev for */multiplicative) -->
-///     <wavegen permutations="2 (default)" distribution="normal|uniform (default)" standarddev="0.2" />
+///     <wavegen permutations="2 (default)" distribution="normal(default)|uniform" standarddev="1.0" />
 ///                 <!-- Number of permutations during wavegen. Normal distribution is random around the default value,
-///                     uniform distribution is an even spread across the value range.
+///                     uniform distribution is an even spread across the value range. The default standard deviation
+///                     is 5 times the perturbation rate.
 ///                     The default value is always used and does not count towards the total. -->
 /// </adjustableParam>
     for ( el = model->FirstChildElement("adjustableParam"); el; el = el->NextSiblingElement("adjustableParam") ) {
@@ -95,11 +96,11 @@ MetaModel::MetaModel(std::string xmlfile)
             p.multiplicative = !ptype.compare("*") || !ptype.compare("multiplicative");
         }
         p.wgPermutations = 2;
-        p.wgNormal = false;
-        p.wgSD = p.sigma;
+        p.wgNormal = true;
+        p.wgSD = 5*p.sigma;
         if ( (sub = el->FirstChildElement("wavegen")) ) {
             sub->QueryIntAttribute("permutations", &p.wgPermutations);
-            if ( (p.wgNormal = sub->Attribute("distribution", "normal")) )
+            if ( (p.wgNormal = !sub->Attribute("distribution", "uniform")) )
                 sub->QueryDoubleAttribute("standarddev", &p.wgSD);
         }
         adjustableParams.push_back(p);
