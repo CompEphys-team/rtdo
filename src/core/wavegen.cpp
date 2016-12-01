@@ -143,6 +143,8 @@ void Wavegen::settle()
         getErr[i] = false;
     for ( int i = 0; i < nModels; i++ )
         Vmem[i] = p.baseV;
+    for ( int i = 0; i < nModels; i++ )
+        Vramp[i] = 0.0;
     *t = 0;
     *iT = 0;
     push();
@@ -215,15 +217,15 @@ void Wavegen::adjustSigmas()
     // simulate each (in turn across all model permutations, or in parallel), and collect the
     // per-parameter average deviation from the base model produced by that parameter's detuning.
     std::vector<double> meanParamErr(m.adjustableParams.size());
+    std::vector<Stimulation> waves;
     int end = m.cfg.permute
             ? r.numSigmaAdjustWaveforms
-              // round numSigAdjWaves up to nearest multiple of nModels, and do nGroups waves on each iteration:
-            : ((r.numSigmaAdjustWaveforms + nModels - 1) / nModels) * nModels / m.numGroups;
+              // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
+            : ((r.numSigmaAdjustWaveforms + m.numGroups - 1) / m.numGroups);
     for ( int i = 0; i < end; i++ ) {
         std::vector<double> sumParamErr(m.adjustableParams.size(), 0);
 
         // Generate random wave/s
-        std::vector<Stimulation> waves;
         if ( m.cfg.permute ) {
             if ( !i )
                 waves.resize(1);
@@ -237,7 +239,7 @@ void Wavegen::adjustSigmas()
 
         // Simulate
         restoreSettled();
-        stimulate(waves.data());
+        stimulate(waves);
 
         // Collect per-parameter error
         PULL(err);
@@ -281,10 +283,148 @@ void Wavegen::adjustSigmas()
             adj /= maxExcess;
 }
 
-void Wavegen::stimulate(const Stimulation *stim)
+void Wavegen::stimulate(const std::vector<Stimulation> &stim)
 {
-    // NYI
-
+    scalar rampDelta;
+    std::vector<Stimulation::Step> finalSteps;
+    *t = 0;
+    *iT = 0;
+    if ( m.cfg.permute ) {
+        const Stimulation &s = stim.at(0);
+        auto iter = s.steps.begin();
+        short obs = *targetParam < 0 ? 2 : 0;
+        finalSteps.push_back(Stimulation::Step {s.duration, s.baseV, false} );
+        rampDelta = iter->ramp ? (iter->V - s.baseV) / (r.simCycles * iter->t / m.cfg.dt) : 0.0;
+        for ( int i = 0; i < nModels; i++ )
+            Vmem[i] = s.baseV;
+        for ( int i = 0; i < nModels; i++ )
+            Vramp[i] = rampDelta;
+        if ( *targetParam >= 0 ) {
+            for ( int i = 0; i < nModels; i++ )
+                getErr[i] = false;
+            PUSH(getErr);
+        }
+        PUSH(Vmem);
+        PUSH(Vramp);
+        while ( *t < s.duration ) {
+            if ( iter->t <= *t ) {
+                for ( int i = 0; i < nModels; i++ )
+                    Vmem[i] = iter->V;
+                bool wasRamp = iter->ramp;
+                if ( ++iter == s.steps.end() )
+                    iter = finalSteps.begin();
+                if ( wasRamp || iter->ramp ) {
+                    rampDelta = iter->ramp
+                            ? (iter->V - (iter-1)->V) / (r.simCycles * (iter->t - (iter-1)->t) / m.cfg.dt)
+                            : 0.0;
+                    for ( int i = 0; i < nModels; i++ )
+                        Vramp[i] = rampDelta;
+                    PUSH(Vramp);
+                }
+                PUSH(Vmem);
+            }
+            if ( !obs && *t >= s.tObsBegin ) {
+                ++obs;
+                for ( int i = 0; i < nModels; i++ )
+                    getErr[i] = true;
+                PUSH(getErr);
+            } else if ( obs == 1 && *t >= s.tObsEnd ) {
+                ++obs;
+                for ( int i = 0; i < nModels; i++ )
+                    getErr[i] = false;
+                PUSH(getErr);
+            }
+            step();
+        }
+    } else { //-------------- !m.cfg.permute ------------------------------------------------------------
+        assert((int)stim.size() >= m.numGroups);
+        std::vector<std::vector<Stimulation::Step>::const_iterator> iter;
+        std::vector<short> obs;
+        iter.resize(m.numGroups);
+        obs.resize(m.numGroups, *targetParam < 0 ? 2 : 0);
+        double maxDuration = 0.0, minDuration = stim[0].duration;
+        for ( int group = 0; group < m.numGroups; group++ ) {
+            iter[group] = stim[group].steps.begin();
+            if ( maxDuration < stim[group].duration )
+                maxDuration = stim[group].duration;
+            if ( minDuration > stim[group].duration )
+                minDuration = stim[group].duration;
+            rampDelta = iter[group]->ramp
+                    ? (iter[group]->V - stim[group].baseV) / (r.simCycles * iter[group]->t / m.cfg.dt)
+                    : 0.0;
+            int offset = baseModelIndex(group);
+            for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
+                Vmem[i*m.numGroupsPerBlock + offset] = iter[group]->V;
+                Vramp[i*m.numGroupsPerBlock + offset] = rampDelta;
+            }
+        }
+        if ( *targetParam >= 0 ) {
+            for ( int i = 0; i < nModels; i++ )
+                getErr[i] = false;
+            PUSH(getErr);
+        }
+        PUSH(Vmem);
+        PUSH(Vramp);
+        if ( minDuration == maxDuration ) {
+            // Since this step is never actually reached, don't worry about individual voltages:
+            finalSteps.push_back(Stimulation::Step {maxDuration, stim[0].baseV, false} );
+        } else {
+            finalSteps.resize(2*m.numGroups);
+            for ( int group = 0; group < m.numGroups; group++ ) {
+                finalSteps[2*group] = Stimulation::Step {stim[group].duration, stim[group].baseV, false};
+                finalSteps[2*group+1] = Stimulation::Step {maxDuration, stim[group].baseV, false};
+            }
+        }
+        while ( *t < maxDuration ) {
+            bool pushVmem = false,
+                 pushRamp = false,
+                 pushGetErr = false;
+            for ( int group = 0; group < m.numGroups; group++ ) {
+                if ( iter[group]->t <= *t ) {
+                    int offset = baseModelIndex(group);
+                    for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
+                        Vmem[i*m.numGroupsPerBlock + offset] = iter[group]->V;
+                    }
+                    bool wasRamp = iter[group]->ramp;
+                    if ( ++iter[group] == stim[group].steps.end() ) {
+                        if ( minDuration == maxDuration )
+                            iter[group] = finalSteps.begin();
+                        else
+                            iter[group] = finalSteps.begin() + 2*group;
+                    }
+                    if ( wasRamp || iter[group]->ramp ) {
+                        rampDelta = iter[group]->ramp
+                                ? (iter[group]->V - (iter[group]-1)->V) / (r.simCycles * (iter[group]->t - (iter[group]-1)->t) / m.cfg.dt)
+                                : 0.0;
+                        for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
+                            Vramp[i*m.numGroupsPerBlock + offset] = rampDelta;
+                        }
+                        pushRamp = true;
+                    }
+                    pushVmem = true;
+                }
+                if ( !obs[group] && *t >= stim[group].tObsBegin ) {
+                    ++obs[group];
+                    for ( int i = 0, end = m.adjustableParams.size() + 1, offset = baseModelIndex(group); i < end; i++ )
+                        getErr[i*m.numGroupsPerBlock + offset] = true;
+                    pushGetErr = true;
+                } else if ( obs[group] == 1 && *t >= stim[group].tObsEnd ) {
+                    ++obs[group];
+                    for ( int i = 0, end = m.adjustableParams.size() + 1, offset = baseModelIndex(group); i < end; i++ )
+                        getErr[i*m.numGroupsPerBlock + offset] = false;
+                    pushGetErr = true;
+                }
+            }
+            // Apparently cudaMemcpy has a high overhead, so group- or blockwise transfers might not be any faster than this:
+            if ( pushVmem )
+                PUSH(Vmem);
+            if ( pushRamp )
+                PUSH(Vramp);
+            if ( pushGetErr )
+                PUSH(getErr);
+            step();
+        }
+    }
 }
 
 void Wavegen::search()

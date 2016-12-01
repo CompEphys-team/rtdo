@@ -179,6 +179,7 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
 
     std::vector<Variable> vars = {
         Variable("Vmem"),
+        Variable("Vramp"),
         Variable("err"),
         Variable("getErr", "", "bool")
     };
@@ -240,6 +241,7 @@ if ( $(getErr) && paramID == $(targetParam) ) // Preload for @fn processStats - 
 
 scalar mdt = DT/$(simCycles);
 for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
+    $(Vmem) += $(Vramp);
     Isyn = ($(clampGain)*($(Vmem)-$(V)) - $(V)) / $(accessResistance);
 )EOF";
     ss << kernel("    ") << endl;

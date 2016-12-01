@@ -7,6 +7,7 @@
 #include <iostream>
 #include <dlfcn.h>
 #include "kernelhelper.h"
+#include "wavegen.h"
 
 using std::endl;
 
@@ -44,9 +45,24 @@ MainWindow::MainWindow(QWidget *parent) :
                 std::cerr << dlerror() << endl;
             }
             GeNN_Bridge::init(mt);
-            std::cout << *GeNN_Bridge::t << endl;
-            GeNN_Bridge::step();
-            std::cout << *GeNN_Bridge::t << endl;
+            StimulationData sd;
+            WavegenData wd;
+            sd.baseV = -60;
+            sd.duration = 150;
+            sd.minStepLength = 2;
+            sd.minSteps = 2;
+            sd.maxSteps = 6;
+            sd.minVoltage = -100;
+            sd.maxVoltage = 50;
+            wd.accessResistance = 15;
+            wd.clampGain = 1000;
+            wd.settleTime = 50;
+            wd.simCycles = 20;
+            wd.numSigmaAdjustWaveforms = 2;
+
+            Wavegen wg(mt,sd, wd);
+            wg.permute();
+            wg.adjustSigmas();
         }
     }
 }

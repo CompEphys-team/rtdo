@@ -36,6 +36,8 @@ scalar * d_err;
 // Wavegen model vars
 scalar * Vmem;
 scalar * d_Vmem;
+scalar * Vramp;
+scalar * d_Vramp;
 bool * getErr;
 bool * d_getErr;
 

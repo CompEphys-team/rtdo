@@ -50,7 +50,15 @@ public:
      */
     void adjustSigmas();
 
-    void stimulate(const Stimulation * stim);
+    /**
+     * @brief stimulate runs one full stimulation on every model. In permuted mode, all models receive the same stimulation,
+     * namely the first element of @param stim. In unpermuted mode, each model group receives its corresponding stimulation
+     * from @param stim. If stimulations are not of equal duration, shorter stimulations are stepped to Stimulation::baseV
+     * at the end of their duration and held there until all stimulations are completed.
+     * Changes: Vmem and Vramp, t&iT. If targetParam >= 0, sets getErr according to the corresponding observation window.
+     * @param stim A vector with at least 1 (permuted mode) or MetaModel::numGroups (unpermuted mode) elements.
+     */
+    void stimulate(const std::vector<Stimulation> &stim);
 
     void search();
 

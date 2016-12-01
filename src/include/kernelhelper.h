@@ -77,6 +77,8 @@ extern scalar * d_err;
 // Wavegen model vars
 extern scalar * Vmem;
 extern scalar * d_Vmem;
+extern scalar * Vramp;
+extern scalar * d_Vramp;
 extern bool * getErr;
 extern bool * d_getErr;
 }
