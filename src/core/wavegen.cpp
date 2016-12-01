@@ -162,6 +162,22 @@ void Wavegen::settle()
             }
             ++iter;
         }
+
+        // Provide some auditing info
+        std::vector<scalar> V;
+        int valid = 0;
+        for ( int group = 0; group < m.numGroups; group++ ) {
+            scalar const& v = m.stateVariables[0].v[baseModelIndex(group)];
+            V.push_back(v);
+            if ( v > -65 && v < -55 )
+                valid++;
+        }
+        std::sort(V.begin(), V.end());
+        std::cout << "Settled all permuted models to holding potential of " << p.baseV << " mV for "
+                  << r.settleTime << " ms." << std::endl;
+        std::cout << "Median achieved potential: " << V[m.numGroups/2] << " mV (95% within [" << V[m.numGroups/20]
+                  << " mV, " << V[m.numGroups/20*19] << " mV]), " << valid << "/" << m.numGroups
+                  << " models within +-5 mV of holding." << std::endl;
     } else {
         // Collect the state of one base model
         settled = std::list<std::vector<scalar>>(m.stateVariables.size(), std::vector<scalar>(1));
