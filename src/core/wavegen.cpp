@@ -41,6 +41,8 @@ std::vector<double> Wavegen::getSigmaMaxima(const MetaModel &m)
         } else {
             sigmax[k] = (p.max - p.min) * factor;
         }
+        if ( p.sigma > sigmax[k] )
+            sigmax[k] = p.sigma;
         ++k;
     }
     return sigmax;
@@ -185,6 +187,9 @@ void Wavegen::settle()
         for ( StateVariable &v : m.stateVariables ) {
             (*iter++)[0] = v[0];
         }
+
+        std::cout << "Settled base model to holding potential of " << p.baseV << " mV for " << r.settleTime << " ms, "
+                  << "achieved " << (*settled.begin())[0] << " mV." << std::endl;
     }
 }
 
@@ -232,14 +237,13 @@ void Wavegen::adjustSigmas()
     // Generate a set of random waveforms,
     // simulate each (in turn across all model permutations, or in parallel), and collect the
     // per-parameter average deviation from the base model produced by that parameter's detuning.
-    std::vector<double> meanParamErr(m.adjustableParams.size());
+    std::vector<double> sumParamErr(m.adjustableParams.size(), 0);
     std::vector<Stimulation> waves;
     int end = m.cfg.permute
             ? r.numSigmaAdjustWaveforms
               // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
             : ((r.numSigmaAdjustWaveforms + m.numGroups - 1) / m.numGroups);
     for ( int i = 0; i < end; i++ ) {
-        std::vector<double> sumParamErr(m.adjustableParams.size(), 0);
 
         // Generate random wave/s
         if ( m.cfg.permute ) {
@@ -261,14 +265,15 @@ void Wavegen::adjustSigmas()
         PULL(err);
         for ( int j = 0; j < nModels; j++ ) {
             int param = (j % blockSize) / m.numGroupsPerBlock;
-            if ( param ) // Collect error for detuned models only
+            if ( param && !isnan(err[j]) ) // Collect error for stable detuned models only
                 sumParamErr[param-1] += err[j];
             err[j] = 0;
         }
-        // Average on each iteration to maintain precision:
-        for ( size_t k = 0; k < m.adjustableParams.size(); k++ ) {
-            meanParamErr[k] = (i*meanParamErr[k] + sumParamErr[k]) / (i + 1);
-        }
+    }
+
+    std::vector<double> meanParamErr(sumParamErr);
+    for ( double & e : meanParamErr ) {
+        e /= end * m.numGroups * p.duration/m.cfg.dt * r.simCycles;
     }
 
     // Find the median of mean parameter errors:
@@ -287,8 +292,8 @@ void Wavegen::adjustSigmas()
     double maxExcess = 1;
     for ( size_t k = 0; k < m.adjustableParams.size(); k++ ) {
         sigmaAdjust[k] *= medianErr / meanParamErr[k];
-        if ( sigmaAdjust[k] > sigmax[k] ) {
-            double excess = sigmaAdjust[k] / sigmax[k];
+        if ( sigmaAdjust[k] * m.adjustableParams[k].sigma > sigmax[k] ) {
+            double excess = sigmaAdjust[k] * m.adjustableParams[k].sigma / sigmax[k];
             if ( excess > maxExcess )
                 maxExcess = excess;
         }
@@ -297,6 +302,12 @@ void Wavegen::adjustSigmas()
     if ( maxExcess > 1 )
         for ( double &adj : sigmaAdjust )
             adj /= maxExcess;
+
+    std::cout << "Perturbation adjustment complete." << std::endl;
+    std::cout << "Mean deviation in nA across all random waveforms, adjustment, and new perturbation factor:" << std::endl;
+    for ( int i = 0; i < (int)m.adjustableParams.size(); i++ )
+        std::cout << m.adjustableParams[i].name << ":\t" << meanParamErr[i] << '\t'
+                  << sigmaAdjust[i] << '\t' << m.adjustableParams[i].sigma*sigmaAdjust[i] << std::endl;
 }
 
 void Wavegen::stimulate(const std::vector<Stimulation> &stim)
