@@ -121,6 +121,23 @@ struct AdjustableParam : public Variable {
     bool wgNormal;
 };
 
+struct MutationData
+{
+    // Relative likelihoods of changes to step properties:
+    double lNumber = 1; // Add/remove a step
+    double lLevel = 2; // Perturb a step's voltage by +- sdLevel (normal)
+    double lType = 1; // Change ramp to step or vice versa
+    double lTime = 2; // Perturb a step's time by +- sdTime (normal)
+    double lSwap = 0.5; // Swap one step (voltage and ramp) against another
+    double lCrossover = 0.2; // Recombine with a second parent; max once per mutation round
+
+    double sdLevel = 10;
+    double sdTime = 5;
+
+    int n = 2; // Total number of mutations (+- std). A minimum of one mutation is enforced.
+    double std = 2;
+};
+
 struct StimulationData
 {
     int minSteps;

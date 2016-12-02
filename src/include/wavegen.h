@@ -76,6 +76,11 @@ protected:
     Stimulation getRandomStim();
 
     /**
+     * @brief mutate returns a mutant offspring of @param parent, possibly using crossover with @param crossoverParent.
+     */
+    Stimulation mutate(const Stimulation &parent, const Stimulation &crossoverParent);
+
+    /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
      */
     static std::vector<double> getSigmaMaxima(const MetaModel &m);
