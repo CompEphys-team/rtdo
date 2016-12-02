@@ -13,10 +13,6 @@ Wavegen::Wavegen(MetaModel &m, const StimulationData &p, const WavegenData &r) :
     blockSize(m.numGroupsPerBlock * (m.adjustableParams.size() + 1)),
     nModels(m.numGroups * (m.adjustableParams.size() + 1)),
     gen(std::chrono::system_clock::now().time_since_epoch().count()),
-    stepDist(p.minSteps,p.maxSteps),
-    coinflip(0, 1),
-    timeDist(p.minStepLength, p.duration - p.minStepLength),
-    VDist(p.minVoltage, p.maxVoltage),
     sigmaAdjust(m.adjustableParams.size(), 1.0),
     sigmax(getSigmaMaxima(m))
 {
@@ -465,7 +461,7 @@ Stimulation Wavegen::getRandomStim()
     int failedPos, failedAgain = 0;
     I.baseV = p.baseV;
     I.duration = p.duration;
-    int n = stepDist(gen);
+    int n = std::uniform_int_distribution<>(p.minSteps, p.maxSteps)(gen);
 tryagain:
     failedPos = 0;
     if ( failedAgain++ > 2*p.maxSteps ) {
@@ -474,7 +470,7 @@ tryagain:
     }
     I.steps.clear();
     for ( int i = 0; i < n; i++ ) {
-        double t = timeDist(gen);
+        double t = std::uniform_real_distribution<>(p.minStepLength, p.duration - p.minStepLength)(gen);
         for ( Stimulation::Step s : I.steps ) {
             if ( fabs(s.t - t) < p.minStepLength ) {
                 ++failedPos;
@@ -489,7 +485,9 @@ tryagain:
             --i;
             continue;
         }
-        I.steps.push_back(Stimulation::Step{t, VDist(gen), (bool)(coinflip(gen))});
+        I.steps.push_back(Stimulation::Step{t,
+                                            std::uniform_real_distribution<>(p.minVoltage, p.maxVoltage)(gen),
+                                            (bool)(std::uniform_int_distribution<>(0,1)(gen))});
     }
     return I;
 }

@@ -89,11 +89,7 @@ protected:
                 + (group/m.numGroupsPerBlock) * blockSize; // Modelspace offset of the block this group belongs to
     }
 
-    std::default_random_engine gen;
-    std::uniform_int_distribution<int> stepDist;
-    std::uniform_int_distribution<int> coinflip;
-    std::uniform_real_distribution<double> timeDist;
-    std::uniform_real_distribution<double> VDist;
+    std::mt19937 gen;
 
     std::vector<double> sigmaAdjust;
     std::vector<double> sigmax;
