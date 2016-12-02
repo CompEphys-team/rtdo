@@ -140,13 +140,14 @@ struct MutationData
 
 struct StimulationData
 {
-    int minSteps;
-    int maxSteps;
-    double minStepLength;
-    double duration;
-    scalar minVoltage;
-    scalar maxVoltage;
-    scalar baseV;
+    int minSteps = 2;
+    int maxSteps = 6;
+    double minStepLength = 2;
+    double duration = 300;
+    scalar minVoltage = -100;
+    scalar maxVoltage = 50;
+    scalar baseV = -60;
+    MutationData muta;
 };
 
 struct RunData
@@ -154,7 +155,7 @@ struct RunData
     int simCycles;
     double clampGain;
     double accessResistance;
-    double settleTime; // Duration of initial simulation run to get settled state variable values
+    double settleTime = 50; // Duration of initial simulation run to get settled state variable values
 };
 
 struct WavegenData : public RunData

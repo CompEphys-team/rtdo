@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent) :
     mt.cfg.npop = 10000;
     mt.cfg.method = IntegrationMethod::RungeKutta4;
     mt.cfg.type = ModuleType::Wavegen;
-    mt.cfg.permute = true;
+    mt.cfg.permute = false;
     genn_target_generator =& mt;
     std::string dir = QFileDialog::getExistingDirectory().toStdString();
     char* argv[2];
@@ -47,22 +47,17 @@ MainWindow::MainWindow(QWidget *parent) :
             GeNN_Bridge::init(mt);
             StimulationData sd;
             WavegenData wd;
-            sd.baseV = -60;
-            sd.duration = 150;
-            sd.minStepLength = 2;
-            sd.minSteps = 2;
-            sd.maxSteps = 6;
-            sd.minVoltage = -100;
-            sd.maxVoltage = 50;
             wd.accessResistance = 15;
             wd.clampGain = 1000;
-            wd.settleTime = 50;
             wd.simCycles = 20;
-            wd.numSigmaAdjustWaveforms = 2;
+            wd.numSigmaAdjustWaveforms = 20;
 
-            Wavegen wg(mt,sd, wd);
-            wg.permute();
+            Wavegen wg(mt, sd, wd);
+            wg.search();
+            //wg.permute();
             wg.adjustSigmas();
+//            wg.adjustSigmas();
+//            wg.adjustSigmas();
         }
     }
 }
