@@ -14,7 +14,8 @@ TEMPLATE = app
 CONFIG += c++11
 
 INCLUDEPATH += \
-    src/include
+    src/include \
+    lib/randutils
 
 CONFIG(release, debug|release): DEFINES += NDEBUG
                           else: DEFINES +=  DEBUG
@@ -30,7 +31,8 @@ SOURCES += \
     src/drivers/comediconverter.cpp \
     src/core/metamodel.cpp \
     src/core/kernelhelper.cpp \
-    src/core/wavegen.cpp
+    src/core/wavegen.cpp \
+    src/core/wavegen_mutate.cpp
 
 OTHER_FILES += src/include/supportcode.cu
 

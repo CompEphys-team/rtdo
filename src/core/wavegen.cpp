@@ -1,5 +1,4 @@
 #include "wavegen.h"
-#include <chrono>
 #include <algorithm>
 #include <cassert>
 #include "cuda_helper.h"
@@ -12,7 +11,7 @@ Wavegen::Wavegen(MetaModel &m, const StimulationData &p, const WavegenData &r) :
     m(m),
     blockSize(m.numGroupsPerBlock * (m.adjustableParams.size() + 1)),
     nModels(m.numGroups * (m.adjustableParams.size() + 1)),
-    gen(std::chrono::system_clock::now().time_since_epoch().count()),
+    RNG(),
     sigmaAdjust(m.adjustableParams.size(), 1.0),
     sigmax(getSigmaMaxima(m))
 {
@@ -65,9 +64,8 @@ void Wavegen::permute()
         values.reserve(p.wgPermutations + 1 + numRandomGroups);
         if ( p.wgNormal ) {
             // Draw both permuted and uncorrelated random groups from normal distribution
-            std::normal_distribution<scalar> dist(p.initial, p.wgSD);
             for ( int i = 0; i < p.wgPermutations + numRandomGroups; i++ ) {
-                scalar v = dist(gen);
+                scalar v = RNG.variate<scalar>(p.initial, p.wgSD);
                 if ( v > p.max )
                     v = p.max;
                 else if ( v < p.min )
@@ -81,9 +79,8 @@ void Wavegen::permute()
                 values.push_back(p.min + i*step);
             }
             // Random groups: Draw from uniform distribution
-            std::uniform_real_distribution<scalar> dist(p.min, p.max);
             for ( int i = 0; i < numRandomGroups; i++ ) {
-                values.push_back(dist(gen));
+                values.push_back(RNG.uniform(p.min, p.max));
             }
         }
 
@@ -453,214 +450,4 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
 void Wavegen::search()
 {
 
-Stimulation Wavegen::mutate(const Stimulation &parent, const Stimulation &crossoverParent)
-{
-    std::uniform_int_distribution<> coinflip(0, 1);
-    std::uniform_real_distribution<> selectDist(0, p.muta.lCrossover + p.muta.lLevel + p.muta.lNumber
-                                              + p.muta.lSwap + p.muta.lTime + p.muta.lType);
-    Stimulation I(parent);
-    bool didCrossover = false;
-    int n = round(std::normal_distribution<>(p.muta.n, p.muta.std)(gen));
-    if ( n < 1 )
-        n = 1;
-    for ( int i = 0; i < n; i++ ) {
-        double selection = selectDist(gen);
-        if ( selection < p.muta.lCrossover ) { // ***************** Crossover *********************
-            if ( didCrossover ) { // Crossover only once
-                --i;
-                continue;
-            }
-            std::vector<Stimulation::Step> steps;
-            bool coin = coinflip(gen);
-            const std::vector<Stimulation::Step> &head = (coin?I:crossoverParent).steps;
-            const std::vector<Stimulation::Step> &tail = (coin?crossoverParent:I).steps;
-            do { // Repeat on failures
-                double mid = std::uniform_real_distribution<>(0, p.duration)(gen);
-                size_t nHead = 0, nTail = 0;
-                for ( auto it = head.begin(); it != head.end() && it->t < mid; it++ ) { // Choose all head steps up to mid
-                    steps.push_back(*it);
-                    ++nHead;
-                }
-                for ( auto it = tail.begin(); it != tail.end(); it++ ) { // Choose all tail steps from mid onwards
-                    if ( it->t > mid ) {
-                        steps.push_back(*it);
-                        nTail++;
-                    }
-                }
-                if ( (nHead == head.size() && nTail == 0) || (nHead == 0 && nTail == tail.size()) ) // X failed
-                    continue;
-                if ( nHead > 0 && (tail.end()-nTail-1)->t - (head.begin()+nHead-1)->t < p.minStepLength ) { // X step too short
-                    if ( (int)steps.size() > p.minSteps ) {
-                        if ( coinflip(gen) ) {
-                            steps.erase(steps.begin() + nHead);
-                            nTail--;
-                        } else {
-                            steps.erase(steps.begin() + nHead - 1);
-                            nHead--;
-                        }
-                    } else {
-                        continue;
-                    }
-                }
-                while ( (int)steps.size() > p.maxSteps ) // Too many steps, delete some
-                    steps.erase(steps.begin() + std::uniform_int_distribution<>(0, steps.size())(gen));
-                int count = 0;
-                for ( ; (int)steps.size() < p.minSteps && count < 2*p.maxSteps; count++ ) { // Too few steps, insert some
-                    // Note: count safeguards against irrecoverable failures
-                    auto extra = head.begin();
-                    bool useHead = coinflip(gen);
-                    if ( (useHead && nHead == head.size()) || (!useHead && nTail == tail.size()) )
-                        continue;
-                    if ( useHead )
-                        extra = head.begin() + nHead + std::uniform_int_distribution<>(0, head.size()-nHead)(gen);
-                    else
-                        extra = tail.begin() + std::uniform_int_distribution<>(0, tail.size()-nTail)(gen);
-                    for ( auto it = steps.begin(); it != steps.end(); it++ ) {
-                        if ( fabs(it->t - extra->t) < p.minStepLength )
-                            break;
-                        if ( it->t > extra->t ) {
-                            steps.insert(it, *extra);
-                            break;
-                        }
-                    }
-                }
-                if ( count >= 2*p.maxSteps )
-                    continue;
-                I.steps = steps;
-                didCrossover = true;
-            } while ( !didCrossover );
-        } else if ( (selection -= p.muta.lCrossover) < p.muta.lLevel ) { // ***************** Voltage shift ****************
-            Stimulation::Step &subject = *(I.steps.begin() + std::uniform_int_distribution<>(0, I.steps.size())(gen));
-            double newV = p.maxVoltage + 1;
-            while ( newV > p.maxVoltage || newV < p.minVoltage )
-                newV = std::normal_distribution<>(subject.V, p.muta.sdLevel)(gen);
-            subject.V = newV;
-        } else if ( (selection -= p.muta.lLevel) < p.muta.lNumber ) { // ***************** add/remove step *****************
-            bool grow;
-            if ( (int)I.steps.size() == p.minSteps )
-                grow = true;
-            else if ( (int)I.steps.size() == p.maxSteps )
-                grow = false;
-            else
-                grow = (bool)coinflip(gen);
-            if ( grow ) {
-                Stimulation::Step ins;
-                ins.V = std::uniform_real_distribution<>(p.minVoltage, p.maxVoltage)(gen);
-                ins.ramp = (bool)coinflip(gen);
-                bool inserted;
-                do {
-                    ins.t = std::uniform_real_distribution<>(p.minStepLength, p.duration - p.minStepLength)(gen);
-                    bool conflict = false;
-                    auto it = I.steps.begin();
-                    for ( ; it != I.steps.end(); it++ ) {
-                        if ( fabs(it->t - ins.t) < p.minStepLength ) {
-                            conflict = true;
-                            break;
-                        }
-                        if ( it->t > ins.t )
-                            break;
-                    }
-                    if ( !conflict ) {
-                        I.steps.insert(it, ins);
-                        inserted = true;
-                    }
-                } while ( !inserted );
-            } else {
-                I.steps.erase(I.steps.begin() + std::uniform_int_distribution<>(0, I.steps.size())(gen));
-            }
-        } else if ( (selection -= p.muta.lNumber) < p.muta.lSwap ) { // ***************** Swap steps *********************
-            auto src = I.steps.begin(), dest = I.steps.begin();
-            do {
-                src = I.steps.begin() + std::uniform_int_distribution<>(0, I.steps.size())(gen);
-                dest = I.steps.begin() + std::uniform_int_distribution<>(0, I.steps.size())(gen);
-            } while ( src == dest );
-            using std::swap;
-            swap(src->V, dest->V);
-            swap(src->ramp, dest->ramp);
-        } else if ( (selection -= p.muta.lSwap) < p.muta.lTime ) { // ***************** Time shift *********************
-            bool tooClose = false;
-            do {
-                auto target = I.steps.begin() + std::uniform_int_distribution<>(0, I.steps.size())(gen);
-                double newT = std::normal_distribution<>(target->t, p.muta.sdTime)(gen);
-                auto it = I.steps.begin();
-                for ( ; it != I.steps.end(); it++ ) {
-                    if ( it != target && fabs(it->t - newT) < p.minStepLength ) {
-                        tooClose = true;
-                        break;
-                    }
-                    if ( it != target && it->t > newT )
-                        break;
-                }
-                if ( !tooClose ) {
-                    if ( it == target+1 ) {
-                        target->t = newT;
-                    } else {
-                        Stimulation::Step tmp = *target;
-                        tmp.t = newT;
-                        // Ensure placement is correct; work from tail to head:
-                        int tOff = target - I.steps.begin(), iOff = it - I.steps.begin();
-                        if ( tOff < iOff ) {
-                            I.steps.insert(it, tmp);
-                            I.steps.erase(I.steps.begin() + tOff);
-                        } else {
-                            I.steps.erase(target);
-                            I.steps.insert(I.steps.begin() + iOff, tmp);
-                        }
-                    }
-                }
-            } while ( tooClose );
-        } else /* if ( (selection -= p.muta.lTime) < p.muta.lType ) */ { // ***************** Type shift *********************
-            bool &r = (I.steps.begin() + std::uniform_int_distribution<>(0, I.steps.size())(gen))->ramp;
-            r = !r;
-        }
-    }
-    assert([&](){
-        bool valid = ((int)I.steps.size() >= p.minSteps) && ((int)I.steps.size() <= p.maxSteps);
-        for ( auto it = I.steps.begin(); it != I.steps.end(); it++ ) {
-            valid &= (it->t >= p.minStepLength) && (it->t <= p.duration - p.minStepLength);
-            if ( it != I.steps.begin() ) {
-                valid &= (it->t - (it-1)->t >= p.minStepLength);
-            }
-            valid &= (it->V >= p.minVoltage) && (it->V <= p.maxVoltage);
-        }
-        return valid;
-    }());
-    return I;
-}
-
-Stimulation Wavegen::getRandomStim()
-{
-    Stimulation I;
-    int failedPos, failedAgain = 0;
-    I.baseV = p.baseV;
-    I.duration = p.duration;
-    int n = std::uniform_int_distribution<>(p.minSteps, p.maxSteps)(gen);
-tryagain:
-    failedPos = 0;
-    if ( failedAgain++ > 2*p.maxSteps ) {
-        failedAgain = 0;
-        --n;
-    }
-    I.steps.clear();
-    for ( int i = 0; i < n; i++ ) {
-        double t = std::uniform_real_distribution<>(p.minStepLength, p.duration - p.minStepLength)(gen);
-        for ( Stimulation::Step s : I.steps ) {
-            if ( fabs(s.t - t) < p.minStepLength ) {
-                ++failedPos;
-                break;
-            } else {
-                failedPos = 0;
-            }
-        }
-        if ( failedPos ) {
-            if ( failedPos > 2*p.maxSteps )
-                goto tryagain;
-            --i;
-            continue;
-        }
-        I.steps.push_back(Stimulation::Step{t,
-                                            std::uniform_real_distribution<>(p.minVoltage, p.maxVoltage)(gen),
-                                            (bool)(std::uniform_int_distribution<>(0,1)(gen))});
-    }
-    return I;
 }

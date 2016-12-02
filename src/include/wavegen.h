@@ -3,7 +3,7 @@
 
 #include "types.h"
 #include "kernelhelper.h"
-#include <random>
+#include "randutils.hpp"
 #include <list>
 
 class Wavegen
@@ -80,6 +80,14 @@ protected:
      */
     Stimulation mutate(const Stimulation &parent, const Stimulation &crossoverParent);
 
+    /// mutate helper functions
+    void mutateCrossover(Stimulation&, const Stimulation&);
+    void mutateVoltage(Stimulation&);
+    void mutateNumber(Stimulation&);
+    void mutateSwap(Stimulation&);
+    void mutateTime(Stimulation&);
+    void mutateType(Stimulation&);
+
     /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
      */
@@ -94,7 +102,7 @@ protected:
                 + (group/m.numGroupsPerBlock) * blockSize; // Modelspace offset of the block this group belongs to
     }
 
-    std::mt19937 gen;
+    randutils::mt19937_rng RNG;
 
     std::vector<double> sigmaAdjust;
     std::vector<double> sigmax;
