@@ -6,47 +6,6 @@
 
 namespace GeNN_Bridge {
 
-struct WaveStats
-{
-    struct Bubble //!< Streak of winning over all other deviations.
-    {
-        int cycles; //!< Number of cycles won (= target param err > other param errs)
-        scalar tEnd; //!< Time at end
-        scalar abs; //!< Absolute distance to the next param err down (= target err - next err)
-        scalar rel; //!< Relative distance to the next param err down (= (target err - next err)/next err)
-        scalar meanAbs; //!< Absolute distance to mean param err
-        scalar meanRel; //!< Relative distance to mean param err
-    };
-
-    int bubbles; // Number of bubbles
-    Bubble totalBubble;
-    Bubble currentBubble;
-    Bubble longestBubble;
-    Bubble bestAbsBubble;
-    Bubble bestRelBubble;
-    Bubble bestMeanAbsBubble;
-    Bubble bestMeanRelBubble;
-
-    struct Bud //!< Streak of winning over the mean deviation, rather than over all other deviations. May include bubbles.
-    {
-        int cycles; //!< Number of cycles over mean
-        scalar tEnd; //!< Time at end
-        scalar meanAbs; //!< Total absolute distance to mean
-        scalar meanRel; //!< Total relative distance to mean (= (target err - mean err) / mean err)
-        scalar shortfallAbs; //!< Total distance from winner (= target err - top err), note: piecewise negative where a bud is not also a bubble
-        scalar shortfallRel; //!< Total relative distance from winner (= (target err - top err) / top err), note: may cross zero
-    };
-
-    int buds; // Number of buds
-    Bud totalBud;
-    Bud currentBud;
-    Bud longestBud;
-    Bud bestMeanAbsBud;
-    Bud bestMeanRelBud;
-    Bud bestShortfallAbsBud;
-    Bud bestShortfallRelBud;
-};
-
 extern WaveStats *wavestats;
 extern WaveStats *d_wavestats;
 
@@ -86,7 +45,7 @@ extern bool * d_getErr;
 #ifdef RUNNER_CC_COMPILE
 // Model-independent, but GeNN-presence-dependent bridge code
 
-__device__ GeNN_Bridge::WaveStats *dd_wavestats;
+__device__ WaveStats *dd_wavestats;
 
 void allocateStats()
 {

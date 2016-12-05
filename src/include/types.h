@@ -158,6 +158,37 @@ struct RunData
     double settleTime = 50; // Duration of initial simulation run to get settled state variable values
 };
 
+struct WaveStats
+{
+    struct Bubble //!< Streak of winning over all other deviations.
+    {
+        int cycles = 0; //!< Number of cycles won (= target param err > other param errs)
+        scalar tEnd = 0; //!< Time at end
+        scalar abs = 0; //!< Absolute distance to the next param err down (= target err - next err)
+        scalar rel = 0; //!< Relative distance to the next param err down (= (target err - next err)/next err)
+        scalar meanAbs = 0; //!< Absolute distance to mean param err
+        scalar meanRel = 0; //!< Relative distance to mean param err
+    };
+
+    int bubbles = 0; //!< Number of bubbles. Note, all bubbles are contained within buds.
+    Bubble totalBubble;
+    Bubble currentBubble;
+    Bubble longestBubble;
+    Bubble bestAbsBubble;
+    Bubble bestRelBubble;
+    Bubble bestMeanAbsBubble;
+    Bubble bestMeanRelBubble;
+
+    int buds = 0; //!< Number of buds, which are winning streaks over the mean, rather than all, deviations.
+    Bubble totalBud;
+    Bubble currentBud;
+    Bubble longestBud;
+    Bubble bestAbsBud;
+    Bubble bestRelBud;
+    Bubble bestMeanAbsBud;
+    Bubble bestMeanRelBud;
+};
+
 struct WavegenData : public RunData
 {
     int numSigmaAdjustWaveforms; // Number of random waveforms used to normalise the perturbation rate.

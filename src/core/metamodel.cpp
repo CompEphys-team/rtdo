@@ -236,7 +236,7 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
 const int groupID = id % NGROUPS;                       // Block-local group id
 const int group = groupID + (id/BLOCKSIZE) * NGROUPS;   // Global group id
 const int paramID = (id % BLOCKSIZE) / NGROUPS;
-GeNN_Bridge::WaveStats stats;
+WaveStats stats;
 if ( $(getErr) && paramID == $(targetParam) ) // Preload for @fn processStats - other threads don't need this
     stats = dd_wavestats[group];
 

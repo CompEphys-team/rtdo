@@ -7,21 +7,21 @@ __device__ void processStats(const scalar err,  //!< Target parameter's absolute
                              const scalar next, //!< Highest deviation from a parameter other than the target
                              const scalar mean, //!< Mean deviation across all parameters
                              const scalar t,    //!< Time, including substep contribution
-                             GeNN_Bridge::WaveStats &s, //!< Stats struct for this group & target param
+                             WaveStats &s, //!< Stats struct for this group & target param
                              const bool final)  //!< True if this is the very last cycle (= force close bubbles)
 {
     scalar abs, rel, meanAbs, meanRel;
 
     if ( (mean > err && s.currentBud.cycles) || (final && err > mean) ) {
         s.buds++;
-        s.currentBud = {0};
+        s.currentBud = {};
 
         s.currentBud.tEnd = t;
-        if ( s.currentBud.cycles       > s.longestBud.cycles )                s.longestBud = s.currentBud;
-        if ( s.currentBud.meanAbs      > s.bestMeanAbsBud.meanAbs )           s.bestMeanAbsBud = s.currentBud;
-        if ( s.currentBud.meanRel      > s.bestMeanRelBud.meanRel )           s.bestMeanRelBud = s.currentBud;
-        if ( s.currentBud.shortfallAbs > s.bestShortfallAbsBud.shortfallAbs ) s.bestShortfallAbsBud = s.currentBud;
-        if ( s.currentBud.shortfallRel > s.bestShortfallRelBud.shortfallRel ) s.bestShortfallRelBud = s.currentBud;
+        if ( s.currentBud.cycles  > s.longestBud.cycles )                       s.longestBud = s.currentBud;
+        if ( s.currentBud.abs     > s.bestAbsBud.abs || !s.bestAbsBud.cycles )  s.bestAbsBud = s.currentBud;
+        if ( s.currentBud.rel     > s.bestRelBud.rel || !s.bestRelBud.cycles )  s.bestRelBud = s.currentBud;
+        if ( s.currentBud.meanAbs > s.bestMeanAbsBud.meanAbs )                  s.bestMeanAbsBud = s.currentBud;
+        if ( s.currentBud.meanRel > s.bestMeanRelBud.meanRel )                  s.bestMeanRelBud = s.currentBud;
     } else if ( err > mean ) {
         abs = err - next;
         rel = abs / next;
@@ -29,23 +29,23 @@ __device__ void processStats(const scalar err,  //!< Target parameter's absolute
         meanRel = meanAbs / mean;
 
         s.currentBud.cycles++;
-        s.currentBud.meanAbs += abs;
-        s.currentBud.meanRel += rel;
-        s.currentBud.shortfallAbs += meanAbs;
-        s.currentBud.shortfallRel += meanRel;
+        s.currentBud.abs += abs;
+        s.currentBud.rel += rel;
+        s.currentBud.meanAbs += meanAbs;
+        s.currentBud.meanRel += meanRel;
 
         s.totalBud.cycles++;
-        s.totalBud.meanAbs += abs;
-        s.totalBud.meanRel += rel;
-        s.totalBud.shortfallAbs += meanAbs;
-        s.totalBud.shortfallRel += meanRel;
+        s.totalBud.abs += abs;
+        s.totalBud.rel += rel;
+        s.totalBud.meanAbs += meanAbs;
+        s.totalBud.meanRel += meanRel;
     }
 
     if ( (next > err && s.currentBubble.cycles) || (final && err > next) ) {
     //   a bubble has just ended    or    this is the final cycle and a bubble is still open
     // ==> Close the bubble, collect stats:
         s.bubbles++;
-        s.currentBubble = {0};
+        s.currentBubble = {};
 
         s.currentBubble.tEnd = t;
         if ( s.currentBubble.cycles  > s.longestBubble.cycles )         s.longestBubble = s.currentBubble;
