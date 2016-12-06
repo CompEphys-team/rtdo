@@ -3,6 +3,7 @@
 namespace GeNN_Bridge {
 
 WaveStats *wavestats;
+WaveStats *clear_wavestats;
 WaveStats *d_wavestats;
 
 void (*push)(void);
@@ -11,6 +12,7 @@ void (*step)(void);
 void (*init)(MetaModel&);
 void (*reset)(void);
 void (*pullStats)(void);
+void (*clearStats)(void);
 
 // Global
 size_t NPOP;

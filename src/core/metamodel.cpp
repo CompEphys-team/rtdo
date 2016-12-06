@@ -233,9 +233,9 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
     stringstream ss;
     ss << endl << "#ifndef _" << name() << "_neuronFnct_cc" << endl; // No Wavegen on the CPU
     ss << R"EOF(
-const int groupID = id % NGROUPS;                       // Block-local group id
-const int group = groupID + (id/BLOCKSIZE) * NGROUPS;   // Global group id
-const int paramID = (id % BLOCKSIZE) / NGROUPS;
+const int groupID = id % MM_NumGroupsPerBlock;                       // Block-local group id
+const int group = groupID + (id/MM_NumModelsPerBlock) * MM_NumGroupsPerBlock;   // Global group id
+const int paramID = (id % MM_NumModelsPerBlock) / MM_NumGroupsPerBlock;
 WaveStats stats;
 if ( $(getErr) && paramID == $(targetParam) ) // Preload for @fn processStats - other threads don't need this
     stats = dd_wavestats[group];
@@ -248,7 +248,7 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
     ss << kernel("    ") << endl;
     ss <<   R"EOF(
     if ( $(getErr) ) {
-        __shared__ double errShare[BLOCKSIZE];
+        __shared__ double errShare[MM_NumModelsPerBlock];
         scalar err;
 
         // Make base model (paramID==0) Isyn available
@@ -260,7 +260,7 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
         if ( paramID ) {
             err = abs(Isyn - errShare[groupID]);
             $(err) += err * mdt;
-            errShare[paramID*NGROUPS + groupID] = err;
+            errShare[paramID*MM_NumGroupsPerBlock + groupID] = err;
         }
         __syncthreads();
 
@@ -269,11 +269,11 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
             scalar next = 0.;
             scalar total = 0.;
             for ( int i = 1; i < NPARAM+1; i++ ) {
-                total += errShare[i*NGROUPS + groupID];
+                total += errShare[i*MM_NumGroupsPerBlock + groupID];
                 if ( i == paramID )
                     continue;
-                if ( errShare[i*NGROUPS + groupID] > next )
-                    next = errShare[i*NGROUPS + groupID];
+                if ( errShare[i*MM_NumGroupsPerBlock + groupID] > next )
+                    next = errShare[i*MM_NumGroupsPerBlock + groupID];
             }
             processStats(err, next, total / NPARAM, t + mt*mdt, stats, $(final) && mt == $(simCycles)-1 );
         }
@@ -445,8 +445,9 @@ std::string MetaModel::bridge(std::vector<Variable> const& globals, std::vector<
     std::stringstream ss;
 
     ss << "} // break namespace for STL includes:" << endl;
-    ss << "#define NGROUPS " << numGroupsPerBlock << endl;
-    ss << "#define BLOCKSIZE " << GENN_PREFERENCES::neuronBlockSize << endl;
+    ss << "#define MM_NumGroupsPerBlock " << numGroupsPerBlock << endl;
+    ss << "#define MM_NumModelsPerBlock " << GENN_PREFERENCES::neuronBlockSize << endl;
+    ss << "#define MM_NumGroups " << numGroups << endl;
     ss << "#define NVAR " << stateVariables.size() << endl;
     ss << "#define NPARAM " << adjustableParams.size() << endl;
     ss << "#include \"kernelhelper.h\"" << endl;
