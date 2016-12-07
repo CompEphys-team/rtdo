@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <iostream>
 
 #ifndef scalar
 #ifdef USEDOUBLE
@@ -32,6 +33,8 @@ struct Stimulation
 
     bool operator==(const Stimulation &other) const;
 };
+std::ostream &operator<<(std::ostream&, const Stimulation&);
+std::ostream &operator<<(std::ostream&, const Stimulation::Step&);
 
 struct ChnData
 {
