@@ -58,7 +58,7 @@ public:
      * Changes: Vmem and Vramp, t&iT. If targetParam >= 0, sets getErr according to the corresponding observation window.
      * @param stim A vector with at least 1 (permuted mode) or MetaModel::numGroups (unpermuted mode) elements.
      */
-    void stimulate(const std::vector<Stimulation> &stim);
+    void stimulate(const std::vector<Stimulation> &stim, bool ignoreGetErr = false);
 
     void search();
 

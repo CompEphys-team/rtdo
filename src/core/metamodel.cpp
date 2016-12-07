@@ -259,13 +259,14 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
         // Get deviation from the base model
         if ( paramID ) {
             err = abs(Isyn - errShare[groupID]);
-            $(err) += err * mdt;
+            if ( $(targetParam) < 0 )
+                $(err) += err * mdt;
             errShare[paramID*MM_NumGroupsPerBlock + groupID] = err;
         }
         __syncthreads();
 
         // Collect statistics for target param
-        if ( paramID == $(targetParam) ) {
+        if ( paramID && paramID == $(targetParam) ) {
             scalar next = 0.;
             scalar total = 0.;
             for ( int i = 1; i < NPARAM+1; i++ ) {

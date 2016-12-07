@@ -252,7 +252,7 @@ void Wavegen::adjustSigmas()
 
         // Simulate
         restoreSettled();
-        stimulate(waves);
+        stimulate(waves, true);
 
         // Collect per-parameter error
         PULL(err);
@@ -303,7 +303,7 @@ void Wavegen::adjustSigmas()
                   << sigmaAdjust[i] << '\t' << m.adjustableParams[i].sigma*sigmaAdjust[i] << std::endl;
 }
 
-void Wavegen::stimulate(const std::vector<Stimulation> &stim)
+void Wavegen::stimulate(const std::vector<Stimulation> &stim, bool ignoreGetErr)
 {
     scalar rampDelta;
     std::vector<Stimulation::Step> finalSteps;
@@ -312,14 +312,14 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
     if ( m.cfg.permute ) {
         const Stimulation &s = stim.at(0);
         auto iter = s.steps.begin();
-        short obs = *targetParam < 0 ? 2 : 0;
+        short obs = 0;
         finalSteps.push_back(Stimulation::Step {s.duration, s.baseV, false} );
         rampDelta = iter->ramp ? (iter->V - s.baseV) / (r.simCycles * iter->t / m.cfg.dt) : 0.0;
         for ( int i = 0; i < nModels; i++ )
             Vmem[i] = s.baseV;
         for ( int i = 0; i < nModels; i++ )
             Vramp[i] = rampDelta;
-        if ( *targetParam >= 0 ) {
+        if ( !ignoreGetErr ) {
             for ( int i = 0; i < nModels; i++ )
                 getErr[i] = false;
             PUSH(getErr);
@@ -343,17 +343,18 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
                 }
                 PUSH(Vmem);
             }
-            if ( !obs && *t >= s.tObsBegin ) {
+            if ( !ignoreGetErr && !obs && *t >= s.tObsBegin ) {
                 ++obs;
                 for ( int i = 0; i < nModels; i++ )
                     getErr[i] = true;
                 PUSH(getErr);
-            } else if ( obs == 1 && *t >= s.tObsEnd ) {
+            } else if ( !ignoreGetErr && obs == 1 && *t >= s.tObsEnd ) {
                 ++obs;
                 for ( int i = 0; i < nModels; i++ )
                     getErr[i] = false;
                 PUSH(getErr);
             }
+            *final = *t + m.cfg.dt >= s.duration;
             step();
         }
     } else { //-------------- !m.cfg.permute ------------------------------------------------------------
@@ -361,7 +362,7 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
         std::vector<std::vector<Stimulation::Step>::const_iterator> iter;
         std::vector<short> obs;
         iter.resize(m.numGroups);
-        obs.resize(m.numGroups, *targetParam < 0 ? 2 : 0);
+        obs.resize(m.numGroups, 0);
         double maxDuration = 0.0, minDuration = stim[0].duration;
         for ( int group = 0; group < m.numGroups; group++ ) {
             iter[group] = stim[group].steps.begin();
@@ -378,7 +379,7 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
                 Vramp[i*m.numGroupsPerBlock + offset] = rampDelta;
             }
         }
-        if ( *targetParam >= 0 ) {
+        if ( !ignoreGetErr ) {
             for ( int i = 0; i < nModels; i++ )
                 getErr[i] = false;
             PUSH(getErr);
@@ -423,12 +424,12 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
                     }
                     pushVmem = true;
                 }
-                if ( !obs[group] && *t >= stim[group].tObsBegin ) {
+                if ( !ignoreGetErr && !obs[group] && *t >= stim[group].tObsBegin ) {
                     ++obs[group];
                     for ( int i = 0, end = m.adjustableParams.size() + 1, offset = baseModelIndex(group); i < end; i++ )
                         getErr[i*m.numGroupsPerBlock + offset] = true;
                     pushGetErr = true;
-                } else if ( obs[group] == 1 && *t >= stim[group].tObsEnd ) {
+                } else if ( !ignoreGetErr && obs[group] == 1 && *t >= stim[group].tObsEnd ) {
                     ++obs[group];
                     for ( int i = 0, end = m.adjustableParams.size() + 1, offset = baseModelIndex(group); i < end; i++ )
                         getErr[i*m.numGroupsPerBlock + offset] = false;
@@ -442,6 +443,7 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
                 PUSH(Vramp);
             if ( pushGetErr )
                 PUSH(getErr);
+            *final = *t + m.cfg.dt >= maxDuration;
             step();
         }
     }
