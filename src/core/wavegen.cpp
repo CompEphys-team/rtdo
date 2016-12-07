@@ -13,7 +13,10 @@ Wavegen::Wavegen(MetaModel &m, const StimulationData &p, const WavegenData &r) :
     nModels(m.numGroups * (m.adjustableParams.size() + 1)),
     RNG(),
     sigmaAdjust(m.adjustableParams.size(), 1.0),
-    sigmax(getSigmaMaxima(m))
+    sigmax(getSigmaMaxima(m)),
+    mapeDimensions(getMAPEDimensions()),
+    mapeFitness(mapeDimensions),
+    mapeArchive(mapeDimensions)
 {
     *simCycles = r.simCycles;
     *clampGain = r.clampGain;
@@ -447,9 +450,4 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim, bool ignoreGetErr)
             step();
         }
     }
-}
-
-void Wavegen::search()
-{
-
 }

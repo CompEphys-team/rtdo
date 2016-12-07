@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <functional>
+#include <memory>
 
 #ifndef scalar
 #ifdef USEDOUBLE
@@ -189,11 +191,16 @@ struct WaveStats
     Bubble bestMeanRelBud;
 };
 
+class MAPEDimension;
+
 struct WavegenData : public RunData
 {
     int numSigmaAdjustWaveforms; // Number of random waveforms used to normalise the perturbation rate.
                                  // If the MetaModel is not permuted, this number is rounded up to the
                                  // nearest multiple of the population size
+    std::vector<std::shared_ptr<MAPEDimension>> dim;
+    size_t nInitialWaves; //!< Number of randomly initialised waveforms used to start the search
+    std::function<double(WaveStats const&)> fitnessFunc; //!< Return fitness based on performance statistics
 };
 
 #endif // TYPES_H

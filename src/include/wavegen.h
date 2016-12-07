@@ -5,6 +5,7 @@
 #include "kernelhelper.h"
 #include "randutils.hpp"
 #include <list>
+#include "multiarray.h"
 
 class Wavegen
 {
@@ -60,7 +61,7 @@ public:
      */
     void stimulate(const std::vector<Stimulation> &stim, bool ignoreGetErr = false);
 
-    void search();
+    void search(int param);
 
     StimulationData p;
     WavegenData r;
@@ -88,6 +89,10 @@ protected:
     void mutateTime(Stimulation&);
     void mutateType(Stimulation&);
 
+    /// MAP-Elites helper functions
+    int mape_tournament(const std::vector<Stimulation> &);
+    int mape_insert(const Stimulation &I, const std::vector<size_t> &coords, double fitness);
+
     /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
      */
@@ -102,12 +107,21 @@ protected:
                 + (group/m.numGroupsPerBlock) * blockSize; // Modelspace offset of the block this group belongs to
     }
 
+    /**
+     * @brief getMAPEDimensions computes the dimension vector for the MAPE fitness and archive MultiArrays
+     */
+    std::vector<size_t> getMAPEDimensions();
+
     randutils::mt19937_rng RNG;
 
     std::vector<double> sigmaAdjust;
     std::vector<double> sigmax;
 
     std::list<std::vector<scalar>> settled;
+
+    std::vector<size_t> mapeDimensions;
+    MultiArray<double> mapeFitness;
+    MultiArray<std::unique_ptr<Stimulation>> mapeArchive;
 };
 
 #endif // WAVEGEN_H

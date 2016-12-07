@@ -8,6 +8,7 @@
 #include <dlfcn.h>
 #include "kernelhelper.h"
 #include "wavegen.h"
+#include "mapedimension.h"
 
 using std::endl;
 
@@ -51,13 +52,32 @@ MainWindow::MainWindow(QWidget *parent) :
             wd.clampGain = 1000;
             wd.simCycles = 20;
             wd.numSigmaAdjustWaveforms = 20;
+            wd.nInitialWaves = 1000;
+            wd.fitnessFunc = [](const WaveStats &S){
+                double longest, abs, rel;
+                if ( S.bubbles ) {
+                    longest = S.longestBubble.abs / S.longestBubble.cycles;
+                    abs = S.bestAbsBubble.abs / S.bestAbsBubble.cycles;
+                    rel = S.bestRelBubble.abs / S.bestRelBubble.cycles;
+                } else {
+                    longest = S.longestBud.abs / S.longestBud.cycles;
+                    abs = S.bestAbsBud.abs / S.bestAbsBud.cycles;
+                    rel = S.bestRelBud.abs / S.bestRelBud.cycles;
+                }
+                if ( longest > abs )
+                    return longest > rel ? longest : rel;
+                else
+                    return abs > rel ? abs : rel;
+            };
+            wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_numB(sd, &WaveStats::bubbles)));
+            wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_numB(sd, &WaveStats::buds)));
+            wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_BScalar(&WaveStats::longestBubble, &WaveStats::Bubble::tEnd, 0, sd.duration, 100)));
+            wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_BScalar(&WaveStats::longestBud, &WaveStats::Bubble::tEnd, 0, sd.duration, 100)));
 
             Wavegen wg(mt, sd, wd);
-            wg.search();
             //wg.permute();
             wg.adjustSigmas();
-//            wg.adjustSigmas();
-//            wg.adjustSigmas();
+            wg.search(0);
         }
     }
 }

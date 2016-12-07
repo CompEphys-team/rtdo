@@ -32,7 +32,8 @@ SOURCES += \
     src/core/metamodel.cpp \
     src/core/kernelhelper.cpp \
     src/core/wavegen.cpp \
-    src/core/wavegen_mutate.cpp
+    src/core/wavegen_mutate.cpp \
+    src/core/wavegen_search.cpp
 
 OTHER_FILES += src/include/supportcode.cu
 
@@ -49,7 +50,9 @@ HEADERS  += \
     src/include/metamodel.h \
     src/include/kernelhelper.h \
     src/include/wavegen.h \
-    src/include/cuda_helper.h
+    src/include/cuda_helper.h \
+    src/include/multiarray.h \
+    src/include/mapedimension.h
 
 FORMS    += \
     src/gui/mainwindow.ui
