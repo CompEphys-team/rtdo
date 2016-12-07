@@ -16,22 +16,31 @@ tryagain:
     }
     I.steps.clear();
     for ( int i = 0; i < n; i++ ) {
-        double t = RNG.uniform(p.minStepLength, p.duration - p.minStepLength);
-        for ( Stimulation::Step s : I.steps ) {
-            if ( fabs(s.t - t) < p.minStepLength ) {
-                ++failedPos;
+        Stimulation::Step&& step {
+            RNG.uniform(p.minStepLength, p.duration - p.minStepLength),
+            RNG.uniform(p.minVoltage, p.maxVoltage),
+            RNG.pick({true, false})
+        };
+        bool failed = false;
+        auto it = I.steps.begin();
+        for ( ; it != I.steps.end(); it++ ) {
+            if ( fabs(it->t - step.t) < p.minStepLength ) {
+                failed = true;
                 break;
-            } else {
+            } else if ( it->t > step.t ) {
                 failedPos = 0;
+                break;
             }
         }
-        if ( failedPos ) {
-            if ( failedPos > 2*p.maxSteps )
+        if ( failed ) {
+            if ( ++failedPos > 2*p.maxSteps )
                 goto tryagain;
             --i;
             continue;
+        } else {
+            I.steps.insert(it, std::move(step));
+            failedPos = 0;
         }
-        I.steps.push_back(Stimulation::Step{t, RNG.uniform(p.minVoltage, p.maxVoltage), RNG.pick({true, false})});
     }
     return I;
 }
