@@ -16,7 +16,8 @@ Wavegen::Wavegen(MetaModel &m, const StimulationData &p, const WavegenData &r) :
     sigmax(getSigmaMaxima(m)),
     mapeDimensions(getMAPEDimensions()),
     mapeFitness(mapeDimensions),
-    mapeArchive(mapeDimensions)
+    mapeArchive(mapeDimensions),
+    mapeStats(r.historySize)
 {
     *simCycles = r.simCycles;
     *clampGain = r.clampGain;

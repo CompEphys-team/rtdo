@@ -61,6 +61,14 @@ public:
      */
     void stimulate(const std::vector<Stimulation> &stim, bool ignoreGetErr = false);
 
+    /**
+     * @brief search runs a MAP-Elites algorithm, evolving Stimulations that maximise fitness for a given parameter.
+     * The algorithm will stop when r.stopFunc returns true, evaluating one final set of Stimulations before returning.
+     * Runtime statistics, the Stimulation archive and its associated fitness values are available until the next call
+     * to search.
+     * @see mapeStats, mapeArchive, mapeFitness.
+     * @param param is the index of the parameter to optimise for (0-based, same as for MetaModel::adjustableParams).
+     */
     void search(int param);
 
     StimulationData p;
@@ -90,8 +98,8 @@ protected:
     void mutateType(Stimulation&);
 
     /// MAP-Elites helper functions
-    int mape_tournament(const std::vector<Stimulation> &);
-    int mape_insert(const Stimulation &I, const std::vector<size_t> &coords, double fitness);
+    void mape_tournament(const std::vector<Stimulation> &);
+    void mape_insert(const Stimulation &I, const std::vector<size_t> &coords, double fitness);
 
     /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
@@ -120,8 +128,11 @@ protected:
     std::list<std::vector<scalar>> settled;
 
     std::vector<size_t> mapeDimensions;
-    MultiArray<double> mapeFitness;
-    MultiArray<std::unique_ptr<Stimulation>> mapeArchive;
+
+public:
+    MultiArray<double> mapeFitness; //!< Fitness values of the most recent (or current) call to search().
+    MultiArray<std::unique_ptr<Stimulation>> mapeArchive; //!< Elite archive of the most recent (or current) call to search().
+    MAPEStats mapeStats; //!< Statistics of the most recent (or current) call to search().
 };
 
 #endif // WAVEGEN_H

@@ -73,11 +73,19 @@ MainWindow::MainWindow(QWidget *parent) :
             wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_numB(sd, &WaveStats::buds)));
             wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_BScalar(&WaveStats::longestBubble, &WaveStats::Bubble::tEnd, 0, sd.duration, 100)));
             wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_BScalar(&WaveStats::longestBud, &WaveStats::Bubble::tEnd, 0, sd.duration, 100)));
+            wd.historySize = 20;
 
             Wavegen wg(mt, sd, wd);
+
+            wg.r.stopFunc = [&wg](const MAPEStats &S){
+                std::cout << "Search, iteration " << S.iterations << ": " << S.histIter->insertions << " insertions, population " << S.population << endl;
+                return !S.historicInsertions;
+            };
+
             //wg.permute();
             wg.adjustSigmas();
             wg.search(0);
+            std::cout << "Search complete." << endl;
         }
     }
 }

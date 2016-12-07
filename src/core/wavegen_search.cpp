@@ -43,8 +43,10 @@ void Wavegen::search(int param)
     // Initialise waves pointer to episode 1, which is currently being stimulated
     std::vector<Stimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
 
-    bool done = false;
-    while ( !done ) {
+    mapeStats = MAPEStats(r.historySize);
+    mapeStats.histIter = mapeStats.history.begin();
+
+    while ( true ) {
         pullStats(); // Pull stats from the previous episode (returnedWaves' performance) to host memory
         clearStats(); // Reset device memory stats
         restoreSettled(); // Reset state
@@ -59,7 +61,8 @@ void Wavegen::search(int param)
         using std::swap;
         swap(newWaves, returnedWaves);
 
-        /// TODO: Insert stopping conditions.
+        if ( r.stopFunc(mapeStats) )
+            break;
 
         // Prepare next episode's waves
         if ( initialising ) {
@@ -88,8 +91,16 @@ void Wavegen::search(int param)
     mape_tournament(*returnedWaves);
 }
 
-int Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
+void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
 {
+    // Advance statistics history and prepare stats page for this iteration
+    auto prev = mapeStats.histIter;
+    double prevInsertions = mapeStats.insertions;
+    if ( ++mapeStats.histIter == mapeStats.history.end() )
+        mapeStats.histIter = mapeStats.history.begin();
+    mapeStats.historicInsertions -= mapeStats.histIter->insertions;
+    *mapeStats.histIter = {};
+
     if ( m.cfg.permute ) {
         // For both fitness and bin coordinates, take the mean fitness/behaviour of the stim across all evaluated model groups
         double fitness = 0.0;
@@ -113,10 +124,9 @@ int Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
             coords[dim] = r.dim[dim]->bin(behaviour[dim] / m.numGroups);
 
         // Compare averages to elite & insert
-        return mape_insert(waves[0], coords, fitness);
+        mape_insert(waves[0], coords, fitness);
 
     } else {
-        int inserted = 0;
         for ( int group = 0; group < m.numGroups; group++ ) {
             // Calculate fitness value for this group:
             double fitness = r.fitnessFunc(wavestats[group]);
@@ -130,21 +140,35 @@ int Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
             wavestats[group] = {};
 
             // Compare to elite & insert
-            inserted += mape_insert(waves[group], coords, fitness);
+            mape_insert(waves[group], coords, fitness);
         }
-        return inserted;
     }
+
+    // Record statistics
+    if ( !mapeStats.histIter->insertions ) // Set to 1 by mape_insert when a new best is found
+        mapeStats.histIter->bestFitness = prev->bestFitness;
+    mapeStats.histIter->insertions = mapeStats.insertions - prevInsertions;
+    mapeStats.histIter->population = mapeStats.population;
+    mapeStats.historicInsertions += mapeStats.histIter->insertions;
+    ++mapeStats.iterations;
 }
 
-int Wavegen::mape_insert(const Stimulation &I, const std::vector<size_t> &coords, double fitness)
+void Wavegen::mape_insert(const Stimulation &I, const std::vector<size_t> &coords, double fitness)
 {
     if ( !mapeArchive[coords] || fitness > mapeFitness[coords] ) {
+        if ( !mapeStats.iterations || mapeFitness[mapeStats.bestWaveCoords] < fitness ) {
+            mapeStats.bestWaveCoords = coords;
+            mapeStats.histIter->bestFitness = fitness;
+            mapeStats.histIter->insertions = 1; // Code for "bestFitness has been set", see mape_tournament
+        }
+        ++mapeStats.insertions;
+
         mapeFitness[coords] = fitness;
-        if ( mapeArchive[coords] )
+        if ( mapeArchive[coords] ) {
             *(mapeArchive[coords]) = I;
-        else
+        } else {
             mapeArchive[coords].reset(new Stimulation(I));
-        return 1;
+            ++mapeStats.population;
+        }
     }
-    return 0;
 }

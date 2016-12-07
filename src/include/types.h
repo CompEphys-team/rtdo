@@ -191,16 +191,37 @@ struct WaveStats
     Bubble bestMeanRelBud;
 };
 
+struct MAPEStats
+{
+    size_t iterations = 0; //!< Total iterations completed
+    size_t insertions = 0; //!< Total number of insertions into archive
+    size_t population = 0; //!< Archive size
+    size_t historicInsertions = 0; //!< Total insertions within recorded history
+    std::vector<size_t> bestWaveCoords; //!< Coordinates to access the current highest achieving fitness/Stimulation from Wavegen
+
+    struct History {
+        size_t insertions = 0; //!< Insertions into the archive on this iteration
+        size_t population = 0; //!< Archive size at the end of this iteration
+        double bestFitness = 0.0; //!< Best fitness value (all-time)
+    };
+    std::vector<History> history;
+    std::vector<History>::iterator histIter; //!< Points at the most recent history entry; advances forward on each iteration.
+
+    MAPEStats(size_t sz) : history(sz) {}
+};
+
 class MAPEDimension;
 
 struct WavegenData : public RunData
 {
-    int numSigmaAdjustWaveforms; // Number of random waveforms used to normalise the perturbation rate.
-                                 // If the MetaModel is not permuted, this number is rounded up to the
-                                 // nearest multiple of the population size
-    std::vector<std::shared_ptr<MAPEDimension>> dim;
+    int numSigmaAdjustWaveforms; //!< Number of random waveforms used to normalise the perturbation rate.
+                                 //!< If the MetaModel is not permuted, this number is rounded up to the
+                                 //!< nearest multiple of the population size.
+    std::vector<std::shared_ptr<MAPEDimension>> dim; //!< MAP-Elites dimensions to use during search
     size_t nInitialWaves; //!< Number of randomly initialised waveforms used to start the search
     std::function<double(WaveStats const&)> fitnessFunc; //!< Return fitness based on performance statistics
+    std::function<bool(MAPEStats const&)> stopFunc = [](MAPEStats const&){return true;}; //!< Return true to stop the search.
+    size_t historySize;
 };
 
 #endif // TYPES_H
