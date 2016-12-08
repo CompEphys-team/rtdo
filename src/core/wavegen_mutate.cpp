@@ -92,11 +92,11 @@ Stimulation Wavegen::mutate(const Stimulation &parent, const Stimulation &crosso
 
 void Wavegen::mutateCrossover(Stimulation &I, const Stimulation &parent)
 {
-    std::vector<Stimulation::Step> steps;
-    bool coin = RNG.pick({true, false});
-    const std::vector<Stimulation::Step> &head = (coin ? I : parent).steps;
-    const std::vector<Stimulation::Step> &tail = (coin ? parent : I).steps;
     do { // Repeat on failures
+        std::vector<Stimulation::Step> steps;
+        bool coin = RNG.pick({true, false});
+        const std::vector<Stimulation::Step> &head = (coin ? I : parent).steps;
+        const std::vector<Stimulation::Step> &tail = (coin ? parent : I).steps;
         double mid = RNG.uniform(0.0, p.duration);
         size_t nHead = 0, nTail = 0;
         for ( auto it = head.begin(); it != head.end() && it->t < mid; it++ ) { // Choose all head steps up to mid
@@ -109,9 +109,10 @@ void Wavegen::mutateCrossover(Stimulation &I, const Stimulation &parent)
                 nTail++;
             }
         }
-        if ( (nHead == head.size() && nTail == 0) || (nHead == 0 && nTail == tail.size()) ) // X failed
+        if ( (nHead == head.size() && nTail == 0) || (nHead == 0 && nTail == tail.size()) ) { // X failed
             continue;
-        if ( nHead > 0 && (tail.end()-nTail-1)->t - (head.begin()+nHead-1)->t < p.minStepLength ) { // X step too short
+        }
+        if ( nHead > 0 && nTail > 0 && (tail.end()-nTail-1)->t - (head.begin()+nHead-1)->t < p.minStepLength ) { // X step too short
             if ( (int)steps.size() > p.minSteps ) {
                 if ( RNG.pick({true, false}) ) {
                     steps.erase(steps.begin() + nHead);
@@ -201,20 +202,21 @@ void Wavegen::mutateNumber(Stimulation &I)
 
 void Wavegen::mutateSwap(Stimulation &I)
 {
-    Stimulation::Step src, dest;
+    Stimulation::Step *src, *dest;
     do {
-        src = RNG.pick(I.steps);
-        dest = RNG.pick(I.steps);
-    } while ( src.t == dest.t );
+        src =& RNG.pick(I.steps);
+        dest =& RNG.pick(I.steps);
+    } while ( src->t == dest->t );
     using std::swap;
-    swap(src.V, dest.V);
-    swap(src.ramp, dest.ramp);
+    swap(src->V, dest->V);
+    swap(src->ramp, dest->ramp);
 }
 
 void Wavegen::mutateTime(Stimulation &I)
 {
-    bool tooClose = false;
+    bool tooClose;
     do {
+        tooClose = false;
         auto target = RNG.choose(I.steps);
         double newT;
         do {
@@ -226,8 +228,9 @@ void Wavegen::mutateTime(Stimulation &I)
                 tooClose = true;
                 break;
             }
-            if ( it != target && it->t > newT )
+            if ( it != target && it->t > newT ) {
                 break;
+            }
         }
         if ( !tooClose ) {
             if ( it == target+1 ) {
