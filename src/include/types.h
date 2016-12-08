@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <iostream>
+#include <list>
 
 #ifndef scalar
 #ifdef USEDOUBLE
@@ -18,8 +19,8 @@ typedef float scalar;
 struct Stimulation
 {
     double duration;
-    double tObsBegin;
-    double tObsEnd;
+    double tObsBegin = 0;
+    double tObsEnd = 0;
     double baseV;
 
     struct Step
@@ -194,13 +195,36 @@ struct WaveStats
     Bubble bestMeanRelBud;
 };
 
+struct MAPElite
+{
+    std::vector<size_t> bin;
+    double fitness;
+    Stimulation wave;
+
+    MAPElite(std::vector<size_t> bin, double fitness, Stimulation wave) : bin(bin), fitness(fitness), wave(wave) {}
+
+    /**
+     * @brief compare performs a lexical comparison on bin.
+     * @return 1, if @p rhs precedes the callee; -1, if the callee precedes @p rhs, and 0, if they are equal.
+     */
+    inline char compare(const MAPElite &rhs) const {
+        return bin < rhs.bin ? -1 : (bin > rhs.bin);
+    }
+
+    /**
+     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness and wave if @p rhs is better.
+     * @return true, if @p rhs beat and replaced the callee.
+     */
+    bool compete(MAPElite &&rhs);
+};
+
 struct MAPEStats
 {
     size_t iterations = 0; //!< Total iterations completed
     size_t insertions = 0; //!< Total number of insertions into archive
     size_t population = 0; //!< Archive size
     size_t historicInsertions = 0; //!< Total insertions within recorded history
-    std::vector<size_t> bestWaveCoords; //!< Coordinates to access the current highest achieving fitness/Stimulation from Wavegen
+    std::list<MAPElite>::const_iterator bestWave; //!< Iterator to the current highest achieving Stimulation in Wavegen::mapeArchive
 
     struct History {
         size_t insertions = 0; //!< Insertions into the archive on this iteration
@@ -210,7 +234,7 @@ struct MAPEStats
     std::vector<History> history;
     std::vector<History>::iterator histIter; //!< Points at the most recent history entry; advances forward on each iteration.
 
-    MAPEStats(size_t sz) : history(sz) {}
+    MAPEStats(size_t sz, std::list<MAPElite>::const_iterator b) : bestWave(b), history(sz) {}
 };
 
 class MAPEDimension;

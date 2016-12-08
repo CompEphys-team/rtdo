@@ -4,8 +4,6 @@
 #include "types.h"
 #include "kernelhelper.h"
 #include "randutils.hpp"
-#include <list>
-#include "multiarray.h"
 
 class Wavegen
 {
@@ -64,9 +62,8 @@ public:
     /**
      * @brief search runs a MAP-Elites algorithm, evolving Stimulations that maximise fitness for a given parameter.
      * The algorithm will stop when r.stopFunc returns true, evaluating one final set of Stimulations before returning.
-     * Runtime statistics, the Stimulation archive and its associated fitness values are available until the next call
-     * to search.
-     * @see mapeStats, mapeArchive, mapeFitness.
+     * Runtime statistics and the archive of elite Stimulations are available until the next call to search.
+     * @see mapeStats, mapeArchive
      * @param param is the index of the parameter to optimise for (0-based, same as for MetaModel::adjustableParams).
      */
     void search(int param);
@@ -99,7 +96,7 @@ protected:
 
     /// MAP-Elites helper functions
     void mape_tournament(const std::vector<Stimulation> &);
-    void mape_insert(const Stimulation &I, const std::vector<size_t> &coords, double fitness);
+    void mape_insert(MAPElite &&candidate);
 
     /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
@@ -115,11 +112,6 @@ protected:
                 + (group/m.numGroupsPerBlock) * blockSize; // Modelspace offset of the block this group belongs to
     }
 
-    /**
-     * @brief getMAPEDimensions computes the dimension vector for the MAPE fitness and archive MultiArrays
-     */
-    std::vector<size_t> getMAPEDimensions();
-
     randutils::mt19937_rng RNG;
 
     std::vector<double> sigmaAdjust;
@@ -127,11 +119,8 @@ protected:
 
     std::list<std::vector<scalar>> settled;
 
-    std::vector<size_t> mapeDimensions;
-
 public:
-    MultiArray<double> mapeFitness; //!< Fitness values of the most recent (or current) call to search().
-    MultiArray<std::unique_ptr<Stimulation>> mapeArchive; //!< Elite archive of the most recent (or current) call to search().
+    std::list<MAPElite> mapeArchive; //!< Elite archive of the most recent (or current) call to search().
     MAPEStats mapeStats; //!< Statistics of the most recent (or current) call to search().
 };
 

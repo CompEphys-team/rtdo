@@ -2,17 +2,9 @@
 #include "cuda_helper.h"
 #include "kernelhelper.h"
 #include "mapedimension.h"
+#include <cassert>
 
 using namespace GeNN_Bridge;
-
-std::vector<size_t> Wavegen::getMAPEDimensions()
-{
-    std::vector<size_t> dim;
-    dim.reserve(r.dim.size());
-    for ( const std::shared_ptr<MAPEDimension> &d : r.dim )
-        dim.push_back(d->size());
-    return dim;
-}
 
 void Wavegen::search(int param)
 {
@@ -43,7 +35,8 @@ void Wavegen::search(int param)
     // Initialise waves pointer to episode 1, which is currently being stimulated
     std::vector<Stimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
 
-    mapeStats = MAPEStats(r.historySize);
+    mapeArchive.clear();
+    mapeStats = MAPEStats(r.historySize, mapeArchive.end());
     mapeStats.histIter = mapeStats.history.begin();
 
     while ( true ) {
@@ -65,6 +58,7 @@ void Wavegen::search(int param)
             break;
 
         // Prepare next episode's waves
+        std::cout << "Begin mutations" << std::endl;
         if ( initialising ) {
             // Generate at random
             for ( Stimulation &w : *newWaves )
@@ -73,17 +67,13 @@ void Wavegen::search(int param)
             initialising = nInitialWaves < r.nInitialWaves;
         } else {
             // Pick offspring of existing pool of elites
-            // If the MAPE population is expected to be sparse, it might be more efficient to keep a list of actually populated cells...
-            // However, since this is running in parallel to a full stimulation episode, it is unlikely to a be performance-relevant section.
             for ( Stimulation &w : *newWaves ) {
-                const Stimulation *parent, *crossoverParent;
-                do {
-                    parent = mapeArchive[RNG.uniform<size_t>(0, mapeArchive.size() - 1)].get();
-                    crossoverParent = mapeArchive[RNG.uniform<size_t>(0, mapeArchive.size() - 1)].get();
-                } while ( !parent || !crossoverParent || parent == crossoverParent );
-                w = mutate(*parent, *crossoverParent);
+                auto parent = RNG.choose(mapeArchive), crossoverParent = parent;
+                while ( (crossoverParent = RNG.choose(mapeArchive)) == parent );
+                w = mutate(parent->wave, crossoverParent->wave);
             }
         }
+        std::cout << "End mutations" << std::endl;
     }
 
     // Pull and evaluate the last episode
@@ -124,7 +114,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
             coords[dim] = r.dim[dim]->bin(behaviour[dim] / m.numGroups);
 
         // Compare averages to elite & insert
-        mape_insert(waves[0], coords, fitness);
+        mape_insert(MAPElite{coords, fitness, waves[0]});
 
     } else {
         for ( int group = 0; group < m.numGroups; group++ ) {
@@ -140,7 +130,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
             wavestats[group] = {};
 
             // Compare to elite & insert
-            mape_insert(waves[group], coords, fitness);
+            mape_insert(MAPElite{coords, fitness, waves[group]});
         }
     }
 
@@ -153,22 +143,34 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
     ++mapeStats.iterations;
 }
 
-void Wavegen::mape_insert(const Stimulation &I, const std::vector<size_t> &coords, double fitness)
+void Wavegen::mape_insert(MAPElite &&candidate)
 {
-    if ( !mapeArchive[coords] || fitness > mapeFitness[coords] ) {
-        if ( !mapeStats.iterations || mapeFitness[mapeStats.bestWaveCoords] < fitness ) {
-            mapeStats.bestWaveCoords = coords;
-            mapeStats.histIter->bestFitness = fitness;
+    bool inserted = true;
+    auto insertedIterator = mapeArchive.end();
+    for ( auto it = mapeArchive.begin(); it != mapeArchive.end(); it++ ) {
+        char comp = it->compare(candidate);
+        if ( comp == 0 ) { // Found an existing elite at these coordinates, compete
+            inserted = it->compete(std::move(candidate));
+            insertedIterator = it;
+            break;
+        } else if ( comp > 0 ) { // No existing elite at these coordinates
+            ++mapeStats.population;
+            insertedIterator = mapeArchive.insert(it, std::move(candidate));
+            break;
+        }
+    }
+    if ( insertedIterator == mapeArchive.end() ) { // No existing elite at these coordinates
+        ++mapeStats.population;
+        mapeArchive.push_back(std::move(candidate));
+        --insertedIterator;
+    }
+
+    if ( inserted ) {
+        if ( mapeStats.bestWave == mapeArchive.end() || insertedIterator->fitness > mapeStats.bestWave->fitness ) {
+            mapeStats.bestWave = insertedIterator;
+            mapeStats.histIter->bestFitness = insertedIterator->fitness;
             mapeStats.histIter->insertions = 1; // Code for "bestFitness has been set", see mape_tournament
         }
         ++mapeStats.insertions;
-
-        mapeFitness[coords] = fitness;
-        if ( mapeArchive[coords] ) {
-            *(mapeArchive[coords]) = I;
-        } else {
-            mapeArchive[coords].reset(new Stimulation(I));
-            ++mapeStats.population;
-        }
     }
 }

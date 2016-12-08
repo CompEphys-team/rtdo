@@ -35,3 +35,14 @@ std::ostream &operator<<(std::ostream &os, const Stimulation::Step &s)
     os << "  {" << (s.ramp?"ramp":"step") << " at " << s.t << " to " << s.V << "}" << std::endl;
     return os;
 }
+
+bool MAPElite::compete(MAPElite &&rhs)
+{
+    if ( rhs.fitness > fitness ) {
+        using std::swap;
+        swap(fitness, rhs.fitness);
+        swap(wave, rhs.wave);
+        return true;
+    }
+    return false;
+}
