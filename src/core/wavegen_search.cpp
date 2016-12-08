@@ -58,7 +58,6 @@ void Wavegen::search(int param)
             break;
 
         // Prepare next episode's waves
-        std::cout << "Begin mutations" << std::endl;
         if ( initialising ) {
             // Generate at random
             for ( Stimulation &w : *newWaves )
@@ -73,7 +72,6 @@ void Wavegen::search(int param)
                 w = mutate(parent->wave, crossoverParent->wave);
             }
         }
-        std::cout << "End mutations" << std::endl;
     }
 
     // Pull and evaluate the last episode

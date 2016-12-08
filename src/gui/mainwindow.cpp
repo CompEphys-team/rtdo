@@ -59,10 +59,12 @@ MainWindow::MainWindow(QWidget *parent) :
                     longest = S.longestBubble.abs / S.longestBubble.cycles;
                     abs = S.bestAbsBubble.abs / S.bestAbsBubble.cycles;
                     rel = S.bestRelBubble.abs / S.bestRelBubble.cycles;
-                } else {
+                } else if ( S.buds ) {
                     longest = S.longestBud.abs / S.longestBud.cycles;
                     abs = S.bestAbsBud.abs / S.bestAbsBud.cycles;
                     rel = S.bestRelBud.abs / S.bestRelBud.cycles;
+                } else {
+                    return -__DBL_MAX__;
                 }
                 if ( longest > abs )
                     return longest > rel ? longest : rel;
@@ -78,7 +80,8 @@ MainWindow::MainWindow(QWidget *parent) :
             Wavegen wg(mt, sd, wd);
 
             wg.r.stopFunc = [&wg](const MAPEStats &S){
-                std::cout << "Search, iteration " << S.iterations << ": " << S.histIter->insertions << " insertions, population " << S.population << endl;
+                std::cout << "Search, iteration " << S.iterations << ": " << S.histIter->insertions << " insertions, population "
+                          << S.population << ", best fitness: " << S.bestWave->fitness << endl;
                 return !S.historicInsertions;
             };
 
