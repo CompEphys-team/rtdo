@@ -64,12 +64,11 @@ std::ostream &operator<<(std::ostream &os, const Stimulation::Step &s)
     return os;
 }
 
-bool MAPElite::compete(MAPElite &&rhs)
+bool MAPElite::compete(const MAPElite &rhs)
 {
     if ( rhs.fitness > fitness ) {
-        using std::swap;
-        swap(fitness, rhs.fitness);
-        swap(wave, rhs.wave);
+        fitness = rhs.fitness;
+        wave = rhs.wave;
         return true;
     }
     return false;

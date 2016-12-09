@@ -113,21 +113,24 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
             coords[dim] = r.dim[dim]->bin(behaviour[dim] / m.numGroups);
 
         // Compare averages to elite & insert
-        mape_insert(MAPElite{coords, fitness, waves[0]});
+        std::vector<MAPElite> tmp(1, MAPElite{coords, fitness, waves[0]});
+        mape_insert(tmp);
 
     } else {
+        std::vector<MAPElite> candidates;
+        candidates.reserve(m.numGroups);
         for ( int group = 0; group < m.numGroups; group++ ) {
-            // Calculate fitness value for this group:
-            double fitness = r.fitnessFunc(wavestats[group]);
-
             // Gather bin coordinate data for this group:
-            std::vector<size_t> coords(r.dim.size(), 0);
+            std::vector<size_t> coords(r.dim.size());
             for ( size_t dim = 0; dim < r.dim.size(); dim++ )
                 coords[dim] = r.dim[dim]->bin(waves[group], wavestats[group]);
 
-            // Compare to elite & insert
-            mape_insert(MAPElite{coords, fitness, waves[group]});
+            double fitness = r.fitnessFunc(wavestats[group]);
+            candidates.push_back(MAPElite(coords, fitness, waves[group]));
         }
+
+        // Compare to elite & insert
+        mape_insert(candidates);
     }
 
     // Record statistics
@@ -139,34 +142,25 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
     ++mapeStats.iterations;
 }
 
-void Wavegen::mape_insert(MAPElite &&candidate)
+void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
 {
-    bool inserted = true;
-    auto insertedIterator = mapeArchive.end();
-    for ( auto it = mapeArchive.begin(); it != mapeArchive.end(); it++ ) {
-        char comp = it->compare(candidate);
-        if ( comp == 0 ) { // Found an existing elite at these coordinates, compete
-            inserted = it->compete(std::move(candidate));
-            insertedIterator = it;
-            break;
-        } else if ( comp > 0 ) { // No existing elite at these coordinates
+    std::sort(candidates.begin(), candidates.end()); // Lexical sort by MAPElite::bin
+    auto archIter = mapeArchive.begin();
+    for ( auto candIter = candidates.begin(); candIter != candidates.end(); candIter++ ) {
+        while ( archIter != mapeArchive.end() && *archIter < *candIter ) // Advance to the first archive element with coords >= candidate
+            ++archIter;
+        if ( archIter == mapeArchive.end() || *candIter < *archIter ) { // No elite at candidate's coords, insert implicitly
             ++mapeStats.population;
-            insertedIterator = mapeArchive.insert(it, std::move(candidate));
-            break;
+            ++mapeStats.insertions;
+            archIter = mapeArchive.insert(archIter, *candIter);
+        } else { // preexisting elite at the candidate's coords, compete
+            mapeStats.insertions += archIter->compete(*candIter);
         }
-    }
-    if ( insertedIterator == mapeArchive.end() ) { // No existing elite at these coordinates
-        ++mapeStats.population;
-        mapeArchive.push_back(std::move(candidate));
-        --insertedIterator;
-    }
 
-    if ( inserted ) {
-        if ( mapeStats.bestWave == mapeArchive.end() || insertedIterator->fitness > mapeStats.bestWave->fitness ) {
-            mapeStats.bestWave = insertedIterator;
-            mapeStats.histIter->bestFitness = insertedIterator->fitness;
+        if ( mapeStats.bestWave == mapeArchive.end() || archIter->fitness > mapeStats.bestWave->fitness ) {
+            mapeStats.bestWave = archIter;
+            mapeStats.histIter->bestFitness = archIter->fitness;
             mapeStats.histIter->insertions = 1; // Code for "bestFitness has been set", see mape_tournament
         }
-        ++mapeStats.insertions;
     }
 }

@@ -229,17 +229,15 @@ struct MAPElite
 
     /**
      * @brief compare performs a lexical comparison on bin.
-     * @return 1, if @p rhs precedes the callee; -1, if the callee precedes @p rhs, and 0, if they are equal.
+     * @return true if @p rhs precedes the callee, false otherwise.
      */
-    inline char compare(const MAPElite &rhs) const {
-        return bin < rhs.bin ? -1 : (bin > rhs.bin);
-    }
+    inline bool operator<(const MAPElite &rhs) const { return bin < rhs.bin; }
 
     /**
      * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness and wave if @p rhs is better.
      * @return true, if @p rhs beat and replaced the callee.
      */
-    bool compete(MAPElite &&rhs);
+    bool compete(const MAPElite &rhs);
 };
 
 struct MAPEStats

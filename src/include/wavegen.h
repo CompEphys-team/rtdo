@@ -95,7 +95,7 @@ protected:
 
     /// MAP-Elites helper functions
     void mape_tournament(const std::vector<Stimulation> &);
-    void mape_insert(MAPElite &&candidate);
+    void mape_insert(std::vector<MAPElite> &candidates);
 
     /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
