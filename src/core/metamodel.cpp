@@ -236,9 +236,9 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
 const int groupID = id % MM_NumGroupsPerBlock;                       // Block-local group id
 const int group = groupID + (id/MM_NumModelsPerBlock) * MM_NumGroupsPerBlock;   // Global group id
 const int paramID = (id % MM_NumModelsPerBlock) / MM_NumGroupsPerBlock;
-WaveStats stats;
+WaveStats *stats;
 if ( $(getErr) && paramID == $(targetParam) ) // Preload for @fn processStats - other threads don't need this
-    stats = dd_wavestats[group];
+    stats =& dd_wavestats[group];
 
 scalar mdt = DT/$(simCycles);
 for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
@@ -276,13 +276,13 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
                 if ( errShare[i*MM_NumGroupsPerBlock + groupID] > next )
                     next = errShare[i*MM_NumGroupsPerBlock + groupID];
             }
-            processStats(err, next, total / NPARAM, t + mt*mdt, stats, $(final) && mt == $(simCycles)-1 );
+            processStats(err, next, total / NPARAM, t + mt*mdt, *stats, $(final) && mt == $(simCycles)-1 );
         }
     }
 } // end for mt
 
 if ( $(getErr) && paramID == $(targetParam) )
-    dd_wavestats[group] = stats;
+    dd_wavestats[group] = *stats;
 
 #else
 Isyn += 0.; // Squelch Wunused in neuronFnct.cc
