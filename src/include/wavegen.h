@@ -81,9 +81,11 @@ protected:
     Stimulation getRandomStim();
 
     /**
-     * @brief mutate returns a mutant offspring of @param parent, possibly using crossover with @param crossoverParent.
+     * @brief mutate returns a mutant offspring of the parent referred to by @p parentIter.
+     * @param parentIter is an iterator into mapeArchive
+     * @param offset is the position of parentIter within mapeArchive, used for efficient crossover parent lookup.
      */
-    Stimulation mutate(const Stimulation &parent);
+    Stimulation mutate(const Stimulation &parent, const Stimulation &xoverParent);
 
     /// mutate helper functions
     void mutateCrossover(Stimulation&, const Stimulation&);

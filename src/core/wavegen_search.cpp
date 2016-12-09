@@ -64,16 +64,45 @@ void Wavegen::search(int param)
             nInitialWaves += numWavesPerEpisode;
             initialising = nInitialWaves < r.nInitialWaves;
         } else {
-            // Pick offspring of existing pool of elites
-            std::vector<size_t> parentIndices(numWavesPerEpisode);
-            RNG.generate(parentIndices, size_t(0), mapeArchive.size()-1);
-            std::sort(parentIndices.begin(), parentIndices.end());
-            auto it = mapeArchive.begin();
+            std::vector<std::list<MAPElite>::const_iterator> parents(2 * numWavesPerEpisode);
+
+            // Sample the archive space with a bunch of random indices
+            std::vector<size_t> idx(2 * numWavesPerEpisode);
+            RNG.generate(idx, size_t(0), mapeArchive.size() - 1);
+            std::sort(idx.begin(), idx.end());
+
+            // Insert the sampling into parents in a single run through
+            auto archIter = mapeArchive.begin();
             size_t pos = 0;
+            for ( int i = 0; i < 2*numWavesPerEpisode; i++ ) {
+                std::advance(archIter, idx[i] - pos);
+                pos = idx[i];
+                parents[i] = archIter;
+            }
+
+            // Shuffle the parents, but ensure that xover isn't incestuous
+            bool wellShuffled;
+            int shuffleFailures = 0;
+            do {
+                RNG.shuffle(parents);
+                wellShuffled = true;
+                for ( int i = 0; i < numWavesPerEpisode; i++ ) {
+                    if ( parents[2*i] == parents[2*i + 1] ) {
+                        if ( i < numWavesPerEpisode - 1 ) {
+                            RNG.shuffle(parents.begin() + 2*i, parents.end());
+                            --i;
+                        } else {
+                            wellShuffled = false;
+                            ++shuffleFailures;
+                            break;
+                        }
+                    }
+                }
+            } while ( !wellShuffled || shuffleFailures > 10 );
+
+            // Mutate
             for ( int i = 0; i < numWavesPerEpisode; i++ ) {
-                std::advance(it, parentIndices[i] - pos);
-                (*newWaves)[i] = mutate(it->wave);
-                pos = parentIndices[i];
+                (*newWaves)[i] = mutate(parents[2*i]->wave, parents[2*i + 1]->wave);
             }
         }
     }
