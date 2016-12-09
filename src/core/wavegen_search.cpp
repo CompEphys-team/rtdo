@@ -10,8 +10,7 @@ void Wavegen::search(int param)
 {
     assert(param >= 0 && param < (int)m.adjustableParams.size());
     *targetParam = param+1;
-    for ( int i = 0; i < nModels; i++ )
-        getErr[i] = true;
+    *getErr = true;
 
     const int numWavesPerEpisode = m.cfg.permute ? 1 : m.numGroups;
     std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
@@ -24,7 +23,7 @@ void Wavegen::search(int param)
     // Initiate a first stimulation with nothing going on in parallel:
     restoreSettled();
     clearStats();
-    stimulate(waves_ep1, true);
+    stimulate(waves_ep1);
 
     // Prepare the second episode:
     for ( Stimulation &w : waves_ep2 )
@@ -43,7 +42,7 @@ void Wavegen::search(int param)
         pullStats(); // Pull stats from the previous episode (returnedWaves' performance) to host memory
         clearStats(); // Reset device memory stats
         restoreSettled(); // Reset state
-        stimulate(*newWaves, true); // Initiate next stimulation episode
+        stimulate(*newWaves); // Initiate next stimulation episode
 
         // Calculate fitness & MAPE coordinates of the previous episode's waves, and compete with the elite
         mape_tournament(*returnedWaves);
@@ -101,9 +100,6 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
             // Gather bin coordinate data for this group:
             for ( size_t dim = 0; dim < r.dim.size(); dim++ )
                 behaviour[dim] += r.dim[dim]->behaviour(waves[0], wavestats[group]);
-
-            // Reset stats, to be pushed on restoreSettled call in main loop
-            wavestats[group] = {};
         }
 
         // Average
@@ -123,9 +119,6 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
             std::vector<size_t> coords(r.dim.size(), 0);
             for ( size_t dim = 0; dim < r.dim.size(); dim++ )
                 coords[dim] = r.dim[dim]->bin(waves[group], wavestats[group]);
-
-            // Reset stats
-            wavestats[group] = {};
 
             // Compare to elite & insert
             mape_insert(MAPElite{coords, fitness, waves[group]});

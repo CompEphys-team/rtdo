@@ -1,13 +1,41 @@
 #include "types.h"
+#include <cassert>
 
+void Stimulation::insert(Stimulation::Step *position, Stimulation::Step &&value)
+{
+    if ( position < steps || position > end() )
+        throw std::runtime_error("Stimulation::insert: invalid position.");
+    if ( numSteps == maxSteps )
+        throw std::runtime_error("Stimulation::insert: Step array is full.");
+
+    for ( Step *it = end(); it > position; it-- ) // Move everything from position to the end right by one
+        *it = *(it-1);
+    *position = value;
+    numSteps++;
+    assert(numSteps <= maxSteps);
+}
+
+void Stimulation::erase(Stimulation::Step *position)
+{
+    if ( position < steps || position >= end() )
+        throw std::runtime_error("Stimulation::erase: invalid position.");
+    for ( Step *it = position; it < end()-1; it++ ) // Move everything from position to the end left by one
+        *it = *(it+1);
+    numSteps--;
+    assert(numSteps >= 0);
+}
 
 bool Stimulation::operator==(const Stimulation &other) const
 {
-    return duration  == other.duration
+    bool equal =
+           duration  == other.duration
         && tObsBegin == other.tObsBegin
         && tObsEnd   == other.tObsEnd
         && baseV     == other.baseV
-            && steps     == other.steps;
+        && numSteps  == other.numSteps;
+    for ( size_t i = 0; equal && i < size(); i++ )
+        equal &= steps[i] == other.steps[i];
+    return equal;
 }
 
 std::ostream &operator<<(std::ostream &os, const Stimulation &I)
@@ -17,7 +45,7 @@ std::ostream &operator<<(std::ostream &os, const Stimulation &I)
        << "  duration: " << I.duration << endl
        << "  observe: [" << I.tObsBegin << "," << I.tObsEnd << "]" << endl
        << "  V: " << I.baseV << endl;
-    for ( const Stimulation::Step &s : I.steps )
+    for ( const Stimulation::Step &s : I )
         os << s;
     os << "}";
     return os;

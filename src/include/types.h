@@ -16,23 +16,47 @@ typedef float scalar;
 #endif
 #endif
 
+#ifdef __CUDACC__
+#define CUDA_HOST_MEMBER __host__
+#define CUDA_CALLABLE_MEMBER __host__ __device__
+#else
+#define CUDA_HOST_MEMBER
+#define CUDA_CALLABLE_MEMBER
+#endif
+
 struct Stimulation
 {
-    double duration;
-    double tObsBegin = 0;
-    double tObsEnd = 0;
-    double baseV;
+    scalar duration;
+    scalar tObsBegin = 0;
+    scalar tObsEnd = 0;
+    scalar baseV;
 
     struct Step
     {
-        double t;
-        double V;
+        scalar t;
+        scalar V;
         bool ramp;
-        bool operator==(const Step &other) const;
+        CUDA_HOST_MEMBER bool operator==(const Step &other) const;
     };
-    std::vector<Step> steps;
 
-    bool operator==(const Stimulation &other) const;
+    static constexpr size_t maxSteps = 10;
+    Step steps[maxSteps];
+
+    // Some functions that simplify handling steps ... almost as though it were a vector.
+    CUDA_CALLABLE_MEMBER inline Step* begin() { return steps; }
+    CUDA_CALLABLE_MEMBER inline const Step* begin() const { return steps; }
+    CUDA_CALLABLE_MEMBER inline Step* end() { return steps + numSteps; }
+    CUDA_CALLABLE_MEMBER inline const Step* end() const { return steps + numSteps; }
+    CUDA_HOST_MEMBER void insert(Step* position, Step&& value);
+    CUDA_HOST_MEMBER void erase(Step* position);
+    CUDA_HOST_MEMBER inline void clear() { numSteps = 0; }
+    CUDA_CALLABLE_MEMBER inline size_t size() const { return numSteps; }
+    CUDA_CALLABLE_MEMBER inline bool empty() const { return numSteps == 0; }
+
+    CUDA_HOST_MEMBER bool operator==(const Stimulation &other) const;
+
+private:
+    size_t numSteps = 0;
 };
 std::ostream &operator<<(std::ostream&, const Stimulation&);
 std::ostream &operator<<(std::ostream&, const Stimulation::Step&);
@@ -148,8 +172,8 @@ struct StimulationData
 {
     int minSteps = 2;
     int maxSteps = 6;
-    double minStepLength = 2;
-    double duration = 300;
+    scalar minStepLength = 2;
+    scalar duration = 300;
     scalar minVoltage = -100;
     scalar maxVoltage = 50;
     scalar baseV = -60;

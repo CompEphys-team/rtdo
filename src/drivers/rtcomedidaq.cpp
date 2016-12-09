@@ -113,9 +113,9 @@ void *ComediDAQ::launch()
         dt = nano2count((RTIME)(1e6 * p->dt));
 
         // AO setup
-        steps.reserve(currentStim.steps.size() + 1);
+        steps.reserve(currentStim.size() + 1);
         // Convert Stimulation::Step t/V to RTIME/lsampl_t
-        for ( const Stimulation::Step &s : currentStim.steps ) {
+        for ( const Stimulation::Step &s : currentStim ) {
             steps.push_back( Step {
                 dt * (RTIME)(nano2count((RTIME)(1e6 * s.t)) / dt), // Round down
                 conO.toSamp(s.V),

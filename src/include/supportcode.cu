@@ -68,4 +68,26 @@ __device__ void processStats(const scalar err,  //!< Target parameter's absolute
     }
 }
 
+__device__ scalar getCommandVoltage(const Stimulation &I, scalar t)
+{
+    scalar Vcmd;
+    if ( I.empty() )
+        return I.baseV;
+    const Stimulation::Step *s = I.begin();
+    if ( s->t > t ) {
+        if ( s->ramp )
+            Vcmd = I.baseV + (s->V - I.baseV)/s->t * DT;
+        else
+            Vcmd = I.baseV;
+    } else {
+        while ( s != I.end() && s->t < t )
+            s++;
+        if ( s != I.end() && s->ramp )
+            Vcmd = (s-1)->V + (s->V - (s-1)->V) / (s->t - (s-1)->t) * DT;
+        else
+            Vcmd = (s-1)->V;
+    }
+    return Vcmd;
+}
+
 #endif // SUPPORTCODE_CU

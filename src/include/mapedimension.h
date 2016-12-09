@@ -65,7 +65,7 @@ public:
     ~MAPED_numSteps() {}
     inline size_t size() const { return _size; }
     inline size_t bin(double behaviour) const { return delimit(behaviour - _offset); }
-    inline double behaviour(const Stimulation &I, const WaveStats &) const { return I.steps.size(); }
+    inline double behaviour(const Stimulation &I, const WaveStats &) const { return I.size(); }
 private:
     size_t _size, _offset;
 };

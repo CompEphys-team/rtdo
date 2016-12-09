@@ -6,6 +6,9 @@ WaveStats *wavestats;
 WaveStats *clear_wavestats;
 WaveStats *d_wavestats;
 
+Stimulation *waveforms;
+Stimulation *d_waveforms;
+
 void (*push)(void);
 void (*pull)(void);
 void (*step)(void);
@@ -13,6 +16,8 @@ void (*init)(MetaModel&);
 void (*reset)(void);
 void (*pullStats)(void);
 void (*clearStats)(void);
+void (*pushWaveforms)(void);
+void (*pullWaveforms)(void);
 
 // Global
 size_t NPOP;
@@ -30,17 +35,10 @@ scalar *VmemG;
 // Wavegen model globals
 int *targetParam;
 bool *final;
+bool *getErr;
 
 // Always present: model vars
 scalar * err;
 scalar * d_err;
-
-// Wavegen model vars
-scalar * Vmem;
-scalar * d_Vmem;
-scalar * Vramp;
-scalar * d_Vramp;
-bool * getErr;
-bool * d_getErr;
 
 }

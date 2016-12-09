@@ -171,6 +171,7 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
         Variable("clampGain"),
         Variable("accessResistance"),
         Variable("targetParam", "", "int"),
+        Variable("getErr", "", "bool"),
         Variable("final", "", "bool")
     };
     for ( Variable &p : globals ) {
@@ -179,10 +180,7 @@ void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
     }
 
     std::vector<Variable> vars = {
-        Variable("Vmem"),
-        Variable("Vramp"),
-        Variable("err"),
-        Variable("getErr", "", "bool")
+        Variable("err")
     };
     for ( Variable &v : vars ) {
         n.varNames.push_back(v.name);
@@ -239,11 +237,11 @@ const int paramID = (id % MM_NumModelsPerBlock) / MM_NumGroupsPerBlock;
 WaveStats *stats;
 if ( $(getErr) && paramID == $(targetParam) ) // Preload for @fn processStats - other threads don't need this
     stats =& dd_wavestats[group];
+scalar Vcmd = getCommandVoltage(dd_waveforms[group], t);
 
 scalar mdt = DT/$(simCycles);
 for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
-    $(Vmem) += $(Vramp);
-    Isyn = ($(clampGain)*($(Vmem)-$(V)) - $(V)) / $(accessResistance);
+    Isyn = ($(clampGain)*(Vcmd-$(V)) - $(V)) / $(accessResistance);
 )EOF";
     ss << kernel("    ") << endl;
     ss <<   R"EOF(

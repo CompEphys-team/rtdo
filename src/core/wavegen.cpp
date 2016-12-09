@@ -135,12 +135,14 @@ void Wavegen::detune()
 void Wavegen::settle()
 {
     // Simulate for a given time
-    for ( int i = 0; i < nModels; i++ )
-        getErr[i] = false;
-    for ( int i = 0; i < nModels; i++ )
-        Vmem[i] = p.baseV;
-    for ( int i = 0; i < nModels; i++ )
-        Vramp[i] = 0.0;
+    Stimulation I;
+    I.duration = r.settleTime;
+    I.baseV = p.baseV;
+    I.clear();
+    for ( int group = 0; group < m.numGroups; group++ )
+        waveforms[group] = I;
+    pushWaveforms();
+    *getErr = false;
     *t = 0;
     *iT = 0;
     push();
@@ -165,7 +167,7 @@ void Wavegen::settle()
         for ( int group = 0; group < m.numGroups; group++ ) {
             scalar const& v = m.stateVariables[0].v[baseModelIndex(group)];
             V.push_back(v);
-            if ( v > -65 && v < -55 )
+            if ( v > p.baseV-5 && v < p.baseV+5 )
                 valid++;
         }
         std::sort(V.begin(), V.end());
@@ -221,12 +223,9 @@ void Wavegen::adjustSigmas()
         settle();
     detune();
     for ( int i = 0; i < nModels; i++ )
-        getErr[i] = true;
-    for ( int i = 0; i < nModels; i++ )
         err[i] = 0;
+    *getErr = true;
     *targetParam = -1;
-    *t = 0;
-    *iT = 0;
 
     // Generate a set of random waveforms,
     // simulate each (in turn across all model permutations, or in parallel), and collect the
@@ -253,7 +252,7 @@ void Wavegen::adjustSigmas()
 
         // Simulate
         restoreSettled();
-        stimulate(waves, true);
+        stimulate(waves);
 
         // Collect per-parameter error
         PULL(err);
@@ -304,146 +303,32 @@ void Wavegen::adjustSigmas()
                   << sigmaAdjust[i] << '\t' << m.adjustableParams[i].sigma*sigmaAdjust[i] << std::endl;
 }
 
-void Wavegen::stimulate(const std::vector<Stimulation> &stim, bool ignoreGetErr)
+void Wavegen::stimulate(const std::vector<Stimulation> &stim)
 {
-    scalar rampDelta;
-    std::vector<Stimulation::Step> finalSteps;
     *t = 0;
     *iT = 0;
     if ( m.cfg.permute ) {
         const Stimulation &s = stim.at(0);
-        auto iter = s.steps.begin();
-        short obs = 0;
-        finalSteps.push_back(Stimulation::Step {s.duration, s.baseV, false} );
-        rampDelta = iter->ramp ? (iter->V - s.baseV) / (r.simCycles * iter->t / m.cfg.dt) : 0.0;
-        for ( int i = 0; i < nModels; i++ )
-            Vmem[i] = s.baseV;
-        for ( int i = 0; i < nModels; i++ )
-            Vramp[i] = rampDelta;
-        if ( !ignoreGetErr ) {
-            for ( int i = 0; i < nModels; i++ )
-                getErr[i] = false;
-            PUSH(getErr);
-        }
-        PUSH(Vmem);
-        PUSH(Vramp);
+        for ( int group = 0; group < m.numGroups; group++ )
+            waveforms[group] = s;
+        pushWaveforms();
         while ( *t < s.duration ) {
-            if ( iter->t <= *t ) {
-                for ( int i = 0; i < nModels; i++ )
-                    Vmem[i] = iter->V;
-                bool wasRamp = iter->ramp;
-                if ( ++iter == s.steps.end() )
-                    iter = finalSteps.begin();
-                if ( wasRamp || iter->ramp ) {
-                    rampDelta = iter->ramp
-                            ? (iter->V - (iter-1)->V) / (r.simCycles * (iter->t - (iter-1)->t) / m.cfg.dt)
-                            : 0.0;
-                    for ( int i = 0; i < nModels; i++ )
-                        Vramp[i] = rampDelta;
-                    PUSH(Vramp);
-                }
-                PUSH(Vmem);
-            }
-            if ( !ignoreGetErr && !obs && *t >= s.tObsBegin ) {
-                ++obs;
-                for ( int i = 0; i < nModels; i++ )
-                    getErr[i] = true;
-                PUSH(getErr);
-            } else if ( !ignoreGetErr && obs == 1 && *t >= s.tObsEnd ) {
-                ++obs;
-                for ( int i = 0; i < nModels; i++ )
-                    getErr[i] = false;
-                PUSH(getErr);
-            }
             *final = *t + m.cfg.dt >= s.duration;
             step();
         }
     } else { //-------------- !m.cfg.permute ------------------------------------------------------------
         assert((int)stim.size() >= m.numGroups);
-        std::vector<std::vector<Stimulation::Step>::const_iterator> iter;
-        std::vector<short> obs;
-        iter.resize(m.numGroups);
-        obs.resize(m.numGroups, 0);
         double maxDuration = 0.0, minDuration = stim[0].duration;
         for ( int group = 0; group < m.numGroups; group++ ) {
-            iter[group] = stim[group].steps.begin();
+            waveforms[group] = stim[group];
             if ( maxDuration < stim[group].duration )
                 maxDuration = stim[group].duration;
             if ( minDuration > stim[group].duration )
                 minDuration = stim[group].duration;
-            rampDelta = iter[group]->ramp
-                    ? (iter[group]->V - stim[group].baseV) / (r.simCycles * iter[group]->t / m.cfg.dt)
-                    : 0.0;
-            int offset = baseModelIndex(group);
-            for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
-                Vmem[i*m.numGroupsPerBlock + offset] = iter[group]->V;
-                Vramp[i*m.numGroupsPerBlock + offset] = rampDelta;
-            }
         }
-        if ( !ignoreGetErr ) {
-            for ( int i = 0; i < nModels; i++ )
-                getErr[i] = false;
-            PUSH(getErr);
-        }
-        PUSH(Vmem);
-        PUSH(Vramp);
-        if ( minDuration == maxDuration ) {
-            // Since this step is never actually reached, don't worry about individual voltages:
-            finalSteps.push_back(Stimulation::Step {maxDuration, stim[0].baseV, false} );
-        } else {
-            finalSteps.resize(2*m.numGroups);
-            for ( int group = 0; group < m.numGroups; group++ ) {
-                finalSteps[2*group] = Stimulation::Step {stim[group].duration, stim[group].baseV, false};
-                finalSteps[2*group+1] = Stimulation::Step {maxDuration, stim[group].baseV, false};
-            }
-        }
+        pushWaveforms();
+
         while ( *t < maxDuration ) {
-            bool pushVmem = false,
-                 pushRamp = false,
-                 pushGetErr = false;
-            for ( int group = 0; group < m.numGroups; group++ ) {
-                if ( iter[group]->t <= *t ) {
-                    int offset = baseModelIndex(group);
-                    for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
-                        Vmem[i*m.numGroupsPerBlock + offset] = iter[group]->V;
-                    }
-                    bool wasRamp = iter[group]->ramp;
-                    if ( ++iter[group] == stim[group].steps.end() ) {
-                        if ( minDuration == maxDuration )
-                            iter[group] = finalSteps.begin();
-                        else
-                            iter[group] = finalSteps.begin() + 2*group;
-                    }
-                    if ( wasRamp || iter[group]->ramp ) {
-                        rampDelta = iter[group]->ramp
-                                ? (iter[group]->V - (iter[group]-1)->V) / (r.simCycles * (iter[group]->t - (iter[group]-1)->t) / m.cfg.dt)
-                                : 0.0;
-                        for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
-                            Vramp[i*m.numGroupsPerBlock + offset] = rampDelta;
-                        }
-                        pushRamp = true;
-                    }
-                    pushVmem = true;
-                }
-                if ( !ignoreGetErr && !obs[group] && *t >= stim[group].tObsBegin ) {
-                    ++obs[group];
-                    for ( int i = 0, end = m.adjustableParams.size() + 1, offset = baseModelIndex(group); i < end; i++ )
-                        getErr[i*m.numGroupsPerBlock + offset] = true;
-                    pushGetErr = true;
-                } else if ( !ignoreGetErr && obs[group] == 1 && *t >= stim[group].tObsEnd ) {
-                    ++obs[group];
-                    for ( int i = 0, end = m.adjustableParams.size() + 1, offset = baseModelIndex(group); i < end; i++ )
-                        getErr[i*m.numGroupsPerBlock + offset] = false;
-                    pushGetErr = true;
-                }
-            }
-            // Apparently cudaMemcpy has a high overhead, so group- or blockwise transfers might not be any faster than this:
-            if ( pushVmem )
-                PUSH(Vmem);
-            if ( pushRamp )
-                PUSH(Vramp);
-            if ( pushGetErr )
-                PUSH(getErr);
             *final = *t + m.cfg.dt >= maxDuration;
             step();
         }
