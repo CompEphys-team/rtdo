@@ -46,7 +46,7 @@ tryagain:
 }
 
 
-Stimulation Wavegen::mutate(const Stimulation &parent, const Stimulation &crossoverParent)
+Stimulation Wavegen::mutate(const Stimulation &parent)
 {
     double total = p.muta.lCrossover + p.muta.lLevel + p.muta.lNumber + p.muta.lSwap + p.muta.lTime + p.muta.lType;
     Stimulation I(parent);
@@ -60,7 +60,7 @@ Stimulation Wavegen::mutate(const Stimulation &parent, const Stimulation &crosso
             if ( didCrossover ) { // Crossover only once
                 --i;
             } else {
-                mutateCrossover(I, crossoverParent);
+                mutateCrossover(I, std::next(mapeArchive.begin(), RNG.uniform(size_t(0), mapeArchive.size()-1))->wave);
                 didCrossover = true;
             }
         } else if ( (selection -= p.muta.lCrossover) < p.muta.lLevel ) {

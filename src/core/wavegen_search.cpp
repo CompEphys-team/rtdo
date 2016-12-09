@@ -65,10 +65,15 @@ void Wavegen::search(int param)
             initialising = nInitialWaves < r.nInitialWaves;
         } else {
             // Pick offspring of existing pool of elites
-            for ( Stimulation &w : *newWaves ) {
-                auto parent = RNG.choose(mapeArchive), crossoverParent = parent;
-                while ( (crossoverParent = RNG.choose(mapeArchive)) == parent );
-                w = mutate(parent->wave, crossoverParent->wave);
+            std::vector<size_t> parentIndices(numWavesPerEpisode);
+            RNG.generate(parentIndices, size_t(0), mapeArchive.size()-1);
+            std::sort(parentIndices.begin(), parentIndices.end());
+            auto it = mapeArchive.begin();
+            size_t pos = 0;
+            for ( int i = 0; i < numWavesPerEpisode; i++ ) {
+                std::advance(it, parentIndices[i] - pos);
+                (*newWaves)[i] = mutate(it->wave);
+                pos = parentIndices[i];
             }
         }
     }

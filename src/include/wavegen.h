@@ -83,7 +83,7 @@ protected:
     /**
      * @brief mutate returns a mutant offspring of @param parent, possibly using crossover with @param crossoverParent.
      */
-    Stimulation mutate(const Stimulation &parent, const Stimulation &crossoverParent);
+    Stimulation mutate(const Stimulation &parent);
 
     /// mutate helper functions
     void mutateCrossover(Stimulation&, const Stimulation&);
