@@ -224,8 +224,9 @@ struct MAPElite
     std::vector<size_t> bin;
     double fitness;
     Stimulation wave;
+    WaveStats *stats;
 
-    MAPElite(std::vector<size_t> bin, double fitness, Stimulation wave) : bin(bin), fitness(fitness), wave(wave) {}
+    MAPElite(std::vector<size_t> bin, double fitness, Stimulation wave) : bin(bin), fitness(fitness), wave(wave), stats(nullptr) {}
 
     /**
      * @brief compare performs a lexical comparison on bin.
@@ -247,6 +248,7 @@ struct MAPEStats
     size_t population = 0; //!< Archive size
     size_t historicInsertions = 0; //!< Total insertions within recorded history
     std::list<MAPElite>::const_iterator bestWave; //!< Iterator to the current highest achieving Stimulation in Wavegen::mapeArchive
+    WaveStats bestStats; //!< Behavioural statistics of the best wave (unpermuted Wavegen only)
 
     struct History {
         size_t insertions = 0; //!< Insertions into the archive on this iteration

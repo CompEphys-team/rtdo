@@ -156,6 +156,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
 
             double fitness = r.fitnessFunc(wavestats[group]);
             candidates.push_back(MAPElite(coords, fitness, waves[group]));
+            candidates.back().stats =& wavestats[group];
         }
 
         // Compare to elite & insert
@@ -190,6 +191,9 @@ void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
             mapeStats.bestWave = archIter;
             mapeStats.histIter->bestFitness = archIter->fitness;
             mapeStats.histIter->insertions = 1; // Code for "bestFitness has been set", see mape_tournament
+            if ( archIter->stats ) {
+                mapeStats.bestStats = *(archIter->stats);
+            }
         }
     }
 }

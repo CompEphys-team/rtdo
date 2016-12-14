@@ -69,6 +69,7 @@ bool MAPElite::compete(const MAPElite &rhs)
     if ( rhs.fitness > fitness ) {
         fitness = rhs.fitness;
         wave = rhs.wave;
+        stats = rhs.stats;
         return true;
     }
     return false;
