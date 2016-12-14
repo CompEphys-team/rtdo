@@ -191,9 +191,13 @@ void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
             mapeStats.bestWave = archIter;
             mapeStats.histIter->bestFitness = archIter->fitness;
             mapeStats.histIter->insertions = 1; // Code for "bestFitness has been set", see mape_tournament
+            std::cout << "New best wave: " << archIter->wave << ", Fitness: " << archIter->fitness << ", binned at "
+                      << archIter->bin[0] << "," << archIter->bin[1] << "," << archIter->bin[2] << "," << archIter->bin[3];
             if ( archIter->stats ) {
                 mapeStats.bestStats = *(archIter->stats);
+                std::cout << " for its stats:" << std::endl << *(archIter->stats);
             }
+            std::cout << std::endl;
         }
     }
 }

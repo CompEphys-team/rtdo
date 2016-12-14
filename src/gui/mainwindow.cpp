@@ -51,8 +51,8 @@ MainWindow::MainWindow(QWidget *parent) :
             wd.accessResistance = 15;
             wd.clampGain = 1000;
             wd.simCycles = 20;
-            wd.numSigmaAdjustWaveforms = 20;
-            wd.nInitialWaves = 1000;
+            wd.numSigmaAdjustWaveforms = 1e5;
+            wd.nInitialWaves = 1e5;
             wd.fitnessFunc = [](const WaveStats &S){
                 double longest, abs, rel;
                 if ( S.bubbles ) {
@@ -82,13 +82,30 @@ MainWindow::MainWindow(QWidget *parent) :
             wg.r.stopFunc = [&wg](const MAPEStats &S){
                 std::cout << "Search, iteration " << S.iterations << ": " << S.histIter->insertions << " insertions, population "
                           << S.population << ", best fitness: " << S.bestWave->fitness << endl;
-                return !S.historicInsertions;
+                return !S.historicInsertions || S.iterations == 1000;
             };
 
             //wg.permute();
             wg.adjustSigmas();
-            wg.search(0);
+            std::vector<MAPElite> winners;
+            std::vector<MAPEStats> stats;
+            for ( size_t i = 0, end = mt.adjustableParams.size(); i < end; i++ ) {
+                std::cout << "Finding waveforms for param '" << mt.adjustableParams[i].name << "' (" << i << "/" << end << ")" << endl;
+                wg.search(i);
+                winners.push_back(*wg.mapeStats.bestWave);
+                stats.push_back(wg.mapeStats);
+            }
             std::cout << "Search complete." << endl;
+            std::cout << "Winning waves and stats follow:" << endl;
+            for ( size_t i = 0; i < mt.adjustableParams.size(); i++ ) {
+                std::cout << "--- Param " << mt.adjustableParams[i].name << " ---" << endl;
+                std::cout << "MAPE iterations: " << stats[i].iterations << endl;
+                std::cout << "Total insertions: " << stats[i].insertions << endl;
+                std::cout << "Final population: " << stats[i].population << endl;
+                std::cout << "Best fitness: " << winners[i].fitness << endl;
+                std::cout << "Best waveform: " << winners[i].wave << endl;
+                std::cout << "Best waveform stats: " << stats[i].bestStats << endl;
+            }
         }
     }
 }
