@@ -74,3 +74,30 @@ bool MAPElite::compete(const MAPElite &rhs)
     }
     return false;
 }
+
+std::ostream &operator<<(std::ostream &os, const WaveStats::Bubble &B)
+{
+    os << "{" << B.cycles << '\t' << B.tEnd << '\t' << B.abs << '\t' << B.rel << '\t' << B.meanAbs << '\t' << B.meanRel << '}';
+    return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const WaveStats &S)
+{
+    os << "{" << S.bubbles << " bubbles, " << S.buds << " buds." << std::endl
+       << "  totalBubble: " << S.totalBubble << std::endl
+       << "  currentBubble: " << S.currentBubble << std::endl
+       << "  longestBubble: " << S.longestBubble << std::endl
+       << "  bestAbsBubble: " << S.bestAbsBubble << std::endl
+       << "  bestRelBubble: " << S.bestRelBubble << std::endl
+       << "  bestMeanAbsBubble: " << S.bestMeanAbsBubble << std::endl
+       << "  bestMeanRelBubble: " << S.bestMeanRelBubble << std::endl
+       << "  totalBud: " << S.totalBud << std::endl
+       << "  currentBud: " << S.currentBud << std::endl
+       << "  longestBud: " << S.longestBud << std::endl
+       << "  bestAbsBud: " << S.bestAbsBud << std::endl
+       << "  bestRelBud: " << S.bestRelBud << std::endl
+       << "  bestMeanAbsBud: " << S.bestMeanAbsBud << std::endl
+       << "  bestMeanRelBud: " << S.bestMeanRelBud << std::endl
+       << "}" << std::endl;
+     return os;
+}

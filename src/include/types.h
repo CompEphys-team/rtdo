@@ -218,6 +218,8 @@ struct WaveStats
     Bubble bestMeanAbsBud;
     Bubble bestMeanRelBud;
 };
+std::ostream &operator<<(std::ostream &os, const WaveStats::Bubble &B);
+std::ostream &operator<<(std::ostream&os, const WaveStats&S);
 
 struct MAPElite
 {
