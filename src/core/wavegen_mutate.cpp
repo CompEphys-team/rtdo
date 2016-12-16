@@ -3,7 +3,7 @@
 
 Stimulation Wavegen::getRandomStim()
 {
-    Stimulation I;
+    Stimulation I = Stimulation();
     int failedPos, failedAgain = 0;
     I.baseV = p.baseV;
     I.duration = p.duration;

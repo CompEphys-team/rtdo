@@ -27,8 +27,8 @@ typedef float scalar;
 struct Stimulation
 {
     scalar duration;
-    scalar tObsBegin = 0;
-    scalar tObsEnd = 0;
+    scalar tObsBegin;
+    scalar tObsEnd;
     scalar baseV;
 
     struct Step
@@ -56,7 +56,7 @@ struct Stimulation
     CUDA_HOST_MEMBER bool operator==(const Stimulation &other) const;
 
 private:
-    size_t numSteps = 0;
+    size_t numSteps;
 };
 std::ostream &operator<<(std::ostream&, const Stimulation&);
 std::ostream &operator<<(std::ostream&, const Stimulation::Step&);
