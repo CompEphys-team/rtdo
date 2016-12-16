@@ -8,7 +8,6 @@
 #include <dlfcn.h>
 #include "kernelhelper.h"
 #include "wavegen.h"
-#include "mapedimension.h"
 
 using std::endl;
 
@@ -53,35 +52,66 @@ MainWindow::MainWindow(QWidget *parent) :
             wd.simCycles = 20;
             wd.numSigmaAdjustWaveforms = 1e5;
             wd.nInitialWaves = 1e5;
-            wd.fitnessFunc = [](const WaveStats &S){
-                double longest, abs, rel;
-                if ( S.bubbles ) {
-                    longest = S.longestBubble.abs / S.longestBubble.cycles;
-                    abs = S.bestAbsBubble.abs / S.bestAbsBubble.cycles;
-                    rel = S.bestRelBubble.abs / S.bestRelBubble.cycles;
-                } else if ( S.buds ) {
-                    longest = S.longestBud.abs / S.longestBud.cycles;
-                    abs = S.bestAbsBud.abs / S.bestAbsBud.cycles;
-                    rel = S.bestRelBud.abs / S.bestRelBud.cycles;
-                } else {
-                    return -__DBL_MAX__;
+            scalar maxCycles = 100.0 / mt.cfg.dt * wd.simCycles;
+            scalar maxDeviation = sd.maxVoltage-sd.baseV > sd.baseV-sd.minVoltage ? sd.maxVoltage-sd.baseV : sd.baseV - sd.minVoltage;
+            wd.binFunc = [=](const Stimulation &I, const WaveStats &S, size_t precision){
+                std::vector<size_t> ret(3);
+                size_t mult = (1 << (5 + precision));
+                ret[0] = mult * scalar(S.best.cycles) / maxCycles; //< Dimension 1 : Bubble duration, normalised to 100ms
+                ret[1] = mult * S.best.tEnd / sd.duration; //< Dimension 2 : Time at end of bubble, normalised by total duration
+
+                scalar prevV = sd.baseV, prevT = 0., deviation = 0.;
+                for ( const Stimulation::Step &s : I ) {
+                    scalar sT = s.t, sV = s.V;
+                    if ( sT > S.best.tEnd ) { // Shorten last step to end of observed period
+                        sT = S.best.tEnd;
+                        if ( s.ramp )
+                            sV = (s.V - prevV) * (sT - prevT)/(s.t - prevT);
+                    }
+                    if ( s.ramp ) {
+                        if ( (sV >= sd.baseV && prevV >= sd.baseV) || (sV <= sd.baseV && prevV <= sd.baseV) ) { // Ramp does not cross baseV
+                            deviation += fabs((sV + prevV)/2 - sd.baseV) * (sT - prevT);
+                        } else { // Ramp crosses baseV, treat the two sides separately:
+                            scalar r1 = fabs(prevV - sd.baseV), r2 = fabs(sV - sd.baseV);
+                            scalar tCross = r1 / (r1 + r2) * (sT - prevT); //< time from beginning of ramp to baseV crossing
+                            deviation += r1/2*tCross + r2/2*(sT - prevT - tCross);
+                        }
+                    } else {
+                        deviation += fabs(sV - sd.baseV) * (sT - prevT);
+                    }
+                    prevT = sT;
+                    prevV = sV;
+                    if ( s.t > S.best.tEnd )
+                        break;
                 }
-                if ( longest > abs )
-                    return longest > rel ? longest : rel;
-                else
-                    return abs > rel ? abs : rel;
+                if ( prevT < S.best.tEnd ) { // Add remainder if last step ends before the observed period
+                    deviation += fabs(prevV - sd.baseV) * (S.best.tEnd - prevT);
+                    prevT = S.best.tEnd;
+                }
+                ret[2] = mult * (deviation/prevT) / maxDeviation; //< Dimension 3 : Average command voltage deviation from holding potential,
+                                                                  // normalised by the maximum possible deviation
+                return ret;
             };
-            wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_numB(sd, &WaveStats::bubbles)));
-            wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_numB(sd, &WaveStats::buds)));
-            wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_BScalar(&WaveStats::longestBubble, &WaveStats::Bubble::tEnd, 0, sd.duration, 100)));
-            wd.dim.push_back(std::shared_ptr<MAPEDimension>(new MAPED_BScalar(&WaveStats::longestBud, &WaveStats::Bubble::tEnd, 0, sd.duration, 100)));
+
+            wd.increasePrecision = [](const MAPEStats &S){
+                switch ( S.iterations ) {
+                case 100:
+                case 250:
+                case 500:
+                    std::cout << "Increasing resolution" << std::endl;
+                    return true;
+                default:
+                    return false;
+                }
+            };
+
             wd.historySize = 20;
 
             Wavegen wg(mt, sd, wd);
 
             wg.r.stopFunc = [&wg](const MAPEStats &S){
                 std::cout << "Search, iteration " << S.iterations << ": " << S.histIter->insertions << " insertions, population "
-                          << S.population << ", best fitness: " << S.bestWave->fitness << endl;
+                          << S.population << ", best fitness: " << S.bestWave->stats.fitness << endl;
                 return !S.historicInsertions || S.iterations == 1000;
             };
 
@@ -102,9 +132,8 @@ MainWindow::MainWindow(QWidget *parent) :
                 std::cout << "MAPE iterations: " << stats[i].iterations << endl;
                 std::cout << "Total insertions: " << stats[i].insertions << endl;
                 std::cout << "Final population: " << stats[i].population << endl;
-                std::cout << "Best fitness: " << winners[i].fitness << endl;
                 std::cout << "Best waveform: " << winners[i].wave << endl;
-                std::cout << "Best waveform stats: " << stats[i].bestStats << endl;
+                std::cout << "Best waveform stats: " << winners[i].stats << endl;
             }
         }
     }

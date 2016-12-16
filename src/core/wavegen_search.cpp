@@ -1,7 +1,6 @@
 #include "wavegen.h"
 #include "cuda_helper.h"
 #include "kernelhelper.h"
-#include "mapedimension.h"
 #include <cassert>
 
 using namespace GeNN_Bridge;
@@ -55,6 +54,12 @@ void Wavegen::search(int param)
 
         if ( r.stopFunc(mapeStats) )
             break;
+
+        if ( r.increasePrecision(mapeStats) ) {
+            mapeStats.precision++;
+            for ( MAPElite &e : mapeArchive )
+                e.bin = r.binFunc(e.wave, e.stats, mapeStats.precision);
+        }
 
         // Prepare next episode's waves
         if ( initialising ) {
@@ -124,39 +129,29 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
 
     if ( m.cfg.permute ) {
         // For both fitness and bin coordinates, take the mean fitness/behaviour of the stim across all evaluated model groups
-        double fitness = 0.0;
-        std::vector<double> behaviour(r.dim.size());
-        std::vector<size_t> coords(r.dim.size());
-        for ( int group = 0; group < m.numGroups; group++ ) {
-            // Calculate fitness value for this group:
-            fitness += r.fitnessFunc(wavestats[group]);
 
-            // Gather bin coordinate data for this group:
-            for ( size_t dim = 0; dim < r.dim.size(); dim++ )
-                behaviour[dim] += r.dim[dim]->behaviour(waves[0], wavestats[group]);
+        // Accumulate
+        WaveStats meanStats = WaveStats();
+        for ( int group = 0; group < m.numGroups; group++ ) {
+            meanStats += wavestats[group];
         }
 
         // Average
-        fitness /= m.numGroups;
-        for ( size_t dim = 0; dim < r.dim.size(); dim++ )
-            coords[dim] = r.dim[dim]->bin(behaviour[dim] / m.numGroups);
+        meanStats /= m.numGroups;
 
         // Compare averages to elite & insert
-        std::vector<MAPElite> tmp(1, MAPElite{coords, fitness, waves[0]});
-        mape_insert(tmp);
+        std::vector<MAPElite> candidate(1, MAPElite{r.binFunc(waves[0], meanStats, mapeStats.precision), waves[0], meanStats});
+        mape_insert(candidate);
 
     } else {
         std::vector<MAPElite> candidates;
         candidates.reserve(m.numGroups);
         for ( int group = 0; group < m.numGroups; group++ ) {
-            // Gather bin coordinate data for this group:
-            std::vector<size_t> coords(r.dim.size());
-            for ( size_t dim = 0; dim < r.dim.size(); dim++ )
-                coords[dim] = r.dim[dim]->bin(waves[group], wavestats[group]);
-
-            double fitness = r.fitnessFunc(wavestats[group]);
-            candidates.push_back(MAPElite(coords, fitness, waves[group]));
-            candidates.back().stats =& wavestats[group];
+            candidates.push_back(MAPElite {
+                                     r.binFunc(waves[group], wavestats[group], mapeStats.precision),
+                                     waves[group],
+                                     wavestats[group]
+                                 });
         }
 
         // Compare to elite & insert
@@ -187,17 +182,14 @@ void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
             mapeStats.insertions += archIter->compete(*candIter);
         }
 
-        if ( mapeStats.bestWave == mapeArchive.end() || archIter->fitness > mapeStats.bestWave->fitness ) {
+        if ( mapeStats.bestWave == mapeArchive.end() || archIter->stats.fitness > mapeStats.bestWave->stats.fitness ) {
             mapeStats.bestWave = archIter;
-            mapeStats.histIter->bestFitness = archIter->fitness;
+            mapeStats.histIter->bestFitness = archIter->stats.fitness;
             mapeStats.histIter->insertions = 1; // Code for "bestFitness has been set", see mape_tournament
-            std::cout << "New best wave: " << archIter->wave << ", Fitness: " << archIter->fitness << ", binned at "
-                      << archIter->bin[0] << "," << archIter->bin[1] << "," << archIter->bin[2] << "," << archIter->bin[3];
-            if ( archIter->stats ) {
-                mapeStats.bestStats = *(archIter->stats);
-                std::cout << " for its stats:" << std::endl << *(archIter->stats);
-            }
-            std::cout << std::endl;
+            std::cout << "New best wave: " << archIter->wave << ", binned at ";
+            for ( const size_t &x : archIter->bin )
+                std::cout << x << ",";
+            std::cout << " for its stats: " << archIter->stats << std::endl;
         }
     }
 }

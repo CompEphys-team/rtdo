@@ -190,45 +190,44 @@ struct RunData
 
 struct WaveStats
 {
-    struct Bubble //!< Streak of winning over all other deviations.
-    {
-        int cycles = 0; //!< Number of cycles won (= target param err > other param errs)
-        scalar tEnd = 0; //!< Time at end
-        scalar abs = 0; //!< Absolute distance to the next param err down (= target err - next err)
-        scalar rel = 0; //!< Relative distance to the next param err down (= (target err - next err)/next err)
-        scalar meanAbs = 0; //!< Absolute distance to mean param err
-        scalar meanRel = 0; //!< Relative distance to mean param err
-    };
+    struct {
+        int cycles;
+        scalar rel;
+    } current;
 
-    int bubbles = 0; //!< Number of bubbles. Note, all bubbles are contained within buds.
-    Bubble totalBubble;
-    Bubble currentBubble;
-    Bubble longestBubble;
-    Bubble bestAbsBubble;
-    Bubble bestRelBubble;
-    Bubble bestMeanAbsBubble;
-    Bubble bestMeanRelBubble;
+    struct {
+        int cycles; //!< Duration of bubble
+        scalar tEnd; //!< Time at end
+    } best;
 
-    int buds = 0; //!< Number of buds, which are winning streaks over the mean, rather than all, deviations.
-    Bubble totalBud;
-    Bubble currentBud;
-    Bubble longestBud;
-    Bubble bestAbsBud;
-    Bubble bestRelBud;
-    Bubble bestMeanAbsBud;
-    Bubble bestMeanRelBud;
+    scalar fitness; //!< Fitness of best bubble (= mean((target err / mean err) - 1) ; target err > mean err )
+
+    int bubbles; //!< Number of bubbles
+
+    inline WaveStats &operator+=(const WaveStats &rhs) {
+        best.cycles += rhs.best.cycles;
+        best.tEnd += rhs.best.tEnd;
+        fitness += rhs.fitness;
+        bubbles += rhs.bubbles;
+        return *this;
+    }
+    inline WaveStats &operator/=(int n) {
+        best.cycles /= n;
+        best.tEnd /= n;
+        fitness /= n;
+        bubbles /= n;
+        return *this;
+    }
 };
-std::ostream &operator<<(std::ostream &os, const WaveStats::Bubble &B);
 std::ostream &operator<<(std::ostream&os, const WaveStats&S);
 
 struct MAPElite
 {
     std::vector<size_t> bin;
-    double fitness;
     Stimulation wave;
-    WaveStats *stats;
+    WaveStats stats;
 
-    MAPElite(std::vector<size_t> bin, double fitness, Stimulation wave) : bin(bin), fitness(fitness), wave(wave), stats(nullptr) {}
+    MAPElite(std::vector<size_t> bin, Stimulation wave, WaveStats stats) : bin(bin), wave(wave), stats(stats) {}
 
     /**
      * @brief compare performs a lexical comparison on bin.
@@ -237,7 +236,7 @@ struct MAPElite
     inline bool operator<(const MAPElite &rhs) const { return bin < rhs.bin; }
 
     /**
-     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness and wave if @p rhs is better.
+     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's stats and wave if @p rhs is better.
      * @return true, if @p rhs beat and replaced the callee.
      */
     bool compete(const MAPElite &rhs);
@@ -248,9 +247,9 @@ struct MAPEStats
     size_t iterations = 0; //!< Total iterations completed
     size_t insertions = 0; //!< Total number of insertions into archive
     size_t population = 0; //!< Archive size
+    size_t precision = 0; //!< Precision level
     size_t historicInsertions = 0; //!< Total insertions within recorded history
     std::list<MAPElite>::const_iterator bestWave; //!< Iterator to the current highest achieving Stimulation in Wavegen::mapeArchive
-    WaveStats bestStats; //!< Behavioural statistics of the best wave (unpermuted Wavegen only)
 
     struct History {
         size_t insertions = 0; //!< Insertions into the archive on this iteration
@@ -263,16 +262,23 @@ struct MAPEStats
     MAPEStats(size_t sz, std::list<MAPElite>::const_iterator b) : bestWave(b), history(sz) {}
 };
 
-class MAPEDimension;
-
 struct WavegenData : public RunData
 {
     int numSigmaAdjustWaveforms; //!< Number of random waveforms used to normalise the perturbation rate.
                                  //!< If the MetaModel is not permuted, this number is rounded up to the
                                  //!< nearest multiple of the population size.
-    std::vector<std::shared_ptr<MAPEDimension>> dim; //!< MAP-Elites dimensions to use during search
     size_t nInitialWaves; //!< Number of randomly initialised waveforms used to start the search
-    std::function<double(WaveStats const&)> fitnessFunc; //!< Return fitness based on performance statistics
+
+    /**
+     * @brief binFunc returns a vector of discretised behavioural measures used as MAPE dimensions.
+     * It should adhere to the level of precision indicated in the third function argument.
+     */
+    std::function<std::vector<size_t>(const Stimulation &, const WaveStats &, size_t precision)> binFunc;
+    /**
+     * @brief increasePrecision should return true if the algorithm is at a stage where precision should be increased
+     * to the next level. Note that increasing precision causes the entire existing archive to be rebinned.
+     */
+    std::function<bool(const MAPEStats &)> increasePrecision;
     std::function<bool(MAPEStats const&)> stopFunc = [](MAPEStats const&){return true;}; //!< Return true to stop the search.
     size_t historySize;
 };

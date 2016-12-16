@@ -265,16 +265,13 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
 
         // Collect statistics for target param
         if ( paramID && paramID == $(targetParam) ) {
-            scalar next = 0.;
             scalar total = 0.;
             for ( int i = 1; i < NPARAM+1; i++ ) {
                 total += errShare[i*MM_NumGroupsPerBlock + groupID];
                 if ( i == paramID )
                     continue;
-                if ( errShare[i*MM_NumGroupsPerBlock + groupID] > next )
-                    next = errShare[i*MM_NumGroupsPerBlock + groupID];
             }
-            processStats(err, next, total / NPARAM, t + mt*mdt, *stats, $(final) && mt == $(simCycles)-1 );
+            processStats(err, total / NPARAM, t + mt*mdt, *stats, $(final) && mt == $(simCycles)-1 );
         }
     }
 } // end for mt

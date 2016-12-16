@@ -51,8 +51,7 @@ HEADERS  += \
     src/include/kernelhelper.h \
     src/include/wavegen.h \
     src/include/cuda_helper.h \
-    src/include/multiarray.h \
-    src/include/mapedimension.h
+    src/include/multiarray.h
 
 FORMS    += \
     src/gui/mainwindow.ui
