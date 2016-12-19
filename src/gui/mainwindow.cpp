@@ -77,7 +77,7 @@ MainWindow::MainWindow(QWidget *parent) :
                             deviation += r1/2*tCross + r2/2*(sT - prevT - tCross);
                         }
                     } else {
-                        deviation += fabs(sV - sd.baseV) * (sT - prevT);
+                        deviation += fabs(prevV - sd.baseV) * (sT - prevT); // Step only changes to sV at time sT
                     }
                     prevT = sT;
                     prevV = sV;
