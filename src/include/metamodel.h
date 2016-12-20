@@ -13,6 +13,8 @@ class MetaModel
 public:
     MetaModel(std::string xmlfile);
 
+    bool createModules(std::string directory);
+
     void generate(NNmodel &m);
 
     ModelData cfg;
@@ -30,8 +32,11 @@ public:
 
 protected:
     std::string _name;
+    std::string _dir;
     std::vector<Variable> _params;
     double _baseV;
+
+    bool createModule();
 
     void generateExperimentCode(NNmodel &m, neuronModel &n,
                                 std::vector<double> &fixedParamIni,
@@ -39,8 +44,9 @@ protected:
     void generateWavegenCode(NNmodel &m, neuronModel &n,
                              std::vector<double> &fixedParamIni,
                              std::vector<double> &variableIni);
-    std::string kernel(const std::string &tab) const;
-    std::string bridge(const std::vector<Variable> &globals, const std::vector<Variable> &vars) const;
+    std::string kernel(const std::string &tab, bool wrapVariables) const;
+    std::string generateWavegenBridge(const std::vector<Variable> &globals, const std::vector<Variable> &vars) const;
+    std::string generateExperimentBridge(const std::vector<Variable> &globals, const std::vector<Variable> &vars) const;
 
     bool isCurrent(const Variable &tmp) const;
 };

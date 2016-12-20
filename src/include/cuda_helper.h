@@ -17,16 +17,16 @@
 }
 #endif
 
-#define PULL(hostvar) \
+#define PULL(namesp, hostvar) \
     CHECK_CUDA_ERRORS(cudaMemcpy(hostvar, \
                                  d_ ## hostvar, \
-                                 sizeof(*hostvar) * GeNN_Bridge::NPOP, \
+                                 sizeof(*hostvar) * namesp::NPOP, \
                                  cudaMemcpyDeviceToHost))
 
-#define PUSH(hostvar) \
+#define PUSH(namesp, hostvar) \
     CHECK_CUDA_ERRORS(cudaMemcpy(d_ ## hostvar, \
                                  hostvar, \
-                                 sizeof(*hostvar) * GeNN_Bridge::NPOP, \
+                                 sizeof(*hostvar) * namesp::NPOP, \
                                  cudaMemcpyHostToDevice))
 
 #endif // CUDA_HELPER_H

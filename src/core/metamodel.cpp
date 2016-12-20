@@ -5,7 +5,11 @@
 #include "global.h"
 #include "stringUtils.h"
 #include <sstream>
+#include <fstream>
 #include "cuda_helper.h"
+#include <QString>
+#include <QRegularExpression>
+#include <cstdlib>
 
 #define HH "HH"
 
@@ -107,6 +111,44 @@ MetaModel::MetaModel(std::string xmlfile)
     }
 }
 
+bool MetaModel::createModules(string directory)
+{
+    putenv("GENN_PATH=" LOCAL_GENN_PATH);
+    _dir = directory;
+    cfg.type = ModuleType::Wavegen;
+    if ( !createModule() )
+        return false;
+    cfg.type = ModuleType::Experiment;
+    if ( !createModule() )
+        return false;
+    return true;
+}
+
+bool MetaModel::createModule()
+{
+    genn_target_generator = this;
+    std::string arg1 = std::string("generating ") + name() + " in";
+    char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(_dir.c_str())};
+    if ( generateAll(2, argv) ) {
+        std::cerr << "Code generation failed." << std::endl;
+        return false;
+    }
+
+    std::string dir = _dir + "/" + name() + "_CODE";
+    std::ofstream makefile(dir + "/Makefile", std::ios_base::app);
+    makefile << endl;
+    makefile << "runner.so: runner.o" << endl;
+    makefile << "\t$(CXX) -o $@ $< -shared" << endl;
+
+    std::stringstream cmd;
+    cmd << "cd " << dir << " && GENN_PATH=" << LOCAL_GENN_PATH << " make runner.so";
+    if ( system(cmd.str().c_str()) ) {
+        std::cerr << "Code compile failed." << std::endl;
+        return false;
+    }
+    return true;
+}
+
 void MetaModel::generateExperimentCode(NNmodel &m, neuronModel &n,
                                              std::vector<double> &fixedParamIni,
                                              std::vector<double> &variableIni)
@@ -134,7 +176,7 @@ void MetaModel::generateExperimentCode(NNmodel &m, neuronModel &n,
         variableIni.push_back(0.0);
     }
 
-    n.supportCode = bridge(globals, vars);
+    n.supportCode = generateExperimentBridge(globals, vars);
 
     n.simCode = R"EOF(
 scalar mdt = DT/$(simCycles);
@@ -145,7 +187,7 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
         Isyn = $(ImemG);
     }
 )EOF"
-    + kernel("    ")
+    + kernel("    ", true)
     + R"EOF(
 }
 
@@ -243,7 +285,7 @@ scalar mdt = DT/$(simCycles);
 for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
     Isyn = ($(clampGain)*(Vcmd-$(V)) - $(V)) / $(accessResistance);
 )EOF";
-    ss << kernel("    ") << endl;
+    ss << kernel("    ", true) << endl;
     ss <<   R"EOF(
     if ( $(getErr) ) {
         __shared__ double errShare[MM_NumModelsPerBlock];
@@ -286,7 +328,7 @@ Isyn += 0.; // Squelch Wunused in neuronFnct.cc
 
     n.simCode = ss.str();
 
-    n.supportCode = bridge(globals, vars);
+    n.supportCode = generateWavegenBridge(globals, vars);
 
     int numModels = nModels.size();
     nModels.push_back(n);
@@ -362,8 +404,21 @@ string MetaModel::name() const
 // Runge-Kutta k variable names
 static inline std::string k(std::string Y, int i) { return std::string("k") + std::to_string(i) + "__" + Y; }
 
-std::string MetaModel::kernel(const std::string &tab) const
+std::string MetaModel::kernel(const std::string &tab, bool wrapVariables) const
 {
+    auto wrap = [=](const std::string &name) {
+        if ( wrapVariables )
+            return std::string("$(") + name + std::string(")");
+        else
+            return name;
+    };
+    auto unwrap = [=](const std::string &code) {
+        if ( wrapVariables )
+            return code;
+        else
+            return QString::fromStdString(code).replace(QRegularExpression("\\$\\((\\w+)\\)"), "\\1").toStdString();
+    };
+
     std::stringstream ss;
     switch ( cfg.method ) {
     case IntegrationMethod::ForwardEuler:
@@ -371,20 +426,20 @@ std::string MetaModel::kernel(const std::string &tab) const
             ss << tab << v.type << " ddt__" << v.name << ";" << endl;
             ss << tab << "{" << endl;
             for ( const Variable &t : v.tmp ) {
-                ss << tab << tab << t.type << " " << t.name << " = " << t.code << ";" << endl;
+                ss << tab << tab << t.type << " " << t.name << " = " << unwrap(t.code) << ";" << endl;
                 if ( isCurrent(t) )
-                    ss << tab << tab << "$(" << t.name << ") = " << t.name << ";" << endl;
+                    ss << tab << tab << wrap(t.name) << " = " << t.name << ";" << endl;
             }
-            ss << tab << tab << "ddt__" << v.name << " = " << v.code << ";" << endl;
+            ss << tab << tab << "ddt__" << v.name << " = " << unwrap(v.code) << ";" << endl;
             ss << tab << "}" << endl;
         }
         for ( const StateVariable &v : stateVariables )
-            ss << tab << "$(" << v.name << ") += ddt__" << v.name << " * mdt;" << endl;
+            ss << tab << wrap(v.name) << " += ddt__" << v.name << " * mdt;" << endl;
         break;
     case IntegrationMethod::RungeKutta4:
         // Y0:
         for ( const StateVariable &v : stateVariables ) {
-            ss << tab << v.type << " Y0__" << v.name << " = $("  << v.name << ");" << endl;
+            ss << tab << v.type << " Y0__" << v.name << " = " << wrap(v.name) << ";" << endl;
         }
 
         for ( int i = 1; i < 5; i++ ) {
@@ -394,11 +449,11 @@ std::string MetaModel::kernel(const std::string &tab) const
                 ss << tab << v.type << " " << k(v.name, i) << ";" << endl;
                 ss << tab << "{" << endl;
                 for ( const Variable &t : v.tmp ) {
-                    ss << tab << tab << t.type << " " << t.name << " = " << t.code << ";" << endl;
+                    ss << tab << tab << t.type << " " << t.name << " = " << unwrap(t.code) << ";" << endl;
                     if ( i == 1 && isCurrent(t) )
-                        ss << tab << tab << "$(" << t.name << ") = " << t.name << ";" << endl;
+                        ss << tab << tab << wrap(t.name) << " = " << t.name << ";" << endl;
                 }
-                ss << tab << tab << k(v.name, i) << " = " << v.code << ";" << endl;
+                ss << tab << tab << k(v.name, i) << " = " << unwrap(v.code) << ";" << endl;
                 ss << tab << "}" << endl;
             }
             ss << endl;
@@ -406,11 +461,11 @@ std::string MetaModel::kernel(const std::string &tab) const
             ss << tab << "// Y_i = Y0 + k_i * {h/2, h/2, h, ...}, i = " << i << ":" << endl;
             for ( const StateVariable &v : stateVariables ) {
                 if ( i == 1 || i == 2 ) {
-                    ss << tab << "$(" << v.name << ") = Y0__" << v.name << " + " << k(v.name, i) << " * mdt * 0.5;" << endl;
+                    ss << tab << wrap(v.name) << " = Y0__" << v.name << " + " << k(v.name, i) << " * mdt * 0.5;" << endl;
                 } else if ( i == 3 ) {
-                    ss << tab << "$(" << v.name << ") = Y0__" << v.name << " + " << k(v.name, i) << " * mdt;" << endl;
+                    ss << tab << wrap(v.name) << " = Y0__" << v.name << " + " << k(v.name, i) << " * mdt;" << endl;
                 } else {
-                    ss << tab << "$(" << v.name << ") = Y0__" << v.name << " + mdt / 6.0 * ("
+                    ss << tab << wrap(v.name) << " = Y0__" << v.name << " + mdt / 6.0 * ("
                        << k(v.name, 1)
                        << " + 2*" << k(v.name, 2)
                        << " + 2*" << k(v.name, 3)
@@ -436,34 +491,32 @@ bool MetaModel::isCurrent(const Variable &tmp) const
     return false;
 }
 
-std::string MetaModel::bridge(std::vector<Variable> const& globals, std::vector<Variable> const& vars) const
+std::string MetaModel::generateWavegenBridge(std::vector<Variable> const& globals, std::vector<Variable> const& vars) const
 {
     std::stringstream ss;
 
     ss << "} // break namespace for STL includes:" << endl;
+
     ss << "#define MM_NumGroupsPerBlock " << numGroupsPerBlock << endl;
     ss << "#define MM_NumModelsPerBlock " << GENN_PREFERENCES::neuronBlockSize << endl;
     ss << "#define MM_NumGroups " << numGroups << endl;
     ss << "#define NVAR " << stateVariables.size() << endl;
     ss << "#define NPARAM " << adjustableParams.size() << endl;
-    ss << "#include \"kernelhelper.h\"" << endl;
     ss << "#include \"definitions.h\"" << endl;
+    ss << "#include \"wavegen_globals.h\"" << endl;
     ss << "#include \"supportcode.cu\"" << endl;
+    ss << "#include \"wavegen.cu\"" << endl;
     ss << endl;
 
+    ss << "namespace Wavegen_Global {" << endl;
     ss << "void populate(MetaModel &m) {" << endl;
-    if ( cfg.type == ModuleType::Experiment )
-        ss << "    GeNN_Bridge::NPOP = " << cfg.npop << ";" << endl;
-    else
-        ss << "    GeNN_Bridge::NPOP = " << numGroups * (adjustableParams.size()+1) << ";" << endl;
+    ss << "    NPOP = " << numGroups * (adjustableParams.size()+1) << ";" << endl;
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
         ss << "    m.stateVariables[" << i++ << "].v = " << v.name << HH << ";" << endl;
     }
     i = 0;
     for ( const Variable &c : currents ) {
-        if ( !isCurrent(c) )
-            break;
         ss << "    m.currents[" << i++ << "].v = " << c.name << HH << ";" << endl;
     }
     i = 0;
@@ -472,13 +525,135 @@ std::string MetaModel::bridge(std::vector<Variable> const& globals, std::vector<
     }
     ss << endl;
     for ( const Variable &p : globals ) {
-        ss << "    GeNN_Bridge::" << p.name << " =& " << p.name << HH << ";" << endl;
+        ss << "    " << p.name << " =& " << p.name << HH << ";" << endl;
     }
     for ( const Variable &v : vars ) {
-        ss << "    GeNN_Bridge::" << v.name << " = " << v.name << HH << ";" << endl;
-        ss << "    GeNN_Bridge::d_" << v.name << " = d_" << v.name << HH << ";" << endl;
+        ss << "    " << v.name << " = " << v.name << HH << ";" << endl;
+        ss << "    d_" << v.name << " = d_" << v.name << HH << ";" << endl;
     }
     ss << "}" << endl;
+    ss << "}" << endl;
+
+    ss << endl;
+    ss << "namespace " << HH << "_neuron {" << endl;
+
+    return ss.str();
+}
+
+std::string MetaModel::generateExperimentBridge(const std::vector<Variable> &globals, const std::vector<Variable> &vars) const
+{
+    std::stringstream ss;
+
+    ss << "} // break namespace for STL includes:" << endl;
+
+    ss << "#define NVAR " << stateVariables.size() << endl;
+    ss << "#define NPARAM " << adjustableParams.size() << endl;
+    ss << "#include \"definitions.h\"" << endl;
+    ss << "#include \"experiment_globals.h\"" << endl;
+    ss << "#include \"daq.h\"" << endl;
+    ss << "#include \"supportcode.cu\"" << endl;
+    ss << "#include \"experiment.cu\"" << endl;
+    ss << endl;
+
+    ss << "namespace Experiment_Global {" << endl;
+    ss << "void populate(MetaModel &m) {" << endl;
+    ss << "    NPOP = " << cfg.npop << ";" << endl;
+
+    int i = 0;
+    for ( const StateVariable &v : stateVariables ) {
+        ss << "    m.stateVariables[" << i++ << "].v = " << v.name << HH << ";" << endl;
+    }
+    i = 0;
+    for ( const AdjustableParam &p : adjustableParams ) {
+        ss << "    m.adjustableParams[" << i++ << "].v = " << p.name << HH << ";" << endl;
+    }
+    ss << endl;
+    for ( const Variable &p : globals ) {
+        ss << "    " << p.name << " =& " << p.name << HH << ";" << endl;
+    }
+    for ( const Variable &v : vars ) {
+        ss << "    " << v.name << " = " << v.name << HH << ";" << endl;
+        ss << "    d_" << v.name << " = d_" << v.name << HH << ";" << endl;
+    }
+    ss << "}" << endl;
+    ss << endl;
+
+    ss << R"EOF(
+class Simulator : public DAQ
+{
+private:
+    RunData *r;
+    double t;
+
+public:
+    Simulator(DAQData *p, RunData *r) : DAQ(p), r(r), t(0.0)
+    {
+        initialise();
+    }
+
+    ~Simulator() {}
+
+    void run(Stimulation s)
+    {
+        if ( running )
+            return;
+        currentStim = s;
+        running = true;
+    }
+
+    void next()
+    {
+        if ( !running )
+            return;
+        const float mdt = p->dt/r->simCycles;
+        double Isyn;
+        scalar Vcmd = getCommandVoltage(currentStim, t);
+        for ( unsigned int mt = 0; mt < r->simCycles; mt++ ) {
+            Isyn = (r->clampGain*(Vcmd-V) - V) / r->accessResistance;
+
+)EOF";
+    ss << kernel("            ", false);
+    ss << R"EOF(
+        }
+
+        current = Isyn;
+        voltage = V;
+        t += p->dt;
+    }
+
+    void reset()
+    {
+        if ( !running )
+            return;
+        running = false;
+        voltage = current = t = 0.0;
+    }
+
+    void initialise()
+    {
+)EOF";
+    for ( const StateVariable &v : stateVariables )
+        ss << "        " << v.name << " = " << v.initial << ";" << endl;
+    ss << endl;
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "        " << p.name << " = " << p.initial << ";" << endl;
+    ss << "    }" << endl << endl; // End initialise
+
+    // Declarations
+    for ( const StateVariable &v : stateVariables )
+        ss << "    " << v.type << " " << v.name << ";" << endl;
+    ss << endl;
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "    " << p.type << " " << p.name << ";" << endl;
+
+    ss << R"EOF(
+};
+
+DAQ *createSim(DAQData *p, RunData *r) { return new Simulator(p,r); }
+void destroySim(DAQ *sim) { delete sim; }
+
+} // end namespace Experiment_Global
+)EOF";
 
     ss << endl;
     ss << "namespace " << HH << "_neuron {" << endl;

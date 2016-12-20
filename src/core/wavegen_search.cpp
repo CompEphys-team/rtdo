@@ -1,9 +1,9 @@
 #include "wavegen.h"
 #include "cuda_helper.h"
-#include "kernelhelper.h"
 #include <cassert>
+#include "wavegen_globals.h"
 
-using namespace GeNN_Bridge;
+using namespace Wavegen_Global;
 
 void Wavegen::search(int param)
 {

@@ -1,6 +1,6 @@
-#include "kernelhelper.h"
+#include "wavegen_globals.h"
 
-namespace GeNN_Bridge {
+namespace Wavegen_Global {
 
 WaveStats *wavestats;
 WaveStats *clear_wavestats;
@@ -24,20 +24,15 @@ size_t NPOP;
 scalar *t;
 unsigned long long *iT;
 
-// Always present : model globals
+// Model globals
 int *simCycles;
 scalar *clampGain;
 scalar *accessResistance;
-
-// Experiment model globals
-scalar *VmemG;
-
-// Wavegen model globals
 int *targetParam;
 bool *final;
 bool *getErr;
 
-// Always present: model vars
+// Model vars
 scalar * err;
 scalar * d_err;
 

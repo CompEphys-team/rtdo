@@ -2,8 +2,9 @@
 #include <algorithm>
 #include <cassert>
 #include "cuda_helper.h"
+#include "wavegen_globals.h"
 
-using namespace GeNN_Bridge;
+using namespace Wavegen_Global;
 
 Wavegen::Wavegen(MetaModel &m, const StimulationData &p, const WavegenData &r) :
     p(p),
@@ -255,7 +256,7 @@ void Wavegen::adjustSigmas()
         stimulate(waves);
 
         // Collect per-parameter error
-        PULL(err);
+        PULL(Wavegen_Global, err);
         for ( int j = 0; j < nModels; j++ ) {
             int param = (j % blockSize) / m.numGroupsPerBlock;
             if ( param && !isnan(err[j]) ) // Collect error for stable detuned models only

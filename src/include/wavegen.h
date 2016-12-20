@@ -2,8 +2,8 @@
 #define WAVEGEN_H
 
 #include "types.h"
-#include "kernelhelper.h"
 #include "randutils.hpp"
+#include "metamodel.h"
 
 class Wavegen
 {
