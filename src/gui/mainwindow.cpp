@@ -6,7 +6,6 @@
 #include <fstream>
 #include <iostream>
 #include <dlfcn.h>
-#include "wavegen_globals.h"
 #include "wavegen.h"
 #include "experiment_globals.h"
 

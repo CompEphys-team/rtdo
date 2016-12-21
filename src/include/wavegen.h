@@ -101,7 +101,7 @@ protected:
     /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
      */
-    static std::vector<double> getSigmaMaxima(const MetaModel &m);
+    std::vector<double> getSigmaMaxima();
 
     /**
      * @brief baseModelIndex calculates the modelspace index of a given group's tuned model.

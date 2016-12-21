@@ -7,15 +7,36 @@
 #include "cuda_helper.h"
 #include <cstdlib>
 #include <dlfcn.h>
-#include "wavegen_globals.h"
 
-#define SUFFIX "HH"
+#define SUFFIX "WG"
 
 static WavegenConstructor *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
 WavegenConstructor::WavegenConstructor(MetaModel &m, const std::string &directory) :
-    m(m)
+    m(m),
+    stateVariables(m.stateVariables),
+    adjustableParams(m.adjustableParams),
+    currents(m.currents),
+    lib(loadLibrary(directory)),
+    populate((decltype(populate))dlsym(lib, "populate")),
+    pointers(populate(stateVariables, adjustableParams, currents)),
+    t(*(pointers.t)),
+    iT(*(pointers.iT)),
+    simCycles(*(pointers.simCycles)),
+    clampGain(*(pointers.clampGain)),
+    accessResistance(*(pointers.accessResistance)),
+    targetParam(*(pointers.targetParam)),
+    final(*(pointers.final)),
+    getErr(*(pointers.getErr)),
+    err(pointers.err),
+    waveforms(pointers.waveforms),
+    wavestats(pointers.wavestats)
+{
+
+}
+
+void *WavegenConstructor::loadLibrary(const std::string &directory)
 {
     // Generate code
     _this = this;
@@ -40,9 +61,10 @@ WavegenConstructor::WavegenConstructor(MetaModel &m, const std::string &director
 
     // Load library
     dlerror();
-    if ( ! (lib = dlopen((dir + "/runner.so").c_str(), RTLD_NOW)) )
+    void *libp;
+    if ( ! (libp = dlopen((dir + "/runner.so").c_str(), RTLD_NOW)) )
         throw std::runtime_error(std::string("Library load failed: ") + dlerror());
-    Wavegen_Global::init(m);
+    return libp;
 }
 
 void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
@@ -193,38 +215,47 @@ std::string WavegenConstructor::supportCode(const std::vector<Variable> &globals
     ss << "#define MM_NumGroupsPerBlock " << numGroupsPerBlock << endl;
     ss << "#define MM_NumModelsPerBlock " << GENN_PREFERENCES::neuronBlockSize << endl;
     ss << "#define MM_NumGroups " << numGroups << endl;
-    ss << "#define NVAR " << m.stateVariables.size() << endl;
-    ss << "#define NPARAM " << m.adjustableParams.size() << endl;
+    ss << "#define NVAR " << stateVariables.size() << endl;
+    ss << "#define NPARAM " << adjustableParams.size() << endl;
     ss << "#include \"definitions.h\"" << endl;
-    ss << "#include \"wavegen_globals.h\"" << endl;
+    ss << "#include \"wavegenconstructor.h\"" << endl;
     ss << "#include \"supportcode.cu\"" << endl;
     ss << "#include \"wavegen.cu\"" << endl;
     ss << endl;
 
-    ss << "namespace Wavegen_Global {" << endl;
-    ss << "void populate(MetaModel &m) {" << endl;
-    ss << "    NPOP = " << numGroups * (m.adjustableParams.size()+1) << ";" << endl;
+    ss << "extern \"C\" WavegenConstructor::Pointers populate(std::vector<StateVariable> &state, "
+                                                          << "std::vector<AdjustableParam> &param, "
+                                                          << "std::vector<Variable> &current) {" << endl;
+    ss << "    WavegenConstructor::Pointers pointers;" << endl;
+    ss << "    libInit(pointers, " << numGroups << ", " << (numGroups * (adjustableParams.size()+1)) << ");" << endl;
     int i = 0;
-    for ( const StateVariable &v : m.stateVariables ) {
-        ss << "    m.stateVariables[" << i++ << "].v = " << v.name << SUFFIX << ";" << endl;
+    for ( const StateVariable &v : stateVariables ) {
+        ss << "    state[" << i++ << "].v = " << v.name << SUFFIX << ";" << endl;
     }
     i = 0;
-    for ( const Variable &c : m.currents ) {
-        ss << "    m.currents[" << i++ << "].v = " << c.name << SUFFIX << ";" << endl;
+    for ( const Variable &c : currents ) {
+        ss << "    current[" << i++ << "].v = " << c.name << SUFFIX << ";" << endl;
     }
     i = 0;
-    for ( const AdjustableParam &p : m.adjustableParams ) {
-        ss << "    m.adjustableParams[" << i++ << "].v = " << p.name << SUFFIX << ";" << endl;
+    for ( const AdjustableParam &p : adjustableParams ) {
+        ss << "    param[" << i++ << "].v = " << p.name << SUFFIX << ";" << endl;
     }
     ss << endl;
     for ( const Variable &p : globals ) {
-        ss << "    " << p.name << " =& " << p.name << SUFFIX << ";" << endl;
+        ss << "    pointers." << p.name << " =& " << p.name << SUFFIX << ";" << endl;
     }
     for ( const Variable &v : vars ) {
-        ss << "    " << v.name << " = " << v.name << SUFFIX << ";" << endl;
-        ss << "    d_" << v.name << " = d_" << v.name << SUFFIX << ";" << endl;
+        ss << "    pointers." << v.name << " = " << v.name << SUFFIX << ";" << endl;
+        ss << "    pointers.d_" << v.name << " = d_" << v.name << SUFFIX << ";" << endl;
     }
-    ss << "}" << endl;
+    ss << endl;
+    ss << "    pointers.t =& t;" << endl;
+    ss << "    pointers.iT =& iT;" << endl;
+    ss << "    pointers.push =& push" << SUFFIX << "StateToDevice;" << endl;
+    ss << "    pointers.pull =& pull" << SUFFIX << "StateFromDevice;" << endl;
+    ss << "    pointers.step =& stepTimeGPU;" << endl;
+    ss << "    pointers.reset =& initialize;" << endl;
+    ss << "    return pointers;" << endl;
     ss << "}" << endl;
 
     ss << endl;

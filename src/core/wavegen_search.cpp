@@ -1,15 +1,12 @@
 #include "wavegen.h"
 #include "cuda_helper.h"
 #include <cassert>
-#include "wavegen_globals.h"
-
-using namespace Wavegen_Global;
 
 void Wavegen::search(int param)
 {
-    assert(param >= 0 && param < (int)m.adjustableParams.size());
-    *targetParam = param+1;
-    *getErr = true;
+    assert(param >= 0 && param < (int)adjustableParams.size());
+    targetParam = param+1;
+    getErr = true;
 
     const int numWavesPerEpisode = m.cfg.permute ? 1 : numGroups;
     std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
