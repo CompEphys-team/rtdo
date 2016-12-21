@@ -3,12 +3,12 @@
 
 #include "types.h"
 #include "randutils.hpp"
-#include "metamodel.h"
+#include "wavegenconstructor.h"
 
-class Wavegen
+class Wavegen : public WavegenConstructor
 {
 public:
-    Wavegen(MetaModel &m, const StimulationData &p, const WavegenData &r);
+    Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r);
 
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.
@@ -71,7 +71,6 @@ public:
     WavegenData r;
 
 protected:
-    MetaModel &m;
     int blockSize; //!< Number of models (not groups!) per thread block
     int nModels; //!< Total number of models
 
@@ -109,8 +108,8 @@ protected:
      * @param group The global group index
      */
     inline int baseModelIndex(int group) const {
-        return group % m.numGroupsPerBlock                 // Group index within the block
-                + (group/m.numGroupsPerBlock) * blockSize; // Modelspace offset of the block this group belongs to
+        return group % numGroupsPerBlock                 // Group index within the block
+                + (group/numGroupsPerBlock) * blockSize; // Modelspace offset of the block this group belongs to
     }
 
     randutils::mt19937_rng RNG;

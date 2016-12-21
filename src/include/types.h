@@ -117,7 +117,6 @@ struct ModelData {
     double dt;
     int npop;
     IntegrationMethod method;
-    ModuleType type;
     bool permute;
 };
 

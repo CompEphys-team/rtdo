@@ -6,12 +6,12 @@
 
 using namespace Wavegen_Global;
 
-Wavegen::Wavegen(MetaModel &m, const StimulationData &p, const WavegenData &r) :
+Wavegen::Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r) :
+    WavegenConstructor(m, dir),
     p(p),
     r(r),
-    m(m),
-    blockSize(m.numGroupsPerBlock * (m.adjustableParams.size() + 1)),
-    nModels(m.numGroups * (m.adjustableParams.size() + 1)),
+    blockSize(numGroupsPerBlock * (m.adjustableParams.size() + 1)),
+    nModels(numGroups * (m.adjustableParams.size() + 1)),
     RNG(),
     sigmaAdjust(m.adjustableParams.size(), 1.0),
     sigmax(getSigmaMaxima(m)),
@@ -58,7 +58,7 @@ void Wavegen::permute()
     for ( AdjustableParam &p : m.adjustableParams ) {
         numPermutedGroups *= p.wgPermutations + 1;
     }
-    int numRandomGroups = m.numGroups - numPermutedGroups;
+    int numRandomGroups = numGroups - numPermutedGroups;
 
     for ( AdjustableParam &p : m.adjustableParams ) {
         // First, generate the values:
@@ -94,13 +94,13 @@ void Wavegen::permute()
             if ( group % stride == 0)
                 permutation = (permutation + 1) % (p.wgPermutations + 1);
             for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
-                p[i*m.numGroupsPerBlock + offset] = values.at(permutation);
+                p[i*numGroupsPerBlock + offset] = values.at(permutation);
             }
         }
         for ( int randomGroup = 0; randomGroup < numRandomGroups; randomGroup++ ) {
             int offset = baseModelIndex(randomGroup+numPermutedGroups);
             for ( int i = 0, end = m.adjustableParams.size() + 1; i < end; i++ ) {
-                p[i*m.numGroupsPerBlock + offset] = values.at(p.wgPermutations + 1 + randomGroup);
+                p[i*numGroupsPerBlock + offset] = values.at(p.wgPermutations + 1 + randomGroup);
             }
         }
 
@@ -115,7 +115,7 @@ void Wavegen::detune()
     int k = 0;
     for ( AdjustableParam &p : m.adjustableParams ) {
         scalar sigma = p.sigma * sigmaAdjust[k] + (p.multiplicative ? 1 : 0);
-        for ( int group = 0, paramOffset = ++k * m.numGroupsPerBlock; group < m.numGroups; group++ ) {
+        for ( int group = 0, paramOffset = ++k * numGroupsPerBlock; group < numGroups; group++ ) {
             int tuned             = baseModelIndex(group),  // The index of the tuned/base model
                 detune            = tuned + paramOffset;    // The index of the model being detuned
             scalar newp;
@@ -140,7 +140,7 @@ void Wavegen::settle()
     I.duration = r.settleTime;
     I.baseV = p.baseV;
     I.clear();
-    for ( int group = 0; group < m.numGroups; group++ )
+    for ( int group = 0; group < numGroups; group++ )
         waveforms[group] = I;
     pushWaveforms();
     *getErr = false;
@@ -153,10 +153,10 @@ void Wavegen::settle()
     pull();
     if ( m.cfg.permute ) {
         // Collect the state variables of every base model, i.e. the tuned version
-        settled = std::list<std::vector<scalar>>(m.stateVariables.size(), std::vector<scalar>(m.numGroups));
+        settled = std::list<std::vector<scalar>>(m.stateVariables.size(), std::vector<scalar>(numGroups));
         auto iter = settled.begin();
         for ( StateVariable &v : m.stateVariables ) {
-            for ( int group = 0; group < m.numGroups; group++ ) {
+            for ( int group = 0; group < numGroups; group++ ) {
                 (*iter)[group] = v[baseModelIndex(group)];
             }
             ++iter;
@@ -165,7 +165,7 @@ void Wavegen::settle()
         // Provide some auditing info
         std::vector<scalar> V;
         int valid = 0;
-        for ( int group = 0; group < m.numGroups; group++ ) {
+        for ( int group = 0; group < numGroups; group++ ) {
             scalar const& v = m.stateVariables[0].v[baseModelIndex(group)];
             V.push_back(v);
             if ( v > p.baseV-5 && v < p.baseV+5 )
@@ -174,8 +174,8 @@ void Wavegen::settle()
         std::sort(V.begin(), V.end());
         std::cout << "Settled all permuted models to holding potential of " << p.baseV << " mV for "
                   << r.settleTime << " ms." << std::endl;
-        std::cout << "Median achieved potential: " << V[m.numGroups/2] << " mV (95% within [" << V[m.numGroups/20]
-                  << " mV, " << V[m.numGroups/20*19] << " mV]), " << valid << "/" << m.numGroups
+        std::cout << "Median achieved potential: " << V[numGroups/2] << " mV (95% within [" << V[numGroups/20]
+                  << " mV, " << V[numGroups/20*19] << " mV]), " << valid << "/" << numGroups
                   << " models within +-5 mV of holding." << std::endl;
     } else {
         // Collect the state of one base model
@@ -200,8 +200,8 @@ bool Wavegen::restoreSettled()
     if ( m.cfg.permute ) {
         for ( StateVariable &v : m.stateVariables ) {
             for ( int i = 0; i < nModels; i++ ) {
-                int group = i % m.numGroupsPerBlock            // Group index within the block
-                        + (i/blockSize) * m.numGroupsPerBlock; // Offset (in group space) of the block this model belongs to
+                int group = i % numGroupsPerBlock            // Group index within the block
+                        + (i/blockSize) * numGroupsPerBlock; // Offset (in group space) of the block this model belongs to
                 v[i] = (*iter)[group];
             }
             ++iter;
@@ -236,7 +236,7 @@ void Wavegen::adjustSigmas()
     int end = m.cfg.permute
             ? r.numSigmaAdjustWaveforms
               // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
-            : ((r.numSigmaAdjustWaveforms + m.numGroups - 1) / m.numGroups);
+            : ((r.numSigmaAdjustWaveforms + numGroups - 1) / numGroups);
     for ( int i = 0; i < end; i++ ) {
 
         // Generate random wave/s
@@ -246,7 +246,7 @@ void Wavegen::adjustSigmas()
             waves[0] = getRandomStim();
         } else {
             if ( !i )
-                waves.resize(m.numGroups);
+                waves.resize(numGroups);
             for ( Stimulation &w : waves )
                 w = getRandomStim();
         }
@@ -258,7 +258,7 @@ void Wavegen::adjustSigmas()
         // Collect per-parameter error
         PULL(Wavegen_Global, err);
         for ( int j = 0; j < nModels; j++ ) {
-            int param = (j % blockSize) / m.numGroupsPerBlock;
+            int param = (j % blockSize) / numGroupsPerBlock;
             if ( param && !isnan(err[j]) ) // Collect error for stable detuned models only
                 sumParamErr[param-1] += err[j];
             err[j] = 0;
@@ -267,7 +267,7 @@ void Wavegen::adjustSigmas()
 
     std::vector<double> meanParamErr(sumParamErr);
     for ( double & e : meanParamErr ) {
-        e /= end * m.numGroups * p.duration/m.cfg.dt * r.simCycles;
+        e /= end * numGroups * p.duration/m.cfg.dt * r.simCycles;
     }
 
     // Find the median of mean parameter errors:
@@ -310,7 +310,7 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
     *iT = 0;
     if ( m.cfg.permute ) {
         const Stimulation &s = stim.at(0);
-        for ( int group = 0; group < m.numGroups; group++ )
+        for ( int group = 0; group < numGroups; group++ )
             waveforms[group] = s;
         pushWaveforms();
         while ( *t < s.duration ) {
@@ -318,9 +318,9 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
             step();
         }
     } else { //-------------- !m.cfg.permute ------------------------------------------------------------
-        assert((int)stim.size() >= m.numGroups);
+        assert((int)stim.size() >= numGroups);
         double maxDuration = 0.0, minDuration = stim[0].duration;
-        for ( int group = 0; group < m.numGroups; group++ ) {
+        for ( int group = 0; group < numGroups; group++ ) {
             waveforms[group] = stim[group];
             if ( maxDuration < stim[group].duration )
                 maxDuration = stim[group].duration;

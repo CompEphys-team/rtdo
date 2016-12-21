@@ -22,7 +22,7 @@ void Stimulation::erase(Stimulation::Step *position)
     for ( Step *it = position; it < end()-1; it++ ) // Move everything from position to the end left by one
         *it = *(it+1);
     numSteps--;
-    assert(numSteps >= 0);
+    assert(numSteps > 0);
 }
 
 bool Stimulation::operator==(const Stimulation &other) const

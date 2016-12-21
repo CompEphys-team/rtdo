@@ -13,7 +13,7 @@
 
 #define HH "HH"
 
-MetaModel *genn_target_generator = nullptr;
+void (*MetaModel::modelDef)(NNmodel&);
 
 MetaModel::MetaModel(std::string xmlfile)
 {
@@ -111,44 +111,6 @@ MetaModel::MetaModel(std::string xmlfile)
     }
 }
 
-bool MetaModel::createModules(string directory)
-{
-    putenv("GENN_PATH=" LOCAL_GENN_PATH);
-    _dir = directory;
-    cfg.type = ModuleType::Wavegen;
-    if ( !createModule() )
-        return false;
-    cfg.type = ModuleType::Experiment;
-    if ( !createModule() )
-        return false;
-    return true;
-}
-
-bool MetaModel::createModule()
-{
-    genn_target_generator = this;
-    std::string arg1 = std::string("generating ") + name() + " in";
-    char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(_dir.c_str())};
-    if ( generateAll(2, argv) ) {
-        std::cerr << "Code generation failed." << std::endl;
-        return false;
-    }
-
-    std::string dir = _dir + "/" + name() + "_CODE";
-    std::ofstream makefile(dir + "/Makefile", std::ios_base::app);
-    makefile << endl;
-    makefile << "runner.so: runner.o" << endl;
-    makefile << "\t$(CXX) -o $@ $< -shared" << endl;
-
-    std::stringstream cmd;
-    cmd << "cd " << dir << " && GENN_PATH=" << LOCAL_GENN_PATH << " make runner.so";
-    if ( system(cmd.str().c_str()) ) {
-        std::cerr << "Code compile failed." << std::endl;
-        return false;
-    }
-    return true;
-}
-
 void MetaModel::generateExperimentCode(NNmodel &m, neuronModel &n,
                                              std::vector<double> &fixedParamIni,
                                              std::vector<double> &variableIni)
@@ -187,7 +149,7 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
         Isyn = $(ImemG);
     }
 )EOF"
-    + kernel("    ", true)
+    + kernel("    ", true, false)
     + R"EOF(
 }
 
@@ -204,145 +166,12 @@ if ( $(getErrG) ) {
     m.addNeuronPopulation(HH, cfg.npop, numModels, fixedParamIni, variableIni);
 }
 
-void MetaModel::generateWavegenCode(NNmodel &m, neuronModel &n,
-                                          std::vector<double> &fixedParamIni,
-                                          std::vector<double> &variableIni)
-{
-    std::vector<Variable> globals = {
-        Variable("simCycles", "", "int"),
-        Variable("clampGain"),
-        Variable("accessResistance"),
-        Variable("targetParam", "", "int"),
-        Variable("getErr", "", "bool"),
-        Variable("final", "", "bool")
-    };
-    for ( Variable &p : globals ) {
-        n.extraGlobalNeuronKernelParameters.push_back(p.name);
-        n.extraGlobalNeuronKernelParameterTypes.push_back(p.type);
-    }
-
-    std::vector<Variable> vars = {
-        Variable("err")
-    };
-    for ( Variable &v : vars ) {
-        n.varNames.push_back(v.name);
-        n.varTypes.push_back(v.type);
-        variableIni.push_back(0.0);
-    }
-
-    for ( const Variable &c : currents ) {
-        n.varNames.push_back(c.name);
-        n.varTypes.push_back(c.type);
-        variableIni.push_back(0.0);
-    }
-
-    // Allocate model groups such that target param models go into a single warp:
-    // i.e., model groups are interleaved with stride (numGroupsPerBlock = warpsize/2^n, n>=0),
-    // which means that models detuned in a given parameter are warp-aligned.
-    cudaDeviceProp prop;
-    int deviceCount, maxThreadsPerBlock = 0;
-    CHECK_CUDA_ERRORS(cudaGetDeviceCount(&deviceCount));
-    for (int device = 0; device < deviceCount; device++) {
-        CHECK_CUDA_ERRORS(cudaSetDevice(device));
-        CHECK_CUDA_ERRORS(cudaGetDeviceProperties(&prop, device));
-        if ( prop.maxThreadsPerBlock > maxThreadsPerBlock ) {
-            // somewhat arbitrarily pick a device with the most threads per block - a.k.a no support for multiGPU.
-            maxThreadsPerBlock = prop.maxThreadsPerBlock;
-            numGroupsPerBlock = prop.warpSize;
-            GENN_PREFERENCES::defaultDevice = device;
-        }
-    }
-    while ( (int)adjustableParams.size() + 1 > maxThreadsPerBlock / numGroupsPerBlock )
-        numGroupsPerBlock /= 2;
-    GENN_PREFERENCES::autoChooseDevice = 0;
-    GENN_PREFERENCES::optimiseBlockSize = 0;
-    GENN_PREFERENCES::neuronBlockSize = numGroupsPerBlock * (adjustableParams.size() + 1);
-
-    if ( cfg.permute ) {
-        numGroups = 1;
-        for ( AdjustableParam &p : adjustableParams ) {
-            numGroups *= p.wgPermutations + 1;
-        }
-    } else {
-        numGroups = cfg.npop;
-    }
-    // Round up to nearest multiple of numGroupsPerBlock to achieve full occupancy and regular interleaving:
-    numGroups = ((numGroups + numGroupsPerBlock - 1) / numGroupsPerBlock) * numGroupsPerBlock;
-    numBlocks = numGroups / numGroupsPerBlock;
-
-    stringstream ss;
-    ss << endl << "#ifndef _" << name() << "_neuronFnct_cc" << endl; // No Wavegen on the CPU
-    ss << R"EOF(
-const int groupID = id % MM_NumGroupsPerBlock;                       // Block-local group id
-const int group = groupID + (id/MM_NumModelsPerBlock) * MM_NumGroupsPerBlock;   // Global group id
-const int paramID = (id % MM_NumModelsPerBlock) / MM_NumGroupsPerBlock;
-WaveStats *stats;
-if ( $(getErr) && paramID == $(targetParam) ) // Preload for @fn processStats - other threads don't need this
-    stats =& dd_wavestats[group];
-scalar Vcmd = getCommandVoltage(dd_waveforms[group], t);
-
-scalar mdt = DT/$(simCycles);
-for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
-    Isyn = ($(clampGain)*(Vcmd-$(V)) - $(V)) / $(accessResistance);
-)EOF";
-    ss << kernel("    ", true) << endl;
-    ss <<   R"EOF(
-    if ( $(getErr) ) {
-        __shared__ double errShare[MM_NumModelsPerBlock];
-        scalar err;
-
-        // Make base model (paramID==0) Isyn available
-        if ( !paramID )
-            errShare[groupID] = Isyn;
-        __syncthreads();
-
-        // Get deviation from the base model
-        if ( paramID ) {
-            err = abs(Isyn - errShare[groupID]);
-            if ( $(targetParam) < 0 )
-                $(err) += err * mdt;
-            errShare[paramID*MM_NumGroupsPerBlock + groupID] = err;
-        }
-        __syncthreads();
-
-        // Collect statistics for target param
-        if ( paramID && paramID == $(targetParam) ) {
-            scalar total = 0.;
-            for ( int i = 1; i < NPARAM+1; i++ ) {
-                total += errShare[i*MM_NumGroupsPerBlock + groupID];
-                if ( i == paramID )
-                    continue;
-            }
-            processStats(err, total / NPARAM, t + mt*mdt, *stats, $(final) && mt == $(simCycles)-1 );
-        }
-    }
-} // end for mt
-
-if ( $(getErr) && paramID == $(targetParam) )
-    dd_wavestats[group] = *stats;
-
-#else
-Isyn += 0.; // Squelch Wunused in neuronFnct.cc
-#endif
-)EOF";
-
-    n.simCode = ss.str();
-
-    n.supportCode = generateWavegenBridge(globals, vars);
-
-    int numModels = nModels.size();
-    nModels.push_back(n);
-    m.addNeuronPopulation(HH, numGroups * (adjustableParams.size()+1), numModels, fixedParamIni, variableIni);
-}
-
-void MetaModel::generate(NNmodel &m)
+neuronModel MetaModel::generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni)
 {
     if ( !GeNNReady )
         initGeNN();
 
     neuronModel n;
-    std::vector<double> fixedParamIni;
-    std::vector<double> variableIni;
 
     for ( const StateVariable &v : stateVariables ) {
         n.varNames.push_back(v.name);
@@ -370,26 +199,22 @@ void MetaModel::generate(NNmodel &m)
     GENN_PREFERENCES::userNvccFlags = "-std c++11 -Xcompiler \"-fPIC\" -I" CORE_INCLUDE_PATH;
 
     m.setDT(cfg.dt);
-    m.setName(name());
+
 #ifdef USEDOUBLE
     m.setPrecision(GENN_DOUBLE);
 #else
     m.setPrecision(GENN_FLOAT);
 #endif
 
-    switch ( cfg.type ) {
-    case ModuleType::Experiment: generateExperimentCode(m, n, fixedParamIni, variableIni); break;
-    case ModuleType::Wavegen:    generateWavegenCode   (m, n, fixedParamIni, variableIni); break;
-    }
-
-    m.finalize();
     m.resetKernel = GENN_FLAGS::calcSynapses; // i.e., never.
+
+    return n;
 
 }
 
-string MetaModel::name() const
+string MetaModel::name(ModuleType type) const
 {
-    switch ( cfg.type ) {
+    switch ( type ) {
     case ModuleType::Experiment:
         return _name + "_experiment";
         break;
@@ -404,7 +229,7 @@ string MetaModel::name() const
 // Runge-Kutta k variable names
 static inline std::string k(std::string Y, int i) { return std::string("k") + std::to_string(i) + "__" + Y; }
 
-std::string MetaModel::kernel(const std::string &tab, bool wrapVariables) const
+std::string MetaModel::kernel(const std::string &tab, bool wrapVariables, bool defineCurrents) const
 {
     auto wrap = [=](const std::string &name) {
         if ( wrapVariables )
@@ -427,7 +252,7 @@ std::string MetaModel::kernel(const std::string &tab, bool wrapVariables) const
             ss << tab << "{" << endl;
             for ( const Variable &t : v.tmp ) {
                 ss << tab << tab << t.type << " " << t.name << " = " << unwrap(t.code) << ";" << endl;
-                if ( isCurrent(t) )
+                if ( defineCurrents && isCurrent(t) )
                     ss << tab << tab << wrap(t.name) << " = " << t.name << ";" << endl;
             }
             ss << tab << tab << "ddt__" << v.name << " = " << unwrap(v.code) << ";" << endl;
@@ -450,7 +275,7 @@ std::string MetaModel::kernel(const std::string &tab, bool wrapVariables) const
                 ss << tab << "{" << endl;
                 for ( const Variable &t : v.tmp ) {
                     ss << tab << tab << t.type << " " << t.name << " = " << unwrap(t.code) << ";" << endl;
-                    if ( i == 1 && isCurrent(t) )
+                    if ( defineCurrents && i == 1 && isCurrent(t) )
                         ss << tab << tab << wrap(t.name) << " = " << t.name << ";" << endl;
                 }
                 ss << tab << tab << k(v.name, i) << " = " << unwrap(v.code) << ";" << endl;
@@ -481,63 +306,12 @@ std::string MetaModel::kernel(const std::string &tab, bool wrapVariables) const
 
 bool MetaModel::isCurrent(const Variable &tmp) const
 {
-    if ( cfg.type == ModuleType::Wavegen ) {
-        for ( const Variable &c : currents ) {
-            if ( c.name == tmp.name ) {
-                return true;
-            }
+    for ( const Variable &c : currents ) {
+        if ( c.name == tmp.name ) {
+            return true;
         }
     }
     return false;
-}
-
-std::string MetaModel::generateWavegenBridge(std::vector<Variable> const& globals, std::vector<Variable> const& vars) const
-{
-    std::stringstream ss;
-
-    ss << "} // break namespace for STL includes:" << endl;
-
-    ss << "#define MM_NumGroupsPerBlock " << numGroupsPerBlock << endl;
-    ss << "#define MM_NumModelsPerBlock " << GENN_PREFERENCES::neuronBlockSize << endl;
-    ss << "#define MM_NumGroups " << numGroups << endl;
-    ss << "#define NVAR " << stateVariables.size() << endl;
-    ss << "#define NPARAM " << adjustableParams.size() << endl;
-    ss << "#include \"definitions.h\"" << endl;
-    ss << "#include \"wavegen_globals.h\"" << endl;
-    ss << "#include \"supportcode.cu\"" << endl;
-    ss << "#include \"wavegen.cu\"" << endl;
-    ss << endl;
-
-    ss << "namespace Wavegen_Global {" << endl;
-    ss << "void populate(MetaModel &m) {" << endl;
-    ss << "    NPOP = " << numGroups * (adjustableParams.size()+1) << ";" << endl;
-    int i = 0;
-    for ( const StateVariable &v : stateVariables ) {
-        ss << "    m.stateVariables[" << i++ << "].v = " << v.name << HH << ";" << endl;
-    }
-    i = 0;
-    for ( const Variable &c : currents ) {
-        ss << "    m.currents[" << i++ << "].v = " << c.name << HH << ";" << endl;
-    }
-    i = 0;
-    for ( const AdjustableParam &p : adjustableParams ) {
-        ss << "    m.adjustableParams[" << i++ << "].v = " << p.name << HH << ";" << endl;
-    }
-    ss << endl;
-    for ( const Variable &p : globals ) {
-        ss << "    " << p.name << " =& " << p.name << HH << ";" << endl;
-    }
-    for ( const Variable &v : vars ) {
-        ss << "    " << v.name << " = " << v.name << HH << ";" << endl;
-        ss << "    d_" << v.name << " = d_" << v.name << HH << ";" << endl;
-    }
-    ss << "}" << endl;
-    ss << "}" << endl;
-
-    ss << endl;
-    ss << "namespace " << HH << "_neuron {" << endl;
-
-    return ss.str();
 }
 
 std::string MetaModel::generateExperimentBridge(const std::vector<Variable> &globals, const std::vector<Variable> &vars) const
@@ -612,7 +386,7 @@ public:
             Isyn = (r->clampGain*(Vcmd-V) - V) / r->accessResistance;
 
 )EOF";
-    ss << kernel("            ", false);
+    ss << kernel("            ", false, false);
     ss << R"EOF(
         }
 

@@ -11,7 +11,7 @@ void Wavegen::search(int param)
     *targetParam = param+1;
     *getErr = true;
 
-    const int numWavesPerEpisode = m.cfg.permute ? 1 : m.numGroups;
+    const int numWavesPerEpisode = m.cfg.permute ? 1 : numGroups;
     std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
 
     // Initialise the population for episode 1:
@@ -132,12 +132,12 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
 
         // Accumulate
         WaveStats meanStats = WaveStats();
-        for ( int group = 0; group < m.numGroups; group++ ) {
+        for ( int group = 0; group < numGroups; group++ ) {
             meanStats += wavestats[group];
         }
 
         // Average
-        meanStats /= m.numGroups;
+        meanStats /= numGroups;
 
         // Compare averages to elite & insert
         std::vector<MAPElite> candidate(1, MAPElite{r.binFunc(waves[0], meanStats, mapeStats.precision), waves[0], meanStats});
@@ -145,8 +145,8 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
 
     } else {
         std::vector<MAPElite> candidates;
-        candidates.reserve(m.numGroups);
-        for ( int group = 0; group < m.numGroups; group++ ) {
+        candidates.reserve(numGroups);
+        for ( int group = 0; group < numGroups; group++ ) {
             candidates.push_back(MAPElite {
                                      r.binFunc(waves[group], wavestats[group], mapeStats.precision),
                                      waves[group],
