@@ -8,6 +8,7 @@ class WavegenConstructor
 {
 public:
     WavegenConstructor(MetaModel &m, const std::string &directory);
+    virtual ~WavegenConstructor();
 
     void GeNN_modelDefinition(NNmodel &);
 
@@ -73,6 +74,7 @@ private:
     std::string supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars);
 
     void *lib;
+    static size_t openLibs;
 
     Pointers (*populate)(std::vector<StateVariable>&, std::vector<AdjustableParam>&, std::vector<Variable>&);
     Pointers pointers;

@@ -55,10 +55,15 @@ void libInit(WavegenConstructor::Pointers &pointers, size_t numGroups, size_t nu
     pointers.clearStats();
 }
 
-void libExit(WavegenConstructor::Pointers &pointers)
+extern "C" void libExit(WavegenConstructor::Pointers &pointers)
 {
     freeMem();
     freeGroupMem(pointers);
+    pointers.clearStats = pointers.pullStats = pointers.pushWaveforms = pointers.pullWaveforms = pointers.pushErr = pointers.pullErr = nullptr;
+}
+
+extern "C" void resetDevice()
+{
     cudaDeviceReset();
 }
 

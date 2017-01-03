@@ -9,6 +9,7 @@ class Wavegen : public WavegenConstructor
 {
 public:
     Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r);
+    ~Wavegen() {}
 
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.

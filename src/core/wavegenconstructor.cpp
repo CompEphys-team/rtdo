@@ -12,6 +12,7 @@
 
 static WavegenConstructor *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
+size_t WavegenConstructor::openLibs = 0;
 
 WavegenConstructor::WavegenConstructor(MetaModel &m, const std::string &directory) :
     m(m),
@@ -34,6 +35,19 @@ WavegenConstructor::WavegenConstructor(MetaModel &m, const std::string &director
     wavestats(pointers.wavestats)
 {
 
+}
+
+WavegenConstructor::~WavegenConstructor()
+{
+    void (*libExit)(Pointers&);
+    if ( (libExit = (decltype(libExit))dlsym(lib, "libExit")) )
+        libExit(pointers);
+    if ( !--openLibs ) {
+        void (*resetDevice)();
+        if ( (resetDevice = (decltype(resetDevice))dlsym(lib, "resetDevice")) )
+            resetDevice();
+    }
+    dlclose(lib);
 }
 
 void *WavegenConstructor::loadLibrary(const std::string &directory)
@@ -64,6 +78,8 @@ void *WavegenConstructor::loadLibrary(const std::string &directory)
     void *libp;
     if ( ! (libp = dlopen((dir + "/runner.so").c_str(), RTLD_NOW)) )
         throw std::runtime_error(std::string("Library load failed: ") + dlerror());
+
+    ++openLibs;
     return libp;
 }
 
