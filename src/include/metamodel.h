@@ -26,6 +26,8 @@ public:
 
     static void (*modelDef)(NNmodel&);
 
+    static size_t numLibs; //!< Count the number of open Wavegen/Experiment libraries
+
 protected:
     std::string _name;
     std::string _dir;

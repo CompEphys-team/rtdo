@@ -15,6 +15,8 @@
 
 void (*MetaModel::modelDef)(NNmodel&);
 
+size_t MetaModel::numLibs = 0;
+
 MetaModel::MetaModel(std::string xmlfile)
 {
     tinyxml2::XMLDocument doc;
