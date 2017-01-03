@@ -7,7 +7,7 @@
 class WavegenConstructor
 {
 public:
-    WavegenConstructor(MetaModel &m, const std::string &directory);
+    WavegenConstructor(MetaModel &m, const std::string &directory, const WavegenData &r);
     virtual ~WavegenConstructor();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -44,6 +44,8 @@ public:
         std::function<void(void)> pushErr;
         std::function<void(void)> pullErr;
     };
+
+    WavegenData r;
 
 protected:
     MetaModel &m;

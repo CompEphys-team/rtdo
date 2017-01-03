@@ -69,7 +69,6 @@ public:
     void search(int param);
 
     StimulationData p;
-    WavegenData r;
 
 protected:
     int blockSize; //!< Number of models (not groups!) per thread block

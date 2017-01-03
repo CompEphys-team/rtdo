@@ -8,7 +8,7 @@ void Wavegen::search(int param)
     targetParam = param+1;
     getErr = true;
 
-    const int numWavesPerEpisode = m.cfg.permute ? 1 : numGroups;
+    const int numWavesPerEpisode = r.permute ? 1 : numGroups;
     std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
 
     // Initialise the population for episode 1:
@@ -124,7 +124,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
     mapeStats.historicInsertions -= mapeStats.histIter->insertions;
     *mapeStats.histIter = {};
 
-    if ( m.cfg.permute ) {
+    if ( r.permute ) {
         // For both fitness and bin coordinates, take the mean fitness/behaviour of the stim across all evaluated model groups
 
         // Accumulate

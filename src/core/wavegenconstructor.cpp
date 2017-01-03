@@ -13,7 +13,8 @@
 static WavegenConstructor *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-WavegenConstructor::WavegenConstructor(MetaModel &m, const std::string &directory) :
+WavegenConstructor::WavegenConstructor(MetaModel &m, const std::string &directory, const WavegenData &r) :
+    r(r),
     m(m),
     stateVariables(m.stateVariables),
     adjustableParams(m.adjustableParams),
@@ -137,7 +138,7 @@ void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
     GENN_PREFERENCES::optimiseBlockSize = 0;
     GENN_PREFERENCES::neuronBlockSize = numGroupsPerBlock * (m.adjustableParams.size() + 1);
 
-    if ( m.cfg.permute ) {
+    if ( r.permute ) {
         numGroups = 1;
         for ( AdjustableParam &p : m.adjustableParams ) {
             numGroups *= p.wgPermutations + 1;

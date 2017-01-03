@@ -4,9 +4,8 @@
 #include "cuda_helper.h"
 
 Wavegen::Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r) :
-    WavegenConstructor(m, dir),
+    WavegenConstructor(m, dir, r),
     p(p),
-    r(r),
     blockSize(numGroupsPerBlock * (adjustableParams.size() + 1)),
     nModels(numGroups * (adjustableParams.size() + 1)),
     RNG(),
@@ -44,7 +43,7 @@ std::vector<double> Wavegen::getSigmaMaxima()
 
 void Wavegen::permute()
 {
-    if ( !m.cfg.permute )
+    if ( !r.permute )
         return;
 
     int stride = 1;
@@ -148,7 +147,7 @@ void Wavegen::settle()
         step();
     }
     pull();
-    if ( m.cfg.permute ) {
+    if ( r.permute ) {
         // Collect the state variables of every base model, i.e. the tuned version
         settled = std::list<std::vector<scalar>>(stateVariables.size(), std::vector<scalar>(numGroups));
         auto iter = settled.begin();
@@ -194,7 +193,7 @@ bool Wavegen::restoreSettled()
 
     // Restore to previously found settled state
     auto iter = settled.begin();
-    if ( m.cfg.permute ) {
+    if ( r.permute ) {
         for ( StateVariable &v : stateVariables ) {
             for ( int i = 0; i < nModels; i++ ) {
                 int group = i % numGroupsPerBlock            // Group index within the block
@@ -230,14 +229,14 @@ void Wavegen::adjustSigmas()
     // per-parameter average deviation from the base model produced by that parameter's detuning.
     std::vector<double> sumParamErr(adjustableParams.size(), 0);
     std::vector<Stimulation> waves;
-    int end = m.cfg.permute
+    int end = r.permute
             ? r.numSigmaAdjustWaveforms
               // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
             : ((r.numSigmaAdjustWaveforms + numGroups - 1) / numGroups);
     for ( int i = 0; i < end; i++ ) {
 
         // Generate random wave/s
-        if ( m.cfg.permute ) {
+        if ( r.permute ) {
             if ( !i )
                 waves.resize(1);
             waves[0] = getRandomStim();
@@ -305,7 +304,7 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
 {
     t = 0;
     iT = 0;
-    if ( m.cfg.permute ) {
+    if ( r.permute ) {
         const Stimulation &s = stim.at(0);
         for ( int group = 0; group < numGroups; group++ )
             waveforms[group] = s;

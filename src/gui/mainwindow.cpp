@@ -27,9 +27,9 @@ MainWindow::MainWindow(QWidget *parent) :
     mt.cfg.dt = 0.25;
     mt.cfg.npop = 10000;
     mt.cfg.method = IntegrationMethod::RungeKutta4;
-    mt.cfg.permute = false;
     StimulationData sd;
     WavegenData wd;
+    wd.permute = false;
     wd.accessResistance = 15;
     wd.clampGain = 1000;
     wd.simCycles = 20;

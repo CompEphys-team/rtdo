@@ -117,7 +117,6 @@ struct ModelData {
     double dt;
     int npop;
     IntegrationMethod method;
-    bool permute;
 };
 
 struct Variable {
@@ -263,6 +262,7 @@ struct MAPEStats
 
 struct WavegenData : public RunData
 {
+    bool permute;
     int numSigmaAdjustWaveforms; //!< Number of random waveforms used to normalise the perturbation rate.
                                  //!< If the MetaModel is not permuted, this number is rounded up to the
                                  //!< nearest multiple of the population size.
