@@ -14,6 +14,7 @@ public:
     MetaModel(std::string xmlfile);
 
     neuronModel generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni);
+
     std::string kernel(const std::string &tab, bool wrapVariables, bool defineCurrents) const;
 
     ModelData cfg;
@@ -30,14 +31,8 @@ public:
 
 protected:
     std::string _name;
-    std::string _dir;
     std::vector<Variable> _params;
     double _baseV;
-
-    void generateExperimentCode(NNmodel &m, neuronModel &n,
-                                std::vector<double> &fixedParamIni,
-                                std::vector<double> &variableIni);
-    std::string generateExperimentBridge(const std::vector<Variable> &globals, const std::vector<Variable> &vars) const;
 
     bool isCurrent(const Variable &tmp) const;
 };
