@@ -33,8 +33,8 @@ SOURCES += \
     src/core/wavegen.cpp \
     src/core/wavegen_mutate.cpp \
     src/core/wavegen_search.cpp \
-    src/core/experiment_globals.cpp \
-    src/core/wavegenconstructor.cpp
+    src/core/wavegenconstructor.cpp \
+    src/core/experimentconstructor.cpp
 
 OTHER_FILES += \
     src/include/supportcode.cu \
@@ -55,8 +55,8 @@ HEADERS  += \
     src/include/wavegen.h \
     src/include/cuda_helper.h \
     src/include/multiarray.h \
-    src/include/experiment_globals.h \
-    src/include/wavegenconstructor.h
+    src/include/wavegenconstructor.h \
+    src/include/experimentconstructor.h
 
 FORMS    += \
     src/gui/mainwindow.ui

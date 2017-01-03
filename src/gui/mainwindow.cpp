@@ -7,7 +7,7 @@
 #include <iostream>
 #include <dlfcn.h>
 #include "wavegen.h"
-#include "experiment_globals.h"
+#include "experimentconstructor.h"
 
 using std::endl;
 

@@ -54,7 +54,7 @@ void *WavegenConstructor::loadLibrary(const std::string &directory)
     // Generate code
     _this = this;
     MetaModel::modelDef = redirect;
-    putenv(const_cast<char*>(std::string("GENN_PATH=" LOCAL_GENN_PATH).c_str()));
+    setenv("GENN_PATH", LOCAL_GENN_PATH, 1);
     std::string name = m.name(ModuleType::Wavegen);
     std::string arg1 = std::string("generating ") + name + " in";
     char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(directory.c_str())};
