@@ -7,7 +7,7 @@
 #include <iostream>
 #include <dlfcn.h>
 #include "wavegen.h"
-#include "experimentconstructor.h"
+#include "experimentlibrary.h"
 
 using std::endl;
 
@@ -102,7 +102,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     //wg.permute();
     wg.adjustSigmas();
-    std::vector<MAPElite> winners;
+/*    std::vector<MAPElite> winners;
     std::vector<MAPEStats> stats;
     for ( size_t i = 0, end = mt.adjustableParams.size(); i < end; i++ ) {
         std::cout << "Finding waveforms for param '" << mt.adjustableParams[i].name << "' (" << i << "/" << end << ")" << endl;
@@ -119,42 +119,29 @@ MainWindow::MainWindow(QWidget *parent) :
         std::cout << "Final population: " << stats[i].population << endl;
         std::cout << "Best waveform: " << winners[i].wave << endl;
         std::cout << "Best waveform stats: " << winners[i].stats << endl;
+    }*/
+
+    ExperimentData expd;
+    expd.numCandidates = 100000;
+    ExperimentLibrary exp(mt, dir, expd);
+    exp.simCycles = rund.simCycles;
+    exp.clampGain = rund.clampGain;
+    exp.accessResistance = rund.accessResistance;
+    DAQ *sim = exp.createSimulator();
+
+    Stimulation foo {};
+    foo.duration = 20;
+    foo.baseV = -60;
+    foo.insert(foo.end(), Stimulation::Step{5, 50, true});
+    foo.insert(foo.end(), Stimulation::Step{10, 20, true});
+    foo.insert(foo.end(), Stimulation::Step{15, 0, false});
+    foo.insert(foo.end(), Stimulation::Step{20, -60, true});
+    std::cout << foo << std::endl;
+    sim->run(foo);
+    for ( int i = 0; i < 80; i++ ) {
+        std::cout << sim->current << '\t' << sim->voltage << std::endl;
+        sim->next();
     }
-
-//    if ( mt.createModules(dir) ) {
-
-//        dlerror();
-//        void *explib;
-//        mt.cfg.type = ModuleType::Experiment;
-//        if ( !(explib = dlopen((dir + "/" + mt.name() + "_CODE/runner.so").c_str(), RTLD_NOW)) )
-//            std::cerr << dlerror() << endl;
-//        Experiment_Global::init(mt);
-//        DAQData daqd;
-//        daqd.dt = mt.cfg.dt;
-//        RunData rund;
-//        rund.accessResistance = 15;
-//        rund.clampGain = 1e3;
-//        rund.simCycles = 20;
-//        DAQ *sim = Experiment_Global::createSimulator(&daqd, &rund);
-//        Stimulation foo {};
-//        foo.duration = 20;
-//        foo.baseV = -60;
-//        foo.insert(foo.end(), Stimulation::Step{5, 50, true});
-//        foo.insert(foo.end(), Stimulation::Step{10, 20, true});
-//        foo.insert(foo.end(), Stimulation::Step{15, 0, false});
-//        foo.insert(foo.end(), Stimulation::Step{20, -60, true});
-//        std::cout << foo << std::endl;
-//        sim->run(foo);
-//        for ( int i = 0; i < 80; i++ ) {
-//            std::cout << sim->current << '\t' << sim->voltage << std::endl;
-//            sim->next();
-//        }
-//        return;
-
-
-
-
-//    }
 }
 
 MainWindow::~MainWindow()

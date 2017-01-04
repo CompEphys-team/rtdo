@@ -1,10 +1,10 @@
 #ifndef EXPERIMENT_CU
 #define EXPERIMENT_CU
 
-#include "experimentconstructor.h"
+#include "experimentlibrary.h"
 #include "cuda_helper.h" // For syntax highlighting only
 
-void libInit(ExperimentConstructor::Pointers &pointers, size_t numModels)
+void libInit(ExperimentLibrary::Pointers &pointers, size_t numModels)
 {
     pointers.pushErr = [&pointers, numModels](){
         CHECK_CUDA_ERRORS(cudaMemcpy(pointers.d_err, pointers.err, numModels * sizeof(scalar), cudaMemcpyHostToDevice))
@@ -17,7 +17,7 @@ void libInit(ExperimentConstructor::Pointers &pointers, size_t numModels)
     initialize();
 }
 
-extern "C" void libExit(ExperimentConstructor::Pointers &pointers)
+extern "C" void libExit(ExperimentLibrary::Pointers &pointers)
 {
     freeMem();
     pointers.pushErr = pointers.pullErr = nullptr;

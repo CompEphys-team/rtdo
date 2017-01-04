@@ -1,4 +1,4 @@
-#include "experimentconstructor.h"
+#include "experimentlibrary.h"
 #include "modelSpec.h"
 #include <iostream>
 #include <sstream>
@@ -10,10 +10,10 @@
 
 #define SUFFIX "EXP"
 
-static ExperimentConstructor *_this;
+static ExperimentLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-ExperimentConstructor::ExperimentConstructor(MetaModel &m, const std::string &directory, const ExperimentData &expd) :
+ExperimentLibrary::ExperimentLibrary(MetaModel &m, const std::string &directory, const ExperimentData &expd) :
     expd(expd),
     model(m),
     stateVariables(m.stateVariables),
@@ -35,7 +35,7 @@ ExperimentConstructor::ExperimentConstructor(MetaModel &m, const std::string &di
 
 }
 
-ExperimentConstructor::~ExperimentConstructor()
+ExperimentLibrary::~ExperimentLibrary()
 {
     void (*libExit)(Pointers&);
     if ( (libExit = (decltype(libExit))dlsym(lib, "libExit")) )
@@ -48,7 +48,7 @@ ExperimentConstructor::~ExperimentConstructor()
     dlclose(lib);
 }
 
-void *ExperimentConstructor::loadLibrary(const string &directory)
+void *ExperimentLibrary::loadLibrary(const string &directory)
 {
     // Generate code
     _this = this;
@@ -81,7 +81,7 @@ void *ExperimentConstructor::loadLibrary(const string &directory)
     return libp;
 }
 
-void ExperimentConstructor::GeNN_modelDefinition(NNmodel &nn)
+void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
 {
     std::vector<double> fixedParamIni, variableIni;
     neuronModel n = model.generate(nn, fixedParamIni, variableIni);
@@ -120,7 +120,7 @@ void ExperimentConstructor::GeNN_modelDefinition(NNmodel &nn)
     nn.finalize();
 }
 
-std::string ExperimentConstructor::simCode()
+std::string ExperimentLibrary::simCode()
 {
     return R"EOF(
 scalar mdt = DT/$(simCycles);
@@ -144,7 +144,7 @@ if ( $(getErr) ) {
 )EOF";
 }
 
-std::string ExperimentConstructor::daqCode()
+std::string ExperimentLibrary::daqCode()
 {
     std::stringstream ss;
     ss << R"EOF(
@@ -217,7 +217,7 @@ public:
     return ss.str();
 }
 
-std::string ExperimentConstructor::supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars)
+std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars)
 {
     std::stringstream ss;
 
@@ -226,7 +226,7 @@ std::string ExperimentConstructor::supportCode(const std::vector<Variable> &glob
     ss << "#define NVAR " << stateVariables.size() << endl;
     ss << "#define NPARAM " << adjustableParams.size() << endl;
     ss << "#include \"definitions.h\"" << endl;
-    ss << "#include \"experimentconstructor.h\"" << endl;
+    ss << "#include \"experimentlibrary.h\"" << endl;
     ss << "#include \"supportcode.cu\"" << endl;
     ss << "#include \"experiment.cu\"" << endl;
     ss << endl;
@@ -237,9 +237,9 @@ std::string ExperimentConstructor::supportCode(const std::vector<Variable> &glob
     ss << "inline void destroySim(DAQ *sim) { delete sim; }" << endl;
     ss << endl;
 
-    ss << "extern \"C\" ExperimentConstructor::Pointers populate(std::vector<StateVariable> &state, "
-                                                             << "std::vector<AdjustableParam> &param) {" << endl;
-    ss << "    ExperimentConstructor::Pointers pointers;" << endl;
+    ss << "extern \"C\" ExperimentLibrary::Pointers populate(std::vector<StateVariable> &state, "
+                                                         << "std::vector<AdjustableParam> &param) {" << endl;
+    ss << "    ExperimentLibrary::Pointers pointers;" << endl;
     ss << "    libInit(pointers, " << expd.numCandidates << ");" << endl;
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {

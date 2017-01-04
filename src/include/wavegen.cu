@@ -1,13 +1,13 @@
 #ifndef WAVEGEN_CU
 #define WAVEGEN_CU
 
-#include "wavegenconstructor.h"
+#include "wavegenlibrary.h"
 #include "cuda_helper.h" // For syntax highlighting only
 
 static __device__ WaveStats *dd_wavestats;
 static __device__ Stimulation *dd_waveforms;
 
-void allocateGroupMem(WavegenConstructor::Pointers &pointers)
+void allocateGroupMem(WavegenLibrary::Pointers &pointers)
 {
     cudaHostAlloc(&pointers.wavestats, MM_NumGroups * sizeof(WaveStats), cudaHostAllocPortable);
         deviceMemAllocate(&pointers.d_wavestats, dd_wavestats, MM_NumGroups * sizeof(WaveStats));
@@ -19,7 +19,7 @@ void allocateGroupMem(WavegenConstructor::Pointers &pointers)
         pointers.clear_wavestats[i] = {};
 }
 
-void freeGroupMem(WavegenConstructor::Pointers &pointers)
+void freeGroupMem(WavegenLibrary::Pointers &pointers)
 {
     cudaFreeHost(pointers.wavestats);
     cudaFreeHost(pointers.clear_wavestats);
@@ -28,7 +28,7 @@ void freeGroupMem(WavegenConstructor::Pointers &pointers)
     CHECK_CUDA_ERRORS(cudaFree(pointers.d_waveforms));
 }
 
-void libInit(WavegenConstructor::Pointers &pointers, size_t numGroups, size_t numModels)
+void libInit(WavegenLibrary::Pointers &pointers, size_t numGroups, size_t numModels)
 {
     pointers.clearStats = [&pointers, numGroups](){
         CHECK_CUDA_ERRORS(cudaMemcpy(pointers.d_wavestats, pointers.clear_wavestats, numGroups * sizeof(WaveStats), cudaMemcpyHostToDevice))
@@ -55,7 +55,7 @@ void libInit(WavegenConstructor::Pointers &pointers, size_t numGroups, size_t nu
     pointers.clearStats();
 }
 
-extern "C" void libExit(WavegenConstructor::Pointers &pointers)
+extern "C" void libExit(WavegenLibrary::Pointers &pointers)
 {
     freeMem();
     freeGroupMem(pointers);

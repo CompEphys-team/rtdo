@@ -3,13 +3,12 @@
 
 #include "types.h"
 #include "randutils.hpp"
-#include "wavegenconstructor.h"
+#include "wavegenlibrary.h"
 
-class Wavegen : public WavegenConstructor
+class Wavegen
 {
 public:
     Wavegen(MetaModel &model, const std::string &dir, const StimulationData &stimd, const WavegenData &searchd, const RunData &rund);
-    ~Wavegen() {}
 
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.
@@ -74,13 +73,13 @@ public:
      */
     void setRunData(const RunData &r);
 
+    WavegenData searchd;
     StimulationData stimd;
+
+    WavegenLibrary lib;
 
 protected:
     RunData rund;
-
-    int blockSize; //!< Number of models (not groups!) per thread block
-    int nModels; //!< Total number of models
 
     /**
      * @brief getRandomStim generates a fully randomised stimulation according to the Wavegen's StimulationData
@@ -116,8 +115,8 @@ protected:
      * @param group The global group index
      */
     inline int baseModelIndex(int group) const {
-        return group % numGroupsPerBlock                 // Group index within the block
-                + (group/numGroupsPerBlock) * blockSize; // Modelspace offset of the block this group belongs to
+        return group % lib.numGroupsPerBlock                 // Group index within the block
+                + (group/lib.numGroupsPerBlock) * lib.numModelsPerBlock; // Modelspace offset of the block this group belongs to
     }
 
     randutils::mt19937_rng RNG;

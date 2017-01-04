@@ -1,4 +1,4 @@
-#include "wavegenconstructor.h"
+#include "wavegenlibrary.h"
 #include "modelSpec.h"
 #include <iostream>
 #include <sstream>
@@ -10,15 +10,15 @@
 
 #define SUFFIX "WG"
 
-static WavegenConstructor *_this;
+static WavegenLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-WavegenConstructor::WavegenConstructor(MetaModel &m, const std::string &directory, const WavegenData &r) :
-    searchd(r),
-    model(m),
-    stateVariables(m.stateVariables),
-    adjustableParams(m.adjustableParams),
-    currents(m.currents),
+WavegenLibrary::WavegenLibrary(MetaModel &model, const std::string &directory, const WavegenData &searchd) :
+    searchd(searchd),
+    model(model),
+    stateVariables(model.stateVariables),
+    adjustableParams(model.adjustableParams),
+    currents(model.currents),
     lib(loadLibrary(directory)),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(stateVariables, adjustableParams, currents)),
@@ -37,7 +37,7 @@ WavegenConstructor::WavegenConstructor(MetaModel &m, const std::string &director
 
 }
 
-WavegenConstructor::~WavegenConstructor()
+WavegenLibrary::~WavegenLibrary()
 {
     void (*libExit)(Pointers&);
     if ( (libExit = (decltype(libExit))dlsym(lib, "libExit")) )
@@ -50,7 +50,7 @@ WavegenConstructor::~WavegenConstructor()
     dlclose(lib);
 }
 
-void *WavegenConstructor::loadLibrary(const std::string &directory)
+void *WavegenLibrary::loadLibrary(const std::string &directory)
 {
     // Generate code
     _this = this;
@@ -83,7 +83,7 @@ void *WavegenConstructor::loadLibrary(const std::string &directory)
     return libp;
 }
 
-void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
+void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
 {
     std::vector<double> fixedParamIni, variableIni;
     neuronModel n = model.generate(nn, fixedParamIni, variableIni);
@@ -134,9 +134,10 @@ void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
     }
     while ( (int)model.adjustableParams.size() + 1 > maxThreadsPerBlock / numGroupsPerBlock )
         numGroupsPerBlock /= 2;
+    numModelsPerBlock = numGroupsPerBlock * (model.adjustableParams.size() + 1);
     GENN_PREFERENCES::autoChooseDevice = 0;
     GENN_PREFERENCES::optimiseBlockSize = 0;
-    GENN_PREFERENCES::neuronBlockSize = numGroupsPerBlock * (model.adjustableParams.size() + 1);
+    GENN_PREFERENCES::neuronBlockSize = numModelsPerBlock;
 
     if ( searchd.permute ) {
         numGroups = 1;
@@ -149,19 +150,20 @@ void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
     // Round up to nearest multiple of numGroupsPerBlock to achieve full occupancy and regular interleaving:
     numGroups = ((numGroups + numGroupsPerBlock - 1) / numGroupsPerBlock) * numGroupsPerBlock;
     numBlocks = numGroups / numGroupsPerBlock;
+    numModels = numGroups * (model.adjustableParams.size() + 1);
 
     n.simCode = simCode();
     n.supportCode = supportCode(globals, vars);
 
-    int numModels = nModels.size();
+    int idx = nModels.size();
     nModels.push_back(n);
     nn.setName(model.name(ModuleType::Wavegen));
-    nn.addNeuronPopulation(SUFFIX, numGroups * (model.adjustableParams.size()+1), numModels, fixedParamIni, variableIni);
+    nn.addNeuronPopulation(SUFFIX, numModels, idx, fixedParamIni, variableIni);
 
     nn.finalize();
 }
 
-std::string WavegenConstructor::simCode()
+std::string WavegenLibrary::simCode()
 {
     stringstream ss;
     ss << endl << "#ifndef _" << model.name(ModuleType::Wavegen) << "_neuronFnct_cc" << endl; // No Wavegen on the CPU
@@ -222,28 +224,28 @@ Isyn += 0.; // Squelch Wunused in neuronFnct.cc
     return ss.str();
 }
 
-std::string WavegenConstructor::supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars)
+std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars)
 {
     std::stringstream ss;
 
     ss << "} // break namespace for STL includes:" << endl;
 
     ss << "#define MM_NumGroupsPerBlock " << numGroupsPerBlock << endl;
-    ss << "#define MM_NumModelsPerBlock " << GENN_PREFERENCES::neuronBlockSize << endl;
+    ss << "#define MM_NumModelsPerBlock " << numModelsPerBlock << endl;
     ss << "#define MM_NumGroups " << numGroups << endl;
     ss << "#define NVAR " << stateVariables.size() << endl;
     ss << "#define NPARAM " << adjustableParams.size() << endl;
     ss << "#include \"definitions.h\"" << endl;
-    ss << "#include \"wavegenconstructor.h\"" << endl;
+    ss << "#include \"wavegenlibrary.h\"" << endl;
     ss << "#include \"supportcode.cu\"" << endl;
     ss << "#include \"wavegen.cu\"" << endl;
     ss << endl;
 
-    ss << "extern \"C\" WavegenConstructor::Pointers populate(std::vector<StateVariable> &state, "
-                                                          << "std::vector<AdjustableParam> &param, "
-                                                          << "std::vector<Variable> &current) {" << endl;
-    ss << "    WavegenConstructor::Pointers pointers;" << endl;
-    ss << "    libInit(pointers, " << numGroups << ", " << (numGroups * (adjustableParams.size()+1)) << ");" << endl;
+    ss << "extern \"C\" WavegenLibrary::Pointers populate(std::vector<StateVariable> &state, "
+                                                      << "std::vector<AdjustableParam> &param, "
+                                                      << "std::vector<Variable> &current) {" << endl;
+    ss << "    WavegenLibrary::Pointers pointers;" << endl;
+    ss << "    libInit(pointers, " << numGroups << ", " << numModels << ");" << endl;
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
         ss << "    state[" << i++ << "].v = " << v.name << SUFFIX << ";" << endl;

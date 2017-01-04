@@ -5,11 +5,11 @@
 #include "daq.h"
 #include <functional>
 
-class ExperimentConstructor
+class ExperimentLibrary
 {
 public:
-    ExperimentConstructor(MetaModel &model, const std::string &directory, const ExperimentData &expd);
-    virtual ~ExperimentConstructor();
+    ExperimentLibrary(MetaModel &model, const std::string &directory, const ExperimentData &expd);
+    virtual ~ExperimentLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
 
@@ -44,7 +44,6 @@ public:
 
     ExperimentData expd;
 
-protected:
     MetaModel &model;
 
     std::vector<StateVariable> stateVariables;
@@ -68,7 +67,7 @@ private:
     Pointers (*populate)(std::vector<StateVariable>&, std::vector<AdjustableParam>&);
     Pointers pointers;
 
-protected:
+public:
     scalar &t;
     unsigned long long &iT;
 
