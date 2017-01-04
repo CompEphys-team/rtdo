@@ -7,7 +7,7 @@
 class WavegenConstructor
 {
 public:
-    WavegenConstructor(MetaModel &m, const std::string &directory, const WavegenData &r);
+    WavegenConstructor(MetaModel &model, const std::string &directory, const WavegenData &searchd);
     virtual ~WavegenConstructor();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -45,10 +45,10 @@ public:
         std::function<void(void)> pullErr;
     };
 
-    WavegenData r;
+    WavegenData searchd;
 
 protected:
-    MetaModel &m;
+    MetaModel &model;
 
     std::vector<StateVariable> stateVariables;
     std::vector<AdjustableParam> adjustableParams;

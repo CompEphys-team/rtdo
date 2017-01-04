@@ -14,8 +14,8 @@ static WavegenConstructor *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
 WavegenConstructor::WavegenConstructor(MetaModel &m, const std::string &directory, const WavegenData &r) :
-    r(r),
-    m(m),
+    searchd(r),
+    model(m),
     stateVariables(m.stateVariables),
     adjustableParams(m.adjustableParams),
     currents(m.currents),
@@ -56,7 +56,7 @@ void *WavegenConstructor::loadLibrary(const std::string &directory)
     _this = this;
     MetaModel::modelDef = redirect;
     setenv("GENN_PATH", LOCAL_GENN_PATH, 1);
-    std::string name = m.name(ModuleType::Wavegen);
+    std::string name = model.name(ModuleType::Wavegen);
     std::string arg1 = std::string("generating ") + name + " in";
     char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(directory.c_str())};
     if ( generateAll(2, argv) )
@@ -86,7 +86,7 @@ void *WavegenConstructor::loadLibrary(const std::string &directory)
 void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
 {
     std::vector<double> fixedParamIni, variableIni;
-    neuronModel n = m.generate(nn, fixedParamIni, variableIni);
+    neuronModel n = model.generate(nn, fixedParamIni, variableIni);
 
     std::vector<Variable> globals = {
         Variable("simCycles", "", "int"),
@@ -110,7 +110,7 @@ void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
         variableIni.push_back(0.0);
     }
 
-    for ( const Variable &c : m.currents ) {
+    for ( const Variable &c : model.currents ) {
         n.varNames.push_back(c.name);
         n.varTypes.push_back(c.type);
         variableIni.push_back(0.0);
@@ -132,19 +132,19 @@ void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
             GENN_PREFERENCES::defaultDevice = device;
         }
     }
-    while ( (int)m.adjustableParams.size() + 1 > maxThreadsPerBlock / numGroupsPerBlock )
+    while ( (int)model.adjustableParams.size() + 1 > maxThreadsPerBlock / numGroupsPerBlock )
         numGroupsPerBlock /= 2;
     GENN_PREFERENCES::autoChooseDevice = 0;
     GENN_PREFERENCES::optimiseBlockSize = 0;
-    GENN_PREFERENCES::neuronBlockSize = numGroupsPerBlock * (m.adjustableParams.size() + 1);
+    GENN_PREFERENCES::neuronBlockSize = numGroupsPerBlock * (model.adjustableParams.size() + 1);
 
-    if ( r.permute ) {
+    if ( searchd.permute ) {
         numGroups = 1;
-        for ( AdjustableParam &p : m.adjustableParams ) {
+        for ( AdjustableParam &p : model.adjustableParams ) {
             numGroups *= p.wgPermutations + 1;
         }
     } else {
-        numGroups = r.numWavesPerEpoch;
+        numGroups = searchd.numWavesPerEpoch;
     }
     // Round up to nearest multiple of numGroupsPerBlock to achieve full occupancy and regular interleaving:
     numGroups = ((numGroups + numGroupsPerBlock - 1) / numGroupsPerBlock) * numGroupsPerBlock;
@@ -155,8 +155,8 @@ void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
 
     int numModels = nModels.size();
     nModels.push_back(n);
-    nn.setName(m.name(ModuleType::Wavegen));
-    nn.addNeuronPopulation(SUFFIX, numGroups * (m.adjustableParams.size()+1), numModels, fixedParamIni, variableIni);
+    nn.setName(model.name(ModuleType::Wavegen));
+    nn.addNeuronPopulation(SUFFIX, numGroups * (model.adjustableParams.size()+1), numModels, fixedParamIni, variableIni);
 
     nn.finalize();
 }
@@ -164,7 +164,7 @@ void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
 std::string WavegenConstructor::simCode()
 {
     stringstream ss;
-    ss << endl << "#ifndef _" << m.name(ModuleType::Wavegen) << "_neuronFnct_cc" << endl; // No Wavegen on the CPU
+    ss << endl << "#ifndef _" << model.name(ModuleType::Wavegen) << "_neuronFnct_cc" << endl; // No Wavegen on the CPU
     ss << R"EOF(
 const int groupID = id % MM_NumGroupsPerBlock;                                  // Block-local group id
 const int group = groupID + (id/MM_NumModelsPerBlock) * MM_NumGroupsPerBlock;   // Global group id
@@ -178,7 +178,7 @@ scalar mdt = DT/$(simCycles);
 for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
     Isyn = ($(clampGain)*(Vcmd-$(V)) - $(V)) / $(accessResistance);
 )EOF";
-    ss << m.kernel("    ", true, true) << endl;
+    ss << model.kernel("    ", true, true) << endl;
     ss <<   R"EOF(
     if ( $(getErr) ) {
         __shared__ double errShare[MM_NumModelsPerBlock];

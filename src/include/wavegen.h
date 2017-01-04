@@ -8,7 +8,7 @@
 class Wavegen : public WavegenConstructor
 {
 public:
-    Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r, const RunData &rund);
+    Wavegen(MetaModel &model, const std::string &dir, const StimulationData &stimd, const WavegenData &searchd, const RunData &rund);
     ~Wavegen() {}
 
     /**
@@ -74,7 +74,7 @@ public:
      */
     void setRunData(const RunData &r);
 
-    StimulationData p;
+    StimulationData stimd;
 
 protected:
     RunData rund;

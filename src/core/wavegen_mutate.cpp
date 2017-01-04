@@ -5,26 +5,26 @@ Stimulation Wavegen::getRandomStim()
 {
     Stimulation I = Stimulation();
     int failedPos, failedAgain = 0;
-    I.baseV = p.baseV;
-    I.duration = p.duration;
-    int n = RNG.uniform(p.minSteps, p.maxSteps);
+    I.baseV = stimd.baseV;
+    I.duration = stimd.duration;
+    int n = RNG.uniform(stimd.minSteps, stimd.maxSteps);
 tryagain:
     failedPos = 0;
-    if ( failedAgain++ > 2*p.maxSteps ) {
+    if ( failedAgain++ > 2*stimd.maxSteps ) {
         failedAgain = 0;
         --n;
     }
     I.clear();
     for ( int i = 0; i < n; i++ ) {
         Stimulation::Step&& step {
-            RNG.uniform(p.minStepLength, p.duration - p.minStepLength),
-            RNG.uniform(p.minVoltage, p.maxVoltage),
+            RNG.uniform(stimd.minStepLength, stimd.duration - stimd.minStepLength),
+            RNG.uniform(stimd.minVoltage, stimd.maxVoltage),
             RNG.pick({true, false})
         };
         bool failed = false;
         auto it = I.begin();
         for ( ; it != I.end(); it++ ) {
-            if ( fabs(it->t - step.t) < p.minStepLength ) {
+            if ( fabs(it->t - step.t) < stimd.minStepLength ) {
                 failed = true;
                 break;
             } else if ( it->t > step.t ) {
@@ -33,7 +33,7 @@ tryagain:
             }
         }
         if ( failed ) {
-            if ( ++failedPos > 2*p.maxSteps )
+            if ( ++failedPos > 2*stimd.maxSteps )
                 goto tryagain;
             --i;
             continue;
@@ -47,41 +47,41 @@ tryagain:
 
 Stimulation Wavegen::mutate(const Stimulation &parent, const Stimulation &xoverParent)
 {
-    double total = p.muta.lCrossover + p.muta.lLevel + p.muta.lNumber + p.muta.lSwap + p.muta.lTime + p.muta.lType;
+    double total = stimd.muta.lCrossover + stimd.muta.lLevel + stimd.muta.lNumber + stimd.muta.lSwap + stimd.muta.lTime + stimd.muta.lType;
     Stimulation I(parent);
     bool didCrossover = false;
-    int n = round(RNG.variate<double>(p.muta.n, p.muta.std));
+    int n = round(RNG.variate<double>(stimd.muta.n, stimd.muta.std));
     if ( n < 1 )
         n = 1;
     for ( int i = 0; i < n; i++ ) {
         double selection = RNG.uniform(0.0, total);
-        if ( selection < p.muta.lCrossover ) {
+        if ( selection < stimd.muta.lCrossover ) {
             if ( didCrossover ) { // Crossover only once
                 --i;
             } else {
                 mutateCrossover(I, xoverParent);
                 didCrossover = true;
             }
-        } else if ( (selection -= p.muta.lCrossover) < p.muta.lLevel ) {
+        } else if ( (selection -= stimd.muta.lCrossover) < stimd.muta.lLevel ) {
             mutateVoltage(I);
-        } else if ( (selection -= p.muta.lLevel) < p.muta.lNumber ) {
+        } else if ( (selection -= stimd.muta.lLevel) < stimd.muta.lNumber ) {
             mutateNumber(I);
-        } else if ( (selection -= p.muta.lNumber) < p.muta.lSwap ) {
+        } else if ( (selection -= stimd.muta.lNumber) < stimd.muta.lSwap ) {
             mutateSwap(I);
-        } else if ( (selection -= p.muta.lSwap) < p.muta.lTime ) {
+        } else if ( (selection -= stimd.muta.lSwap) < stimd.muta.lTime ) {
             mutateTime(I);
         } else /* if ( (selection -= p.muta.lTime) < p.muta.lType ) */ {
             mutateType(I);
         }
     }
     assert([&](){
-        bool valid = ((int)I.size() >= p.minSteps) && ((int)I.size() <= p.maxSteps);
+        bool valid = ((int)I.size() >= stimd.minSteps) && ((int)I.size() <= stimd.maxSteps);
         for ( auto it = I.begin(); it != I.end(); it++ ) {
-            valid &= (it->t >= p.minStepLength) && (it->t <= p.duration - p.minStepLength);
+            valid &= (it->t >= stimd.minStepLength) && (it->t <= stimd.duration - stimd.minStepLength);
             if ( it != I.begin() ) {
-                valid &= (it->t - (it-1)->t >= p.minStepLength);
+                valid &= (it->t - (it-1)->t >= stimd.minStepLength);
             }
-            valid &= (it->V >= p.minVoltage) && (it->V <= p.maxVoltage);
+            valid &= (it->V >= stimd.minVoltage) && (it->V <= stimd.maxVoltage);
         }
         return valid;
     }());
@@ -96,7 +96,7 @@ void Wavegen::mutateCrossover(Stimulation &I, const Stimulation &parent)
         bool coin = RNG.pick({true, false});
         const Stimulation &head = coin ? I : parent;
         const Stimulation &tail = coin ? parent : I;
-        double mid = RNG.uniform(scalar(0.0), p.duration);
+        double mid = RNG.uniform(scalar(0.0), stimd.duration);
         size_t nHead = 0, nTail = 0;
         for ( auto it = head.begin(); it != head.end() && it->t < mid; it++ ) { // Choose all head steps up to mid
             steps.push_back(*it);
@@ -111,8 +111,8 @@ void Wavegen::mutateCrossover(Stimulation &I, const Stimulation &parent)
         if ( (nHead == head.size() && nTail == 0) || (nHead == 0 && nTail == tail.size()) ) { // X failed
             continue;
         }
-        if ( nHead > 0 && nTail > 0 && (tail.end()-nTail)->t - (head.begin()+nHead-1)->t < p.minStepLength ) { // X step too short
-            if ( (int)steps.size() > p.minSteps ) {
+        if ( nHead > 0 && nTail > 0 && (tail.end()-nTail)->t - (head.begin()+nHead-1)->t < stimd.minStepLength ) { // X step too short
+            if ( (int)steps.size() > stimd.minSteps ) {
                 if ( RNG.pick({true, false}) ) {
                     steps.erase(steps.begin() + nHead);
                     nTail--;
@@ -124,10 +124,10 @@ void Wavegen::mutateCrossover(Stimulation &I, const Stimulation &parent)
                 continue;
             }
         }
-        while ( (int)steps.size() > p.maxSteps ) // Too many steps, delete some
+        while ( (int)steps.size() > stimd.maxSteps ) // Too many steps, delete some
             steps.erase(RNG.choose(steps));
         int count = 0;
-        for ( ; (int)steps.size() < p.minSteps && count < 2*p.maxSteps; count++ ) { // Too few steps, insert some
+        for ( ; (int)steps.size() < stimd.minSteps && count < 2*stimd.maxSteps; count++ ) { // Too few steps, insert some
             // Note: count safeguards against irrecoverable failures
             auto extra = head.begin();
             bool useHead = RNG.pick({true, false});
@@ -138,7 +138,7 @@ void Wavegen::mutateCrossover(Stimulation &I, const Stimulation &parent)
             else
                 extra = RNG.choose(tail.begin(), tail.end() - nTail);
             for ( auto it = steps.begin(); it != steps.end(); it++ ) {
-                if ( fabs(it->t - extra->t) < p.minStepLength )
+                if ( fabs(it->t - extra->t) < stimd.minStepLength )
                     break;
                 if ( it->t > extra->t ) {
                     steps.insert(it, *extra);
@@ -146,7 +146,7 @@ void Wavegen::mutateCrossover(Stimulation &I, const Stimulation &parent)
                 }
             }
         }
-        if ( count == 2*p.maxSteps )
+        if ( count == 2*stimd.maxSteps )
             continue;
 
         I.clear();
@@ -159,28 +159,28 @@ void Wavegen::mutateCrossover(Stimulation &I, const Stimulation &parent)
 void Wavegen::mutateVoltage(Stimulation &I)
 {
     Stimulation::Step &subject = RNG.pick(I);
-    double newV = p.maxVoltage + 1;
-    while ( newV > p.maxVoltage || newV < p.minVoltage )
-        newV = RNG.variate<double>(subject.V, p.muta.sdLevel);
+    double newV = stimd.maxVoltage + 1;
+    while ( newV > stimd.maxVoltage || newV < stimd.minVoltage )
+        newV = RNG.variate<double>(subject.V, stimd.muta.sdLevel);
     subject.V = newV;
 }
 
 void Wavegen::mutateNumber(Stimulation &I)
 {
     bool grow = RNG.pick({true, false});
-    if ( (int)I.size() == p.minSteps )      grow = true;
-    else if ( (int)I.size() == p.maxSteps ) grow = false;
+    if ( (int)I.size() == stimd.minSteps )      grow = true;
+    else if ( (int)I.size() == stimd.maxSteps ) grow = false;
     if ( grow ) {
         do {
             Stimulation::Step&& ins {
-                RNG.uniform(p.minStepLength, p.duration - p.minStepLength),
-                RNG.uniform(p.minVoltage, p.maxVoltage),
+                RNG.uniform(stimd.minStepLength, stimd.duration - stimd.minStepLength),
+                RNG.uniform(stimd.minVoltage, stimd.maxVoltage),
                 RNG.pick({true, false})
             };
             bool conflict = false;
             auto it = I.begin();
             for ( ; it != I.end(); it++ ) {
-                if ( fabs(it->t - ins.t) < p.minStepLength ) {
+                if ( fabs(it->t - ins.t) < stimd.minStepLength ) {
                     conflict = true;
                     break;
                 }
@@ -217,11 +217,11 @@ void Wavegen::mutateTime(Stimulation &I)
         Stimulation::Step *target = RNG.choose(I);
         double newT;
         do {
-            newT = RNG.variate<double>(target->t, p.muta.sdTime);
-        } while ( newT < p.minStepLength || newT > p.duration - p.minStepLength );
+            newT = RNG.variate<double>(target->t, stimd.muta.sdTime);
+        } while ( newT < stimd.minStepLength || newT > stimd.duration - stimd.minStepLength );
         auto it = I.begin();
         for ( ; it != I.end(); it++ ) {
-            if ( it != target && fabs(it->t - newT) < p.minStepLength ) {
+            if ( it != target && fabs(it->t - newT) < stimd.minStepLength ) {
                 tooClose = true;
                 break;
             }

@@ -8,7 +8,7 @@ void Wavegen::search(int param)
     targetParam = param+1;
     getErr = true;
 
-    const int numWavesPerEpisode = r.permute ? 1 : numGroups;
+    const int numWavesPerEpisode = searchd.permute ? 1 : numGroups;
     std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
 
     // Initialise the population for episode 1:
@@ -25,13 +25,13 @@ void Wavegen::search(int param)
     for ( Stimulation &w : waves_ep2 )
         w = getRandomStim();
     nInitialWaves += numWavesPerEpisode;
-    bool initialising = nInitialWaves < r.nInitialWaves;
+    bool initialising = nInitialWaves < searchd.nInitialWaves;
 
     // Initialise waves pointer to episode 1, which is currently being stimulated
     std::vector<Stimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
 
     mapeArchive.clear();
-    mapeStats = MAPEStats(r.historySize, mapeArchive.end());
+    mapeStats = MAPEStats(searchd.historySize, mapeArchive.end());
     mapeStats.histIter = mapeStats.history.begin();
 
     while ( true ) {
@@ -49,13 +49,13 @@ void Wavegen::search(int param)
         using std::swap;
         swap(newWaves, returnedWaves);
 
-        if ( r.stopFunc(mapeStats) )
+        if ( searchd.stopFunc(mapeStats) )
             break;
 
-        if ( r.increasePrecision(mapeStats) ) {
+        if ( searchd.increasePrecision(mapeStats) ) {
             mapeStats.precision++;
             for ( MAPElite &e : mapeArchive )
-                e.bin = r.binFunc(e.wave, e.stats, mapeStats.precision);
+                e.bin = searchd.binFunc(e.wave, e.stats, mapeStats.precision);
         }
 
         // Prepare next episode's waves
@@ -64,7 +64,7 @@ void Wavegen::search(int param)
             for ( Stimulation &w : *newWaves )
                 w = getRandomStim();
             nInitialWaves += numWavesPerEpisode;
-            initialising = nInitialWaves < r.nInitialWaves;
+            initialising = nInitialWaves < searchd.nInitialWaves;
         } else {
             std::vector<std::list<MAPElite>::const_iterator> parents(2 * numWavesPerEpisode);
 
@@ -124,7 +124,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
     mapeStats.historicInsertions -= mapeStats.histIter->insertions;
     *mapeStats.histIter = {};
 
-    if ( r.permute ) {
+    if ( searchd.permute ) {
         // For both fitness and bin coordinates, take the mean fitness/behaviour of the stim across all evaluated model groups
 
         // Accumulate
@@ -137,7 +137,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
         meanStats /= numGroups;
 
         // Compare averages to elite & insert
-        std::vector<MAPElite> candidate(1, MAPElite{r.binFunc(waves[0], meanStats, mapeStats.precision), waves[0], meanStats});
+        std::vector<MAPElite> candidate(1, MAPElite{searchd.binFunc(waves[0], meanStats, mapeStats.precision), waves[0], meanStats});
         mape_insert(candidate);
 
     } else {
@@ -145,7 +145,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
         candidates.reserve(numGroups);
         for ( int group = 0; group < numGroups; group++ ) {
             candidates.push_back(MAPElite {
-                                     r.binFunc(waves[group], wavestats[group], mapeStats.precision),
+                                     searchd.binFunc(waves[group], wavestats[group], mapeStats.precision),
                                      waves[group],
                                      wavestats[group]
                                  });

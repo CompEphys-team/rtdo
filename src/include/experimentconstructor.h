@@ -8,7 +8,7 @@
 class ExperimentConstructor
 {
 public:
-    ExperimentConstructor(MetaModel &m, const std::string &directory, const ExperimentData &expd);
+    ExperimentConstructor(MetaModel &model, const std::string &directory, const ExperimentData &expd);
     virtual ~ExperimentConstructor();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -45,7 +45,7 @@ public:
     ExperimentData expd;
 
 protected:
-    MetaModel &m;
+    MetaModel &model;
 
     std::vector<StateVariable> stateVariables;
     std::vector<AdjustableParam> adjustableParams;

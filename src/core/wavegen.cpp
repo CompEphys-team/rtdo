@@ -3,15 +3,15 @@
 #include <cassert>
 #include "cuda_helper.h"
 
-Wavegen::Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r, const RunData &rund) :
-    WavegenConstructor(m, dir, r),
-    p(p),
+Wavegen::Wavegen(MetaModel &model, const std::string &dir, const StimulationData &stimd, const WavegenData &searchd, const RunData &rund) :
+    WavegenConstructor(model, dir, searchd),
+    stimd(stimd),
     blockSize(numGroupsPerBlock * (adjustableParams.size() + 1)),
     nModels(numGroups * (adjustableParams.size() + 1)),
     RNG(),
     sigmaAdjust(adjustableParams.size(), 1.0),
     sigmax(getSigmaMaxima()),
-    mapeStats(r.historySize, mapeArchive.end())
+    mapeStats(searchd.historySize, mapeArchive.end())
 {
     setRunData(rund);
 }
@@ -49,7 +49,7 @@ std::vector<double> Wavegen::getSigmaMaxima()
 
 void Wavegen::permute()
 {
-    if ( !r.permute )
+    if ( !searchd.permute )
         return;
 
     int stride = 1;
@@ -139,8 +139,8 @@ void Wavegen::settle()
 {
     // Simulate for a given time
     Stimulation I;
-    I.duration = r.settleTime;
-    I.baseV = p.baseV;
+    I.duration = searchd.settleTime;
+    I.baseV = stimd.baseV;
     I.clear();
     for ( int group = 0; group < numGroups; group++ )
         waveforms[group] = I;
@@ -149,11 +149,11 @@ void Wavegen::settle()
     t = 0;
     iT = 0;
     push();
-    while ( t < r.settleTime ) {
+    while ( t < searchd.settleTime ) {
         step();
     }
     pull();
-    if ( r.permute ) {
+    if ( searchd.permute ) {
         // Collect the state variables of every base model, i.e. the tuned version
         settled = std::list<std::vector<scalar>>(stateVariables.size(), std::vector<scalar>(numGroups));
         auto iter = settled.begin();
@@ -170,12 +170,12 @@ void Wavegen::settle()
         for ( int group = 0; group < numGroups; group++ ) {
             scalar const& v = stateVariables[0].v[baseModelIndex(group)];
             V.push_back(v);
-            if ( v > p.baseV-5 && v < p.baseV+5 )
+            if ( v > stimd.baseV-5 && v < stimd.baseV+5 )
                 valid++;
         }
         std::sort(V.begin(), V.end());
-        std::cout << "Settled all permuted models to holding potential of " << p.baseV << " mV for "
-                  << r.settleTime << " ms." << std::endl;
+        std::cout << "Settled all permuted models to holding potential of " << stimd.baseV << " mV for "
+                  << searchd.settleTime << " ms." << std::endl;
         std::cout << "Median achieved potential: " << V[numGroups/2] << " mV (95% within [" << V[numGroups/20]
                   << " mV, " << V[numGroups/20*19] << " mV]), " << valid << "/" << numGroups
                   << " models within +-5 mV of holding." << std::endl;
@@ -187,7 +187,7 @@ void Wavegen::settle()
             (*iter++)[0] = v[0];
         }
 
-        std::cout << "Settled base model to holding potential of " << p.baseV << " mV for " << r.settleTime << " ms, "
+        std::cout << "Settled base model to holding potential of " << stimd.baseV << " mV for " << searchd.settleTime << " ms, "
                   << "achieved " << (*settled.begin())[0] << " mV." << std::endl;
     }
 }
@@ -199,7 +199,7 @@ bool Wavegen::restoreSettled()
 
     // Restore to previously found settled state
     auto iter = settled.begin();
-    if ( r.permute ) {
+    if ( searchd.permute ) {
         for ( StateVariable &v : stateVariables ) {
             for ( int i = 0; i < nModels; i++ ) {
                 int group = i % numGroupsPerBlock            // Group index within the block
@@ -235,14 +235,14 @@ void Wavegen::adjustSigmas()
     // per-parameter average deviation from the base model produced by that parameter's detuning.
     std::vector<double> sumParamErr(adjustableParams.size(), 0);
     std::vector<Stimulation> waves;
-    int end = r.permute
-            ? r.numSigmaAdjustWaveforms
+    int end = searchd.permute
+            ? searchd.numSigmaAdjustWaveforms
               // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
-            : ((r.numSigmaAdjustWaveforms + numGroups - 1) / numGroups);
+            : ((searchd.numSigmaAdjustWaveforms + numGroups - 1) / numGroups);
     for ( int i = 0; i < end; i++ ) {
 
         // Generate random wave/s
-        if ( r.permute ) {
+        if ( searchd.permute ) {
             if ( !i )
                 waves.resize(1);
             waves[0] = getRandomStim();
@@ -269,7 +269,7 @@ void Wavegen::adjustSigmas()
 
     std::vector<double> meanParamErr(sumParamErr);
     for ( double & e : meanParamErr ) {
-        e /= end * numGroups * p.duration/m.cfg.dt * rund.simCycles;
+        e /= end * numGroups * stimd.duration/model.cfg.dt * rund.simCycles;
     }
 
     // Find the median of mean parameter errors:
@@ -310,13 +310,13 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
 {
     t = 0;
     iT = 0;
-    if ( r.permute ) {
+    if ( searchd.permute ) {
         const Stimulation &s = stim.at(0);
         for ( int group = 0; group < numGroups; group++ )
             waveforms[group] = s;
         pushWaveforms();
         while ( t < s.duration ) {
-            final = t + m.cfg.dt >= s.duration;
+            final = t + model.cfg.dt >= s.duration;
             step();
         }
     } else { //-------------- !m.cfg.permute ------------------------------------------------------------
@@ -332,7 +332,7 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
         pushWaveforms();
 
         while ( t < maxDuration ) {
-            final = t + m.cfg.dt >= maxDuration;
+            final = t + model.cfg.dt >= maxDuration;
             step();
         }
     }

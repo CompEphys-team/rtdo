@@ -15,7 +15,7 @@ static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
 ExperimentConstructor::ExperimentConstructor(MetaModel &m, const std::string &directory, const ExperimentData &expd) :
     expd(expd),
-    m(m),
+    model(m),
     stateVariables(m.stateVariables),
     adjustableParams(m.adjustableParams),
     lib(loadLibrary(directory)),
@@ -54,7 +54,7 @@ void *ExperimentConstructor::loadLibrary(const string &directory)
     _this = this;
     MetaModel::modelDef = redirect;
     setenv("GENN_PATH", LOCAL_GENN_PATH, 1);
-    std::string name = m.name(ModuleType::Experiment);
+    std::string name = model.name(ModuleType::Experiment);
     std::string arg1 = std::string("generating ") + name + " in";
     char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(directory.c_str())};
     if ( generateAll(2, argv) )
@@ -84,7 +84,7 @@ void *ExperimentConstructor::loadLibrary(const string &directory)
 void ExperimentConstructor::GeNN_modelDefinition(NNmodel &nn)
 {
     std::vector<double> fixedParamIni, variableIni;
-    neuronModel n = m.generate(nn, fixedParamIni, variableIni);
+    neuronModel n = model.generate(nn, fixedParamIni, variableIni);
 
     std::vector<Variable> globals = {
         Variable("simCycles", "", "int"),
@@ -114,7 +114,7 @@ void ExperimentConstructor::GeNN_modelDefinition(NNmodel &nn)
 
     int numModels = nModels.size();
     nModels.push_back(n);
-    nn.setName(m.name(ModuleType::Experiment));
+    nn.setName(model.name(ModuleType::Experiment));
     nn.addNeuronPopulation(SUFFIX, expd.numCandidates, numModels, fixedParamIni, variableIni);
 
     nn.finalize();
@@ -131,7 +131,7 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
        Isyn = $(Imem);
    }
 )EOF"
-   + m.kernel("    ", true, false)
+   + model.kernel("    ", true, false)
    + R"EOF(
 }
 
@@ -179,7 +179,7 @@ public:
     ss << "        const float mdt = DT/simCycles" << SUFFIX << ";" << endl;
     ss << "        for ( unsigned int mt = 0; mt < simCycles" << SUFFIX << "; mt++ ) {" << endl;
     ss << "            Isyn = (clampGain" << SUFFIX << "*(Vcmd-V) - V) / accessResistance" << SUFFIX << ";" << endl;
-    ss << m.kernel("            ", false, false);
+    ss << model.kernel("            ", false, false);
     ss << R"EOF(
         }
 
