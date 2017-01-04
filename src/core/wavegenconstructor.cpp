@@ -144,7 +144,7 @@ void WavegenConstructor::GeNN_modelDefinition(NNmodel &nn)
             numGroups *= p.wgPermutations + 1;
         }
     } else {
-        numGroups = m.cfg.npop;
+        numGroups = r.numWavesPerEpoch;
     }
     // Round up to nearest multiple of numGroupsPerBlock to achieve full occupancy and regular interleaving:
     numGroups = ((numGroups + numGroupsPerBlock - 1) / numGroupsPerBlock) * numGroupsPerBlock;

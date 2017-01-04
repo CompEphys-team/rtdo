@@ -8,12 +8,12 @@
 class ExperimentConstructor
 {
 public:
-    ExperimentConstructor(MetaModel &m, const std::string &directory);
+    ExperimentConstructor(MetaModel &m, const std::string &directory, const ExperimentData &expd);
     virtual ~ExperimentConstructor();
 
     void GeNN_modelDefinition(NNmodel &);
 
-    inline DAQ *createSimulator(DAQData *p) { return pointers.createSim(p); }
+    inline DAQ *createSimulator() { return pointers.createSim(); }
     inline void destroySimulator(DAQ *sim) { pointers.destroySim(sim); }
 
     struct Pointers
@@ -36,11 +36,13 @@ public:
         void (*pull)(void);
         void (*step)(void);
         void (*reset)(void);
-        DAQ *(*createSim)(DAQData *);
+        DAQ *(*createSim)();
         void (*destroySim)(DAQ *);
         std::function<void(void)> pushErr;
         std::function<void(void)> pullErr;
     };
+
+    ExperimentData expd;
 
 protected:
     MetaModel &m;

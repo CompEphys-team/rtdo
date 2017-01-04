@@ -11,7 +11,7 @@ class NNmodel;
 class MetaModel
 {
 public:
-    MetaModel(std::string xmlfile);
+    MetaModel(std::string xmlfile, const ModelData &cfg);
 
     neuronModel generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni);
 

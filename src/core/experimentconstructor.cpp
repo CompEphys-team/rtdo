@@ -13,7 +13,8 @@
 static ExperimentConstructor *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-ExperimentConstructor::ExperimentConstructor(MetaModel &m, const std::string &directory) :
+ExperimentConstructor::ExperimentConstructor(MetaModel &m, const std::string &directory, const ExperimentData &expd) :
+    expd(expd),
     m(m),
     stateVariables(m.stateVariables),
     adjustableParams(m.adjustableParams),
@@ -114,7 +115,7 @@ void ExperimentConstructor::GeNN_modelDefinition(NNmodel &nn)
     int numModels = nModels.size();
     nModels.push_back(n);
     nn.setName(m.name(ModuleType::Experiment));
-    nn.addNeuronPopulation(SUFFIX, m.cfg.npop, numModels, fixedParamIni, variableIni);
+    nn.addNeuronPopulation(SUFFIX, expd.numCandidates, numModels, fixedParamIni, variableIni);
 
     nn.finalize();
 }
@@ -153,7 +154,7 @@ private:
     double t;
 
 public:
-    Simulator(DAQData *p) : DAQ(p), t(0.0)
+    Simulator() : DAQ(nullptr), t(0.0)
     {
         initialise();
     }
@@ -231,13 +232,15 @@ std::string ExperimentConstructor::supportCode(const std::vector<Variable> &glob
     ss << endl;
 
     ss << daqCode();
-    ss << "inline DAQ *createSim(DAQData *p) { return new Simulator(p); }" << endl;
+    ss << endl;
+    ss << "inline DAQ *createSim() { return new Simulator(); }" << endl;
     ss << "inline void destroySim(DAQ *sim) { delete sim; }" << endl;
+    ss << endl;
 
     ss << "extern \"C\" ExperimentConstructor::Pointers populate(std::vector<StateVariable> &state, "
                                                              << "std::vector<AdjustableParam> &param) {" << endl;
     ss << "    ExperimentConstructor::Pointers pointers;" << endl;
-    ss << "    libInit(pointers, " << m.cfg.npop << ");" << endl;
+    ss << "    libInit(pointers, " << expd.numCandidates << ");" << endl;
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
         ss << "    state[" << i++ << "].v = " << v.name << SUFFIX << ";" << endl;

@@ -115,7 +115,6 @@ enum class IntegrationMethod { ForwardEuler, RungeKutta4 };
 enum class ModuleType { Experiment = 0, Wavegen = 1 };
 struct ModelData {
     double dt;
-    int npop;
     IntegrationMethod method;
 };
 
@@ -183,7 +182,6 @@ struct RunData
     int simCycles;
     double clampGain;
     double accessResistance;
-    double settleTime = 50; // Duration of initial simulation run to get settled state variable values
 };
 
 struct WaveStats
@@ -260,13 +258,15 @@ struct MAPEStats
     MAPEStats(size_t sz, std::list<MAPElite>::const_iterator b) : bestWave(b), history(sz) {}
 };
 
-struct WavegenData : public RunData
+struct WavegenData
 {
-    bool permute;
+    bool permute; //!< If true, parameters will be permuted, and only one waveform will be used per epoch
+    size_t numWavesPerEpoch; //!< [unpermuted only] Number of waveforms evaluated per epoch
     int numSigmaAdjustWaveforms; //!< Number of random waveforms used to normalise the perturbation rate.
-                                 //!< If the MetaModel is not permuted, this number is rounded up to the
-                                 //!< nearest multiple of the population size.
+                                 //!< If parameters are not permuted, this number is rounded up to the
+                                 //!< nearest multiple of the waveform population size.
     size_t nInitialWaves; //!< Number of randomly initialised waveforms used to start the search
+    double settleTime = 50; //!< Duration of initial simulation run to get settled state variable values
 
     /**
      * @brief binFunc returns a vector of discretised behavioural measures used as MAPE dimensions.
@@ -280,6 +280,11 @@ struct WavegenData : public RunData
     std::function<bool(const MAPEStats &)> increasePrecision;
     std::function<bool(MAPEStats const&)> stopFunc = [](MAPEStats const&){return true;}; //!< Return true to stop the search.
     size_t historySize;
+};
+
+struct ExperimentData
+{
+    size_t numCandidates;
 };
 
 #endif // TYPES_H

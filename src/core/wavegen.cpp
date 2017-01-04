@@ -3,7 +3,7 @@
 #include <cassert>
 #include "cuda_helper.h"
 
-Wavegen::Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r) :
+Wavegen::Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r, const RunData &rund) :
     WavegenConstructor(m, dir, r),
     p(p),
     blockSize(numGroupsPerBlock * (adjustableParams.size() + 1)),
@@ -13,6 +13,12 @@ Wavegen::Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p,
     sigmax(getSigmaMaxima()),
     mapeStats(r.historySize, mapeArchive.end())
 {
+    setRunData(rund);
+}
+
+void Wavegen::setRunData(const RunData &r)
+{
+    rund = r;
     simCycles = r.simCycles;
     clampGain = r.clampGain;
     accessResistance = r.accessResistance;
@@ -263,7 +269,7 @@ void Wavegen::adjustSigmas()
 
     std::vector<double> meanParamErr(sumParamErr);
     for ( double & e : meanParamErr ) {
-        e /= end * numGroups * p.duration/m.cfg.dt * r.simCycles;
+        e /= end * numGroups * p.duration/m.cfg.dt * rund.simCycles;
     }
 
     // Find the median of mean parameter errors:

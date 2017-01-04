@@ -23,19 +23,22 @@ MainWindow::MainWindow(QWidget *parent) :
     if ( fname.empty() || dir.empty() )
         return;
 
-    MetaModel mt(fname);
-    mt.cfg.dt = 0.25;
-    mt.cfg.npop = 10000;
-    mt.cfg.method = IntegrationMethod::RungeKutta4;
+    ModelData md;
+    md.dt = 0.25;
+    md.method = IntegrationMethod::RungeKutta4;
+    MetaModel mt(fname, md);
+
     StimulationData sd;
     WavegenData wd;
     wd.permute = false;
-    wd.accessResistance = 15;
-    wd.clampGain = 1000;
-    wd.simCycles = 20;
+    wd.numWavesPerEpoch = 10000;
     wd.numSigmaAdjustWaveforms = 1e5;
     wd.nInitialWaves = 1e5;
-    scalar maxCycles = 100.0 / mt.cfg.dt * wd.simCycles;
+    RunData rund;
+    rund.accessResistance = 15;
+    rund.clampGain = 1000;
+    rund.simCycles = 20;
+    scalar maxCycles = 100.0 / mt.cfg.dt * rund.simCycles;
     scalar maxDeviation = sd.maxVoltage-sd.baseV > sd.baseV-sd.minVoltage ? sd.maxVoltage-sd.baseV : sd.baseV - sd.minVoltage;
     wd.binFunc = [=](const Stimulation &I, const WaveStats &S, size_t precision){
         std::vector<size_t> ret(3);
@@ -95,7 +98,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     wd.historySize = 20;
 
-    Wavegen wg(mt, dir, sd, wd);
+    Wavegen wg(mt, dir, sd, wd, rund);
 
     //wg.permute();
     wg.adjustSigmas();

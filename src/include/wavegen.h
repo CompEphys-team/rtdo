@@ -8,7 +8,7 @@
 class Wavegen : public WavegenConstructor
 {
 public:
-    Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r);
+    Wavegen(MetaModel &m, const std::string &dir, const StimulationData &p, const WavegenData &r, const RunData &rund);
     ~Wavegen() {}
 
     /**
@@ -68,9 +68,17 @@ public:
      */
     void search(int param);
 
+    /**
+     * @brief setRunData sets the module's RunData parameters. Note that kernel calls that are queued up but not yet executed
+     * are not affected by this.
+     */
+    void setRunData(const RunData &r);
+
     StimulationData p;
 
 protected:
+    RunData rund;
+
     int blockSize; //!< Number of models (not groups!) per thread block
     int nModels; //!< Total number of models
 
