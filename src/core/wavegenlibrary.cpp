@@ -5,7 +5,6 @@
 #include <fstream>
 #include "global.h"
 #include "cuda_helper.h"
-#include <cstdlib>
 #include <dlfcn.h>
 
 #define SUFFIX "WG"
@@ -55,7 +54,6 @@ void *WavegenLibrary::loadLibrary(const std::string &directory)
     // Generate code
     _this = this;
     MetaModel::modelDef = redirect;
-    setenv("GENN_PATH", LOCAL_GENN_PATH, 1);
     std::string name = model.name(ModuleType::Wavegen);
     std::string arg1 = std::string("generating ") + name + " in";
     char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(directory.c_str())};
@@ -69,7 +67,7 @@ void *WavegenLibrary::loadLibrary(const std::string &directory)
     makefile << "runner.so: runner.o" << endl;
     makefile << "\t$(CXX) -o $@ $< -shared" << endl;
     std::stringstream cmd;
-    cmd << "cd " << dir << " && GENN_PATH=" << LOCAL_GENN_PATH << " make runner.so";
+    cmd << "cd " << dir << " && make runner.so";
     if ( system(cmd.str().c_str()) )
         throw std::runtime_error("Code compile failed.");
 
