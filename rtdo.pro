@@ -37,9 +37,7 @@ SOURCES += \
     src/core/experimentlibrary.cpp
 
 OTHER_FILES += \
-    src/include/supportcode.cu \
-    src/include/wavegen.cu \
-    src/include/experiment.cu
+    src/include/supportcode.cu
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -159,3 +157,7 @@ SOURCES += \
     src/nonrealtime/queue.cpp \
     src/drivers/comedidaq.cpp
 }
+
+DISTFILES += \
+    src/include/experimentlibrary.cu \
+    src/include/wavegenlibrary.cu

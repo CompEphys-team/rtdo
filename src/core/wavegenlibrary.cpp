@@ -238,7 +238,7 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "#include \"definitions.h\"" << endl;
     ss << "#include \"wavegenlibrary.h\"" << endl;
     ss << "#include \"supportcode.cu\"" << endl;
-    ss << "#include \"wavegen.cu\"" << endl;
+    ss << "#include \"wavegenlibrary.cu\"" << endl;
     ss << endl;
 
     ss << "extern \"C\" WavegenLibrary::Pointers populate(std::vector<StateVariable> &state, "

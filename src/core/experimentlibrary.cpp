@@ -228,7 +228,7 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
     ss << "#include \"definitions.h\"" << endl;
     ss << "#include \"experimentlibrary.h\"" << endl;
     ss << "#include \"supportcode.cu\"" << endl;
-    ss << "#include \"experiment.cu\"" << endl;
+    ss << "#include \"experimentlibrary.cu\"" << endl;
     ss << endl;
 
     ss << daqCode();
