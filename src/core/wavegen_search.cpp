@@ -100,7 +100,7 @@ void Wavegen::search(int param)
                         }
                     }
                 }
-            } while ( !wellShuffled || shuffleFailures > 10 );
+            } while ( !wellShuffled && shuffleFailures < 10 );
 
             // Mutate
             for ( int i = 0; i < numWavesPerEpisode; i++ ) {
