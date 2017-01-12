@@ -1,0 +1,53 @@
+#ifndef EXPERIMENT_H
+#define EXPERIMENT_H
+
+#include "experimentlibrary.h"
+
+class Experiment
+{
+public:
+    Experiment(MetaModel &model, const std::string &dir, const ExperimentData &expd, const RunData &rund, DAQ *daq = nullptr);
+    ~Experiment();
+
+    /**
+     * @brief setRunData sets the module's RunData parameters. Note that kernel calls that are queued up but not yet executed
+     * are not affected by this.
+     */
+    void setRunData(const RunData &r);
+
+    /**
+     * @brief reset reinitialises the library, discarding all previous progress.
+     */
+    inline void reset() { lib.reset(); }
+
+    /**
+     * @brief errProfile generates an error profile for a given target parameter and stimulation
+     * @param I is the stimulation applied to all profiled models
+     * @param model is the set of parameter values (ordered like the MetaModel::adjustableParams, target parameter value is ignored)
+     * @param targetParam is the index of a parameter to be varied uniformly within its range, @sa errProfile_value()
+     * @return a vector of error values for the model corresponding to the target parameter distribution
+     */
+    std::vector<scalar> errProfile(const Stimulation &I, std::vector<scalar> model, size_t targetParam);
+    /**
+     * @brief errProfile_value gives a target parameter's value at a given position in its range. The values are uniformly
+     * distributed across the full range of the parameter. Limits are as follows:
+     * idx == 0 <==> value == parameter minimum
+     * idx == expd.numCandidates-1 <==> value == parameter maximum
+     * @sa errProfile()
+     */
+    scalar errProfile_value(size_t targetParam, size_t idx);
+
+    ExperimentData expd;
+
+    ExperimentLibrary lib;
+
+protected:
+    RunData rund;
+
+    DAQ *simulator;
+    DAQ *daq;
+
+    void stimulate(const Stimulation &I);
+};
+
+#endif // EXPERIMENT_H

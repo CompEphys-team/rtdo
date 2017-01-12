@@ -34,7 +34,8 @@ SOURCES += \
     src/core/wavegen_mutate.cpp \
     src/core/wavegen_search.cpp \
     src/core/wavegenlibrary.cpp \
-    src/core/experimentlibrary.cpp
+    src/core/experimentlibrary.cpp \
+    src/core/experiment.cpp
 
 OTHER_FILES += \
     src/include/supportcode.cu
@@ -54,7 +55,8 @@ HEADERS  += \
     src/include/cuda_helper.h \
     src/include/multiarray.h \
     src/include/wavegenlibrary.h \
-    src/include/experimentlibrary.h
+    src/include/experimentlibrary.h \
+    src/include/experiment.h
 
 FORMS    += \
     src/gui/mainwindow.ui

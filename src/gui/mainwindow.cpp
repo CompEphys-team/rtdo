@@ -7,7 +7,7 @@
 #include <iostream>
 #include <dlfcn.h>
 #include "wavegen.h"
-#include "experimentlibrary.h"
+#include "experiment.h"
 
 using std::endl;
 
@@ -122,12 +122,8 @@ MainWindow::MainWindow(QWidget *parent) :
     }*/
 
     ExperimentData expd;
-    expd.numCandidates = 100000;
-    ExperimentLibrary exp(mt, dir, expd);
-    exp.simCycles = rund.simCycles;
-    exp.clampGain = rund.clampGain;
-    exp.accessResistance = rund.accessResistance;
-    DAQ *sim = exp.createSimulator();
+    expd.numCandidates = 1000;
+    Experiment exp(mt, dir, expd, rund);
 
     Stimulation foo {};
     foo.duration = 20;
@@ -136,11 +132,24 @@ MainWindow::MainWindow(QWidget *parent) :
     foo.insert(foo.end(), Stimulation::Step{10, 20, true});
     foo.insert(foo.end(), Stimulation::Step{15, 0, false});
     foo.insert(foo.end(), Stimulation::Step{20, -60, true});
+    foo.tObsBegin = 8;
+    foo.tObsEnd = 18;
     std::cout << foo << std::endl;
-    sim->run(foo);
-    for ( int i = 0; i < 80; i++ ) {
-        std::cout << sim->current << '\t' << sim->voltage << std::endl;
-        sim->next();
+
+    std::vector<scalar> model(mt.adjustableParams.size());
+    for ( size_t i = 0; i < model.size(); i++ )
+        model[i] = mt.adjustableParams[i].initial;
+
+    for ( size_t par = 0; par < mt.adjustableParams.size(); par++ ) {
+        std::vector<scalar> profile = exp.errProfile(foo, model, par);
+        for ( size_t i = 0; i < profile.size(); i++ ) {
+            std::cout << exp.errProfile_value(par, i) << '\t';
+        }
+        std::cout << endl;
+        for ( const scalar &j : profile ) {
+            std::cout << j << '\t';
+        }
+        std::cout << std::endl;
     }
 }
 
