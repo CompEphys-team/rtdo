@@ -191,7 +191,7 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
 
         // Get deviation from the base model
         if ( paramID ) {
-            err = abs(Isyn - errShare[groupID]);
+            err = fabs(Isyn - errShare[groupID]);
             if ( $(targetParam) < 0 )
                 $(err) += err * mdt;
             errShare[paramID*MM_NumGroupsPerBlock + groupID] = err;

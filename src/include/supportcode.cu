@@ -40,7 +40,7 @@ __host__ __device__ scalar getCommandVoltage(const Stimulation &I, scalar t)
         else
             Vcmd = I.baseV;
     } else {
-        while ( s != I.end() && s->t < t )
+        while ( s != I.end() && s->t <= t )
             s++;
         if ( s != I.end() && s->ramp )
             Vcmd = (s-1)->V + (s->V - (s-1)->V) * (t - (s-1)->t) / (s->t - (s-1)->t);

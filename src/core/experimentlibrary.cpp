@@ -135,9 +135,9 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
 
 if ( $(getErr) ) {
    if ( $(VC) )
-       $(err) += abs(Isyn - $(Imem));
+       $(err) += fabs(Isyn - $(Imem));
    else
-       $(err) += abs($(V) - $(Vmem));
+       $(err) += fabs($(V) - $(Vmem));
 }
 )EOF";
 }
