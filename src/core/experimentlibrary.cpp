@@ -129,6 +129,7 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
        Isyn = $(Imem);
    }
 )EOF"
+// + std::string("#ifndef _") + model.name(ModuleType::Experiment) + "_neuronFnct_cc\nif(id==1400){ printf(\"Device %2.2f + %2d: %f\t%.1f\t%f\t%f\\n\", t, mt, $(V), $(Vmem), Isyn, $(Imem)); }\n#endif\n"
    + model.kernel("    ", true, false)
    + R"EOF(
 }
@@ -149,10 +150,23 @@ std::string ExperimentLibrary::daqCode()
 class Simulator : public DAQ
 {
 private:
-    double t;
+    struct CacheStruct {
+        CacheStruct(Stimulation s) : _stim(s), _voltage(s.duration/DT), _current(s.duration/DT) {}
+        Stimulation _stim;
+        std::vector<scalar> _voltage;
+        std::vector<scalar> _current;
+)EOF";
+    for ( const StateVariable &v : stateVariables )
+        ss << "        " << v.type << " " << v.name << ";" << endl;
+    ss << R"EOF(
+    };
+
+    std::list<CacheStruct> cache;
+    std::list<CacheStruct>::iterator currentCacheEntry;
+    size_t currentSample;
 
 public:
-    Simulator() : DAQ(nullptr), t(0.0)
+    Simulator() : DAQ(nullptr)
     {
         initialise();
     }
@@ -161,55 +175,83 @@ public:
 
     void run(Stimulation s)
     {
-        if ( running )
-            return;
         currentStim = s;
-        running = true;
+        currentSample = 0;
+
+        // Check if requested stimulation has been used before
+        for ( currentCacheEntry = cache.begin(); currentCacheEntry != cache.end(); ++currentCacheEntry ) {
+            if ( currentCacheEntry->_stim == s ) {
+                restoreState();
+                return;
+            }
+        }
+        currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(s));
+
+        scalar t = 0;
+        unsigned int iT = 0;
+        scalar Isyn;
+)EOF";
+    ss << "        const scalar mdt = DT/simCycles" << SUFFIX << ";" << endl;
+    ss << "        while ( t <= s.duration ) {" << endl;
+    ss << "            scalar Vcmd = getCommandVoltage(s, t);" << endl;
+    ss << "            for ( unsigned int mt = 0; mt < simCycles" << SUFFIX << "; mt++ ) {" << endl;
+    ss << "                Isyn = (clampGain" << SUFFIX << "*(Vcmd-V) - V) / accessResistance" << SUFFIX << ";" << endl;
+//    ss << "printf(\"Host %2.2f + %2d: %f\t%.1f\t%f\\n\", t, mt, V, Vcmd, Isyn);" << endl;
+    ss << model.kernel("                ", false, false);
+    ss << R"EOF(
+            } // end for mt
+
+            currentCacheEntry->_voltage[iT] = V;
+            currentCacheEntry->_current[iT] = Isyn;
+            t += DT;
+            iT++;
+        } // end while t <= s.duration
+
+        saveState();
     }
 
     void next()
     {
-        if ( !running )
-            return;
-        double Isyn;
-        scalar Vcmd = getCommandVoltage(currentStim, t);
-)EOF";
-    ss << "        const float mdt = DT/simCycles" << SUFFIX << ";" << endl;
-    ss << "        for ( unsigned int mt = 0; mt < simCycles" << SUFFIX << "; mt++ ) {" << endl;
-    ss << "            Isyn = (clampGain" << SUFFIX << "*(Vcmd-V) - V) / accessResistance" << SUFFIX << ";" << endl;
-    ss << model.kernel("            ", false, false);
-    ss << R"EOF(
-        }
-
-        current = Isyn;
-        voltage = V;
-        t += DT;
+        current = currentCacheEntry->_current[currentSample];
+        voltage = currentCacheEntry->_voltage[currentSample];
+        ++currentSample;
     }
 
     void reset()
     {
-        if ( !running )
-            return;
-        running = false;
-        voltage = current = t = 0.0;
+        currentSample = 0;
+        voltage = current = 0.0;
     }
 
-    void initialise()
+    void saveState()
     {
 )EOF";
     for ( const StateVariable &v : stateVariables )
-        ss << "        " << v.name << " = " << v.initial << ";" << endl;
+        ss << "        currentCacheEntry->" << v.name << " = " << v.name << ";" << endl;
+    ss << "    }" << endl;
     ss << endl;
-    for ( const AdjustableParam &p : adjustableParams )
-        ss << "        " << p.name << " = " << p.initial << ";" << endl;
-    ss << "    }" << endl << endl; // End initialise
+
+    ss << "    void restoreState()" << endl;
+    ss << "    {" << endl;
+    for ( const StateVariable &v : stateVariables )
+        ss << "        " << v.name << " = currentCacheEntry->" << v.name << ";" << endl;
+    ss << "    }" << endl;
+    ss << endl;
+
+    ss << "    void initialise()" << endl;
+    ss << "    {" << endl;
+    for ( const StateVariable &v : stateVariables )
+        ss << "        " << v.name << " = " << v.initial << ";" << endl;
+    ss << "    }" << endl << endl;
 
     // Declarations
-    for ( const StateVariable &v : stateVariables )
+    for ( const StateVariable &v : stateVariables ) {
         ss << "    " << v.type << " " << v.name << ";" << endl;
+        ss << "    std::vector<" << v.type << "> settled_" << v.name << ";" << endl;
+    }
     ss << endl;
     for ( const AdjustableParam &p : adjustableParams )
-        ss << "    " << p.type << " " << p.name << ";" << endl;
+        ss << "    constexpr static " << p.type << " " << p.name << " = " << p.initial << ";" << endl;
 
     ss << "};" << endl;
     return ss.str();
