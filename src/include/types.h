@@ -285,6 +285,7 @@ struct WavegenData
 struct ExperimentData
 {
     size_t numCandidates;
+    double settleDuration = 50;
 };
 
 #endif // TYPES_H

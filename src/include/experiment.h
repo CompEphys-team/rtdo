@@ -36,6 +36,15 @@ public:
      * @sa errProfile()
      */
     scalar errProfile_value(size_t targetParam, size_t idx);
+    /**
+     * @brief errProfile_idx gives the index in a target parameter's distribution that most closely matches the given value.
+     * Use this to find the profile of a specific model. Within resolution limits, x == errProfile_value(t, errProfile_idx(t, x))
+     * @sa errProfile(), errProfile_value()
+     */
+    size_t errProfile_idx(size_t targetParam, scalar value);
+
+    inline void errProfile_retain(std::vector<size_t> indices = std::vector<size_t>()) { errProfile_retainedIdx = indices; }
+    std::vector<scalar> errProfile_getRetained(size_t idx);
 
     ExperimentData expd;
 
@@ -46,6 +55,9 @@ protected:
 
     DAQ *simulator;
     DAQ *daq;
+
+    std::vector<size_t> errProfile_retainedIdx;
+    std::list<std::vector<scalar>> errProfile_retained;
 
     void stimulate(const Stimulation &I);
 };

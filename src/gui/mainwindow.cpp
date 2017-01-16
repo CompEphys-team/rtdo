@@ -98,10 +98,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
     wd.historySize = 20;
 
-    Wavegen wg(mt, dir, sd, wd, rund);
+//    Wavegen wg(mt, dir, sd, wd, rund);
 
-    //wg.permute();
-    wg.adjustSigmas();
+//    //wg.permute();
+//    wg.adjustSigmas();
 /*    std::vector<MAPElite> winners;
     std::vector<MAPEStats> stats;
     for ( size_t i = 0, end = mt.adjustableParams.size(); i < end; i++ ) {
@@ -122,34 +122,63 @@ MainWindow::MainWindow(QWidget *parent) :
     }*/
 
     ExperimentData expd;
-    expd.numCandidates = 1000;
+    expd.numCandidates = 10000;
+    expd.settleDuration = 100;
     Experiment exp(mt, dir, expd, rund);
 
     Stimulation foo {};
-    foo.duration = 20;
+    foo.duration = 50;
     foo.baseV = -60;
-    foo.insert(foo.end(), Stimulation::Step{5, 50, true});
-    foo.insert(foo.end(), Stimulation::Step{10, 20, true});
-    foo.insert(foo.end(), Stimulation::Step{15, 0, false});
-    foo.insert(foo.end(), Stimulation::Step{20, -60, true});
-    foo.tObsBegin = 8;
-    foo.tObsEnd = 18;
+    foo.insert(foo.end(), Stimulation::Step{30, -20, false});
+    foo.tObsBegin = 20;
+    foo.tObsEnd = 50;
+
+    std::cout << std::endl;
+    std::cout << "Error profiles - comparing CPU and GPU computations" << std::endl;
+    std::cout << "Stimulating with:" << std::endl;
     std::cout << foo << std::endl;
+    std::cout << "Pre-stimulation settling: " << expd.settleDuration << " ms." << std::endl;
+    std::cout << "Base model (B1_basic): (base, min, max)" << std::endl;
+    for ( const AdjustableParam &p : mt.adjustableParams )
+        std::cout << p.name << '\t' << p.initial << '\t' << p.min << '\t' << p.max << std::endl;
+    std::cout << "Each parameter perturbed in turn, distributed uniformly in [min,max] with " << expd.numCandidates << " distinct values." << std::endl;
+    std::cout << "Error denotes deviation from CPU-computed base model." << std::endl << std::endl;
 
     std::vector<scalar> model(mt.adjustableParams.size());
     for ( size_t i = 0; i < model.size(); i++ )
         model[i] = mt.adjustableParams[i].initial;
 
     for ( size_t par = 0; par < mt.adjustableParams.size(); par++ ) {
+        exp.errProfile_retain();
         std::vector<scalar> profile = exp.errProfile(foo, model, par);
+        size_t minIdx, iniIdx;
+        minIdx = iniIdx = exp.errProfile_idx(par, mt.adjustableParams[par].initial);
+        scalar min = profile[minIdx];
+
+        std::cout << "# Total error for perturbed parameter:" << std::endl;
+        std::cout << mt.adjustableParams[par].name << "\tError" << std::endl;
         for ( size_t i = 0; i < profile.size(); i++ ) {
-            std::cout << exp.errProfile_value(par, i) << '\t';
-        }
-        std::cout << endl;
-        for ( const scalar &j : profile ) {
-            std::cout << j << '\t';
+            std::cout << exp.errProfile_value(par, i) << '\t' << profile[i] << std::endl;
+            if ( profile[i] < min && !isnan(profile[i]) ) {
+                min = profile[i];
+                minIdx = i;
+            }
         }
         std::cout << std::endl;
+
+        std::cout << "# Error for initial " << mt.adjustableParams[par].name << "=" << exp.errProfile_value(par, iniIdx) << " is " << profile[iniIdx] << std::endl;
+        std::cout << "# Minimal error at " << mt.adjustableParams[par].name << "=" << exp.errProfile_value(par, minIdx)  << " is " << min << std::endl;
+
+        // Get diachronous profile for min and initial
+        std::cout << std::endl << "# Diachronous error profile for " << mt.adjustableParams[par].name << std::endl;
+        std::cout << "t\tmin\tini\tini-min" << std::endl;
+        exp.errProfile_retain({minIdx, iniIdx});
+        exp.errProfile(foo, model, par);
+        auto errs_min = exp.errProfile_getRetained(minIdx), errs_ini = exp.errProfile_getRetained(iniIdx);
+        for ( size_t i = 0; i < errs_min.size(); i++ ) {
+            std::cout << (mt.cfg.dt * i) << '\t' << errs_min[i] << '\t' << errs_ini[i] << '\t' << (errs_ini[i] - errs_min[i]) << std::endl;
+        }
+        std::cout << std::endl << std::endl;
     }
 }
 
