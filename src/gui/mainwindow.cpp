@@ -124,7 +124,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ExperimentData expd;
     expd.numCandidates = 10000;
     expd.settleDuration = 100;
-    Experiment exp(mt, dir, expd, rund);
+
+    ExperimentLibrary explib(mt, dir, expd, rund);
+
+    Experiment exp(explib);
 
     Stimulation foo {};
     foo.duration = 50;

@@ -6,19 +6,8 @@
 class Experiment
 {
 public:
-    Experiment(MetaModel &model, const std::string &dir, const ExperimentData &expd, const RunData &rund, DAQ *daq = nullptr);
+    Experiment(ExperimentLibrary &lib, DAQ *daq = nullptr);
     ~Experiment();
-
-    /**
-     * @brief setRunData sets the module's RunData parameters. Note that kernel calls that are queued up but not yet executed
-     * are not affected by this.
-     */
-    void setRunData(const RunData &r);
-
-    /**
-     * @brief reset reinitialises the library, discarding all previous progress.
-     */
-    inline void reset() { lib.reset(); }
 
     /**
      * @brief errProfile generates an error profile for a given target parameter and stimulation
@@ -46,13 +35,9 @@ public:
     inline void errProfile_retain(std::vector<size_t> indices = std::vector<size_t>()) { errProfile_retainedIdx = indices; }
     std::vector<scalar> errProfile_getRetained(size_t idx);
 
-    ExperimentData expd;
-
-    ExperimentLibrary lib;
+    ExperimentLibrary &lib;
 
 protected:
-    RunData rund;
-
     DAQ *simulator;
     DAQ *daq;
 

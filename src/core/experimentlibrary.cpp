@@ -12,7 +12,7 @@
 static ExperimentLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-ExperimentLibrary::ExperimentLibrary(MetaModel &m, const std::string &directory, const ExperimentData &expd) :
+ExperimentLibrary::ExperimentLibrary(MetaModel &m, const std::string &directory, const ExperimentData &expd, RunData rund) :
     expd(expd),
     model(m),
     stateVariables(m.stateVariables),
@@ -31,7 +31,7 @@ ExperimentLibrary::ExperimentLibrary(MetaModel &m, const std::string &directory,
     getErr(*(pointers.getErr)),
     err(pointers.err)
 {
-
+    setRunData(rund);
 }
 
 ExperimentLibrary::~ExperimentLibrary()
@@ -313,4 +313,11 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
     ss << "namespace " << SUFFIX << "_neuron {" << endl;
 
     return ss.str();
+}
+
+void ExperimentLibrary::setRunData(RunData rund)
+{
+    clampGain = rund.clampGain;
+    accessResistance = rund.accessResistance;
+    simCycles = rund.simCycles;
 }

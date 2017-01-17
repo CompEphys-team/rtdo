@@ -8,13 +8,15 @@
 class ExperimentLibrary
 {
 public:
-    ExperimentLibrary(MetaModel &model, const std::string &directory, const ExperimentData &expd);
+    ExperimentLibrary(MetaModel &model, const std::string &directory, const ExperimentData &expd, RunData rund);
     virtual ~ExperimentLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
 
     inline DAQ *createSimulator() { return pointers.createSim(); }
     inline void destroySimulator(DAQ *sim) { pointers.destroySim(sim); }
+
+    void setRunData(RunData rund); //!< Sets the RunData variables in the library, affecting all future calls to step().
 
     struct Pointers
     {
