@@ -235,7 +235,7 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "#define NPARAM " << adjustableParams.size() << endl;
     ss << "#include \"definitions.h\"" << endl;
     ss << "#include \"wavegenlibrary.h\"" << endl;
-    ss << "#include \"supportcode.cu\"" << endl;
+    ss << "#include \"../core/supportcode.cpp\"" << endl;
     ss << "#include \"wavegenlibrary.cu\"" << endl;
     ss << endl;
 

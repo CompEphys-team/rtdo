@@ -267,7 +267,7 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
     ss << "#define NPARAM " << adjustableParams.size() << endl;
     ss << "#include \"definitions.h\"" << endl;
     ss << "#include \"experimentlibrary.h\"" << endl;
-    ss << "#include \"supportcode.cu\"" << endl;
+    ss << "#include \"../core/supportcode.cpp\"" << endl;
     ss << "#include \"experimentlibrary.cu\"" << endl;
     ss << endl;
 

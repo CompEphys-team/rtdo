@@ -35,10 +35,8 @@ SOURCES += \
     src/core/wavegen_search.cpp \
     src/core/wavegenlibrary.cpp \
     src/core/experimentlibrary.cpp \
-    src/core/experiment.cpp
-
-OTHER_FILES += \
-    src/include/supportcode.cu
+    src/core/experiment.cpp \
+    src/core/supportcode.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -56,7 +54,8 @@ HEADERS  += \
     src/include/multiarray.h \
     src/include/wavegenlibrary.h \
     src/include/experimentlibrary.h \
-    src/include/experiment.h
+    src/include/experiment.h \
+    src/include/supportcode.h
 
 FORMS    += \
     src/gui/mainwindow.ui

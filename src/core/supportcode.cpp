@@ -1,8 +1,7 @@
 #ifndef SUPPORTCODE_CU
 #define SUPPORTCODE_CU
 
-#include <cuda_runtime.h>
-#include "types.h"
+#include "supportcode.h"
 
 __device__ void processStats(const scalar err,  //!< Target parameter's absolute deviation from base model on this cycle
                              const scalar mean, //!< Mean deviation across all parameters

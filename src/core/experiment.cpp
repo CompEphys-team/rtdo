@@ -1,5 +1,5 @@
 #include "experiment.h"
-#include "supportcode.cu"
+#include "supportcode.h"
 #include <cassert>
 #include <cmath>
 
