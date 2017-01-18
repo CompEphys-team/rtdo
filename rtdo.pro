@@ -36,6 +36,7 @@ SOURCES += \
     src/core/wavegenlibrary.cpp \
     src/core/experimentlibrary.cpp \
     src/core/experiment.cpp \
+    src/core/errorprofiler.cpp \
     src/core/supportcode.cpp
 
 HEADERS  += \
@@ -55,6 +56,7 @@ HEADERS  += \
     src/include/wavegenlibrary.h \
     src/include/experimentlibrary.h \
     src/include/experiment.h \
+    src/include/errorprofiler.h \
     src/include/supportcode.h
 
 FORMS    += \

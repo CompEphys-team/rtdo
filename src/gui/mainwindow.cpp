@@ -7,7 +7,7 @@
 #include <iostream>
 #include <dlfcn.h>
 #include "wavegen.h"
-#include "experiment.h"
+#include "errorprofiler.h"
 
 using std::endl;
 
@@ -127,7 +127,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ExperimentLibrary explib(mt, dir, expd, rund);
 
-    Experiment exp(explib);
+    ErrorProfiler errp(explib);
 
     Stimulation foo {};
     foo.duration = 50;
@@ -137,7 +137,7 @@ MainWindow::MainWindow(QWidget *parent) :
     foo.tObsEnd = 50;
 
     std::cout << std::endl;
-    std::cout << "Error profiles - comparing CPU and GPU computations" << std::endl;
+    std::cout << "Error profiles - comparing CPU (base model) and GPU (perturbated) simulations" << std::endl;
     std::cout << "Stimulating with:" << std::endl;
     std::cout << foo << std::endl;
     std::cout << "Pre-stimulation settling: " << expd.settleDuration << " ms." << std::endl;
@@ -147,41 +147,36 @@ MainWindow::MainWindow(QWidget *parent) :
     std::cout << "Each parameter perturbed in turn, distributed uniformly in [min,max] with " << expd.numCandidates << " distinct values." << std::endl;
     std::cout << "Error denotes deviation from CPU-computed base model." << std::endl << std::endl;
 
-    std::vector<scalar> model(mt.adjustableParams.size());
-    for ( size_t i = 0; i < model.size(); i++ )
-        model[i] = mt.adjustableParams[i].initial;
-
-    for ( size_t par = 0; par < mt.adjustableParams.size(); par++ ) {
-        exp.errProfile_retain();
-        std::vector<scalar> profile = exp.errProfile(foo, model, par);
-        size_t minIdx, iniIdx;
-        minIdx = iniIdx = exp.errProfile_idx(par, mt.adjustableParams[par].initial);
-        scalar min = profile[minIdx];
+    std::vector<ErrorProfiler::Permutation> perms;
+    for ( size_t par = 0, other; par < mt.adjustableParams.size(); par++ ) {
+        perms.clear();
+        perms.resize(mt.adjustableParams.size());
+        perms[par].n = 100;
+        perms[other = (par ? par-1 : 1)].n = 10;
+        errp.setPermutations(perms);
+        errp.profile(foo);
+        auto profs = errp.getProfiles(par);
 
         std::cout << "# Total error for perturbed parameter:" << std::endl;
+        std::cout << mt.adjustableParams[other].name << " -->\t";
+        for ( size_t i = 0; i < profs.size(); i++ )
+            std::cout << errp.getParameterValue(other, profs[i].paramIndex(other)) << " (" << profs[i].paramIndex(other) << ")" << '\t';
+        std::cout << std::endl;
         std::cout << mt.adjustableParams[par].name << "\tError" << std::endl;
-        for ( size_t i = 0; i < profile.size(); i++ ) {
-            std::cout << exp.errProfile_value(par, i) << '\t' << profile[i] << std::endl;
-            if ( profile[i] < min && !isnan(profile[i]) ) {
-                min = profile[i];
-                minIdx = i;
-            }
+        for ( size_t j = 0; j < profs[0].size(); j++ ) {
+            std::cout << errp.getParameterValue(par, j);
+            for ( size_t i = 0; i < profs.size(); i++ )
+                std::cout << '\t' << profs[i][j];
+            std::cout << std::endl;
         }
         std::cout << std::endl;
 
-        std::cout << "# Error for initial " << mt.adjustableParams[par].name << "=" << exp.errProfile_value(par, iniIdx) << " is " << profile[iniIdx] << std::endl;
-        std::cout << "# Minimal error at " << mt.adjustableParams[par].name << "=" << exp.errProfile_value(par, minIdx)  << " is " << min << std::endl;
-
-        // Get diachronous profile for min and initial
-        std::cout << std::endl << "# Diachronous error profile for " << mt.adjustableParams[par].name << std::endl;
-        std::cout << "t\tmin\tini\tini-min" << std::endl;
-        exp.errProfile_retain({minIdx, iniIdx});
-        exp.errProfile(foo, model, par);
-        auto errs_min = exp.errProfile_getRetained(minIdx), errs_ini = exp.errProfile_getRetained(iniIdx);
-        for ( size_t i = 0; i < errs_min.size(); i++ ) {
-            std::cout << (mt.cfg.dt * i) << '\t' << errs_min[i] << '\t' << errs_ini[i] << '\t' << (errs_ini[i] - errs_min[i]) << std::endl;
-        }
-        std::cout << std::endl << std::endl;
+        size_t parIdx = errp.getParameterIndex(par, mt.adjustableParams[par].initial);
+        size_t otherIdx = errp.getParameterIndex(other, mt.adjustableParams[other].initial);
+        std::cout << "# Error for initial " << mt.adjustableParams[par].name << "=" << errp.getParameterValue(par, parIdx)
+                  << " with " << mt.adjustableParams[other].name << "=" << errp.getParameterValue(other, otherIdx)
+                  << " is " << profs[otherIdx][parIdx] << std::endl;
+        std::cout << std::endl;
     }
 }
 
