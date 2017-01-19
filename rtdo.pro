@@ -57,7 +57,8 @@ HEADERS  += \
     src/include/experimentlibrary.h \
     src/include/experiment.h \
     src/include/errorprofiler.h \
-    src/include/supportcode.h
+    src/include/supportcode.h \
+    src/include/util.h
 
 FORMS    += \
     src/gui/mainwindow.ui

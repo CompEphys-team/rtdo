@@ -2,6 +2,7 @@
 #include "supportcode.h"
 #include <cmath>
 #include <cassert>
+#include "util.h"
 
 ErrorProfiler::ErrorProfiler(ExperimentLibrary &lib, DAQ *daq) :
     lib(lib),
@@ -56,27 +57,31 @@ double ErrorProfiler::getParameterValue(size_t param, size_t idx)
         return perm.value;
     else if ( perm.n == 1 )
         return para.initial;
-    else if ( perm.min == 0 && perm.max == 0 )
-        return para.min + (para.max-para.min) * idx / (perm.n-1);
-    else
-        return perm.min + (perm.max-perm.min) * idx / (perm.n-1);
+    else {
+        auto distribution = para.multiplicative ? logSpace : linSpace;
+        if ( perm.min == 0 && perm.max == 0 )
+            return distribution(para.min, para.max, perm.n, idx);
+        else
+            return distribution(perm.min, perm.max, perm.n, idx);
+    }
 }
 
 size_t ErrorProfiler::getParameterIndex(size_t param, double value)
 {
     const AdjustableParam &para = lib.adjustableParams[param];
     const Permutation &perm = permutations[param];
-    size_t ret;
     if ( perm.fixed || perm.n == 1 )
-        ret = 0;
-    else if ( perm.min == 0 && perm.max == 0 )
-        ret = std::round((value - para.min) / (para.max-para.min) * (perm.n-1));
-    else
-        ret = std::round((value - perm.min) / (perm.max-perm.min) * (perm.n-1));
+        return 0;
+    else {
+        size_t ret;
+        auto inverse = para.multiplicative ? logSpaceInverse : linSpaceInverse;
+        if ( perm.min == 0 && perm.max == 0 )
+            ret = inverse(para.min, para.max, perm.n, value);
+        else
+            ret = inverse(perm.min, perm.max, perm.n, value);
 
-    if ( ret >= perm.n )
-        return perm.n - 1;
-    return ret;
+        return ret >= perm.n ? perm.n-1 : ret;
+    }
 }
 
 

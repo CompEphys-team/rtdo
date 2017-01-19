@@ -152,7 +152,7 @@ MainWindow::MainWindow(QWidget *parent) :
         perms.clear();
         perms.resize(mt.adjustableParams.size());
         perms[par].n = 100;
-        perms[other = (par ? par-1 : 1)].n = 10;
+        perms[other = (par ? par-1 : mt.adjustableParams.size()-1)].n = 10;
         errp.setPermutations(perms);
         errp.profile(foo);
         auto profs = errp.getProfiles(par);
