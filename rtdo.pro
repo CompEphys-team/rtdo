@@ -6,7 +6,7 @@
 
 QT       += core gui
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
 TARGET = rtdo
 TEMPLATE = app
@@ -15,7 +15,8 @@ CONFIG += c++11
 
 INCLUDEPATH += \
     src/include \
-    lib/randutils
+    lib/randutils \
+    lib/qcustomplot
 
 CONFIG(release, debug|release): DEFINES += NDEBUG
                           else: DEFINES +=  DEBUG
@@ -37,7 +38,8 @@ SOURCES += \
     src/core/experimentlibrary.cpp \
     src/core/experiment.cpp \
     src/core/errorprofiler.cpp \
-    src/core/supportcode.cpp
+    src/core/supportcode.cpp \
+    lib/qcustomplot/qcustomplot.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -58,7 +60,8 @@ HEADERS  += \
     src/include/experiment.h \
     src/include/errorprofiler.h \
     src/include/supportcode.h \
-    src/include/util.h
+    src/include/util.h \
+    lib/qcustomplot/qcustomplot.h
 
 FORMS    += \
     src/gui/mainwindow.ui
