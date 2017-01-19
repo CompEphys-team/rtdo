@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cassert>
 #include "cuda_helper.h"
+#include "util.h"
 
 Wavegen::Wavegen(MetaModel &model, const std::string &dir, const StimulationData &stimd, const WavegenData &searchd, const RunData &rund) :
     searchd(searchd),
@@ -68,7 +69,9 @@ void Wavegen::permute()
         if ( p.wgNormal ) {
             // Draw both permuted and uncorrelated random groups from normal distribution
             for ( int i = 0; i < p.wgPermutations + numRandomGroups; i++ ) {
-                scalar v = RNG.variate<scalar>(p.initial, p.wgSD);
+                scalar v = p.multiplicative
+                    ? RNG.variate<scalar, std::lognormal_distribution>(p.initial, p.wgSD)
+                    : RNG.variate<scalar, std::normal_distribution>(p.initial, p.wgSD);
                 if ( v > p.max )
                     v = p.max;
                 else if ( v < p.min )
@@ -77,13 +80,18 @@ void Wavegen::permute()
             }
         } else {
             // Permuted groups: Space evenly over the parameter range
-            scalar step = (p.max - p.min) / (p.wgPermutations + 1);
-            for ( int i = 1; i < p.wgPermutations + 1; i++ ) {
-                values.push_back(p.min + i*step);
+            auto space = p.multiplicative ? linSpace : logSpace;
+            for ( int i = 0; i < p.wgPermutations; i++ ) {
+                values.push_back(space(p.min, p.max, p.wgPermutations, i));
             }
             // Random groups: Draw from uniform distribution
-            for ( int i = 0; i < numRandomGroups; i++ ) {
-                values.push_back(RNG.uniform(p.min, p.max));
+            if ( p.multiplicative ) {
+                double min = std::log(p.min), max = std::log(p.max);
+                for ( int i = 0; i < numRandomGroups; i++ )
+                    values.push_back(std::exp(RNG.uniform(min, max)));
+            } else {
+                for ( int i = 0; i < numRandomGroups; i++ )
+                    values.push_back(RNG.uniform(p.min, p.max));
             }
         }
 
