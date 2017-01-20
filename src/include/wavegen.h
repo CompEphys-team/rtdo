@@ -8,7 +8,7 @@
 class Wavegen
 {
 public:
-    Wavegen(MetaModel &model, const std::string &dir, const StimulationData &stimd, const WavegenData &searchd, const RunData &rund);
+    Wavegen(WavegenLibrary &lib, const StimulationData &stimd, const WavegenData &searchd);
 
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.
@@ -67,20 +67,12 @@ public:
      */
     void search(int param);
 
-    /**
-     * @brief setRunData sets the module's RunData parameters. Note that kernel calls that are queued up but not yet executed
-     * are not affected by this.
-     */
-    void setRunData(const RunData &r);
-
     WavegenData searchd;
     StimulationData stimd;
 
-    WavegenLibrary lib;
+    WavegenLibrary &lib;
 
 protected:
-    RunData rund;
-
     /**
      * @brief getRandomStim generates a fully randomised stimulation according to the Wavegen's StimulationData
      */

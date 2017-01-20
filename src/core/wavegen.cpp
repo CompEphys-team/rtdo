@@ -4,24 +4,16 @@
 #include "cuda_helper.h"
 #include "util.h"
 
-Wavegen::Wavegen(MetaModel &model, const std::string &dir, const StimulationData &stimd, const WavegenData &searchd, const RunData &rund) :
+Wavegen::Wavegen(WavegenLibrary &lib, const StimulationData &stimd, const WavegenData &searchd) :
     searchd(searchd),
     stimd(stimd),
-    lib(model, dir, searchd),
+    lib(lib),
     RNG(),
     sigmaAdjust(lib.adjustableParams.size(), 1.0),
     sigmax(getSigmaMaxima()),
     mapeStats(searchd.historySize, mapeArchive.end())
 {
-    setRunData(rund);
-}
 
-void Wavegen::setRunData(const RunData &r)
-{
-    rund = r;
-    lib.simCycles = r.simCycles;
-    lib.clampGain = r.clampGain;
-    lib.accessResistance = r.accessResistance;
 }
 
 std::vector<double> Wavegen::getSigmaMaxima()
@@ -276,7 +268,7 @@ void Wavegen::adjustSigmas()
 
     std::vector<double> meanParamErr(sumParamErr);
     for ( double & e : meanParamErr ) {
-        e /= end * lib.numGroups * stimd.duration/lib.model.cfg.dt * rund.simCycles;
+        e /= end * lib.numGroups * stimd.duration/lib.model.cfg.dt * lib.simCycles;
     }
 
     // Find the median of mean parameter errors:

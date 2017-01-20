@@ -12,7 +12,7 @@
 static WavegenLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-WavegenLibrary::WavegenLibrary(MetaModel &model, const std::string &directory, const WavegenData &searchd) :
+WavegenLibrary::WavegenLibrary(MetaModel &model, const std::string &directory, const WavegenData &searchd, RunData rund) :
     searchd(searchd),
     model(model),
     stateVariables(model.stateVariables),
@@ -33,7 +33,7 @@ WavegenLibrary::WavegenLibrary(MetaModel &model, const std::string &directory, c
     waveforms(pointers.waveforms),
     wavestats(pointers.wavestats)
 {
-
+    setRunData(rund);
 }
 
 WavegenLibrary::~WavegenLibrary()
@@ -278,4 +278,11 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "namespace " << SUFFIX << "_neuron {" << endl;
 
     return ss.str();
+}
+
+void WavegenLibrary::setRunData(RunData rund)
+{
+    clampGain = rund.clampGain;
+    accessResistance = rund.accessResistance;
+    simCycles = rund.simCycles;
 }

@@ -98,11 +98,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
     wd.historySize = 20;
 
-//    Wavegen wg(mt, dir, sd, wd, rund);
+    WavegenLibrary wglib(mt, dir, wd, rund);
 
-//    //wg.permute();
-//    wg.adjustSigmas();
-/*    std::vector<MAPElite> winners;
+    Wavegen wg(wglib, sd, wd);
+
+    //wg.permute();
+    wg.adjustSigmas();
+    std::vector<MAPElite> winners;
     std::vector<MAPEStats> stats;
     for ( size_t i = 0, end = mt.adjustableParams.size(); i < end; i++ ) {
         std::cout << "Finding waveforms for param '" << mt.adjustableParams[i].name << "' (" << i << "/" << end << ")" << endl;
@@ -119,7 +121,7 @@ MainWindow::MainWindow(QWidget *parent) :
         std::cout << "Final population: " << stats[i].population << endl;
         std::cout << "Best waveform: " << winners[i].wave << endl;
         std::cout << "Best waveform stats: " << winners[i].stats << endl;
-    }*/
+    }
 
     ExperimentData expd;
     expd.numCandidates = 10000;

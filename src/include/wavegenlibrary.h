@@ -7,10 +7,12 @@
 class WavegenLibrary
 {
 public:
-    WavegenLibrary(MetaModel &model, const std::string &directory, const WavegenData &searchd);
+    WavegenLibrary(MetaModel &model, const std::string &directory, const WavegenData &searchd, RunData rund);
     ~WavegenLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
+
+    void setRunData(RunData rund); //!< Sets the RunData variables in the library, affecting all future calls to step().
 
     struct Pointers
     {
