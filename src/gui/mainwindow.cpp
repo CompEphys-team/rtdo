@@ -29,9 +29,10 @@ MainWindow::MainWindow(QWidget *parent) :
     MetaModel mt(fname, md);
 
     StimulationData sd;
+    WavegenLibraryData wglibd;
+    wglibd.permute = false;
+    wglibd.numWavesPerEpoch = 10000;
     WavegenData wd;
-    wd.permute = false;
-    wd.numWavesPerEpoch = 10000;
     wd.numSigmaAdjustWaveforms = 1e5;
     wd.nInitialWaves = 1e5;
     RunData rund;
@@ -98,7 +99,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     wd.historySize = 20;
 
-    WavegenLibrary wglib(mt, dir, wd, rund);
+    WavegenLibrary wglib(mt, dir, wglibd, rund);
 
     Wavegen wg(wglib, sd, wd);
 

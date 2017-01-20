@@ -7,7 +7,7 @@
 class WavegenLibrary
 {
 public:
-    WavegenLibrary(MetaModel &model, const std::string &directory, const WavegenData &searchd, RunData rund);
+    WavegenLibrary(MetaModel &model, const std::string &directory, const WavegenLibraryData &compileD, RunData rund);
     ~WavegenLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -47,7 +47,7 @@ public:
         std::function<void(void)> pullErr;
     };
 
-    const WavegenData &searchd;
+    const WavegenLibraryData &compileD;
 
     MetaModel &model;
 

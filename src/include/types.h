@@ -258,10 +258,14 @@ struct MAPEStats
     MAPEStats(size_t sz, std::list<MAPElite>::const_iterator b) : bestWave(b), history(sz) {}
 };
 
-struct WavegenData
+struct WavegenLibraryData
 {
     bool permute; //!< If true, parameters will be permuted, and only one waveform will be used per epoch
     size_t numWavesPerEpoch; //!< [unpermuted only] Number of waveforms evaluated per epoch
+};
+
+struct WavegenData
+{
     int numSigmaAdjustWaveforms; //!< Number of random waveforms used to normalise the perturbation rate.
                                  //!< If parameters are not permuted, this number is rounded up to the
                                  //!< nearest multiple of the waveform population size.

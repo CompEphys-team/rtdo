@@ -41,7 +41,7 @@ std::vector<double> Wavegen::getSigmaMaxima()
 
 void Wavegen::permute()
 {
-    if ( !searchd.permute )
+    if ( !lib.compileD.permute )
         return;
 
     int stride = 1;
@@ -152,7 +152,7 @@ void Wavegen::settle()
         lib.step();
     }
     lib.pull();
-    if ( searchd.permute ) {
+    if ( lib.compileD.permute ) {
         // Collect the state variables of every base model, i.e. the tuned version
         settled = std::list<std::vector<scalar>>(lib.stateVariables.size(), std::vector<scalar>(lib.numGroups));
         auto iter = settled.begin();
@@ -198,7 +198,7 @@ bool Wavegen::restoreSettled()
 
     // Restore to previously found settled state
     auto iter = settled.begin();
-    if ( searchd.permute ) {
+    if ( lib.compileD.permute ) {
         for ( StateVariable &v : lib.stateVariables ) {
             for ( int i = 0; i < lib.numModels; i++ ) {
                 int group = i % lib.numGroupsPerBlock            // Group index within the block
@@ -234,14 +234,14 @@ void Wavegen::adjustSigmas()
     // per-parameter average deviation from the base model produced by that parameter's detuning.
     std::vector<double> sumParamErr(lib.adjustableParams.size(), 0);
     std::vector<Stimulation> waves;
-    int end = searchd.permute
+    int end = lib.compileD.permute
             ? searchd.numSigmaAdjustWaveforms
               // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
             : ((searchd.numSigmaAdjustWaveforms + lib.numGroups - 1) / lib.numGroups);
     for ( int i = 0; i < end; i++ ) {
 
         // Generate random wave/s
-        if ( searchd.permute ) {
+        if ( lib.compileD.permute ) {
             if ( !i )
                 waves.resize(1);
             waves[0] = getRandomStim();
@@ -309,7 +309,7 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
 {
     lib.t = 0;
     lib.iT = 0;
-    if ( searchd.permute ) {
+    if ( lib.compileD.permute ) {
         const Stimulation &s = stim.at(0);
         for ( int group = 0; group < lib.numGroups; group++ )
             lib.waveforms[group] = s;
