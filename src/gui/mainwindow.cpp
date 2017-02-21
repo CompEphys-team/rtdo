@@ -24,21 +24,12 @@ MainWindow::MainWindow(QWidget *parent) :
         return;
 
     ModelData md;
-    md.dt = 0.25;
-    md.method = IntegrationMethod::RungeKutta4;
     MetaModel mt(fname, md);
 
     StimulationData sd;
     WavegenLibraryData wglibd;
-    wglibd.permute = false;
-    wglibd.numWavesPerEpoch = 10000;
     WavegenData wd;
-    wd.numSigmaAdjustWaveforms = 1e5;
-    wd.nInitialWaves = 1e5;
     RunData rund;
-    rund.accessResistance = 15;
-    rund.clampGain = 1000;
-    rund.simCycles = 20;
     scalar maxCycles = 100.0 / mt.cfg.dt * rund.simCycles;
     scalar maxDeviation = sd.maxVoltage-sd.baseV > sd.baseV-sd.minVoltage ? sd.maxVoltage-sd.baseV : sd.baseV - sd.minVoltage;
     wd.binFunc = [=](const Stimulation &I, const WaveStats &S, size_t precision){
@@ -97,8 +88,6 @@ MainWindow::MainWindow(QWidget *parent) :
         return !S.historicInsertions || S.iterations == 1000;
     };
 
-    wd.historySize = 20;
-
     WavegenLibrary wglib(mt, dir, wglibd, rund);
 
     Wavegen wg(wglib, sd, wd);
@@ -125,9 +114,6 @@ MainWindow::MainWindow(QWidget *parent) :
     }
 
     ExperimentData expd;
-    expd.numCandidates = 10000;
-    expd.settleDuration = 100;
-
     ExperimentLibrary explib(mt, dir, expd, rund);
 
     ErrorProfiler errp(explib);

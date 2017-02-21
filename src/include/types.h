@@ -114,8 +114,8 @@ struct ThreadData
 enum class IntegrationMethod { ForwardEuler, RungeKutta4 };
 enum class ModuleType { Experiment = 0, Wavegen = 1 };
 struct ModelData {
-    double dt;
-    IntegrationMethod method;
+    double dt = 0.25;
+    IntegrationMethod method = IntegrationMethod::RungeKutta4;
 };
 
 struct Variable {
@@ -179,9 +179,9 @@ struct StimulationData
 
 struct RunData
 {
-    int simCycles;
-    double clampGain;
-    double accessResistance;
+    int simCycles = 20;
+    double clampGain = 1000;
+    double accessResistance = 15; // MOhm
 };
 
 struct WaveStats
@@ -260,17 +260,17 @@ struct MAPEStats
 
 struct WavegenLibraryData
 {
-    bool permute; //!< If true, parameters will be permuted, and only one waveform will be used per epoch
-    size_t numWavesPerEpoch; //!< [unpermuted only] Number of waveforms evaluated per epoch
+    bool permute = false; //!< If true, parameters will be permuted, and only one waveform will be used per epoch
+    size_t numWavesPerEpoch = 10000; //!< [unpermuted only] Number of waveforms evaluated per epoch
 };
 
 struct WavegenData
 {
-    int numSigmaAdjustWaveforms; //!< Number of random waveforms used to normalise the perturbation rate.
-                                 //!< If parameters are not permuted, this number is rounded up to the
-                                 //!< nearest multiple of the waveform population size.
-    size_t nInitialWaves; //!< Number of randomly initialised waveforms used to start the search
-    double settleTime = 50; //!< Duration of initial simulation run to get settled state variable values
+    int numSigmaAdjustWaveforms = 1e5; //!< Number of random waveforms used to normalise the perturbation rate.
+                                       //!< If parameters are not permuted, this number is rounded up to the
+                                       //!< nearest multiple of the waveform population size.
+    size_t nInitialWaves = 1e5; //!< Number of randomly initialised waveforms used to start the search
+    double settleTime = 100; //!< Duration of initial simulation run to get settled state variable values
 
     /**
      * @brief binFunc returns a vector of discretised behavioural measures used as MAPE dimensions.
@@ -283,13 +283,13 @@ struct WavegenData
      */
     std::function<bool(const MAPEStats &)> increasePrecision;
     std::function<bool(MAPEStats const&)> stopFunc = [](MAPEStats const&){return true;}; //!< Return true to stop the search.
-    size_t historySize;
+    size_t historySize = 20;
 };
 
 struct ExperimentData
 {
-    size_t numCandidates;
-    double settleDuration = 50;
+    size_t numCandidates = 10000;
+    double settleDuration = 100;
 };
 
 #endif // TYPES_H
