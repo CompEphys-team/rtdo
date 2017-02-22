@@ -24,7 +24,10 @@ MainWindow::MainWindow(QWidget *parent) :
         return;
 
     ModelData md;
-    MetaModel mt(fname, md);
+    md.filepath = QuotedString::fromStdString(fname);
+    md.dirpath = QuotedString::fromStdString(dir);
+
+    MetaModel mt(md);
 
     StimulationData sd;
     WavegenLibraryData wglibd;
@@ -39,7 +42,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     wd.precisionIncreaseEpochs = {100, 500};
 
-    WavegenLibrary wglib(mt, dir, wglibd, rund);
+    WavegenLibrary wglib(mt, wglibd, rund);
 
     Wavegen wg(wglib, sd, wd);
 
@@ -65,7 +68,7 @@ MainWindow::MainWindow(QWidget *parent) :
     }
 
     ExperimentData expd;
-    ExperimentLibrary explib(mt, dir, expd, rund);
+    ExperimentLibrary explib(mt, expd, rund);
 
     ErrorProfiler errp(explib);
 

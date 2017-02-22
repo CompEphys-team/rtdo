@@ -7,6 +7,7 @@
 #include <memory>
 #include <iostream>
 #include <list>
+#include "util.h"
 
 #ifndef scalar
 #ifdef USEDOUBLE
@@ -116,6 +117,8 @@ enum class ModuleType { Experiment = 0, Wavegen = 1 };
 struct ModelData {
     double dt = 0.25;
     IntegrationMethod method = IntegrationMethod::RungeKutta4;
+    QuotedString filepath;
+    QuotedString dirpath;
 };
 
 struct Variable {

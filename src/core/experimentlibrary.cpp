@@ -12,12 +12,12 @@
 static ExperimentLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-ExperimentLibrary::ExperimentLibrary(MetaModel &m, const std::string &directory, const ExperimentData &expd, RunData rund) :
+ExperimentLibrary::ExperimentLibrary(MetaModel &m, const ExperimentData &expd, RunData rund) :
     expd(expd),
     model(m),
     stateVariables(m.stateVariables),
     adjustableParams(m.adjustableParams),
-    lib(loadLibrary(directory)),
+    lib(loadLibrary(m.cfg.dirpath.toStdString())),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(stateVariables, adjustableParams)),
     t(*(pointers.t)),

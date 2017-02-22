@@ -12,13 +12,13 @@
 static WavegenLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-WavegenLibrary::WavegenLibrary(MetaModel &model, const std::string &directory, const WavegenLibraryData &compileD, RunData rund) :
+WavegenLibrary::WavegenLibrary(MetaModel &model, const WavegenLibraryData &compileD, RunData rund) :
     compileD(compileD),
     model(model),
     stateVariables(model.stateVariables),
     adjustableParams(model.adjustableParams),
     currents(model.currents),
-    lib(loadLibrary(directory)),
+    lib(loadLibrary(model.cfg.dirpath.toStdString())),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(stateVariables, adjustableParams, currents)),
     t(*(pointers.t)),

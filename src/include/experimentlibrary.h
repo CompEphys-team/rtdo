@@ -8,7 +8,7 @@
 class ExperimentLibrary
 {
 public:
-    ExperimentLibrary(MetaModel &model, const std::string &directory, const ExperimentData &expd, RunData rund);
+    ExperimentLibrary(MetaModel &model, const ExperimentData &expd, RunData rund);
     virtual ~ExperimentLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
