@@ -2,6 +2,9 @@
 #define UTIL_H
 
 #include <cmath>
+#include <QString>
+#include <iostream>
+
 using std::size_t;
 
 //! Linear projection of idx from [0, size-1] into [min, max]
@@ -34,5 +37,18 @@ inline size_t logSpaceInverse(double min, double max, size_t size, double value)
     double i = (size-1) * std::log(value/min) / std::log(max/min);
     return i > 0 ? std::round(i) : 0;
 }
+
+/// A QString that saves/loads with quotes. Treat it like a QString, but get quoted AP values.
+/// For backwards compatibility, operator>> will read from the first non-whitespace character it finds;
+///  if that isn't a double quote ("), it'll read up to the next whitespace as if it were a normal string read.
+class QuotedString : public QString {
+public:
+    template <typename... Args> QuotedString(Args... args) : QString(args...) {}
+};
+std::istream &operator>>(std::istream &is, QuotedString &str);
+std::ostream &operator<<(std::ostream &os, const QuotedString &str);
+
+std::istream &operator>>(std::istream &is, QString &str);
+std::ostream &operator<<(std::ostream &os, const QString &str);
 
 #endif // UTIL_H

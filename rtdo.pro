@@ -39,7 +39,8 @@ SOURCES += \
     src/core/experiment.cpp \
     src/core/errorprofiler.cpp \
     src/core/supportcode.cpp \
-    lib/qcustomplot/qcustomplot.cpp
+    lib/qcustomplot/qcustomplot.cpp \
+    src/core/util.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
