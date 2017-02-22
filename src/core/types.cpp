@@ -65,6 +65,24 @@ std::ostream &operator<<(std::ostream &os, const Stimulation::Step &s)
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const IntegrationMethod &m)
+{
+    switch ( m ) {
+    case IntegrationMethod::ForwardEuler: os << "ForwardEuler"; break;
+    case IntegrationMethod::RungeKutta4: os << "RungeKutta4"; break;
+    }
+    return os;
+}
+std::istream& operator>>(std::istream& is, IntegrationMethod &m)
+{
+    std::string s;
+    is >> s;
+    if ( s == std::string("ForwardEuler") )     m = IntegrationMethod::ForwardEuler;
+    else if ( s == std::string("RungeKutta4") ) m = IntegrationMethod::RungeKutta4;
+    else /* Default: */ m = IntegrationMethod::RungeKutta4;
+    return is;
+}
+
 bool MAPElite::compete(const MAPElite &rhs)
 {
     if ( rhs.stats.fitness > stats.fitness ) {
@@ -140,4 +158,27 @@ size_t MAPEDimension::bin(const Stimulation &I, const WaveStats &S, size_t multi
         return multiplier * resolution;
     else
         return multiplier * resolution * (intermediate - min)/(max - min);
+}
+
+std::ostream &operator<<(std::ostream &os, const MAPEDimension::Func &f)
+{
+    switch( f ) {
+    case MAPEDimension::Func::BestBubbleDuration:   os << "BestBubbleDuration"; break;
+    case MAPEDimension::Func::BestBubbleTime:       os << "BestBubbleTime"; break;
+    case MAPEDimension::Func::VoltageDeviation:     os << "VoltageDeviation"; break;
+    case MAPEDimension::Func::VoltageIntegral:      os << "VoltageIntegral"; break;
+    }
+    return os;
+}
+
+std::istream &operator>>(std::istream &is, MAPEDimension::Func &f)
+{
+    std::string s;
+    is >> s;
+    if ( s == std::string("BestBubbleDuration") )       f = MAPEDimension::Func::BestBubbleDuration;
+    else if ( s == std::string("BestBubbleTime") )      f = MAPEDimension::Func::BestBubbleTime;
+    else if ( s == std::string("VoltageDeviation") )    f = MAPEDimension::Func::VoltageDeviation;
+    else if ( s == std::string("VoltageIntegral") )     f = MAPEDimension::Func::VoltageIntegral;
+    else /* Default */ f = MAPEDimension::Func::BestBubbleDuration;
+    return is;
 }

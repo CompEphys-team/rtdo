@@ -41,7 +41,8 @@ SOURCES += \
     src/core/supportcode.cpp \
     lib/qcustomplot/qcustomplot.cpp \
     src/core/util.cpp \
-    src/core/AP.cpp
+    src/core/AP.cpp \
+    src/core/config.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -64,7 +65,8 @@ HEADERS  += \
     src/include/supportcode.h \
     src/include/util.h \
     lib/qcustomplot/qcustomplot.h \
-    src/include/AP.h
+    src/include/AP.h \
+    src/include/config.h
 
 FORMS    += \
     src/gui/mainwindow.ui

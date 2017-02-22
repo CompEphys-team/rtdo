@@ -113,6 +113,9 @@ struct ThreadData
 };
 
 enum class IntegrationMethod { ForwardEuler, RungeKutta4 };
+std::ostream& operator<<(std::ostream& os, const IntegrationMethod &m);
+std::istream& operator>>(std::istream& is, IntegrationMethod &m);
+
 enum class ModuleType { Experiment = 0, Wavegen = 1 };
 struct ModelData {
     double dt = 0.25;
@@ -283,6 +286,8 @@ struct MAPEDimension
      */
     size_t bin(const Stimulation &I, const WaveStats &S, size_t multiplier) const;
 };
+std::ostream& operator<<(std::ostream& os, const MAPEDimension::Func &f);
+std::istream& operator>>(std::istream& is, MAPEDimension::Func &f);
 
 struct WavegenLibraryData
 {

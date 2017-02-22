@@ -8,6 +8,7 @@
 #include <dlfcn.h>
 #include "wavegen.h"
 #include "errorprofiler.h"
+#include "config.h"
 
 using std::endl;
 
@@ -16,6 +17,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    Config::init();
 
     std::string fname = QFileDialog::getOpenFileName().toStdString();
     std::string dir = QFileDialog::getExistingDirectory().toStdString();
@@ -23,28 +25,25 @@ MainWindow::MainWindow(QWidget *parent) :
     if ( fname.empty() || dir.empty() )
         return;
 
-    ModelData md;
-    md.filepath = QuotedString::fromStdString(fname);
-    md.dirpath = QuotedString::fromStdString(dir);
+    Config::Model.filepath = fname;
+    Config::Model.dirpath = dir;
 
-    MetaModel mt(md);
+    MetaModel mt(Config::Model);
 
-    StimulationData sd;
-    WavegenLibraryData wglibd;
-    WavegenData wd;
-    RunData rund;
+    scalar maxCycles = 100.0 / mt.cfg.dt * Config::Run.simCycles;
+    scalar maxDeviation = Config::Stimulation.maxVoltage-Config::Stimulation.baseV > Config::Stimulation.baseV-Config::Stimulation.minVoltage
+            ? Config::Stimulation.maxVoltage-Config::Stimulation.baseV
+            : Config::Stimulation.baseV - Config::Stimulation.minVoltage;
+    Config::Wavegen.mapeDimensions = {
+        {MAPEDimension::Func::BestBubbleDuration, 0, maxCycles, 32},
+        {MAPEDimension::Func::BestBubbleTime, 0, Config::Stimulation.duration, 32},
+        {MAPEDimension::Func::VoltageDeviation, 0, maxDeviation, 32}
+    };
+    Config::Wavegen.precisionIncreaseEpochs = {100, 500};
 
-    scalar maxCycles = 100.0 / mt.cfg.dt * rund.simCycles;
-    scalar maxDeviation = sd.maxVoltage-sd.baseV > sd.baseV-sd.minVoltage ? sd.maxVoltage-sd.baseV : sd.baseV - sd.minVoltage;
-    wd.mapeDimensions.push_back({MAPEDimension::Func::BestBubbleDuration, 0, maxCycles, 32});
-    wd.mapeDimensions.push_back({MAPEDimension::Func::BestBubbleTime, 0, sd.duration, 32});
-    wd.mapeDimensions.push_back({MAPEDimension::Func::VoltageDeviation, 0, maxDeviation, 32});
+    WavegenLibrary wglib(mt, Config::WavegenLibrary, Config::Run);
 
-    wd.precisionIncreaseEpochs = {100, 500};
-
-    WavegenLibrary wglib(mt, wglibd, rund);
-
-    Wavegen wg(wglib, sd, wd);
+    Wavegen wg(wglib, Config::Stimulation, Config::Wavegen);
 
     //wg.permute();
     wg.adjustSigmas();
@@ -67,8 +66,7 @@ MainWindow::MainWindow(QWidget *parent) :
         std::cout << "Best waveform stats: " << winners[i].stats << endl;
     }
 
-    ExperimentData expd;
-    ExperimentLibrary explib(mt, expd, rund);
+    ExperimentLibrary explib(mt, Config::Experiment, Config::Run);
 
     ErrorProfiler errp(explib);
 
@@ -83,11 +81,11 @@ MainWindow::MainWindow(QWidget *parent) :
     std::cout << "Error profiles - comparing CPU (base model) and GPU (perturbated) simulations" << std::endl;
     std::cout << "Stimulating with:" << std::endl;
     std::cout << foo << std::endl;
-    std::cout << "Pre-stimulation settling: " << expd.settleDuration << " ms." << std::endl;
+    std::cout << "Pre-stimulation settling: " << Config::Experiment.settleDuration << " ms." << std::endl;
     std::cout << "Base model (B1_basic): (base, min, max)" << std::endl;
     for ( const AdjustableParam &p : mt.adjustableParams )
         std::cout << p.name << '\t' << p.initial << '\t' << p.min << '\t' << p.max << std::endl;
-    std::cout << "Each parameter perturbed in turn, distributed uniformly in [min,max] with " << expd.numCandidates << " distinct values." << std::endl;
+    std::cout << "Each parameter perturbed in turn, distributed uniformly in [min,max] with " << Config::Experiment.numCandidates << " distinct values." << std::endl;
     std::cout << "Error denotes deviation from CPU-computed base model." << std::endl << std::endl;
 
     std::vector<ErrorProfiler::Permutation> perms;
