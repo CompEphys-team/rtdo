@@ -10,7 +10,6 @@
 #include "util.h"
 
 class AP;
-extern int LOADED_PROTOCOL_VERSION;
 
 /**
  * @brief Add a parameter to the global registry. See @fn initAP() for examples.
@@ -37,21 +36,6 @@ inline AP* addAP(std::vector<std::unique_ptr<AP>> &vec, QString name, T *head, T
  * be set to 0 on insertion. Normal index matching resumes on the remaining indices.
  */
 inline AP* addDeprecatedAP(QString name, AP* target, int nIgnoredEarlyIndices = 0);
-
-/**
- * @brief readProtocol reads a protocol file, taking into account config version
- * @param is - the protocol file
- * @param callback - pointer to a function that is called when a parameter can't be found. Receives the
- * raw parameter name as a QString argument. May return true to cancel reading.
- * @return true if everything went to plan; false when cancelled through callback or if protocol is malformed.
- */
-bool readProtocol(std::istream &is, std::function<bool(QString)> *callback = nullptr);
-
-/**
- * @brief writeProtocol writes AP::params().
- * @param os - An open file or other output stream.
- */
-void writeProtocol(std::ostream &os);
 
 std::istream &operator>>(std::istream &is, QString &str);
 std::ostream &operator<<(std::ostream &os, const QString &str);
