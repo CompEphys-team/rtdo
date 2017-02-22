@@ -40,7 +40,8 @@ SOURCES += \
     src/core/errorprofiler.cpp \
     src/core/supportcode.cpp \
     lib/qcustomplot/qcustomplot.cpp \
-    src/core/util.cpp
+    src/core/util.cpp \
+    src/core/AP.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -62,7 +63,8 @@ HEADERS  += \
     src/include/errorprofiler.h \
     src/include/supportcode.h \
     src/include/util.h \
-    lib/qcustomplot/qcustomplot.h
+    lib/qcustomplot/qcustomplot.h \
+    src/include/AP.h
 
 FORMS    += \
     src/gui/mainwindow.ui
