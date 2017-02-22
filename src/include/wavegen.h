@@ -98,6 +98,12 @@ protected:
     void mape_insert(std::vector<MAPElite> &candidates);
 
     /**
+     * @brief mape_bin returns a vector of discretised behavioural measures used as MAPE dimensions.
+     * It adheres to the level of precision indicated in mapeStats.precision.
+     */
+    std::vector<size_t> mape_bin(const Stimulation &I, const WaveStats &S);
+
+    /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
      */
     std::vector<double> getSigmaMaxima();

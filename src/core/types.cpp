@@ -1,5 +1,6 @@
 #include "types.h"
 #include <cassert>
+#include <cmath>
 
 void Stimulation::insert(Stimulation::Step *position, Stimulation::Step &&value)
 {
@@ -80,4 +81,67 @@ std::ostream &operator<<(std::ostream &os, const WaveStats &S)
     os << "{" << S.bubbles << " bubbles, best one lasting " << S.best.cycles
        << " cycles until " << S.best.tEnd << " and achieving " << S.fitness << " fitness.}" << std::endl;
      return os;
+}
+
+size_t MAPEDimension::bin(const Stimulation &I, const WaveStats &S, size_t multiplier) const
+{
+    scalar intermediate = 0.0;
+    scalar factor = 1.0;
+    switch ( func ) {
+    case MAPEDimension::Func::BestBubbleDuration:
+        intermediate = S.best.cycles;
+        break;
+    case MAPEDimension::Func::BestBubbleTime:
+        intermediate = S.best.tEnd;
+        break;
+    case MAPEDimension::Func::VoltageDeviation:
+        factor = 1.0 / S.best.tEnd; // Piggy-back on integral, divide it by its length to get mean abs deviation
+    case MAPEDimension::Func::VoltageIntegral:
+    {
+        scalar prevV = I.baseV, prevT = 0.;
+        intermediate = 0.;
+        // Calculate I's voltage integral against I.baseV, from t=0 to t=S.best.tEnd (the fitness-relevant bubble's end).
+        // Since the stimulation is piecewise linear, decompose it step by step and cumulate the pieces
+        for ( const Stimulation::Step &s : I ) {
+            scalar sT = s.t, sV = s.V;
+            if ( sT > S.best.tEnd ) { // Shorten last step to end of observed period
+                sT = S.best.tEnd;
+                if ( s.ramp )
+                    sV = (s.V - prevV) * (sT - prevT)/(s.t - prevT);
+            }
+            if ( s.ramp ) {
+                if ( (sV >= I.baseV && prevV >= I.baseV) || (sV <= I.baseV && prevV <= I.baseV) ) { // Ramp does not cross baseV
+                    intermediate += factor * (fabs((sV + prevV)/2 - I.baseV) * (sT - prevT));
+                } else { // Ramp crosses baseV, treat the two sides separately:
+                    scalar r1 = fabs(prevV - I.baseV), r2 = fabs(sV - I.baseV);
+                    scalar tCross = r1 / (r1 + r2) * (sT - prevT); //< time from beginning of ramp to baseV crossing
+                    intermediate += factor * (r1/2*tCross + r2/2*(sT - prevT - tCross));
+                }
+            } else {
+                intermediate += factor * (fabs(prevV - I.baseV) * (sT - prevT)); // Step only changes to sV at time sT
+            }
+            prevT = sT;
+            prevV = sV;
+            if ( s.t >= S.best.tEnd )
+                break;
+        }
+        if ( prevT < S.best.tEnd ) // Add remainder if last step ends before the observed period - this is never a ramp
+            intermediate += factor * (fabs(prevV - I.baseV) * (S.best.tEnd - prevT));
+    }
+        break;
+    default:
+        intermediate = 0;
+        break;
+    }
+
+    if ( intermediate < min )
+        return 0;
+    else if ( intermediate > max )
+        return multiplier;
+    else
+        return multiplier * (intermediate - min)/(max - min);
+
+//    scalar maxCycles = 100.0 / mt.cfg.dt * rund.simCycles; // BestBubbleDuration norm
+//    scalar maxDuration = sd.duration; // BestBubbleTime norm
+//    scalar maxDeviation = sd.maxVoltage-sd.baseV > sd.baseV-sd.minVoltage ? sd.maxVoltage-sd.baseV : sd.baseV - sd.minVoltage; // VoltageDeviation norm
 }

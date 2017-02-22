@@ -55,7 +55,7 @@ void Wavegen::search(int param)
         if ( searchd.increasePrecision(mapeStats) ) {
             mapeStats.precision++;
             for ( MAPElite &e : mapeArchive )
-                e.bin = searchd.binFunc(e.wave, e.stats, mapeStats.precision);
+                e.bin = mape_bin(e.wave, e.stats);
         }
 
         // Prepare next episode's waves
@@ -137,7 +137,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
         meanStats /= lib.numGroups;
 
         // Compare averages to elite & insert
-        std::vector<MAPElite> candidate(1, MAPElite{searchd.binFunc(waves[0], meanStats, mapeStats.precision), waves[0], meanStats});
+        std::vector<MAPElite> candidate(1, MAPElite{mape_bin(waves[0], meanStats), waves[0], meanStats});
         mape_insert(candidate);
 
     } else {
@@ -145,7 +145,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
         candidates.reserve(lib.numGroups);
         for ( int group = 0; group < lib.numGroups; group++ ) {
             candidates.push_back(MAPElite {
-                                     searchd.binFunc(waves[group], lib.wavestats[group], mapeStats.precision),
+                                     mape_bin(waves[group], lib.wavestats[group]),
                                      waves[group],
                                      lib.wavestats[group]
                                  });
@@ -189,4 +189,16 @@ void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
             std::cout << " for its stats: " << archIter->stats << std::endl;
         }
     }
+}
+
+std::vector<size_t> Wavegen::mape_bin(const Stimulation &I, const WaveStats &S)
+{
+    size_t mult = (size_t(1) << (5 + mapeStats.precision));
+
+    std::vector<size_t> bin(searchd.mapeDimensions.size());
+    for ( size_t i = 0; i < searchd.mapeDimensions.size(); i++ ) {
+        bin[i] = searchd.mapeDimensions.at(i).bin(I, S, mult);
+    }
+
+    return bin;
 }

@@ -258,6 +258,28 @@ struct MAPEStats
     MAPEStats(size_t sz, std::list<MAPElite>::const_iterator b) : bestWave(b), history(sz) {}
 };
 
+struct MAPEDimension
+{
+    enum class Func {
+        BestBubbleDuration,
+        BestBubbleTime,
+        VoltageDeviation,
+        VoltageIntegral
+    };
+
+    Func func;
+    scalar min, max;
+
+    /**
+     * @brief bin classifies the given Stimulation/WaveStats pair along this dimension.
+     * @param I: A Stimulation
+     * @param S: The behavioural stats corresponding to the Stimulation
+     * @param multiplier: The number of bins available
+     * @return The bin index this Stimulation/WaveStats pair belongs to.
+     */
+    size_t bin(const Stimulation &I, const WaveStats &S, size_t multiplier) const;
+};
+
 struct WavegenLibraryData
 {
     bool permute = false; //!< If true, parameters will be permuted, and only one waveform will be used per epoch
@@ -271,12 +293,9 @@ struct WavegenData
                                        //!< nearest multiple of the waveform population size.
     size_t nInitialWaves = 1e5; //!< Number of randomly initialised waveforms used to start the search
     double settleTime = 100; //!< Duration of initial simulation run to get settled state variable values
+    std::vector<MAPEDimension> mapeDimensions; //!< List of dimensions along which stimulation behaviour is to be measured
 
-    /**
-     * @brief binFunc returns a vector of discretised behavioural measures used as MAPE dimensions.
-     * It should adhere to the level of precision indicated in the third function argument.
-     */
-    std::function<std::vector<size_t>(const Stimulation &, const WaveStats &, size_t precision)> binFunc;
+
     /**
      * @brief increasePrecision should return true if the algorithm is at a stage where precision should be increased
      * to the next level. Note that increasing precision causes the entire existing archive to be rebinned.
