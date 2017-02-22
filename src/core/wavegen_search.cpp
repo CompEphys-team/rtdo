@@ -52,7 +52,8 @@ void Wavegen::search(int param)
         if ( searchd.stopFunc(mapeStats) )
             break;
 
-        if ( searchd.increasePrecision(mapeStats) ) {
+        if ( mapeStats.precision < searchd.precisionIncreaseEpochs.size() &&
+             mapeStats.iterations == searchd.precisionIncreaseEpochs[mapeStats.precision] ) {
             mapeStats.precision++;
             for ( MAPElite &e : mapeArchive )
                 e.bin = mape_bin(e.wave, e.stats);
@@ -193,7 +194,7 @@ void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
 
 std::vector<size_t> Wavegen::mape_bin(const Stimulation &I, const WaveStats &S)
 {
-    size_t mult = (size_t(1) << (5 + mapeStats.precision));
+    size_t mult = (size_t(1) << mapeStats.precision);
 
     std::vector<size_t> bin(searchd.mapeDimensions.size());
     for ( size_t i = 0; i < searchd.mapeDimensions.size(); i++ ) {

@@ -137,11 +137,7 @@ size_t MAPEDimension::bin(const Stimulation &I, const WaveStats &S, size_t multi
     if ( intermediate < min )
         return 0;
     else if ( intermediate > max )
-        return multiplier;
+        return multiplier * resolution;
     else
-        return multiplier * (intermediate - min)/(max - min);
-
-//    scalar maxCycles = 100.0 / mt.cfg.dt * rund.simCycles; // BestBubbleDuration norm
-//    scalar maxDuration = sd.duration; // BestBubbleTime norm
-//    scalar maxDeviation = sd.maxVoltage-sd.baseV > sd.baseV-sd.minVoltage ? sd.maxVoltage-sd.baseV : sd.baseV - sd.minVoltage; // VoltageDeviation norm
+        return multiplier * resolution * (intermediate - min)/(max - min);
 }

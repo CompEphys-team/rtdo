@@ -243,7 +243,7 @@ struct MAPEStats
     size_t iterations = 0; //!< Total iterations completed
     size_t insertions = 0; //!< Total number of insertions into archive
     size_t population = 0; //!< Archive size
-    size_t precision = 0; //!< Precision level
+    size_t precision = 0; //!< Resolution level (resolution along any dimension == dim.resolution * 2^precision)
     size_t historicInsertions = 0; //!< Total insertions within recorded history
     std::list<MAPElite>::const_iterator bestWave; //!< Iterator to the current highest achieving Stimulation in Wavegen::mapeArchive
 
@@ -269,12 +269,13 @@ struct MAPEDimension
 
     Func func;
     scalar min, max;
+    size_t resolution; //!< initial number of bins
 
     /**
      * @brief bin classifies the given Stimulation/WaveStats pair along this dimension.
      * @param I: A Stimulation
      * @param S: The behavioural stats corresponding to the Stimulation
-     * @param multiplier: The number of bins available
+     * @param multiplier: Multiplier to the resolution (i.e., number of bins = multiplier * resolution)
      * @return The bin index this Stimulation/WaveStats pair belongs to.
      */
     size_t bin(const Stimulation &I, const WaveStats &S, size_t multiplier) const;
@@ -294,13 +295,8 @@ struct WavegenData
     size_t nInitialWaves = 1e5; //!< Number of randomly initialised waveforms used to start the search
     double settleTime = 100; //!< Duration of initial simulation run to get settled state variable values
     std::vector<MAPEDimension> mapeDimensions; //!< List of dimensions along which stimulation behaviour is to be measured
+    std::vector<size_t> precisionIncreaseEpochs; //!< Epochs on which MAPE precision/resolution is to double
 
-
-    /**
-     * @brief increasePrecision should return true if the algorithm is at a stage where precision should be increased
-     * to the next level. Note that increasing precision causes the entire existing archive to be rebinned.
-     */
-    std::function<bool(const MAPEStats &)> increasePrecision;
     std::function<bool(MAPEStats const&)> stopFunc = [](MAPEStats const&){return true;}; //!< Return true to stop the search.
     size_t historySize = 20;
 };

@@ -30,23 +30,14 @@ MainWindow::MainWindow(QWidget *parent) :
     WavegenLibraryData wglibd;
     WavegenData wd;
     RunData rund;
+
     scalar maxCycles = 100.0 / mt.cfg.dt * rund.simCycles;
     scalar maxDeviation = sd.maxVoltage-sd.baseV > sd.baseV-sd.minVoltage ? sd.maxVoltage-sd.baseV : sd.baseV - sd.minVoltage;
-    wd.mapeDimensions.push_back({MAPEDimension::Func::BestBubbleDuration, 0, maxCycles});
-    wd.mapeDimensions.push_back({MAPEDimension::Func::BestBubbleTime, 0, sd.duration});
-    wd.mapeDimensions.push_back({MAPEDimension::Func::VoltageDeviation, 0, maxDeviation});
+    wd.mapeDimensions.push_back({MAPEDimension::Func::BestBubbleDuration, 0, maxCycles, 32});
+    wd.mapeDimensions.push_back({MAPEDimension::Func::BestBubbleTime, 0, sd.duration, 32});
+    wd.mapeDimensions.push_back({MAPEDimension::Func::VoltageDeviation, 0, maxDeviation, 32});
 
-
-    wd.increasePrecision = [](const MAPEStats &S){
-        switch ( S.iterations ) {
-        case 100:
-        case 500:
-            std::cout << "Increasing resolution" << std::endl;
-            return true;
-        default:
-            return false;
-        }
-    };
+    wd.precisionIncreaseEpochs = {100, 500};
 
     wd.stopFunc = [](const MAPEStats &S){
         std::cout << "Search, iteration " << S.iterations << ": " << S.histIter->insertions << " insertions, population "
