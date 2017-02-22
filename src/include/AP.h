@@ -10,7 +10,6 @@
 #include "util.h"
 
 class AP;
-void initAP();
 extern int LOADED_PROTOCOL_VERSION;
 
 /**
@@ -53,6 +52,9 @@ bool readProtocol(std::istream &is, std::function<bool(QString)> *callback = nul
  * @param os - An open file or other output stream.
  */
 void writeProtocol(std::ostream &os);
+
+std::istream &operator>>(std::istream &is, QString &str);
+std::ostream &operator<<(std::ostream &os, const QString &str);
 
 class AP
 {

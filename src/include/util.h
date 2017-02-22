@@ -2,7 +2,7 @@
 #define UTIL_H
 
 #include <cmath>
-#include <QString>
+#include <string>
 #include <iostream>
 
 using std::size_t;
@@ -38,17 +38,14 @@ inline size_t logSpaceInverse(double min, double max, size_t size, double value)
     return i > 0 ? std::round(i) : 0;
 }
 
-/// A QString that saves/loads with quotes. Treat it like a QString, but get quoted AP values.
+/// A string that saves/loads with quotes. Treat it like a std::string, but get quoted AP values.
 /// For backwards compatibility, operator>> will read from the first non-whitespace character it finds;
 ///  if that isn't a double quote ("), it'll read up to the next whitespace as if it were a normal string read.
-class QuotedString : public QString {
+class QuotedString : public std::string {
 public:
-    template <typename... Args> QuotedString(Args... args) : QString(args...) {}
+    template <typename... Args> QuotedString(Args... args) : std::string(args...) {}
 };
 std::istream &operator>>(std::istream &is, QuotedString &str);
 std::ostream &operator<<(std::ostream &os, const QuotedString &str);
-
-std::istream &operator>>(std::istream &is, QString &str);
-std::ostream &operator<<(std::ostream &os, const QString &str);
 
 #endif // UTIL_H

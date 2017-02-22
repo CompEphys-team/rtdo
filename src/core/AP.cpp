@@ -4,9 +4,18 @@
 #define RTDO_PROTOCOL_HEADER "#rtdo_config_version"
 int LOADED_PROTOCOL_VERSION;
 
-void initAP()
+std::istream &operator>>(std::istream &is, QString &str)
 {
+    std::string tmp;
+    is >> tmp;
+    str = QString::fromStdString(tmp);
+    return is;
+}
 
+std::ostream &operator<<(std::ostream &os, const QString &str)
+{
+    os << str.toStdString();
+    return os;
 }
 
 void writeProtocol(std::ostream &os)

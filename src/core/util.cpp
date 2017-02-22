@@ -1,19 +1,6 @@
 #include "util.h"
+#include <QChar>
 #include <sstream>
-
-std::istream &operator>>(std::istream &is, QString &str)
-{
-    std::string tmp;
-    is >> tmp;
-    str = QString::fromStdString(tmp);
-    return is;
-}
-
-std::ostream &operator<<(std::ostream &os, const QString &str)
-{
-    os << str.toStdString();
-    return os;
-}
 
 std::istream &operator>>(std::istream &is, QuotedString &str)
 {
@@ -48,12 +35,12 @@ std::istream &operator>>(std::istream &is, QuotedString &str)
             break;
         }
     }
-    str = QString::fromStdString(ss.str());
+    str = ss.str();
     return is;
 }
 
 std::ostream &operator<<(std::ostream &os, const QuotedString &str)
 {
-    os << '"' << str.toStdString() << '"';
+    os << '"' << std::string(str) << '"';
     return os;
 }

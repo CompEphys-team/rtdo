@@ -18,7 +18,7 @@ WavegenLibrary::WavegenLibrary(MetaModel &model, const WavegenLibraryData &compi
     stateVariables(model.stateVariables),
     adjustableParams(model.adjustableParams),
     currents(model.currents),
-    lib(loadLibrary(model.cfg.dirpath.toStdString())),
+    lib(loadLibrary(model.cfg.dirpath)),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(stateVariables, adjustableParams, currents)),
     t(*(pointers.t)),

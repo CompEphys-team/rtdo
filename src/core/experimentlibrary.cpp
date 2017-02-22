@@ -17,7 +17,7 @@ ExperimentLibrary::ExperimentLibrary(MetaModel &m, const ExperimentData &expd, R
     model(m),
     stateVariables(m.stateVariables),
     adjustableParams(m.adjustableParams),
-    lib(loadLibrary(m.cfg.dirpath.toStdString())),
+    lib(loadLibrary(m.cfg.dirpath)),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(stateVariables, adjustableParams)),
     t(*(pointers.t)),
