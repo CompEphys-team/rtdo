@@ -30,17 +30,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     MetaModel mt(Config::Model);
 
-    scalar maxCycles = 100.0 / mt.cfg.dt * Config::Run.simCycles;
-    scalar maxDeviation = Config::Stimulation.maxVoltage-Config::Stimulation.baseV > Config::Stimulation.baseV-Config::Stimulation.minVoltage
-            ? Config::Stimulation.maxVoltage-Config::Stimulation.baseV
-            : Config::Stimulation.baseV - Config::Stimulation.minVoltage;
-    Config::Wavegen.mapeDimensions = {
-        {MAPEDimension::Func::BestBubbleDuration, 0, maxCycles, 32},
-        {MAPEDimension::Func::BestBubbleTime, 0, Config::Stimulation.duration, 32},
-        {MAPEDimension::Func::VoltageDeviation, 0, maxDeviation, 32}
-    };
-    Config::Wavegen.precisionIncreaseEpochs = {100, 500};
-
     WavegenLibrary wglib(mt, Config::WavegenLibrary, Config::Run);
 
     Wavegen wg(wglib, Config::Stimulation, Config::Wavegen);

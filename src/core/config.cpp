@@ -58,6 +58,17 @@ void addWg()
     addAP("Wavegen.mapeDimensions[#].max", &Wavegen, &WavegenData::mapeDimensions, &MAPEDimension::max);
     addAP("Wavegen.mapeDimensions[#].resolution", &Wavegen, &WavegenData::mapeDimensions, &MAPEDimension::resolution);
     addAP("Wavegen.precisionIncreaseEpochs[#]", &Wavegen, &WavegenData::precisionIncreaseEpochs);
+
+    scalar maxCycles = 100.0 / Model.dt * Run.simCycles;
+    scalar maxDeviation = Stimulation.maxVoltage-Stimulation.baseV > Stimulation.baseV-Stimulation.minVoltage
+            ? Stimulation.maxVoltage - Stimulation.baseV
+            : Stimulation.baseV - Stimulation.minVoltage;
+    Wavegen.mapeDimensions = {
+        {MAPEDimension::Func::BestBubbleDuration,   0, maxCycles,               32},
+        {MAPEDimension::Func::BestBubbleTime,       0, Stimulation.duration,    32},
+        {MAPEDimension::Func::VoltageDeviation,     0, maxDeviation,            32}
+    };
+    Wavegen.precisionIncreaseEpochs = { 100, 500 };
 }
 
 RunData Run;
@@ -86,6 +97,8 @@ void init()
     addRun();
     addExperiment();
 }
+
+
 
 int LOADED_PROTOCOL_VERSION;
 
