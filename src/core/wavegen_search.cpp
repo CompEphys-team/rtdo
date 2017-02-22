@@ -49,7 +49,7 @@ void Wavegen::search(int param)
         using std::swap;
         swap(newWaves, returnedWaves);
 
-        if ( searchd.stopFunc(mapeStats) )
+        if ( mapeStats.iterations == searchd.maxIterations-1 )
             break;
 
         if ( mapeStats.precision < searchd.precisionIncreaseEpochs.size() &&

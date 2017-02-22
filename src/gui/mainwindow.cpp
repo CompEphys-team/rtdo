@@ -39,12 +39,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     wd.precisionIncreaseEpochs = {100, 500};
 
-    wd.stopFunc = [](const MAPEStats &S){
-        std::cout << "Search, iteration " << S.iterations << ": " << S.histIter->insertions << " insertions, population "
-                  << S.population << ", best fitness: " << S.bestWave->stats.fitness << endl;
-        return !S.historicInsertions || S.iterations == 1000;
-    };
-
     WavegenLibrary wglib(mt, dir, wglibd, rund);
 
     Wavegen wg(wglib, sd, wd);

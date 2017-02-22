@@ -296,8 +296,7 @@ struct WavegenData
     double settleTime = 100; //!< Duration of initial simulation run to get settled state variable values
     std::vector<MAPEDimension> mapeDimensions; //!< List of dimensions along which stimulation behaviour is to be measured
     std::vector<size_t> precisionIncreaseEpochs; //!< Epochs on which MAPE precision/resolution is to double
-
-    std::function<bool(MAPEStats const&)> stopFunc = [](MAPEStats const&){return true;}; //!< Return true to stop the search.
+    size_t maxIterations = 1000;
     size_t historySize = 20;
 };
 
