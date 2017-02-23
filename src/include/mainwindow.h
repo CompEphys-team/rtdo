@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QThread>
 #include "wavegendialog.h"
 #include "metamodel.h"
 
@@ -25,6 +26,8 @@ private:
     WavegenDialog *wavegenDlg;
 
     MetaModel model;
+
+    QThread gthread;
 };
 
 #endif // MAINWINDOW_H

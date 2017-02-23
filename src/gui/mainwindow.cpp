@@ -20,6 +20,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    gthread.start();
 
 
 
@@ -87,7 +88,7 @@ MainWindow::~MainWindow()
 void MainWindow::on_actionWavegen_triggered()
 {
     if ( !wavegenDlg )
-        wavegenDlg = new WavegenDialog(model, this);
+        wavegenDlg = new WavegenDialog(model, &gthread, this);
     wavegenDlg->show();
     wavegenDlg->raise();
 }
