@@ -17,16 +17,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    Config::init();
 
-    std::string fname = QFileDialog::getOpenFileName().toStdString();
-    std::string dir = QFileDialog::getExistingDirectory().toStdString();
 
-    if ( fname.empty() || dir.empty() )
-        return;
 
-    Config::Model.filepath = fname;
-    Config::Model.dirpath = dir;
 
     MetaModel mt(Config::Model);
 
