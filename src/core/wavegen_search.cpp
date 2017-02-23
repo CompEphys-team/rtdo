@@ -4,6 +4,9 @@
 
 void Wavegen::search(int param)
 {
+    emit startedSearch(param);
+    completedArchives[param].clear();
+
     assert(param >= 0 && param < (int)lib.adjustableParams.size());
     lib.targetParam = param+1;
     lib.getErr = true;
@@ -48,6 +51,8 @@ void Wavegen::search(int param)
         // which can be safely overwritten with a new preparation.
         using std::swap;
         swap(newWaves, returnedWaves);
+
+        emit searchTick(mapeStats.iterations);
 
         if ( mapeStats.iterations == searchd.maxIterations-1 )
             break;
@@ -113,6 +118,10 @@ void Wavegen::search(int param)
     // Pull and evaluate the last episode
     lib.pullStats();
     mape_tournament(*returnedWaves);
+
+    completedArchives[param] = std::move(mapeArchive);
+    mapeArchive.clear();
+    emit done(param);
 }
 
 void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)

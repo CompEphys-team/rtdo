@@ -11,7 +11,8 @@ Wavegen::Wavegen(WavegenLibrary &lib, const StimulationData &stimd, const Wavege
     RNG(),
     sigmaAdjust(lib.adjustableParams.size(), 1.0),
     sigmax(getSigmaMaxima()),
-    mapeStats(searchd.historySize, mapeArchive.end())
+    mapeStats(searchd.historySize, mapeArchive.end()),
+    completedArchives(lib.adjustableParams.size())
 {
 
 }
@@ -41,8 +42,10 @@ std::vector<double> Wavegen::getSigmaMaxima()
 
 void Wavegen::permute()
 {
-    if ( !lib.compileD.permute )
+    if ( !lib.compileD.permute ) {
+        emit done();
         return;
+    }
 
     int stride = 1;
 
@@ -109,6 +112,8 @@ void Wavegen::permute()
         stride *= p.wgPermutations + 1;
     }
     settled.clear();
+
+    emit done();
 }
 
 void Wavegen::detune()
@@ -303,6 +308,8 @@ void Wavegen::adjustSigmas()
     for ( int i = 0; i < (int)lib.adjustableParams.size(); i++ )
         std::cout << lib.adjustableParams[i].name << ":\t" << meanParamErr[i] << '\t'
                   << sigmaAdjust[i] << '\t' << lib.adjustableParams[i].sigma*sigmaAdjust[i] << std::endl;
+
+    emit done();
 }
 
 void Wavegen::stimulate(const std::vector<Stimulation> &stim)
