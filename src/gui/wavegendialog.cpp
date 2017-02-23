@@ -8,7 +8,8 @@ WavegenDialog::WavegenDialog(MetaModel &model, QThread *thread, QWidget *parent)
     thread(thread),
     model(model),
     lib(model, Config::WavegenLibrary, Config::Run),
-    wg(new Wavegen(lib, Config::Stimulation, Config::Wavegen))
+    wg(new Wavegen(lib, Config::Stimulation, Config::Wavegen)),
+    abort(false)
 {
     ui->setupUi(this);
 
@@ -47,6 +48,11 @@ WavegenDialog::WavegenDialog(MetaModel &model, QThread *thread, QWidget *parent)
         emit search(i);
     });
 
+    connect(ui->btnAbort, &QPushButton::clicked, [&](bool){
+        wg->abort();
+        abort = true;
+    });
+
     wg->moveToThread(thread);
 }
 
@@ -70,7 +76,12 @@ void WavegenDialog::searchTick(int i)
 
 void WavegenDialog::end(int arg)
 {
-    ui->log->addItem(QString("%1 complete.").arg(actions.front()));
+    QString outcome = abort ? "aborted" : "complete";
+    ui->log->addItem(QString("%1 %2.").arg(actions.front(), outcome));
     ui->log->scrollToBottom();
-    actions.pop_front();
+    if ( abort )
+        actions.clear();
+    else
+        actions.pop_front();
+    abort = false;
 }

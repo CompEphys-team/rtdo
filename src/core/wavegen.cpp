@@ -12,9 +12,10 @@ Wavegen::Wavegen(WavegenLibrary &lib, const StimulationData &stimd, const Wavege
     sigmaAdjust(lib.adjustableParams.size(), 1.0),
     sigmax(getSigmaMaxima()),
     mapeStats(searchd.historySize, mapeArchive.end()),
+    aborted(false),
     completedArchives(lib.adjustableParams.size())
 {
-
+    connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
 }
 
 std::vector<double> Wavegen::getSigmaMaxima()
@@ -40,8 +41,21 @@ std::vector<double> Wavegen::getSigmaMaxima()
     return sigmax;
 }
 
+void Wavegen::abort()
+{
+    aborted = true;
+    emit didAbort();
+}
+
+void Wavegen::clearAbort()
+{
+    aborted = false;
+}
+
 void Wavegen::permute()
 {
+    if ( aborted )
+        return;
     if ( !lib.compileD.permute ) {
         emit done();
         return;
@@ -226,6 +240,8 @@ bool Wavegen::restoreSettled()
 
 void Wavegen::adjustSigmas()
 {
+    if ( aborted )
+        return;
     if ( settled.empty() )
         settle();
     detune();
@@ -243,7 +259,7 @@ void Wavegen::adjustSigmas()
             ? searchd.numSigmaAdjustWaveforms
               // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
             : ((searchd.numSigmaAdjustWaveforms + lib.numGroups - 1) / lib.numGroups);
-    for ( int i = 0; i < end; i++ ) {
+    for ( int i = 0; i < end && !aborted; i++ ) {
 
         // Generate random wave/s
         if ( lib.compileD.permute ) {

@@ -4,6 +4,8 @@
 
 void Wavegen::search(int param)
 {
+    if ( aborted )
+        return;
     emit startedSearch(param);
     completedArchives[param].clear();
 
@@ -54,7 +56,7 @@ void Wavegen::search(int param)
 
         emit searchTick(mapeStats.iterations);
 
-        if ( mapeStats.iterations == searchd.maxIterations-1 )
+        if ( mapeStats.iterations == searchd.maxIterations-1 || aborted )
             break;
 
         if ( mapeStats.precision < searchd.precisionIncreaseEpochs.size() &&

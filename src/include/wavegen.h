@@ -17,6 +17,8 @@ public:
 
     WavegenLibrary &lib;
 
+    void abort(); //!< Abort all queued actions.
+
 public slots:
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.
@@ -47,6 +49,10 @@ signals:
     void done(int arg = -1);
     void startedSearch(int param);
     void searchTick(int epoch);
+    void didAbort();
+
+protected slots:
+    void clearAbort();
 
 protected:
     /**
@@ -134,6 +140,8 @@ protected:
 
     std::list<MAPElite> mapeArchive; //!< Elite archive of the most recent (or current) call to search().
     MAPEStats mapeStats; //!< Statistics of the most recent (or current) call to search().
+
+    bool aborted;
 
 public:
     std::vector<std::list<MAPElite>> completedArchives;

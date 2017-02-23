@@ -36,6 +36,8 @@ private:
     Wavegen *wg;
 
     std::list<QString> actions;
+
+    bool abort;
 };
 
 #endif // WAVEGENDIALOG_H
