@@ -112,17 +112,21 @@ size_t MAPEDimension::bin(const Stimulation &I, const WaveStats &S, size_t multi
         intermediate = S.best.tEnd;
         break;
     case MAPEDimension::Func::VoltageDeviation:
-        factor = 1.0 / S.best.tEnd; // Piggy-back on integral, divide it by its length to get mean abs deviation
+        // Piggy-back on integral, divide it by its length to get mean abs deviation
+        if ( S.best.tEnd > 0 )
+            factor = 1.0 / S.best.tEnd;
+        else
+            factor = 1.0 / I.duration;
     case MAPEDimension::Func::VoltageIntegral:
     {
-        scalar prevV = I.baseV, prevT = 0.;
+        scalar prevV = I.baseV, prevT = 0., tEnd = S.best.tEnd>0 ? S.best.tEnd : I.duration;
         intermediate = 0.;
         // Calculate I's voltage integral against I.baseV, from t=0 to t=S.best.tEnd (the fitness-relevant bubble's end).
         // Since the stimulation is piecewise linear, decompose it step by step and cumulate the pieces
         for ( const Stimulation::Step &s : I ) {
             scalar sT = s.t, sV = s.V;
-            if ( sT > S.best.tEnd ) { // Shorten last step to end of observed period
-                sT = S.best.tEnd;
+            if ( sT > tEnd ) { // Shorten last step to end of observed period
+                sT = tEnd;
                 if ( s.ramp )
                     sV = (s.V - prevV) * (sT - prevT)/(s.t - prevT);
             }
@@ -139,11 +143,11 @@ size_t MAPEDimension::bin(const Stimulation &I, const WaveStats &S, size_t multi
             }
             prevT = sT;
             prevV = sV;
-            if ( s.t >= S.best.tEnd )
+            if ( s.t >= tEnd )
                 break;
         }
-        if ( prevT < S.best.tEnd ) // Add remainder if last step ends before the observed period - this is never a ramp
-            intermediate += factor * (fabs(prevV - I.baseV) * (S.best.tEnd - prevT));
+        if ( prevT < tEnd ) // Add remainder if last step ends before the observed period - this is never a ramp
+            intermediate += factor * (fabs(prevV - I.baseV) * (tEnd - prevT));
     }
         break;
     default:
@@ -153,8 +157,8 @@ size_t MAPEDimension::bin(const Stimulation &I, const WaveStats &S, size_t multi
 
     if ( intermediate < min )
         return 0;
-    else if ( intermediate > max )
-        return multiplier * resolution;
+    else if ( intermediate >= max )
+        return multiplier * resolution - 1;
     else
         return multiplier * resolution * (intermediate - min)/(max - min);
 }
