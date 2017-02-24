@@ -229,6 +229,7 @@ struct MAPElite
     Stimulation wave;
     WaveStats stats;
 
+    MAPElite() { stats.fitness = 0; }
     MAPElite(std::vector<size_t> bin, Stimulation wave, WaveStats stats) : bin(bin), wave(wave), stats(stats) {}
 
     /**
