@@ -210,10 +210,12 @@ void Wavegen::settle()
     }
 }
 
-bool Wavegen::restoreSettled()
+void Wavegen::restoreSettled()
 {
-    if ( settled.empty() )
-        return false;
+    if ( settled.empty() ) {
+        settle();
+        return;
+    }
 
     // Restore to previously found settled state
     auto iter = settled.begin();
@@ -235,15 +237,13 @@ bool Wavegen::restoreSettled()
         }
     }
     lib.push();
-    return true;
 }
 
 void Wavegen::adjustSigmas()
 {
     if ( aborted )
         return;
-    if ( settled.empty() )
-        settle();
+    restoreSettled();
     detune();
     for ( int i = 0; i < lib.numModels; i++ )
         lib.err[i] = 0;

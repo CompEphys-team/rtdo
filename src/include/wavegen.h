@@ -72,11 +72,10 @@ protected:
 
     /**
      * @brief restoreSettled restores the state variables of all models to the state they were in at the end of the last
-     * call to @fn settle.
+     * call to @fn settle. If no settled state was found, calls settle() instead.
      * Changes: All state variables. Pushes full state to device.
-     * @return false iff no settled state was found, e.g. after construction or a call to @fn permute.
      */
-    bool restoreSettled();
+    void restoreSettled();
 
     /**
      * @brief stimulate runs one full stimulation on every model. In permuted mode, all models receive the same stimulation,
