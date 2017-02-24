@@ -3,6 +3,8 @@
 
 #include <QDialog>
 #include <QThread>
+#include <QButtonGroup>
+#include "qcustomplot.h"
 #include "wavegen.h"
 
 namespace Ui {
@@ -27,6 +29,8 @@ private slots:
     void startedSearch(int);
     void searchTick(int);
 
+    void replot();
+
 private:
     Ui::WavegenDialog *ui;
     QThread *thread;
@@ -38,6 +42,14 @@ private:
     std::list<QString> actions;
 
     bool abort;
+
+    QButtonGroup *groupx, *groupy;
+
+    QCPColorMap *colorMap;
+
+    void initWG();
+    void initPlotControls();
+    void refreshPlotControls();
 };
 
 #endif // WAVEGENDIALOG_H

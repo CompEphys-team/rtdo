@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>670</width>
-    <height>523</height>
+    <width>669</width>
+    <height>541</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,9 +16,9 @@
   <widget class="QPushButton" name="btnPermute">
    <property name="geometry">
     <rect>
-     <x>220</x>
-     <y>10</y>
-     <width>81</width>
+     <x>239</x>
+     <y>9</y>
+     <width>80</width>
      <height>22</height>
     </rect>
    </property>
@@ -29,8 +29,8 @@
   <widget class="QPushButton" name="btnSigadjust">
    <property name="geometry">
     <rect>
-     <x>220</x>
-     <y>40</y>
+     <x>239</x>
+     <y>37</y>
      <width>95</width>
      <height>22</height>
     </rect>
@@ -42,9 +42,9 @@
   <widget class="QPushButton" name="btnSearchAll">
    <property name="geometry">
     <rect>
-     <x>220</x>
-     <y>70</y>
-     <width>81</width>
+     <x>239</x>
+     <y>65</y>
+     <width>80</width>
      <height>22</height>
     </rect>
    </property>
@@ -55,18 +55,18 @@
   <widget class="QListWidget" name="log">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>10</y>
-     <width>201</width>
-     <height>141</height>
+     <x>9</x>
+     <y>9</y>
+     <width>224</width>
+     <height>139</height>
     </rect>
    </property>
   </widget>
   <widget class="QPushButton" name="btnSearchOne">
    <property name="geometry">
     <rect>
-     <x>300</x>
-     <y>100</y>
+     <x>325</x>
+     <y>93</y>
      <width>80</width>
      <height>22</height>
     </rect>
@@ -78,8 +78,8 @@
   <widget class="QComboBox" name="cbSearch">
    <property name="geometry">
     <rect>
-     <x>220</x>
-     <y>100</y>
+     <x>239</x>
+     <y>93</y>
      <width>72</width>
      <height>22</height>
     </rect>
@@ -88,9 +88,9 @@
   <widget class="QPushButton" name="btnAbort">
    <property name="geometry">
     <rect>
-     <x>220</x>
-     <y>130</y>
-     <width>81</width>
+     <x>239</x>
+     <y>123</y>
+     <width>80</width>
      <height>22</height>
     </rect>
    </property>
@@ -98,7 +98,87 @@
     <string>Abort</string>
    </property>
   </widget>
+  <widget class="QCustomPlot" name="plot" native="true">
+   <property name="geometry">
+    <rect>
+     <x>9</x>
+     <y>191</y>
+     <width>651</width>
+     <height>341</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QGroupBox" name="groupBox">
+   <property name="geometry">
+    <rect>
+     <x>411</x>
+     <y>9</y>
+     <width>249</width>
+     <height>171</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Plot</string>
+   </property>
+   <widget class="QComboBox" name="cbPlot">
+    <property name="geometry">
+     <rect>
+      <x>12</x>
+      <y>29</y>
+      <width>91</width>
+      <height>22</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btnPlotApply">
+    <property name="geometry">
+     <rect>
+      <x>120</x>
+      <y>30</y>
+      <width>110</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Apply</string>
+    </property>
+   </widget>
+   <widget class="QTableWidget" name="plotTable">
+    <property name="geometry">
+     <rect>
+      <x>12</x>
+      <y>57</y>
+      <width>231</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="editTriggers">
+     <set>QAbstractItemView::NoEditTriggers</set>
+    </property>
+    <attribute name="verticalHeaderDefaultSectionSize">
+     <number>18</number>
+    </attribute>
+    <column>
+     <property name="text">
+      <string>X</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Y</string>
+     </property>
+    </column>
+   </widget>
+  </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QCustomPlot</class>
+   <extends>QWidget</extends>
+   <header>qcustomplot.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
