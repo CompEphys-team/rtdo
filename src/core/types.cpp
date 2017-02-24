@@ -159,14 +159,20 @@ size_t MAPEDimension::bin(const Stimulation &I, const WaveStats &S, size_t multi
         return multiplier * resolution * (intermediate - min)/(max - min);
 }
 
+std::string toString(const MAPEDimension::Func &f)
+{
+    switch ( f ) {
+    case MAPEDimension::Func::BestBubbleDuration:   return "BestBubbleDuration";
+    case MAPEDimension::Func::BestBubbleTime:       return "BestBubbleTime";
+    case MAPEDimension::Func::VoltageDeviation:     return "VoltageDeviation";
+    case MAPEDimension::Func::VoltageIntegral:      return "VoltageIntegral";
+    }
+    return "InvalidFunction";
+}
+
 std::ostream &operator<<(std::ostream &os, const MAPEDimension::Func &f)
 {
-    switch( f ) {
-    case MAPEDimension::Func::BestBubbleDuration:   os << "BestBubbleDuration"; break;
-    case MAPEDimension::Func::BestBubbleTime:       os << "BestBubbleTime"; break;
-    case MAPEDimension::Func::VoltageDeviation:     os << "VoltageDeviation"; break;
-    case MAPEDimension::Func::VoltageIntegral:      os << "VoltageIntegral"; break;
-    }
+    os << toString(f);
     return os;
 }
 

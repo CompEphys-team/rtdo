@@ -287,6 +287,7 @@ struct MAPEDimension
      */
     size_t bin(const Stimulation &I, const WaveStats &S, size_t multiplier) const;
 };
+std::string toString(const MAPEDimension::Func &f);
 std::ostream& operator<<(std::ostream& os, const MAPEDimension::Func &f);
 std::istream& operator>>(std::istream& is, MAPEDimension::Func &f);
 
