@@ -6,12 +6,10 @@ void Wavegen::search(int param)
 {
     if ( aborted )
         return;
-    emit startedSearch(param);
     completedArchives[param].clear();
+    emit startedSearch(param);
 
     assert(param >= 0 && param < (int)lib.adjustableParams.size());
-    lib.targetParam = param+1;
-    lib.getErr = true;
 
     const int numWavesPerEpisode = lib.compileD.permute ? 1 : lib.numGroups;
     std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
@@ -23,6 +21,9 @@ void Wavegen::search(int param)
 
     // Initiate a first stimulation with nothing going on in parallel:
     restoreSettled();
+    detune();
+    lib.targetParam = param+1;
+    lib.getErr = true;
     lib.clearStats();
     stimulate(waves_ep1);
 
