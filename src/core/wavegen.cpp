@@ -13,7 +13,8 @@ Wavegen::Wavegen(WavegenLibrary &lib, const StimulationData &stimd, const Wavege
     sigmax(getSigmaMaxima()),
     mapeStats(searchd.historySize, mapeArchive.end()),
     aborted(false),
-    completedArchives(lib.adjustableParams.size())
+    completedArchives(lib.adjustableParams.size()),
+    archivePrecision(lib.adjustableParams.size())
 {
     connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
 }

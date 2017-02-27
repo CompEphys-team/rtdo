@@ -146,6 +146,7 @@ protected:
 
 public:
     std::vector<std::list<MAPElite>> completedArchives;
+    std::vector<size_t> archivePrecision;
 };
 
 #endif // WAVEGEN_H

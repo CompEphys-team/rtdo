@@ -123,6 +123,7 @@ void Wavegen::search(int param)
     mape_tournament(*returnedWaves);
 
     completedArchives[param] = std::move(mapeArchive);
+    archivePrecision[param] = mapeStats.precision;
     mapeArchive.clear();
     emit done(param);
 }

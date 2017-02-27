@@ -167,6 +167,7 @@ void WavegenDialog::replot()
         return;
 
     const std::list<MAPElite> &archive = wg->completedArchives.at(ui->cbPlot->currentIndex());
+    size_t resolution_multiplier = wg->mape_multiplier(wg->archivePrecision.at(ui->cbPlot->currentIndex()));
 
     size_t cx = groupx->checkedId();
     size_t cy = groupy->checkedId();
@@ -174,7 +175,6 @@ void WavegenDialog::replot()
     MAPEDimension const& dimx = wg->searchd.mapeDimensions[cx];
     MAPEDimension const& dimy = wg->searchd.mapeDimensions[cy];
 
-size_t resolution_multiplier = 1; // Todo: This has to come from the WG stats
     int nx = dimx.resolution * resolution_multiplier;
     int ny = dimy.resolution * resolution_multiplier;
     std::vector<MAPElite> map(nx*ny);
