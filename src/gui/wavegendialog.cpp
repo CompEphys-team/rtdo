@@ -191,7 +191,7 @@ void WavegenDialog::replot()
 
     // set up the QCPColorMap:
     colorMap->data()->setSize(nx, ny); // we want the color map to have nx * ny data points
-    colorMap->data()->setRange(QCPRange(dimx.min, dimx.max), QCPRange(dimx.min, dimx.max));
+    colorMap->data()->setRange(QCPRange(dimx.min, dimx.max), QCPRange(dimy.min, dimy.max));
     // now we assign some data, by accessing the QCPColorMapData instance of the color map:
     for (int ix=0; ix<nx; ++ix)
         for (int iy=0; iy<ny; ++iy)
