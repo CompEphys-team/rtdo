@@ -206,8 +206,7 @@ void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
 
 std::vector<size_t> Wavegen::mape_bin(const Stimulation &I, const WaveStats &S)
 {
-    size_t mult = (size_t(1) << mapeStats.precision);
-
+    size_t mult = mape_multiplier(mapeStats.precision);
     std::vector<size_t> bin(searchd.mapeDimensions.size());
     for ( size_t i = 0; i < searchd.mapeDimensions.size(); i++ ) {
         bin[i] = searchd.mapeDimensions.at(i).bin(I, S, mult);

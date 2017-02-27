@@ -19,6 +19,8 @@ public:
 
     void abort(); //!< Abort all queued actions.
 
+    static inline size_t mape_multiplier(size_t precision) { return size_t(1) << precision; }
+
 public slots:
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.
