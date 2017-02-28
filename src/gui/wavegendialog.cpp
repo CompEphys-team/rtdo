@@ -184,37 +184,39 @@ void WavegenDialog::setPlotMinMaxSteps(int p)
     }
 }
 
-void WavegenDialog::replot()
+// Populate currentSelection from plot box settings in the GUI
+bool WavegenDialog::select()
 {
-    int cx = groupx->checkedId(); // The selection for the plot's X axis
-    int cy = groupy->checkedId(); // The selection for the plot's Y axis
-    int cp = ui->cbPlot->currentIndex(); // The selected parameter or waveform archive
+    Selection sel;
+    sel.cx = groupx->checkedId(); // The selection for the plot's X axis
+    sel.cy = groupy->checkedId(); // The selection for the plot's Y axis
+    sel.param = ui->cbPlot->currentIndex(); // The selected parameter or waveform archive
 
-    if ( cx == cy || cx < 0 || cy < 0 || cp < 0 || wg->completedArchives[cp].empty() )
-        return;
+    if ( sel.cx == sel.cy || sel.cx < 0 || sel.cy < 0 || sel.param < 0 || wg->completedArchives[sel.param].empty() )
+        return false;
 
-    const std::list<MAPElite> &archive = wg->completedArchives.at(cp);
-    size_t resolution_multiplier = wg->mape_multiplier(wg->archivePrecision.at(cp));
-
-    MAPEDimension const& dimx = wg->searchd.mapeDimensions[cx];
-    MAPEDimension const& dimy = wg->searchd.mapeDimensions[cy];
+    size_t resolution_multiplier = wg->mape_multiplier(wg->archivePrecision.at(sel.param));
 
     size_t nDimensions = wg->searchd.mapeDimensions.size();
     std::vector<std::pair<size_t, size_t>> ranges(nDimensions);
+    sel.min.resize(nDimensions);
+    sel.max.resize(nDimensions);
     for ( size_t i = 0; i < nDimensions; i++ ) {
+        sel.min[i] = mins[i]->value();
+        sel.max[i] = maxes[i]->value();
         MAPEDimension const& d(wg->searchd.mapeDimensions.at(i));
-        ranges[i].first = resolution_multiplier * d.resolution * (mins[i]->value()-d.min)/(d.max-d.min);
-        if ( mins[i]->value() > maxes[i]->value() )
+        ranges[i].first = resolution_multiplier * d.resolution * (sel.min[i]-d.min)/(d.max-d.min);
+        if ( sel.min[i] > sel.max[i] )
             ranges[i].second = ranges[i].first;
         else
-            ranges[i].second = resolution_multiplier * d.resolution * (maxes[i]->value()-d.min)/(d.max-d.min);
+            ranges[i].second = resolution_multiplier * d.resolution * (sel.max[i]-d.min)/(d.max-d.min);
     }
 
-    int nx = dimx.resolution * resolution_multiplier;
-    int ny = dimy.resolution * resolution_multiplier;
-    std::vector<MAPElite> map(nx*ny);
+    sel.nx = ranges[sel.cx].second - ranges[sel.cx].first + 1;
+    sel.ny = ranges[sel.cy].second - ranges[sel.cy].first + 1;
+    sel.elites = std::vector<MAPElite>(sel.nx * sel.ny);
 
-    for ( MAPElite const& e : archive ) {
+    for ( MAPElite const& e : wg->completedArchives.at(sel.param) ) {
         bool in_range(true);
         for ( size_t j = 0; j < nDimensions; j++ ) {
             if ( e.bin[j] < ranges[j].first || e.bin[j] > ranges[j].second ) {
@@ -223,23 +225,58 @@ void WavegenDialog::replot()
             }
         }
         if ( in_range ) {
-            size_t ix = e.bin[cx], iy = e.bin[cy];
-            if ( map[ix + nx*iy].compete(e) )
-                map[ix + nx*iy].bin = e.bin;
+            // set ix, iy as indices to sel.elites, relative to selection boundaries:
+            size_t ix = e.bin[sel.cx] - ranges[sel.cx].first, iy = e.bin[sel.cy] - ranges[sel.cy].first;
+            if ( sel.elites[ix + sel.nx*iy].compete(e) )
+                sel.elites[ix + sel.nx*iy].bin = e.bin;
         }
     }
+
+    // Ensure min and max element have valid bin values (to transmit ranges[cx/cy])
+    if ( sel.elites.front().bin.size() == 0 ) {
+        sel.elites.front().bin.resize(nDimensions);
+        sel.elites.front().bin[sel.cx] = ranges[sel.cx].first;
+        sel.elites.front().bin[sel.cy] = ranges[sel.cy].first;
+    }
+    if ( sel.elites.back().bin.size() == 0 ) {
+        sel.elites.back().bin.resize(nDimensions);
+        sel.elites.back().bin[sel.cx] = ranges[sel.cx].second;
+        sel.elites.back().bin[sel.cy] = ranges[sel.cy].second;
+    }
+
+    currentSelection = std::move(sel);
+
+    return true;
+}
+
+void WavegenDialog::replot()
+{
+    if ( !select() )
+        return;
+
+    MAPEDimension const& dimx = wg->searchd.mapeDimensions[currentSelection.cx];
+    MAPEDimension const& dimy = wg->searchd.mapeDimensions[currentSelection.cy];
+
+    size_t resolution_multiplier = wg->mape_multiplier(wg->archivePrecision.at(currentSelection.param));
+    int nx = dimx.resolution * resolution_multiplier;
+    int ny = dimy.resolution * resolution_multiplier;
 
     // Set up axes
     ui->plot->xAxis->setLabel(QString::fromStdString(toString(dimx.func)));
     ui->plot->yAxis->setLabel(QString::fromStdString(toString(dimy.func)));
 
     // set up the QCPColorMap:
+    colorMap->data()->clear();
     colorMap->data()->setSize(nx, ny); // we want the color map to have nx * ny data points
     colorMap->data()->setRange(QCPRange(dimx.min, dimx.max), QCPRange(dimy.min, dimy.max));
     // now we assign some data, by accessing the QCPColorMapData instance of the color map:
-    for (int ix=0; ix<nx; ++ix)
-        for (int iy=0; iy<ny; ++iy)
-            colorMap->data()->setCell(ix, iy, map[ix + nx*iy].stats.fitness);
+    // Note, plot area spans the full dimensional range, but only selection is assigned
+    for ( int ix = 0; ix < currentSelection.nx-1; ++ix )
+        for ( int iy = 0; iy < currentSelection.ny-1; ++iy )
+            colorMap->data()->setCell(
+                    ix + currentSelection.elites.front().bin[currentSelection.cx],
+                    iy + currentSelection.elites.front().bin[currentSelection.cy],
+                    currentSelection.elites[ix + currentSelection.nx*iy].stats.fitness);
 
     // rescale the data dimension (color) such that all data points lie in the span visualized by the color gradient:
     colorMap->rescaleDataRange();
@@ -247,4 +284,13 @@ void WavegenDialog::replot()
     // rescale the key (x) and value (y) axes so the whole color map is visible:
     ui->plot->rescaleAxes();
     ui->plot->replot();
+
+}
+
+void WavegenDialog::on_btnAddToSel_clicked()
+{
+    if ( select() ) {
+        selections.push_back(std::move(currentSelection));
+        replot();
+    }
 }

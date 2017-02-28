@@ -19,6 +19,15 @@ public:
     explicit WavegenDialog(MetaModel &model, QThread *thread, QWidget *parent = 0);
     ~WavegenDialog();
 
+    struct Selection { //!< A selection is a 2D set of elites. Unselected dimensions are collapsed to the best-performing stimulation in range.
+        int param;
+        std::vector<MAPElite> elites; //!< All selected elites (access: [ix + nx*iy])
+        std::vector<double> min, max; //!< Ranges for each MAPE dimension
+        int cx, cy; //!< Dimension indices for the x and y axis
+        int nx, ny; //!< Number of bins along each axis.
+    };
+    std::vector<Selection> selections;
+
 signals:
     void permute();
     void adjustSigmas();
@@ -31,6 +40,7 @@ private slots:
 
     void replot();
     void setPlotMinMaxSteps(int);
+    void on_btnAddToSel_clicked();
 
 private:
     Ui::WavegenDialog *ui;
@@ -49,9 +59,13 @@ private:
 
     QCPColorMap *colorMap;
 
+    Selection currentSelection;
+
     void initWG();
     void initPlotControls();
     void refreshPlotControls();
+
+    bool select();
 };
 
 #endif // WAVEGENDIALOG_H
