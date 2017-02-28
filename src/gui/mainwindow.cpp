@@ -88,7 +88,7 @@ MainWindow::~MainWindow()
 void MainWindow::on_actionWavegen_triggered()
 {
     if ( !wavegenDlg )
-        wavegenDlg = new WavegenDialog(model, &gthread, this);
+        wavegenDlg = new WavegenDialog(model, &gthread);
     wavegenDlg->show();
     wavegenDlg->raise();
 }

@@ -12,6 +12,7 @@ WavegenDialog::WavegenDialog(MetaModel &model, QThread *thread, QWidget *parent)
     abort(false)
 {
     ui->setupUi(this);
+    this->setWindowFlags(Qt::Window);
     initWG();
     initPlotControls();
 }
