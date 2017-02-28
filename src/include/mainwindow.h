@@ -28,6 +28,8 @@ private:
     MetaModel model;
 
     QThread gthread;
+
+    void closeEvent(QCloseEvent *event);
 };
 
 #endif // MAINWINDOW_H

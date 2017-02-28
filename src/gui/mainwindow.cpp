@@ -9,6 +9,7 @@
 #include "wavegen.h"
 #include "errorprofiler.h"
 #include "config.h"
+#include <QCloseEvent>
 
 using std::endl;
 
@@ -91,4 +92,14 @@ void MainWindow::on_actionWavegen_triggered()
         wavegenDlg = new WavegenDialog(model, &gthread);
     wavegenDlg->show();
     wavegenDlg->raise();
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    gthread.quit();
+    while ( !gthread.wait(20) )
+        QApplication::processEvents();
+    if ( wavegenDlg )
+        wavegenDlg->close();
+    event->accept();
 }
