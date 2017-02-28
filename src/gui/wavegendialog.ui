@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>669</width>
+    <width>803</width>
     <height>541</height>
    </rect>
   </property>
@@ -113,7 +113,7 @@
     <rect>
      <x>411</x>
      <y>9</y>
-     <width>249</width>
+     <width>381</width>
      <height>171</height>
     </rect>
    </property>
@@ -148,13 +148,16 @@
      <rect>
       <x>12</x>
       <y>57</y>
-      <width>231</width>
+      <width>361</width>
       <height>101</height>
      </rect>
     </property>
     <property name="editTriggers">
      <set>QAbstractItemView::NoEditTriggers</set>
     </property>
+    <attribute name="horizontalHeaderDefaultSectionSize">
+     <number>80</number>
+    </attribute>
     <attribute name="verticalHeaderDefaultSectionSize">
      <number>18</number>
     </attribute>
@@ -166,6 +169,16 @@
     <column>
      <property name="text">
       <string>Y</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>min</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>max</string>
      </property>
     </column>
    </widget>

@@ -30,6 +30,7 @@ private slots:
     void searchTick(int);
 
     void replot();
+    void setPlotMinMaxSteps(int);
 
 private:
     Ui::WavegenDialog *ui;
@@ -44,6 +45,7 @@ private:
     bool abort;
 
     QButtonGroup *groupx, *groupy;
+    std::vector<QDoubleSpinBox*> mins, maxes;
 
     QCPColorMap *colorMap;
 

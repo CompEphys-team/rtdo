@@ -95,10 +95,12 @@ void WavegenDialog::end(int arg)
 
 void WavegenDialog::initPlotControls()
 {
-    int i = 0;
+    int i = 0, n = wg->searchd.mapeDimensions.size();
     groupx = new QButtonGroup(this);
     groupy = new QButtonGroup(this);
-    ui->plotTable->setRowCount(wg->searchd.mapeDimensions.size());
+    mins.resize(n);
+    maxes.resize(n);
+    ui->plotTable->setRowCount(n);
     ui->plotTable->setColumnWidth(0, 25);
     ui->plotTable->setColumnWidth(1, 25);
     QStringList labels;
@@ -113,11 +115,24 @@ void WavegenDialog::initPlotControls()
         groupy->addButton(y, i);
         ui->plotTable->setCellWidget(i, 1, y);
 
+        QDoubleSpinBox *min = new QDoubleSpinBox();
+        min->setRange(d.min, d.max);
+        min->setValue(d.min);
+        ui->plotTable->setCellWidget(i, 2, min);
+        mins[i] = min;
+
+        QDoubleSpinBox *max = new QDoubleSpinBox();
+        max->setRange(d.min, d.max);
+        max->setValue(d.max);
+        ui->plotTable->setCellWidget(i, 3, max);
+        maxes[i] = max;
+
         ++i;
     }
     ui->plotTable->setVerticalHeaderLabels(labels);
 
     connect(ui->btnPlotApply, SIGNAL(clicked(bool)), this, SLOT(replot()));
+    connect(ui->cbPlot, SIGNAL(currentIndexChanged(int)), this, SLOT(setPlotMinMaxSteps(int)));
 
     // Plot setup
     ui->plot->setInteractions(QCP::iRangeDrag|QCP::iRangeZoom); // this will also allow rescaling the color scale by dragging/zooming
@@ -157,32 +172,61 @@ void WavegenDialog::refreshPlotControls()
     ui->btnPlotApply->setEnabled(ui->cbPlot->count() > 0);
 }
 
+void WavegenDialog::setPlotMinMaxSteps(int p)
+{
+    int mult = wg->mape_multiplier(wg->archivePrecision.at(p));
+    int i = 0;
+    for ( MAPEDimension const& d : wg->searchd.mapeDimensions ) {
+        double step = (d.max - d.min) / (mult * d.resolution);
+        mins[i]->setSingleStep(step);
+        maxes[i]->setSingleStep(step);
+        ++i;
+    }
+}
+
 void WavegenDialog::replot()
 {
-    if ( groupx->checkedId() == groupy->checkedId()
-         || groupx->checkedId() < 0
-         || groupy->checkedId() < 0
-         || ui->cbPlot->currentIndex() < 0
-         || wg->completedArchives[ui->cbPlot->currentIndex()].empty() )
+    int cx = groupx->checkedId(); // The selection for the plot's X axis
+    int cy = groupy->checkedId(); // The selection for the plot's Y axis
+    int cp = ui->cbPlot->currentIndex(); // The selected parameter or waveform archive
+
+    if ( cx == cy || cx < 0 || cy < 0 || cp < 0 || wg->completedArchives[cp].empty() )
         return;
 
-    const std::list<MAPElite> &archive = wg->completedArchives.at(ui->cbPlot->currentIndex());
-    size_t resolution_multiplier = wg->mape_multiplier(wg->archivePrecision.at(ui->cbPlot->currentIndex()));
-
-    size_t cx = groupx->checkedId();
-    size_t cy = groupy->checkedId();
+    const std::list<MAPElite> &archive = wg->completedArchives.at(cp);
+    size_t resolution_multiplier = wg->mape_multiplier(wg->archivePrecision.at(cp));
 
     MAPEDimension const& dimx = wg->searchd.mapeDimensions[cx];
     MAPEDimension const& dimy = wg->searchd.mapeDimensions[cy];
+
+    size_t nDimensions = wg->searchd.mapeDimensions.size();
+    std::vector<std::pair<size_t, size_t>> ranges(nDimensions);
+    for ( size_t i = 0; i < nDimensions; i++ ) {
+        MAPEDimension const& d(wg->searchd.mapeDimensions.at(i));
+        ranges[i].first = resolution_multiplier * d.resolution * (mins[i]->value()-d.min)/(d.max-d.min);
+        if ( mins[i]->value() > maxes[i]->value() )
+            ranges[i].second = ranges[i].first;
+        else
+            ranges[i].second = resolution_multiplier * d.resolution * (maxes[i]->value()-d.min)/(d.max-d.min);
+    }
 
     int nx = dimx.resolution * resolution_multiplier;
     int ny = dimy.resolution * resolution_multiplier;
     std::vector<MAPElite> map(nx*ny);
 
     for ( MAPElite const& e : archive ) {
-        size_t ix = e.bin[cx], iy = e.bin[cy];
-        if ( map[ix + nx*iy].compete(e) )
-            map[ix + nx*iy].bin = e.bin;
+        bool in_range(true);
+        for ( size_t j = 0; j < nDimensions; j++ ) {
+            if ( e.bin[j] < ranges[j].first || e.bin[j] > ranges[j].second ) {
+                in_range = false;
+                break;
+            }
+        }
+        if ( in_range ) {
+            size_t ix = e.bin[cx], iy = e.bin[cy];
+            if ( map[ix + nx*iy].compete(e) )
+                map[ix + nx*iy].bin = e.bin;
+        }
     }
 
     // Set up axes
