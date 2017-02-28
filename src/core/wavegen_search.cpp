@@ -122,6 +122,12 @@ void Wavegen::search(int param)
     lib.pullStats();
     mape_tournament(*returnedWaves);
 
+    // Correct observation periods
+    for ( MAPElite &e : mapeArchive ) {
+        e.wave.tObsBegin = e.stats.best.tEnd - e.stats.best.cycles*lib.model.cfg.dt/lib.simCycles;
+        e.wave.tObsEnd = e.stats.best.tEnd;
+    }
+
     completedArchives[param] = std::move(mapeArchive);
     archivePrecision[param] = mapeStats.precision;
     mapeArchive.clear();
