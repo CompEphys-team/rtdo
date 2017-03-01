@@ -19,12 +19,25 @@ public:
 
     void selectionsChanged(WavegenDialog *dlg);
 
+signals:
+    void profile();
+
+private slots:
+    void profileComplete(int);
+    void done();
+
+    void on_btnStart_clicked();
+
+    void on_btnAbort_clicked();
+
 private:
     Ui::ProfileDialog *ui;
     QThread *thread;
 
     ExperimentLibrary &lib;
     ErrorProfiler profiler;
+
+    std::list<QString> actions;
 
     std::vector<WavegenDialog::Selection> *selections;
 };
