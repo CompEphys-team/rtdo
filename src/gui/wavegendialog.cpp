@@ -197,6 +197,7 @@ void WavegenDialog::setPlotMinMaxSteps(int p)
     for ( MAPEDimension const& d : wg->searchd.mapeDimensions ) {
         double step = (d.max - d.min) / (mult * d.resolution);
         mins[i]->setSingleStep(step);
+        mins[i]->setMaximum(d.max-step);
         maxes[i]->setSingleStep(step);
         ++i;
     }
@@ -224,20 +225,19 @@ bool WavegenDialog::select()
         sel.max[i] = maxes[i]->value();
         MAPEDimension const& d(wg->searchd.mapeDimensions.at(i));
         ranges[i].first = resolution_multiplier * d.resolution * (sel.min[i]-d.min)/(d.max-d.min);
-        if ( sel.min[i] > sel.max[i] )
-            ranges[i].second = ranges[i].first;
-        else
-            ranges[i].second = resolution_multiplier * d.resolution * (sel.max[i]-d.min)/(d.max-d.min);
+        ranges[i].second = resolution_multiplier * d.resolution * (sel.max[i]-d.min)/(d.max-d.min);
+        if ( ranges[i].second <= ranges[i].first )
+            ranges[i].second = ranges[i].first + 1;
     }
 
-    sel.nx = ranges[sel.cx].second - ranges[sel.cx].first + 1;
-    sel.ny = ranges[sel.cy].second - ranges[sel.cy].first + 1;
+    sel.nx = ranges[sel.cx].second - ranges[sel.cx].first;
+    sel.ny = ranges[sel.cy].second - ranges[sel.cy].first;
     sel.elites = std::vector<MAPElite>(sel.nx * sel.ny);
 
     for ( MAPElite const& e : wg->completedArchives.at(sel.param) ) {
         bool in_range(true);
         for ( size_t j = 0; j < nDimensions; j++ ) {
-            if ( e.bin[j] < ranges[j].first || e.bin[j] > ranges[j].second ) {
+            if ( e.bin[j] < ranges[j].first || e.bin[j] >= ranges[j].second ) {
                 in_range = false;
                 break;
             }
@@ -290,8 +290,8 @@ void WavegenDialog::replot(bool doSelect)
     colorMap->data()->setRange(QCPRange(dimx.min, dimx.max), QCPRange(dimy.min, dimy.max));
     // now we assign some data, by accessing the QCPColorMapData instance of the color map:
     // Note, plot area spans the full dimensional range, but only selection is assigned
-    for ( int ix = 0; ix < currentSelection.nx-1; ++ix )
-        for ( int iy = 0; iy < currentSelection.ny-1; ++iy )
+    for ( int ix = 0; ix < currentSelection.nx; ++ix )
+        for ( int iy = 0; iy < currentSelection.ny; ++iy )
             colorMap->data()->setCell(
                     ix + currentSelection.elites.front().bin[currentSelection.cx],
                     iy + currentSelection.elites.front().bin[currentSelection.cy],
