@@ -107,8 +107,11 @@ void MainWindow::on_actionWavegen_triggered()
 
 void MainWindow::on_actionProfiler_triggered()
 {
-    if ( !profileDlg )
+    if ( !profileDlg ) {
         profileDlg = new ProfileDialog(getExpLib(), &gthread);
+        if ( wavegenDlg )
+            wavegenDlg->selectionsChanged();
+    }
     profileDlg->show();
     profileDlg->raise();
     profileDlg->activateWindow();
