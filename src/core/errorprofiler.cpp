@@ -8,14 +8,26 @@ ErrorProfiler::ErrorProfiler(ExperimentLibrary &lib, DAQ *daq) :
     lib(lib),
     simulator(lib.createSimulator()),
     daq(daq ? daq : simulator),
-    permutations(lib.adjustableParams.size())
+    permutations(lib.adjustableParams.size()),
+    aborted(false)
 {
-
+    connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
 }
 
 ErrorProfiler::~ErrorProfiler()
 {
     lib.destroySimulator(simulator);
+}
+
+void ErrorProfiler::abort()
+{
+    aborted = true;
+    emit didAbort();
+}
+
+void ErrorProfiler::clearAbort()
+{
+    aborted = false;
 }
 
 void ErrorProfiler::setPermutations(std::vector<ErrorProfiler::Permutation> p)
@@ -47,6 +59,11 @@ size_t ErrorProfiler::getNumSimulations()
 {
     size_t nCand = lib.expd.numCandidates;
     return (getNumPermutations() + nCand - 1) / nCand; // Get nearest multiple of nCand, rounded up
+}
+
+void ErrorProfiler::setStimulations(std::vector<Stimulation> stims)
+{
+    stimulations = stims;
 }
 
 double ErrorProfiler::getParameterValue(size_t param, size_t idx)
@@ -85,9 +102,10 @@ size_t ErrorProfiler::getParameterIndex(size_t param, double value)
 }
 
 
-std::vector<ErrorProfiler::Profile> ErrorProfiler::getProfiles(size_t targetParam)
+std::vector<ErrorProfiler::Profile> ErrorProfiler::getProfiles(size_t targetParam, const std::vector<scalar> &profile)
 {
-    assert( errors.size() == getNumPermutations() );
+    if ( profile.size() != getNumPermutations() )
+        throw std::runtime_error("Profile does not match permutation settings.");
 
     // Find the stride used to populate errors
     size_t stride = 1;
@@ -112,7 +130,7 @@ std::vector<ErrorProfiler::Profile> ErrorProfiler::getProfiles(size_t targetPara
          * the first one ends), and intermediate profiles are interleaved in clusters,
          * wrapping around every (stride * n) fields.
          */
-        ret.push_back(Profile(errors.cbegin() + offset, stride, permutations[targetParam].n, pIdx));
+        ret.push_back(Profile(profile.cbegin() + offset, stride, permutations[targetParam].n, pIdx));
 
         if ( ++offset % stride == 0 )
             offset = ++cluster * stride * permutations[targetParam].n;
@@ -130,6 +148,26 @@ std::vector<ErrorProfiler::Profile> ErrorProfiler::getProfiles(size_t targetPara
     return ret;
 }
 
+void ErrorProfiler::profile()
+{
+    if ( aborted )
+        return;
+    using std::swap;
+    profiles = std::list<std::vector<scalar>>(stimulations.size());
+    auto iter = profiles.begin();
+    int i = 0;
+    for ( Stimulation const& stim : stimulations ) {
+        if ( aborted )
+            break;
+        if ( stim.duration > 0 ) {
+            profile(stim);
+            swap(*iter, errors);
+        } // else, *iter is an empty vector, as befits an empty stimulation
+        iter++;
+        emit profileComplete(i++);
+    }
+    emit done();
+}
 
 void ErrorProfiler::profile(const Stimulation &stim)
 {

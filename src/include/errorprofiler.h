@@ -1,6 +1,7 @@
 #ifndef ERRORPROFILER_H
 #define ERRORPROFILER_H
 
+#include <QObject>
 #include "experimentlibrary.h"
 
 /**
@@ -13,8 +14,10 @@
  * The idea is to get a sense of how sensitive a certain stimulation is to changes
  * in its target parameter over a wide range of candidate models.
  */
-class ErrorProfiler
+class ErrorProfiler : public QObject
 {
+    Q_OBJECT
+
 public:
     ErrorProfiler(ExperimentLibrary &lib, DAQ *daq = nullptr);
     ~ErrorProfiler();
@@ -93,6 +96,8 @@ public:
     size_t getNumPermutations(); //!< @brief getNumPermutations returns the total number of models run under current settings
     size_t getNumSimulations(); //!< @brief getNumSimulations returns the number of simulation runs required to profile
 
+    void setStimulations(std::vector<Stimulation> stims); //!< @brief Sets a number of stimulations to be profiled
+
     /**
      * @brief getParameterValue gives a target parameter's value at a given position in its range.
      * The values are uniformly distributed across the full range of the parameter and include the lower and upper bounds.
@@ -107,27 +112,50 @@ public:
     size_t getParameterIndex(size_t param, double value);
 
     /**
-     * @brief profile runs the requested simulations, producing lots of data that can be accessed through getProfiles().
-     */
-    void profile(const Stimulation &stim);
-
-    /**
      * @brief getProfiles produces a set of iterable error profiles from the perspective of a given target parameter.
      * Each Profile contains the error values for the full range of the target parameter, while all other parameters
      * are held constant.
      */
-    std::vector<ErrorProfiler::Profile> getProfiles(size_t targetParam);
+    std::vector<ErrorProfiler::Profile> getProfiles(size_t targetParam, const std::vector<scalar> &profile);
+
+    void abort(); //!< Abort all queued slot actions.
+
+    std::list<std::vector<scalar>> profiles;
+
+public slots:
+    /**
+     * @brief profile runs the requested simulations for each of the stimulations set by setStimulations().
+     * Results are deposited in ErrorProfiler::profiles. A profileComplete(size_t i) signal is emitted at the end
+     * of each simulation; all profiles from index 0 to i can be safely accessed.
+     */
+    void profile();
+
+signals:
+    void profileComplete(int index);
+    void done();
+    void didAbort();
+
+protected slots:
+    void clearAbort();
 
 private:
     DAQ *simulator;
     DAQ *daq;
 
     std::vector<Permutation> permutations;
+    std::vector<Stimulation> stimulations;
 
     std::vector<scalar> errors;
 
+    bool aborted;
+
     void settle(scalar baseV);
     void stimulate(const Stimulation &stim);
+
+    /**
+     * @brief profile runs the requested simulations, populating the errors vector.
+     */
+    void profile(const Stimulation &stim);
 };
 
 #endif // ERRORPROFILER_H
