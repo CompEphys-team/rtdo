@@ -17,7 +17,9 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     wavegenDlg(nullptr),
-    model(Config::Model)
+    profileDlg(nullptr),
+    model(Config::Model),
+    expLib(nullptr)
 {
     ui->setupUi(this);
 
@@ -84,14 +86,39 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete wavegenDlg;
+    delete profileDlg;
+    delete expLib;
 }
 
 void MainWindow::on_actionWavegen_triggered()
 {
-    if ( !wavegenDlg )
+    if ( !wavegenDlg ) {
         wavegenDlg = new WavegenDialog(model, &gthread);
+        connect(wavegenDlg, &WavegenDialog::selectionsChanged, [=](){
+            if ( profileDlg )
+                profileDlg->selectionsChanged(wavegenDlg);
+        });
+    }
     wavegenDlg->show();
     wavegenDlg->raise();
+    wavegenDlg->activateWindow();
+}
+
+void MainWindow::on_actionProfiler_triggered()
+{
+    if ( !profileDlg )
+        profileDlg = new ProfileDialog(getExpLib(), &gthread);
+    profileDlg->show();
+    profileDlg->raise();
+    profileDlg->activateWindow();
+}
+
+ExperimentLibrary &MainWindow::getExpLib()
+{
+    if ( !expLib )
+        expLib = new ExperimentLibrary(model, Config::Experiment, Config::Run);
+    return *expLib;
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -101,5 +128,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
         QApplication::processEvents();
     if ( wavegenDlg )
         wavegenDlg->close();
+    if ( profileDlg )
+        profileDlg->close();
     event->accept();
 }

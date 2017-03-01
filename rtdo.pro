@@ -43,7 +43,8 @@ SOURCES += \
     src/core/util.cpp \
     src/core/AP.cpp \
     src/core/config.cpp \
-    src/gui/wavegendialog.cpp
+    src/gui/wavegendialog.cpp \
+    src/gui/profiledialog.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -68,11 +69,13 @@ HEADERS  += \
     lib/qcustomplot/qcustomplot.h \
     src/include/AP.h \
     src/include/config.h \
-    src/include/wavegendialog.h
+    src/include/wavegendialog.h \
+    src/include/profiledialog.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
-    src/gui/wavegendialog.ui
+    src/gui/wavegendialog.ui \
+    src/gui/profiledialog.ui
 
 LIBS     += -rdynamic -ldl -lcomedi
 

@@ -32,6 +32,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionWavegen"/>
+   <addaction name="actionProfiler"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionWavegen">
@@ -43,6 +44,17 @@
    </property>
    <property name="shortcut">
     <string>W</string>
+   </property>
+  </action>
+  <action name="actionProfiler">
+   <property name="text">
+    <string>Profiler</string>
+   </property>
+   <property name="iconText">
+    <string>&amp;Profiler</string>
+   </property>
+   <property name="shortcut">
+    <string>P</string>
    </property>
   </action>
  </widget>

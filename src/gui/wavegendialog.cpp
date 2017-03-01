@@ -313,6 +313,7 @@ void WavegenDialog::on_btnAddToSel_clicked()
         refreshPlotControls();
         ui->cbSelections->setCurrentIndex(0);
         replot();
+        emit selectionsChanged();
     }
 }
 

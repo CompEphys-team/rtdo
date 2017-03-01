@@ -34,6 +34,8 @@ signals:
     void adjustSigmas();
     void search(int param);
 
+    void selectionsChanged();
+
 private slots:
     void end(int);
     void startedSearch(int);

@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QThread>
 #include "wavegendialog.h"
+#include "profiledialog.h"
 #include "metamodel.h"
 
 namespace Ui {
@@ -20,16 +21,21 @@ public:
 
 private slots:
     void on_actionWavegen_triggered();
+    void on_actionProfiler_triggered();
 
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;
+    ProfileDialog *profileDlg;
 
     MetaModel model;
 
     QThread gthread;
 
     void closeEvent(QCloseEvent *event);
+
+    ExperimentLibrary &getExpLib();
+    ExperimentLibrary *expLib;
 };
 
 #endif // MAINWINDOW_H
