@@ -132,6 +132,9 @@ void WavegenDialog::initPlotControls()
     }
     ui->plotTable->setVerticalHeaderLabels(labels);
 
+    for ( AdjustableParam const& p : model.adjustableParams )
+        ui->cbPlot->addItem(QString::fromStdString(p.name));
+
     connect(ui->btnPlotApply, SIGNAL(clicked(bool)), this, SLOT(replot()));
     connect(ui->cbPlot, SIGNAL(currentIndexChanged(int)), this, SLOT(setPlotMinMaxSteps(int)));
 
@@ -159,18 +162,26 @@ void WavegenDialog::initPlotControls()
     QCPMarginGroup *marginGroup = new QCPMarginGroup(ui->plot);
     ui->plot->axisRect()->setMarginGroup(QCP::msBottom|QCP::msTop, marginGroup);
     colorScale->setMarginGroup(QCP::msBottom|QCP::msTop, marginGroup);
+
+    refreshPlotControls();
 }
 
 void WavegenDialog::refreshPlotControls()
 {
-    ui->cbPlot->clear();
     int i = 0;
+    bool enabled = false;
     for ( std::list<MAPElite> const& l : wg->completedArchives ) {
+        QStandardItem *item = qobject_cast<const QStandardItemModel*>(ui->cbPlot->model())->item(i++);
+        item->setFlags(l.empty()
+                       ? item->flags() & ~(Qt::ItemIsSelectable|Qt::ItemIsEnabled)
+                       : item->flags() | (Qt::ItemIsSelectable|Qt::ItemIsEnabled));
         if ( !l.empty() )
-            ui->cbPlot->addItem(QString::fromStdString(model.adjustableParams[i].name));
-        ++i;
+            enabled = true;
     }
-    ui->btnPlotApply->setEnabled(ui->cbPlot->count() > 0);
+    ui->btnPlotApply->setEnabled(enabled);
+    ui->btnAddToSel->setEnabled(enabled);
+
+    setPlotMinMaxSteps(ui->cbPlot->currentIndex());
 }
 
 void WavegenDialog::setPlotMinMaxSteps(int p)
