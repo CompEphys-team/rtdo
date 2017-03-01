@@ -181,6 +181,12 @@ void WavegenDialog::refreshPlotControls()
     ui->btnPlotApply->setEnabled(enabled);
     ui->btnAddToSel->setEnabled(enabled);
 
+    ui->cbSelections->clear();
+    ui->cbSelections->addItem("Selection...");
+    for ( Selection const& sel : selections ) {
+        ui->cbSelections->addItem(name(sel));
+    }
+
     setPlotMinMaxSteps(ui->cbPlot->currentIndex());
 }
 
@@ -257,13 +263,14 @@ bool WavegenDialog::select()
     }
 
     currentSelection = std::move(sel);
+    ui->cbSelections->setCurrentIndex(0); // Clear current selection in GUI upon creating a new one
 
     return true;
 }
 
-void WavegenDialog::replot()
+void WavegenDialog::replot(bool doSelect)
 {
-    if ( !select() )
+    if ( doSelect && !select() )
         return;
 
     MAPEDimension const& dimx = wg->searchd.mapeDimensions[currentSelection.cx];
@@ -303,6 +310,33 @@ void WavegenDialog::on_btnAddToSel_clicked()
 {
     if ( select() ) {
         selections.push_back(std::move(currentSelection));
+        refreshPlotControls();
+        ui->cbSelections->setCurrentIndex(0);
         replot();
     }
+}
+
+void WavegenDialog::on_cbSelections_currentIndexChanged(int index)
+{
+    if ( index <= 0 )
+        return;
+    Selection const& sel = selections.at(index-1);
+    ui->cbPlot->setCurrentIndex(sel.param);
+    for ( size_t i = 0; i < wg->searchd.mapeDimensions.size(); i++ ) {
+        mins[i]->setValue(sel.min[i]);
+        maxes[i]->setValue(sel.max[i]);
+        groupx->button(i)->setChecked(i == sel.cx);
+        groupy->button(i)->setChecked(i == sel.cy);
+    }
+    currentSelection = sel;
+    replot(false);
+}
+
+QString WavegenDialog::name(const Selection &sel) const
+{
+    return QString("%1: %2:%3 (%4x%5 bins)")
+            .arg(QString::fromStdString(model.adjustableParams[sel.param].name))
+            .arg(QString::fromStdString(toString(wg->searchd.mapeDimensions[sel.cx].func)))
+            .arg(QString::fromStdString(toString(wg->searchd.mapeDimensions[sel.cy].func)))
+            .arg(sel.nx).arg(sel.ny);
 }

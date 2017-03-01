@@ -26,6 +26,7 @@ public:
         int cx, cy; //!< Dimension indices for the x and y axis
         int nx, ny; //!< Number of bins along each axis.
     };
+    QString name(const Selection &sel) const;
     std::vector<Selection> selections;
 
 signals:
@@ -38,9 +39,10 @@ private slots:
     void startedSearch(int);
     void searchTick(int);
 
-    void replot();
+    void replot(bool doSelect = true);
     void setPlotMinMaxSteps(int);
     void on_btnAddToSel_clicked();
+    void on_cbSelections_currentIndexChanged(int index);
 
 private:
     Ui::WavegenDialog *ui;
