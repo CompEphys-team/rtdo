@@ -19,6 +19,7 @@ ProfileDialog::ProfileDialog(ExperimentLibrary &lib, QThread *thread, QWidget *p
     profiler.moveToThread(thread);
 
     ui->plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables | QCP::iSelectAxes);
+
     connect(ui->plot, &QCustomPlot::selectionChangedByUser, [=](){
         QList<QCPAxis *> axes = ui->plot->selectedAxes();
         if ( axes.isEmpty() )
@@ -29,6 +30,28 @@ ProfileDialog::ProfileDialog(ExperimentLibrary &lib, QThread *thread, QWidget *p
     });
     ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
     ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
+    ui->plot->xAxis->setLabel("Candidate model's target parameter value");
+    ui->plot->yAxis->setLabel("Error");
+
+    connect(ui->xRange, &QCheckBox::stateChanged, [this](int state){
+        ui->sbMin->setEnabled(state == Qt::Checked);
+        ui->sbMax->setEnabled(state == Qt::Checked);
+        int i = ui->cbSelection->currentIndex();
+        if ( state == Qt::Unchecked && i >= 0) {
+            ui->sbMin->setValue(this->lib.model.adjustableParams[selections->at(i).param].min);
+            ui->sbMax->setValue(this->lib.model.adjustableParams[selections->at(i).param].max);
+        }
+    });
+    connect(ui->cbSelection, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [this](int i){
+        auto range = std::make_pair(this->lib.model.adjustableParams[selections->at(i).param].min,
+                                    this->lib.model.adjustableParams[selections->at(i).param].max);
+        ui->sbMin->setRange(range.first, range.second);
+        ui->sbMax->setRange(range.first, range.second);
+        if ( !ui->xRange->isChecked() ) {
+            ui->sbMin->setValue(range.first);
+            ui->sbMax->setValue(range.second);
+        }
+    });
 }
 
 ProfileDialog::~ProfileDialog()
@@ -55,7 +78,14 @@ void ProfileDialog::on_btnStart_clicked()
     profiler.setStimulations(stim);
 
     std::vector<ErrorProfiler::Permutation> perm(lib.model.adjustableParams.size());
-    perm[selection.param].n = 0; // Use full range for target param (see Permutation defaults)
+    perm[selection.param].n = 0;
+    if ( ui->xRange->isChecked() ) {
+        perm[selection.param].min = ui->sbMin->value();
+        perm[selection.param].max = ui->sbMax->value();
+    } else {
+        perm[selection.param].min = lib.model.adjustableParams[selection.param].min;
+        perm[selection.param].max = lib.model.adjustableParams[selection.param].max;
+    }
     profiler.setPermutations(perm);
 
     ui->btnStart->setEnabled(false);
@@ -66,6 +96,8 @@ void ProfileDialog::on_btnStart_clicked()
     ui->log->scrollToBottom();
 
     ui->plot->clearGraphs();
+    ui->plot->xAxis->setRange(perm[selection.param].min, perm[selection.param].max);
+    ui->plot->yAxis->setRange(0, 1000);
 
     emit profile();
 }
@@ -87,7 +119,6 @@ void ProfileDialog::profileComplete(int index)
     QCPGraph *graph = ui->plot->addGraph();
     for ( size_t i = 0; i < prof.size(); i++ )
         graph->addData(profiler.getParameterValue(selection.param, i), prof.at(i));
-    graph->rescaleAxes(true);
     ui->plot->replot();
 }
 
@@ -97,4 +128,20 @@ void ProfileDialog::done()
     ui->btnAbort->setEnabled(false);
     ui->log->addItem("Done.");
     ui->log->scrollToBottom();
+}
+
+void ProfileDialog::on_btnReplot_clicked()
+{
+    ui->plot->clearGraphs();
+    for ( std::vector<scalar> const& prof : profiler.profiles ) {
+        if ( prof.empty() )
+            continue;
+        QCPGraph *graph = ui->plot->addGraph();
+        for ( size_t i = 0; i < prof.size(); i++ )
+            graph->addData(profiler.getParameterValue(selection.param, i), prof.at(i));
+    }
+    ui->plot->rescaleAxes();
+    ui->plot->xAxis->setRange(profiler.permutations[selection.param].min, profiler.permutations[selection.param].max);
+    ui->plot->yAxis->setRange(0, 1000);
+    ui->plot->replot();
 }

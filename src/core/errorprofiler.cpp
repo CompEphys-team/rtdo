@@ -6,9 +6,9 @@
 
 ErrorProfiler::ErrorProfiler(ExperimentLibrary &lib, DAQ *daq) :
     lib(lib),
+    permutations(lib.adjustableParams.size()),
     simulator(lib.createSimulator()),
     daq(daq ? daq : simulator),
-    permutations(lib.adjustableParams.size()),
     aborted(false)
 {
     connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));

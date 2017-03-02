@@ -120,6 +120,8 @@ public:
 
     void abort(); //!< Abort all queued slot actions.
 
+    std::vector<Permutation> permutations;
+    std::vector<Stimulation> stimulations;
     std::list<std::vector<scalar>> profiles;
 
 public slots:
@@ -141,9 +143,6 @@ protected slots:
 private:
     DAQ *simulator;
     DAQ *daq;
-
-    std::vector<Permutation> permutations;
-    std::vector<Stimulation> stimulations;
 
     std::vector<scalar> errors;
 

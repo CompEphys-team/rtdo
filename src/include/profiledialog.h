@@ -30,6 +30,8 @@ private slots:
 
     void on_btnAbort_clicked();
 
+    void on_btnReplot_clicked();
+
 private:
     Ui::ProfileDialog *ui;
     QThread *thread;
