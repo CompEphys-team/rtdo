@@ -40,6 +40,7 @@ private:
     std::list<QString> actions;
 
     std::vector<WavegenDialog::Selection> *selections;
+    WavegenDialog::Selection selection;
 };
 
 #endif // PROFILEDIALOG_H
