@@ -5,7 +5,16 @@
 Project::Project() :
     loadExisting(false)
 {
+    addAPs();
+}
 
+void Project::addAPs()
+{
+    addAP(ap, "dt", this, &Project::m_dt);
+    addAP(ap, "method", this, &Project::m_method);
+    addAP(ap, "Wavegen.permute", this, &Project::wg_permute);
+    addAP(ap, "Wavegen.numWavesPerEpoch", this, &Project::wg_numWavesPerEpoch);
+    addAP(ap, "Experiment.numCandidates", this, &Project::exp_numCandidates);
 }
 
 void Project::setModel(const QString &modelfile)
@@ -38,7 +47,8 @@ bool Project::compile()
     wglib.reset(new WavegenLibrary(*this));
     explib.reset(new ExperimentLibrary(*this));
     std::ofstream proj(p_projectfile.toStdString());
-    proj << "Config output NYI" << std::endl;
+    for ( auto const& p : ap )
+        p->write(proj);
     frozen = true;
     return true;
 }

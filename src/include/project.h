@@ -1,11 +1,11 @@
 #ifndef PROJECT_H
 #define PROJECT_H
 
-#include "types.h"
 #include <QString>
 #include <memory>
 #include "wavegen.h"
 #include "experiment.h"
+#include "AP.h"
 
 class Project
 {
@@ -44,6 +44,8 @@ public:
     ExperimentLibrary &experiment() const { return *explib; }
 
 protected:
+    void addAPs();
+
     QString p_modelfile;
     QString p_projectfile;
 
@@ -62,6 +64,8 @@ protected:
     std::unique_ptr<MetaModel> m_model;
     std::unique_ptr<WavegenLibrary> wglib;
     std::unique_ptr<ExperimentLibrary> explib;
+
+    std::vector<std::unique_ptr<AP>> ap;
 };
 
 #endif // PROJECT_H
