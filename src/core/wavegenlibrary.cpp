@@ -6,19 +6,20 @@
 #include "global.h"
 #include "cuda_helper.h"
 #include <dlfcn.h>
+#include "project.h"
 
 #define SUFFIX "WG"
 
 static WavegenLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-WavegenLibrary::WavegenLibrary(MetaModel &model, const WavegenLibraryData &compileD, RunData rund) :
-    compileD(compileD),
-    model(model),
+WavegenLibrary::WavegenLibrary(const Project &p) :
+    project(p),
+    model(p.model()),
     stateVariables(model.stateVariables),
     adjustableParams(model.adjustableParams),
     currents(model.currents),
-    lib(loadLibrary(model.cfg.dirpath)),
+    lib(loadLibrary(project.dir().toStdString())),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(stateVariables, adjustableParams, currents)),
     t(*(pointers.t)),
@@ -33,7 +34,6 @@ WavegenLibrary::WavegenLibrary(MetaModel &model, const WavegenLibraryData &compi
     waveforms(pointers.waveforms),
     wavestats(pointers.wavestats)
 {
-    setRunData(rund);
 }
 
 WavegenLibrary::~WavegenLibrary()
@@ -137,13 +137,13 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
     GENN_PREFERENCES::optimiseBlockSize = 0;
     GENN_PREFERENCES::neuronBlockSize = numModelsPerBlock;
 
-    if ( compileD.permute ) {
+    if ( project.wgPermute() ) {
         numGroups = 1;
         for ( AdjustableParam &p : model.adjustableParams ) {
             numGroups *= p.wgPermutations + 1;
         }
     } else {
-        numGroups = compileD.numWavesPerEpoch;
+        numGroups = project.wgWavesPerEpoch();
     }
     // Round up to nearest multiple of numGroupsPerBlock to achieve full occupancy and regular interleaving:
     numGroups = ((numGroups + numGroupsPerBlock - 1) / numGroupsPerBlock) * numGroupsPerBlock;

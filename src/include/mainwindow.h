@@ -6,6 +6,7 @@
 #include "wavegendialog.h"
 #include "profiledialog.h"
 #include "metamodel.h"
+#include "project.h"
 
 namespace Ui {
 class MainWindow;
@@ -28,14 +29,11 @@ private:
     WavegenDialog *wavegenDlg;
     ProfileDialog *profileDlg;
 
-    MetaModel model;
+    Project *project;
 
     QThread gthread;
 
     void closeEvent(QCloseEvent *event);
-
-    ExperimentLibrary &getExpLib();
-    ExperimentLibrary *expLib;
 };
 
 #endif // MAINWINDOW_H

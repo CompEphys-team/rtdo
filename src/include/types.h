@@ -25,6 +25,8 @@ typedef float scalar;
 #define CUDA_CALLABLE_MEMBER
 #endif
 
+class Project; // Forward
+
 struct Stimulation
 {
     scalar duration;

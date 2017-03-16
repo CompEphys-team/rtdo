@@ -11,13 +11,11 @@ class NNmodel;
 class MetaModel
 {
 public:
-    MetaModel(const ModelData &cfg);
+    MetaModel(Project const& p);
 
     neuronModel generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni);
 
     std::string kernel(const std::string &tab, bool wrapVariables, bool defineCurrents) const;
-
-    ModelData cfg;
 
     std::string name(ModuleType) const;
 
@@ -30,6 +28,7 @@ public:
     static size_t numLibs; //!< Count the number of open Wavegen/Experiment libraries
 
 protected:
+    const Project &project;
     std::string _name;
     std::vector<Variable> _params;
     double _baseV;

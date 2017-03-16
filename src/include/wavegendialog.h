@@ -16,7 +16,7 @@ class WavegenDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit WavegenDialog(MetaModel &model, QThread *thread, QWidget *parent = 0);
+    explicit WavegenDialog(Project *p, QThread *thread, QWidget *parent = 0);
     ~WavegenDialog();
 
     struct Selection { //!< A selection is a 2D set of elites. Unselected dimensions are collapsed to the best-performing stimulation in range.
@@ -48,10 +48,11 @@ private slots:
 
 private:
     Ui::WavegenDialog *ui;
+    Project *project;
     QThread *thread;
 
     MetaModel &model;
-    WavegenLibrary lib;
+    WavegenLibrary &lib;
     Wavegen *wg;
 
     std::list<QString> actions;

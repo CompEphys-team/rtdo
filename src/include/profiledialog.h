@@ -14,7 +14,7 @@ class ProfileDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit ProfileDialog(ExperimentLibrary &lib, QThread *thread, QWidget *parent = 0);
+    explicit ProfileDialog(Project *p, QThread *thread, QWidget *parent = 0);
     ~ProfileDialog();
 
     void selectionsChanged(WavegenDialog *dlg);
@@ -34,6 +34,7 @@ private slots:
 
 private:
     Ui::ProfileDialog *ui;
+    Project *project;
     QThread *thread;
 
     ExperimentLibrary &lib;

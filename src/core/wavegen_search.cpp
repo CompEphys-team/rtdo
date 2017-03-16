@@ -1,6 +1,7 @@
 #include "wavegen.h"
 #include "cuda_helper.h"
 #include <cassert>
+#include "project.h"
 
 void Wavegen::search(int param)
 {
@@ -11,7 +12,7 @@ void Wavegen::search(int param)
 
     assert(param >= 0 && param < (int)lib.adjustableParams.size());
 
-    const int numWavesPerEpisode = lib.compileD.permute ? 1 : lib.numGroups;
+    const int numWavesPerEpisode = lib.project.wgPermute() ? 1 : lib.numGroups;
     std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
 
     // Initialise the population for episode 1:
@@ -124,7 +125,7 @@ void Wavegen::search(int param)
 
     // Correct observation periods
     for ( MAPElite &e : mapeArchive ) {
-        e.wave.tObsBegin = e.stats.best.tEnd - e.stats.best.cycles*lib.model.cfg.dt/lib.simCycles;
+        e.wave.tObsBegin = e.stats.best.tEnd - e.stats.best.cycles*lib.project.dt()/lib.simCycles;
         e.wave.tObsEnd = e.stats.best.tEnd;
     }
 
@@ -144,7 +145,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
     mapeStats.historicInsertions -= mapeStats.histIter->insertions;
     *mapeStats.histIter = {};
 
-    if ( lib.compileD.permute ) {
+    if ( lib.project.wgPermute() ) {
         // For both fitness and bin coordinates, take the mean fitness/behaviour of the stim across all evaluated model groups
 
         // Accumulate

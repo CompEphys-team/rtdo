@@ -8,7 +8,7 @@
 class ExperimentLibrary
 {
 public:
-    ExperimentLibrary(MetaModel &model, const ExperimentData &expd, RunData rund);
+    ExperimentLibrary(Project const& p);
     virtual ~ExperimentLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -44,7 +44,7 @@ public:
         std::function<void(void)> pullErr;
     };
 
-    ExperimentData expd;
+    const Project &project;
 
     MetaModel &model;
 

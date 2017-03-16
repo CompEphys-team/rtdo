@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cassert>
 #include "util.h"
+#include "project.h"
+#include "config.h"
 
 ErrorProfiler::ErrorProfiler(ExperimentLibrary &lib, DAQ *daq) :
     lib(lib),
@@ -41,7 +43,7 @@ void ErrorProfiler::setPermutations(std::vector<ErrorProfiler::Permutation> p)
         if ( perm.fixed )
             perm.n = 1;
         if ( perm.n == 0 )
-            perm.n = lib.expd.numCandidates;
+            perm.n = lib.project.expNumCandidates();
         if ( perm.n == 1 )
             perm.min = perm.max = 0;
     }
@@ -57,7 +59,7 @@ size_t ErrorProfiler::getNumPermutations()
 
 size_t ErrorProfiler::getNumSimulations()
 {
-    size_t nCand = lib.expd.numCandidates;
+    size_t nCand = lib.project.expNumCandidates();
     return (getNumPermutations() + nCand - 1) / nCand; // Get nearest multiple of nCand, rounded up
 }
 
@@ -195,10 +197,10 @@ void ErrorProfiler::profile(const Stimulation &stim)
         stride *= permutations[param].n;
     }
 
-    for ( size_t sim = 0, offset = 0; sim < numSimulations; sim++, offset += lib.expd.numCandidates ) {
-        size_t batchSize = lib.expd.numCandidates;
+    for ( size_t sim = 0, offset = 0; sim < numSimulations; sim++, offset += lib.project.expNumCandidates() ) {
+        size_t batchSize = lib.project.expNumCandidates();
         if ( sim == numSimulations-1 )
-            batchSize = numPermutations - sim*lib.expd.numCandidates; // Last round does leftovers
+            batchSize = numPermutations - sim*lib.project.expNumCandidates(); // Last round does leftovers
 
         // Populate lib.adjustableParams from values
         for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
@@ -233,7 +235,7 @@ void ErrorProfiler::settle(scalar baseV)
 {
     // Create holding stimulation
     Stimulation I {};
-    I.duration = lib.expd.settleDuration;
+    I.duration = Config::Experiment.settleDuration;
     I.baseV = baseV;
 
     // Set up library

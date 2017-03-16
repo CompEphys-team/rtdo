@@ -18,10 +18,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow),
     wavegenDlg(nullptr),
     profileDlg(nullptr),
-    model(Config::Model),
-    expLib(nullptr)
+    project(new Project())
 {
     ui->setupUi(this);
+
+    project->setModel(QFileDialog::getOpenFileName(this, "Select model file"));
+    project->setLocation(QFileDialog::getSaveFileName(this, "Save project to..."));
+    project->compile();
 
     gthread.start();
 
@@ -88,13 +91,13 @@ MainWindow::~MainWindow()
     delete ui;
     delete wavegenDlg;
     delete profileDlg;
-    delete expLib;
+    delete project;
 }
 
 void MainWindow::on_actionWavegen_triggered()
 {
     if ( !wavegenDlg ) {
-        wavegenDlg = new WavegenDialog(model, &gthread);
+        wavegenDlg = new WavegenDialog(project, &gthread);
         connect(wavegenDlg, &WavegenDialog::selectionsChanged, [=](){
             if ( profileDlg )
                 profileDlg->selectionsChanged(wavegenDlg);
@@ -108,20 +111,13 @@ void MainWindow::on_actionWavegen_triggered()
 void MainWindow::on_actionProfiler_triggered()
 {
     if ( !profileDlg ) {
-        profileDlg = new ProfileDialog(getExpLib(), &gthread);
+        profileDlg = new ProfileDialog(project, &gthread);
         if ( wavegenDlg )
             wavegenDlg->selectionsChanged();
     }
     profileDlg->show();
     profileDlg->raise();
     profileDlg->activateWindow();
-}
-
-ExperimentLibrary &MainWindow::getExpLib()
-{
-    if ( !expLib )
-        expLib = new ExperimentLibrary(model, Config::Experiment, Config::Run);
-    return *expLib;
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

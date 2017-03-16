@@ -1,11 +1,14 @@
 #include "profiledialog.h"
 #include "ui_profiledialog.h"
+#include "project.h"
+#include "config.h"
 
-ProfileDialog::ProfileDialog(ExperimentLibrary &lib, QThread *thread, QWidget *parent) :
+ProfileDialog::ProfileDialog(Project *p, QThread *thread, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::ProfileDialog),
+    project(p),
     thread(thread),
-    lib(lib),
+    lib(project->experiment()),
     profiler(lib),
     selections(nullptr)
 {
@@ -16,6 +19,7 @@ ProfileDialog::ProfileDialog(ExperimentLibrary &lib, QThread *thread, QWidget *p
     connect(&profiler, SIGNAL(profileComplete(int)), this, SLOT(profileComplete(int)));
     connect(&profiler, SIGNAL(done()), this, SLOT(done()));
 
+    lib.setRunData(Config::Run);
     profiler.moveToThread(thread);
 
     ui->plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables | QCP::iSelectAxes);

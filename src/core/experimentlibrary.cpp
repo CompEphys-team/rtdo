@@ -6,18 +6,19 @@
 #include "global.h"
 #include "cuda_helper.h"
 #include <dlfcn.h>
+#include "project.h"
 
 #define SUFFIX "EXP"
 
 static ExperimentLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-ExperimentLibrary::ExperimentLibrary(MetaModel &m, const ExperimentData &expd, RunData rund) :
-    expd(expd),
-    model(m),
-    stateVariables(m.stateVariables),
-    adjustableParams(m.adjustableParams),
-    lib(loadLibrary(m.cfg.dirpath)),
+ExperimentLibrary::ExperimentLibrary(const Project & p) :
+    project(p),
+    model(project.model()),
+    stateVariables(model.stateVariables),
+    adjustableParams(model.adjustableParams),
+    lib(loadLibrary(project.dir().toStdString())),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(stateVariables, adjustableParams)),
     t(*(pointers.t)),
@@ -31,7 +32,6 @@ ExperimentLibrary::ExperimentLibrary(MetaModel &m, const ExperimentData &expd, R
     getErr(*(pointers.getErr)),
     err(pointers.err)
 {
-    setRunData(rund);
 }
 
 ExperimentLibrary::~ExperimentLibrary()
@@ -113,7 +113,7 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
     int numModels = nModels.size();
     nModels.push_back(n);
     nn.setName(model.name(ModuleType::Experiment));
-    nn.addNeuronPopulation(SUFFIX, expd.numCandidates, numModels, fixedParamIni, variableIni);
+    nn.addNeuronPopulation(SUFFIX, project.expNumCandidates(), numModels, fixedParamIni, variableIni);
 
     nn.finalize();
 }
@@ -280,7 +280,7 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
     ss << "extern \"C\" ExperimentLibrary::Pointers populate(std::vector<StateVariable> &state, "
                                                          << "std::vector<AdjustableParam> &param) {" << endl;
     ss << "    ExperimentLibrary::Pointers pointers;" << endl;
-    ss << "    libInit(pointers, " << expd.numCandidates << ");" << endl;
+    ss << "    libInit(pointers, " << project.expNumCandidates() << ");" << endl;
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
         ss << "    state[" << i++ << "].v = " << v.name << SUFFIX << ";" << endl;

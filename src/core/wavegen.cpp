@@ -3,6 +3,7 @@
 #include <cassert>
 #include "cuda_helper.h"
 #include "util.h"
+#include "project.h"
 
 Wavegen::Wavegen(WavegenLibrary &lib, const StimulationData &stimd, const WavegenData &searchd) :
     searchd(searchd),
@@ -57,7 +58,7 @@ void Wavegen::permute()
 {
     if ( aborted )
         return;
-    if ( !lib.compileD.permute ) {
+    if ( !lib.project.wgPermute() ) {
         emit done();
         return;
     }
@@ -172,7 +173,7 @@ void Wavegen::settle()
         lib.step();
     }
     lib.pull();
-    if ( lib.compileD.permute ) {
+    if ( lib.project.wgPermute() ) {
         // Collect the state variables of every base model, i.e. the tuned version
         settled = std::list<std::vector<scalar>>(lib.stateVariables.size(), std::vector<scalar>(lib.numGroups));
         auto iter = settled.begin();
@@ -220,7 +221,7 @@ void Wavegen::restoreSettled()
 
     // Restore to previously found settled state
     auto iter = settled.begin();
-    if ( lib.compileD.permute ) {
+    if ( lib.project.wgPermute() ) {
         for ( StateVariable &v : lib.stateVariables ) {
             for ( int i = 0; i < lib.numModels; i++ ) {
                 int group = i % lib.numGroupsPerBlock            // Group index within the block
@@ -256,14 +257,14 @@ void Wavegen::adjustSigmas()
     // per-parameter average deviation from the base model produced by that parameter's detuning.
     std::vector<double> sumParamErr(lib.adjustableParams.size(), 0);
     std::vector<Stimulation> waves;
-    int end = lib.compileD.permute
+    int end = lib.project.wgPermute()
             ? searchd.numSigmaAdjustWaveforms
               // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
             : ((searchd.numSigmaAdjustWaveforms + lib.numGroups - 1) / lib.numGroups);
     for ( int i = 0; i < end && !aborted; i++ ) {
 
         // Generate random wave/s
-        if ( lib.compileD.permute ) {
+        if ( lib.project.wgPermute() ) {
             if ( !i )
                 waves.resize(1);
             waves[0] = getRandomStim();
@@ -290,7 +291,7 @@ void Wavegen::adjustSigmas()
 
     std::vector<double> meanParamErr(sumParamErr);
     for ( double & e : meanParamErr ) {
-        e /= end * lib.numGroups * stimd.duration/lib.model.cfg.dt * lib.simCycles;
+        e /= end * lib.numGroups * stimd.duration/lib.project.dt() * lib.simCycles;
     }
 
     // Find the median of mean parameter errors:
@@ -333,13 +334,13 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
 {
     lib.t = 0;
     lib.iT = 0;
-    if ( lib.compileD.permute ) {
+    if ( lib.project.wgPermute() ) {
         const Stimulation &s = stim.at(0);
         for ( int group = 0; group < lib.numGroups; group++ )
             lib.waveforms[group] = s;
         lib.pushWaveforms();
         while ( lib.t < s.duration ) {
-            lib.final = lib.t + lib.model.cfg.dt >= s.duration;
+            lib.final = lib.t + lib.project.dt() >= s.duration;
             lib.step();
         }
     } else { //-------------- !m.cfg.permute ------------------------------------------------------------
@@ -355,7 +356,7 @@ void Wavegen::stimulate(const std::vector<Stimulation> &stim)
         lib.pushWaveforms();
 
         while ( lib.t < maxDuration ) {
-            lib.final = lib.t + lib.model.cfg.dt >= maxDuration;
+            lib.final = lib.t + lib.project.dt() >= maxDuration;
             lib.step();
         }
     }

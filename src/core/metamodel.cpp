@@ -7,16 +7,17 @@
 #include "cuda_helper.h"
 #include <QString>
 #include <QRegularExpression>
+#include "project.h"
 
 void (*MetaModel::modelDef)(NNmodel&);
 
 size_t MetaModel::numLibs = 0;
 
-MetaModel::MetaModel(const ModelData &cfg) :
-    cfg(cfg)
+MetaModel::MetaModel(const Project &p) :
+    project(p)
 {
     tinyxml2::XMLDocument doc;
-    if ( doc.LoadFile(cfg.filepath.c_str()) ) {
+    if ( doc.LoadFile(project.modelfile().toStdString().c_str()) ) {
         doc.PrintError();
         throw std::runtime_error("Load XML failed with error " + doc.ErrorID() );
     }
@@ -141,7 +142,7 @@ neuronModel MetaModel::generate(NNmodel &m, std::vector<double> &fixedParamIni, 
     GENN_PREFERENCES::optimiseBlockSize = 1;
     GENN_PREFERENCES::userNvccFlags = "-std c++11 -Xcompiler \"-fPIC\" -I" CORE_INCLUDE_PATH;
 
-    m.setDT(cfg.dt);
+    m.setDT(project.dt());
 
 #ifdef USEDOUBLE
     m.setPrecision(GENN_DOUBLE);
@@ -188,7 +189,7 @@ std::string MetaModel::kernel(const std::string &tab, bool wrapVariables, bool d
     };
 
     std::stringstream ss;
-    switch ( cfg.method ) {
+    switch ( project.method() ) {
     case IntegrationMethod::ForwardEuler:
         for ( const StateVariable &v : stateVariables ) {
             ss << tab << v.type << " ddt__" << v.name << ";" << endl;

@@ -1,13 +1,15 @@
 #include "wavegendialog.h"
 #include "ui_wavegendialog.h"
 #include "config.h"
+#include "project.h"
 
-WavegenDialog::WavegenDialog(MetaModel &model, QThread *thread, QWidget *parent) :
+WavegenDialog::WavegenDialog(Project *p, QThread *thread, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::WavegenDialog),
+    project(p),
     thread(thread),
-    model(model),
-    lib(model, Config::WavegenLibrary, Config::Run),
+    model(project->model()),
+    lib(project->wavegen()),
     wg(new Wavegen(lib, Config::Stimulation, Config::Wavegen)),
     abort(false)
 {
@@ -19,7 +21,8 @@ WavegenDialog::WavegenDialog(MetaModel &model, QThread *thread, QWidget *parent)
 
 void WavegenDialog::initWG()
 {
-    ui->btnPermute->setEnabled(lib.compileD.permute);
+    lib.setRunData(Config::Run);
+    ui->btnPermute->setEnabled(project->wgPermute());
     for ( const AdjustableParam &p : model.adjustableParams )
         ui->cbSearch->addItem(QString::fromStdString(p.name));
 

@@ -10,13 +10,6 @@ int main(int argc, char *argv[])
 
     Config::init();
 
-    std::string fname = QFileDialog::getOpenFileName().toStdString();
-    std::string dir = QFileDialog::getExistingDirectory().toStdString();
-    if ( fname.empty() || dir.empty() )
-        return -1;
-    Config::Model.filepath = fname;
-    Config::Model.dirpath = dir;
-
     MainWindow w;
     w.show();
 
