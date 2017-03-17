@@ -4,6 +4,7 @@
 #include <QDialog>
 #include "errorprofiler.h"
 #include "wavegendialog.h"
+#include "session.h"
 
 namespace Ui {
 class ProfileDialog;
@@ -14,7 +15,7 @@ class ProfileDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit ProfileDialog(Project *p, QThread *thread, QWidget *parent = 0);
+    explicit ProfileDialog(Session *s, QWidget *parent = 0);
     ~ProfileDialog();
 
     void selectionsChanged(WavegenDialog *dlg);
@@ -34,11 +35,9 @@ private slots:
 
 private:
     Ui::ProfileDialog *ui;
-    Project *project;
-    QThread *thread;
+    Session *session;
 
-    ExperimentLibrary &lib;
-    ErrorProfiler profiler;
+    ErrorProfiler &profiler;
 
     std::list<QString> actions;
 

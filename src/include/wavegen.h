@@ -12,8 +12,8 @@ class Wavegen : public QObject
 public:
     Wavegen(WavegenLibrary &lib, const StimulationData &stimd, const WavegenData &searchd);
 
-    WavegenData searchd;
-    StimulationData stimd;
+    const WavegenData &searchd;
+    const StimulationData &stimd;
 
     WavegenLibrary &lib;
 

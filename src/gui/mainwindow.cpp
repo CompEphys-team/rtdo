@@ -36,8 +36,7 @@ MainWindow::MainWindow(QWidget *parent) :
         project = new Project(file);
     }
 
-    gthread.start();
-
+    session = new Session(*project);
 
 
 
@@ -107,7 +106,7 @@ MainWindow::~MainWindow()
 void MainWindow::on_actionWavegen_triggered()
 {
     if ( !wavegenDlg ) {
-        wavegenDlg = new WavegenDialog(project, &gthread);
+        wavegenDlg = new WavegenDialog(session);
         connect(wavegenDlg, &WavegenDialog::selectionsChanged, [=](){
             if ( profileDlg )
                 profileDlg->selectionsChanged(wavegenDlg);
@@ -121,7 +120,7 @@ void MainWindow::on_actionWavegen_triggered()
 void MainWindow::on_actionProfiler_triggered()
 {
     if ( !profileDlg ) {
-        profileDlg = new ProfileDialog(project, &gthread);
+        profileDlg = new ProfileDialog(session);
         if ( wavegenDlg )
             wavegenDlg->selectionsChanged();
     }
@@ -132,9 +131,7 @@ void MainWindow::on_actionProfiler_triggered()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    gthread.quit();
-    while ( !gthread.wait(20) )
-        QApplication::processEvents();
+    session->quit();
     if ( wavegenDlg )
         wavegenDlg->close();
     if ( profileDlg )

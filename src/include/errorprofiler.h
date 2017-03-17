@@ -19,9 +19,10 @@ class ErrorProfiler : public QObject
     Q_OBJECT
 
 public:
-    ErrorProfiler(ExperimentLibrary &lib, DAQ *daq = nullptr);
+    ErrorProfiler(ExperimentLibrary &lib, const ExperimentData &expd, DAQ *daq = nullptr);
     ~ErrorProfiler();
 
+    const ExperimentData &expd;
     ExperimentLibrary &lib;
 
     /**

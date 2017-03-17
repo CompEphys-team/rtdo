@@ -6,9 +6,10 @@
 class Experiment
 {
 public:
-    Experiment(ExperimentLibrary &lib, DAQ *daq = nullptr);
+    Experiment(ExperimentLibrary &lib, const ExperimentData &expd, DAQ *daq = nullptr);
     ~Experiment();
 
+    const ExperimentData &expd;
     ExperimentLibrary &lib;
 
 protected:

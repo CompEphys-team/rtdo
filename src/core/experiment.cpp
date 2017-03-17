@@ -3,7 +3,8 @@
 #include <cassert>
 #include <cmath>
 
-Experiment::Experiment(ExperimentLibrary &lib, DAQ *daq) :
+Experiment::Experiment(ExperimentLibrary &lib, const ExperimentData &expd, DAQ *daq) :
+    expd(expd),
     lib(lib),
     simulator(lib.createSimulator()),
     daq(daq ? daq : simulator)

@@ -3,13 +3,11 @@
 #include "project.h"
 #include "config.h"
 
-ProfileDialog::ProfileDialog(Project *p, QThread *thread, QWidget *parent) :
+ProfileDialog::ProfileDialog(Session *s, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::ProfileDialog),
-    project(p),
-    thread(thread),
-    lib(project->experiment()),
-    profiler(lib),
+    session(s),
+    profiler(session->profiler()),
     selections(nullptr)
 {
     ui->setupUi(this);
@@ -18,9 +16,6 @@ ProfileDialog::ProfileDialog(Project *p, QThread *thread, QWidget *parent) :
     connect(this, SIGNAL(profile()), &profiler, SLOT(profile()));
     connect(&profiler, SIGNAL(profileComplete(int)), this, SLOT(profileComplete(int)));
     connect(&profiler, SIGNAL(done()), this, SLOT(done()));
-
-    lib.setRunData(Config::Run);
-    profiler.moveToThread(thread);
 
     ui->plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables | QCP::iSelectAxes);
 
@@ -42,13 +37,13 @@ ProfileDialog::ProfileDialog(Project *p, QThread *thread, QWidget *parent) :
         ui->sbMax->setEnabled(state == Qt::Checked);
         int i = ui->cbSelection->currentIndex();
         if ( state == Qt::Unchecked && i >= 0) {
-            ui->sbMin->setValue(this->lib.model.adjustableParams[selections->at(i).param].min);
-            ui->sbMax->setValue(this->lib.model.adjustableParams[selections->at(i).param].max);
+            ui->sbMin->setValue(this->profiler.lib.model.adjustableParams[selections->at(i).param].min);
+            ui->sbMax->setValue(this->profiler.lib.model.adjustableParams[selections->at(i).param].max);
         }
     });
     connect(ui->cbSelection, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [this](int i){
-        auto range = std::make_pair(this->lib.model.adjustableParams[selections->at(i).param].min,
-                                    this->lib.model.adjustableParams[selections->at(i).param].max);
+        auto range = std::make_pair(this->profiler.lib.model.adjustableParams[selections->at(i).param].min,
+                                    this->profiler.lib.model.adjustableParams[selections->at(i).param].max);
         ui->sbMin->setRange(range.first, range.second);
         ui->sbMax->setRange(range.first, range.second);
         if ( !ui->xRange->isChecked() ) {
@@ -56,6 +51,8 @@ ProfileDialog::ProfileDialog(Project *p, QThread *thread, QWidget *parent) :
             ui->sbMax->setValue(range.second);
         }
     });
+
+    session->setExperimentData(Config::Experiment);
 }
 
 ProfileDialog::~ProfileDialog()
@@ -81,14 +78,14 @@ void ProfileDialog::on_btnStart_clicked()
     }
     profiler.setStimulations(stim);
 
-    std::vector<ErrorProfiler::Permutation> perm(lib.model.adjustableParams.size());
+    std::vector<ErrorProfiler::Permutation> perm(profiler.lib.model.adjustableParams.size());
     perm[selection.param].n = 0;
     if ( ui->xRange->isChecked() ) {
         perm[selection.param].min = ui->sbMin->value();
         perm[selection.param].max = ui->sbMax->value();
     } else {
-        perm[selection.param].min = lib.model.adjustableParams[selection.param].min;
-        perm[selection.param].max = lib.model.adjustableParams[selection.param].max;
+        perm[selection.param].min = profiler.lib.model.adjustableParams[selection.param].min;
+        perm[selection.param].max = profiler.lib.model.adjustableParams[selection.param].max;
     }
     profiler.setPermutations(perm);
 

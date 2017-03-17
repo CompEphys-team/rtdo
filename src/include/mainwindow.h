@@ -2,11 +2,10 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QThread>
 #include "wavegendialog.h"
 #include "profiledialog.h"
-#include "metamodel.h"
 #include "project.h"
+#include "session.h"
 
 namespace Ui {
 class MainWindow;
@@ -30,8 +29,7 @@ private:
     ProfileDialog *profileDlg;
 
     Project *project;
-
-    QThread gthread;
+    Session *session;
 
     void closeEvent(QCloseEvent *event);
 };

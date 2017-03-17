@@ -6,6 +6,7 @@
 #include <QButtonGroup>
 #include "qcustomplot.h"
 #include "wavegen.h"
+#include "session.h"
 
 namespace Ui {
 class WavegenDialog;
@@ -16,7 +17,7 @@ class WavegenDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit WavegenDialog(Project *p, QThread *thread, QWidget *parent = 0);
+    explicit WavegenDialog(Session *s, QWidget *parent = 0);
     ~WavegenDialog();
 
     struct Selection { //!< A selection is a 2D set of elites. Unselected dimensions are collapsed to the best-performing stimulation in range.
@@ -48,12 +49,9 @@ private slots:
 
 private:
     Ui::WavegenDialog *ui;
-    Project *project;
-    QThread *thread;
+    Session *session;
 
-    MetaModel &model;
-    WavegenLibrary &lib;
-    Wavegen *wg;
+    Wavegen &wavegen;
 
     std::list<QString> actions;
 

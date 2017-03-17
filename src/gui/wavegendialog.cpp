@@ -3,14 +3,11 @@
 #include "config.h"
 #include "project.h"
 
-WavegenDialog::WavegenDialog(Project *p, QThread *thread, QWidget *parent) :
+WavegenDialog::WavegenDialog(Session *s, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::WavegenDialog),
-    project(p),
-    thread(thread),
-    model(project->model()),
-    lib(project->wavegen()),
-    wg(new Wavegen(lib, Config::Stimulation, Config::Wavegen)),
+    session(s),
+    wavegen(s->wavegen()),
     abort(false)
 {
     ui->setupUi(this);
@@ -21,17 +18,16 @@ WavegenDialog::WavegenDialog(Project *p, QThread *thread, QWidget *parent) :
 
 void WavegenDialog::initWG()
 {
-    lib.setRunData(Config::Run);
-    ui->btnPermute->setEnabled(project->wgPermute());
-    for ( const AdjustableParam &p : model.adjustableParams )
+    ui->btnPermute->setEnabled(session->project.wgPermute());
+    for ( const AdjustableParam &p : wavegen.lib.model.adjustableParams )
         ui->cbSearch->addItem(QString::fromStdString(p.name));
 
-    connect(this, SIGNAL(permute()), wg, SLOT(permute()));
-    connect(this, SIGNAL(adjustSigmas()), wg, SLOT(adjustSigmas()));
-    connect(this, SIGNAL(search(int)), wg, SLOT(search(int)));
-    connect(wg, SIGNAL(startedSearch(int)), this, SLOT(startedSearch(int)));
-    connect(wg, SIGNAL(searchTick(int)), this, SLOT(searchTick(int)));
-    connect(wg, SIGNAL(done(int)), this, SLOT(end(int)));
+    connect(this, SIGNAL(permute()), &wavegen, SLOT(permute()));
+    connect(this, SIGNAL(adjustSigmas()), &wavegen, SLOT(adjustSigmas()));
+    connect(this, SIGNAL(search(int)), &wavegen, SLOT(search(int)));
+    connect(&wavegen, SIGNAL(startedSearch(int)), this, SLOT(startedSearch(int)));
+    connect(&wavegen, SIGNAL(searchTick(int)), this, SLOT(searchTick(int)));
+    connect(&wavegen, SIGNAL(done(int)), this, SLOT(end(int)));
 
     connect(ui->btnPermute, &QPushButton::clicked, [&](bool){
         ui->log->addItem("Parameter permutation begins...");
@@ -46,29 +42,29 @@ void WavegenDialog::initWG()
         emit adjustSigmas();
     });
     connect(ui->btnSearchAll, &QPushButton::clicked, [&](bool){
-        for ( size_t i = 0; i < model.adjustableParams.size(); i++ ) {
-            actions.push_back(QString("Search for %1").arg(QString::fromStdString(model.adjustableParams[i].name)));
+        for ( size_t i = 0; i < wavegen.lib.model.adjustableParams.size(); i++ ) {
+            actions.push_back(QString("Search for %1").arg(QString::fromStdString(wavegen.lib.model.adjustableParams[i].name)));
             emit search(i);
         }
     });
     connect(ui->btnSearchOne, &QPushButton::clicked, [&](bool){
         int i = ui->cbSearch->currentIndex();
-        actions.push_back(QString("Search for %1").arg(QString::fromStdString(model.adjustableParams[i].name)));
+        actions.push_back(QString("Search for %1").arg(QString::fromStdString(wavegen.lib.model.adjustableParams[i].name)));
         emit search(i);
     });
 
     connect(ui->btnAbort, &QPushButton::clicked, [&](bool){
-        wg->abort();
+        wavegen.abort();
         abort = true;
     });
 
-    wg->moveToThread(thread);
+    session->setWavegenData(Config::Wavegen);
+    session->setStimulationData(Config::Stimulation);
 }
 
 WavegenDialog::~WavegenDialog()
 {
     delete ui;
-    delete wg;
 }
 
 void WavegenDialog::startedSearch(int param)
@@ -99,7 +95,7 @@ void WavegenDialog::end(int arg)
 
 void WavegenDialog::initPlotControls()
 {
-    int i = 0, n = wg->searchd.mapeDimensions.size();
+    int i = 0, n = wavegen.searchd.mapeDimensions.size();
     groupx = new QButtonGroup(this);
     groupy = new QButtonGroup(this);
     mins.resize(n);
@@ -108,7 +104,7 @@ void WavegenDialog::initPlotControls()
     ui->plotTable->setColumnWidth(0, 25);
     ui->plotTable->setColumnWidth(1, 25);
     QStringList labels;
-    for ( MAPEDimension const& d : wg->searchd.mapeDimensions ) {
+    for ( MAPEDimension const& d : wavegen.searchd.mapeDimensions ) {
         labels << QString::fromStdString(toString(d.func));
 
         QRadioButton *x = new QRadioButton();
@@ -135,7 +131,7 @@ void WavegenDialog::initPlotControls()
     }
     ui->plotTable->setVerticalHeaderLabels(labels);
 
-    for ( AdjustableParam const& p : model.adjustableParams )
+    for ( AdjustableParam const& p : wavegen.lib.model.adjustableParams )
         ui->cbPlot->addItem(QString::fromStdString(p.name));
 
     connect(ui->btnPlotApply, SIGNAL(clicked(bool)), this, SLOT(replot()));
@@ -173,7 +169,7 @@ void WavegenDialog::refreshPlotControls()
 {
     int i = 0;
     bool enabled = false;
-    for ( std::list<MAPElite> const& l : wg->completedArchives ) {
+    for ( std::list<MAPElite> const& l : wavegen.completedArchives ) {
         QStandardItem *item = qobject_cast<const QStandardItemModel*>(ui->cbPlot->model())->item(i++);
         item->setFlags(l.empty()
                        ? item->flags() & ~(Qt::ItemIsSelectable|Qt::ItemIsEnabled)
@@ -195,9 +191,9 @@ void WavegenDialog::refreshPlotControls()
 
 void WavegenDialog::setPlotMinMaxSteps(int p)
 {
-    int mult = wg->mape_multiplier(wg->archivePrecision.at(p));
+    int mult = wavegen.mape_multiplier(wavegen.archivePrecision.at(p));
     int i = 0;
-    for ( MAPEDimension const& d : wg->searchd.mapeDimensions ) {
+    for ( MAPEDimension const& d : wavegen.searchd.mapeDimensions ) {
         double step = (d.max - d.min) / (mult * d.resolution);
         mins[i]->setSingleStep(step);
         mins[i]->setMaximum(d.max-step);
@@ -214,19 +210,19 @@ bool WavegenDialog::select()
     sel.cy = groupy->checkedId(); // The selection for the plot's Y axis
     sel.param = ui->cbPlot->currentIndex(); // The selected parameter or waveform archive
 
-    if ( sel.cx == sel.cy || sel.cx < 0 || sel.cy < 0 || sel.param < 0 || wg->completedArchives[sel.param].empty() )
+    if ( sel.cx == sel.cy || sel.cx < 0 || sel.cy < 0 || sel.param < 0 || wavegen.completedArchives[sel.param].empty() )
         return false;
 
-    size_t resolution_multiplier = wg->mape_multiplier(wg->archivePrecision.at(sel.param));
+    size_t resolution_multiplier = wavegen.mape_multiplier(wavegen.archivePrecision.at(sel.param));
 
-    size_t nDimensions = wg->searchd.mapeDimensions.size();
+    size_t nDimensions = wavegen.searchd.mapeDimensions.size();
     std::vector<std::pair<size_t, size_t>> ranges(nDimensions);
     sel.min.resize(nDimensions);
     sel.max.resize(nDimensions);
     for ( size_t i = 0; i < nDimensions; i++ ) {
         sel.min[i] = mins[i]->value();
         sel.max[i] = maxes[i]->value();
-        MAPEDimension const& d(wg->searchd.mapeDimensions.at(i));
+        MAPEDimension const& d(wavegen.searchd.mapeDimensions.at(i));
         ranges[i].first = resolution_multiplier * d.resolution * (sel.min[i]-d.min)/(d.max-d.min);
         ranges[i].second = resolution_multiplier * d.resolution * (sel.max[i]-d.min)/(d.max-d.min);
         if ( ranges[i].second <= ranges[i].first )
@@ -237,7 +233,7 @@ bool WavegenDialog::select()
     sel.ny = ranges[sel.cy].second - ranges[sel.cy].first;
     sel.elites = std::vector<MAPElite>(sel.nx * sel.ny);
 
-    for ( MAPElite const& e : wg->completedArchives.at(sel.param) ) {
+    for ( MAPElite const& e : wavegen.completedArchives.at(sel.param) ) {
         bool in_range(true);
         for ( size_t j = 0; j < nDimensions; j++ ) {
             if ( e.bin[j] < ranges[j].first || e.bin[j] >= ranges[j].second ) {
@@ -276,10 +272,10 @@ void WavegenDialog::replot(bool doSelect)
     if ( doSelect && !select() )
         return;
 
-    MAPEDimension const& dimx = wg->searchd.mapeDimensions[currentSelection.cx];
-    MAPEDimension const& dimy = wg->searchd.mapeDimensions[currentSelection.cy];
+    MAPEDimension const& dimx = wavegen.searchd.mapeDimensions[currentSelection.cx];
+    MAPEDimension const& dimy = wavegen.searchd.mapeDimensions[currentSelection.cy];
 
-    size_t resolution_multiplier = wg->mape_multiplier(wg->archivePrecision.at(currentSelection.param));
+    size_t resolution_multiplier = wavegen.mape_multiplier(wavegen.archivePrecision.at(currentSelection.param));
     int nx = dimx.resolution * resolution_multiplier;
     int ny = dimy.resolution * resolution_multiplier;
 
@@ -326,7 +322,7 @@ void WavegenDialog::on_cbSelections_currentIndexChanged(int index)
         return;
     Selection const& sel = selections.at(index-1);
     ui->cbPlot->setCurrentIndex(sel.param);
-    for ( size_t i = 0; i < wg->searchd.mapeDimensions.size(); i++ ) {
+    for ( size_t i = 0; i < wavegen.searchd.mapeDimensions.size(); i++ ) {
         mins[i]->setValue(sel.min[i]);
         maxes[i]->setValue(sel.max[i]);
         groupx->button(i)->setChecked(i == sel.cx);
@@ -339,8 +335,8 @@ void WavegenDialog::on_cbSelections_currentIndexChanged(int index)
 QString WavegenDialog::name(const Selection &sel) const
 {
     return QString("%1: %2:%3 (%4x%5 bins)")
-            .arg(QString::fromStdString(model.adjustableParams[sel.param].name))
-            .arg(QString::fromStdString(toString(wg->searchd.mapeDimensions[sel.cx].func)))
-            .arg(QString::fromStdString(toString(wg->searchd.mapeDimensions[sel.cy].func)))
+            .arg(QString::fromStdString(wavegen.lib.model.adjustableParams[sel.param].name))
+            .arg(QString::fromStdString(toString(wavegen.searchd.mapeDimensions[sel.cx].func)))
+            .arg(QString::fromStdString(toString(wavegen.searchd.mapeDimensions[sel.cy].func)))
             .arg(sel.nx).arg(sel.ny);
 }

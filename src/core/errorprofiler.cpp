@@ -4,9 +4,9 @@
 #include <cassert>
 #include "util.h"
 #include "project.h"
-#include "config.h"
 
-ErrorProfiler::ErrorProfiler(ExperimentLibrary &lib, DAQ *daq) :
+ErrorProfiler::ErrorProfiler(ExperimentLibrary &lib, const ExperimentData &expd, DAQ *daq) :
+    expd(expd),
     lib(lib),
     permutations(lib.adjustableParams.size()),
     simulator(lib.createSimulator()),
@@ -235,7 +235,7 @@ void ErrorProfiler::settle(scalar baseV)
 {
     // Create holding stimulation
     Stimulation I {};
-    I.duration = Config::Experiment.settleDuration;
+    I.duration = expd.settleDuration;
     I.baseV = baseV;
 
     // Set up library
