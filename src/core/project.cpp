@@ -8,6 +8,31 @@ Project::Project() :
     addAPs();
 }
 
+Project::Project(const QString &projectfile) :
+    p_projectfile(projectfile),
+    loadExisting(true)
+{
+    addAPs();
+
+    // Load config from file
+    std::ifstream proj(p_projectfile.toStdString());
+    QString name;
+    AP *it;
+    proj >> name;
+    while ( proj.good() ) {
+        if ( (it = AP::find(name)) )
+            it->readNow(name, proj);
+        proj >> name;
+    }
+
+    // Load model and libraries from existing files
+    setModel(dir() + "/model.xml");
+    wglib.reset(new WavegenLibrary(*this, false));
+    explib.reset(new ExperimentLibrary(*this, false));
+
+    frozen = true;
+}
+
 void Project::addAPs()
 {
     addAP(ap, "dt", this, &Project::m_dt);
@@ -44,8 +69,8 @@ bool Project::compile()
     if ( frozen || !m_model || p_modelfile.isEmpty() || p_projectfile.isEmpty() )
         return false;
     QFile::copy(p_modelfile, dir() + "/model.xml");
-    wglib.reset(new WavegenLibrary(*this));
-    explib.reset(new ExperimentLibrary(*this));
+    wglib.reset(new WavegenLibrary(*this, true));
+    explib.reset(new ExperimentLibrary(*this, true));
     std::ofstream proj(p_projectfile.toStdString());
     for ( auto const& p : ap )
         p->write(proj);

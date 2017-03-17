@@ -13,15 +13,15 @@
 static WavegenLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-WavegenLibrary::WavegenLibrary(const Project &p) :
+WavegenLibrary::WavegenLibrary(const Project &p, bool compile) :
     project(p),
     model(p.model()),
     stateVariables(model.stateVariables),
     adjustableParams(model.adjustableParams),
     currents(model.currents),
-    lib(loadLibrary(project.dir().toStdString())),
+    lib(compile ? compile_and_load() : load()),
     populate((decltype(populate))dlsym(lib, "populate")),
-    pointers(populate(stateVariables, adjustableParams, currents)),
+    pointers(populate(*this)),
     t(*(pointers.t)),
     iT(*(pointers.iT)),
     simCycles(*(pointers.simCycles)),
@@ -49,8 +49,9 @@ WavegenLibrary::~WavegenLibrary()
     dlclose(lib);
 }
 
-void *WavegenLibrary::loadLibrary(const std::string &directory)
+void *WavegenLibrary::compile_and_load()
 {
+    std::string directory = project.dir().toStdString();
     // Generate code
     _this = this;
     MetaModel::modelDef = redirect;
@@ -72,9 +73,15 @@ void *WavegenLibrary::loadLibrary(const std::string &directory)
         throw std::runtime_error("Code compile failed.");
 
     // Load library
+    return load();
+}
+
+void *WavegenLibrary::load()
+{
+    std::string libfile = project.dir().toStdString() + "/" + model.name(ModuleType::Wavegen) + "_CODE/runner.so";
     dlerror();
     void *libp;
-    if ( ! (libp = dlopen((dir + "/runner.so").c_str(), RTLD_NOW)) )
+    if ( ! (libp = dlopen(libfile.c_str(), RTLD_NOW)) )
         throw std::runtime_error(std::string("Library load failed: ") + dlerror());
 
     ++MetaModel::numLibs;
@@ -231,6 +238,8 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "#define MM_NumGroupsPerBlock " << numGroupsPerBlock << endl;
     ss << "#define MM_NumModelsPerBlock " << numModelsPerBlock << endl;
     ss << "#define MM_NumGroups " << numGroups << endl;
+    ss << "#define MM_NumBlocks " << numBlocks << endl;
+    ss << "#define MM_NumModels " << numModels << endl;
     ss << "#define NVAR " << stateVariables.size() << endl;
     ss << "#define NPARAM " << adjustableParams.size() << endl;
     ss << "#include \"definitions.h\"" << endl;
@@ -239,22 +248,28 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "#include \"wavegenlibrary.cu\"" << endl;
     ss << endl;
 
-    ss << "extern \"C\" WavegenLibrary::Pointers populate(std::vector<StateVariable> &state, "
-                                                      << "std::vector<AdjustableParam> &param, "
-                                                      << "std::vector<Variable> &current) {" << endl;
+    ss << "extern \"C\" WavegenLibrary::Pointers populate(WavegenLibrary &lib) {" << endl;
     ss << "    WavegenLibrary::Pointers pointers;" << endl;
-    ss << "    libInit(pointers, " << numGroups << ", " << numModels << ");" << endl;
+    ss << "    libInit(pointers, MM_NumGroups, MM_NumModels);" << endl;
+
+    // Re-set num* indicators for lazy loading
+    ss << "    lib.numGroupsPerBlock = MM_NumGroupsPerBlock;" << endl;
+    ss << "    lib.numModelsPerBlock = MM_NumModelsPerBlock;" << endl;
+    ss << "    lib.numGroups = MM_NumGroups;" << endl;
+    ss << "    lib.numBlocks = MM_NumBlocks;" << endl;
+    ss << "    lib.numModels = MM_NumModels;" << endl;
+
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
-        ss << "    state[" << i++ << "].v = " << v.name << SUFFIX << ";" << endl;
+        ss << "    lib.stateVariables[" << i++ << "].v = " << v.name << SUFFIX << ";" << endl;
     }
     i = 0;
     for ( const Variable &c : currents ) {
-        ss << "    current[" << i++ << "].v = " << c.name << SUFFIX << ";" << endl;
+        ss << "    lib.currents[" << i++ << "].v = " << c.name << SUFFIX << ";" << endl;
     }
     i = 0;
     for ( const AdjustableParam &p : adjustableParams ) {
-        ss << "    param[" << i++ << "].v = " << p.name << SUFFIX << ";" << endl;
+        ss << "    lib.adjustableParams[" << i++ << "].v = " << p.name << SUFFIX << ";" << endl;
     }
     ss << endl;
     for ( const Variable &p : globals ) {

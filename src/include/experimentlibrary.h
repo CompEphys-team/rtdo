@@ -8,7 +8,7 @@
 class ExperimentLibrary
 {
 public:
-    ExperimentLibrary(Project const& p);
+    ExperimentLibrary(Project const& p, bool compile);
     virtual ~ExperimentLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -59,7 +59,8 @@ public:
     inline void pullErr() { pointers.pullErr(); }
 
 private:
-    void *loadLibrary(const std::string &directory);
+    void *load();
+    void *compile_and_load();
     std::string simCode();
     std::string supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars);
     std::string daqCode();

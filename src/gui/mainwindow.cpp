@@ -17,14 +17,24 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     wavegenDlg(nullptr),
-    profileDlg(nullptr),
-    project(new Project())
+    profileDlg(nullptr)
 {
     ui->setupUi(this);
 
-    project->setModel(QFileDialog::getOpenFileName(this, "Select model file"));
-    project->setLocation(QFileDialog::getSaveFileName(this, "Save project to..."));
-    project->compile();
+    QString file = QFileDialog::getOpenFileName(this, "Select model or project file", "", "Model files (*.xml);;Projects (*.dop)");
+    if ( file.isEmpty() )
+        exit(0);
+    if ( file.endsWith(".xml") ) {
+        project = new Project();
+        project->setModel(file);
+        QString loc = QFileDialog::getExistingDirectory(this, "Select project location");
+        if ( loc.isEmpty() )
+            exit(0);
+        project->setLocation(loc + "/project.dop");
+        project->compile();
+    } else {
+        project = new Project(file);
+    }
 
     gthread.start();
 

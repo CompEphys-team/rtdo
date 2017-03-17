@@ -13,12 +13,12 @@
 static ExperimentLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-ExperimentLibrary::ExperimentLibrary(const Project & p) :
+ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
     project(p),
     model(project.model()),
     stateVariables(model.stateVariables),
     adjustableParams(model.adjustableParams),
-    lib(loadLibrary(project.dir().toStdString())),
+    lib(compile ? compile_and_load() : load()),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(stateVariables, adjustableParams)),
     t(*(pointers.t)),
@@ -47,8 +47,10 @@ ExperimentLibrary::~ExperimentLibrary()
     dlclose(lib);
 }
 
-void *ExperimentLibrary::loadLibrary(const string &directory)
+void *ExperimentLibrary::compile_and_load()
 {
+    std::string directory = project.dir().toStdString();
+
     // Generate code
     _this = this;
     MetaModel::modelDef = redirect;
@@ -70,9 +72,15 @@ void *ExperimentLibrary::loadLibrary(const string &directory)
         throw std::runtime_error("Code compile failed.");
 
     // Load library
+    return load();
+}
+
+void *ExperimentLibrary::load()
+{
+    std::string libfile = project.dir().toStdString() + "/" + model.name(ModuleType::Experiment) + "_CODE/runner.so";
     dlerror();
     void *libp;
-    if ( ! (libp = dlopen((dir + "/runner.so").c_str(), RTLD_NOW)) )
+    if ( ! (libp = dlopen(libfile.c_str(), RTLD_NOW)) )
         throw std::runtime_error(std::string("Library load failed: ") + dlerror());
 
     ++MetaModel::numLibs;

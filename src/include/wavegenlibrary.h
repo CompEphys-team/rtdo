@@ -7,7 +7,7 @@
 class WavegenLibrary
 {
 public:
-    WavegenLibrary(const Project &p);
+    WavegenLibrary(const Project &p, bool compile);
     ~WavegenLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -74,13 +74,14 @@ public:
     inline void pullErr() { pointers.pullErr(); }
 
 private:
-    void *loadLibrary(const std::string &directory);
+    void *load();
+    void *compile_and_load();
     std::string simCode();
     std::string supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars);
 
     void *lib;
 
-    Pointers (*populate)(std::vector<StateVariable>&, std::vector<AdjustableParam>&, std::vector<Variable>&);
+    Pointers (*populate)(WavegenLibrary &);
     Pointers pointers;
 
 public:

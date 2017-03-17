@@ -13,6 +13,9 @@ public:
     /// Create a new project
     Project();
 
+    /// Load project from saved config
+    Project(QString const& projectfile);
+
     /// Set compile-time parameters - before compilation only
     void setModel(QString const& modelfile); ///!< Loads the model immediately. At compile time, the model file is copied to the project directory.
     void setLocation(QString const& projectfile); //!< Sets the project file. The project directory is set to the project file's path.
