@@ -46,7 +46,8 @@ SOURCES += \
     src/gui/wavegendialog.cpp \
     src/gui/profiledialog.cpp \
     src/core/project.cpp \
-    src/core/session.cpp
+    src/core/session.cpp \
+    src/core/sessionlog.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -74,7 +75,8 @@ HEADERS  += \
     src/include/wavegendialog.h \
     src/include/profiledialog.h \
     src/include/project.h \
-    src/include/session.h
+    src/include/session.h \
+    src/include/sessionlog.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
