@@ -14,12 +14,6 @@ public:
 
     int put(const QString &actor, const QString &action, const QString &args);
 
-    QVariant data(const QModelIndex &index, int role) const;
-
-    inline int columnCount(const QModelIndex & = QModelIndex()) const { return 4; }
-    inline int rowCount(const QModelIndex & = QModelIndex()) const { return m_data.size(); }
-
-protected:
     struct Entry {
         QDateTime timestamp;
         QString actor;
@@ -27,6 +21,13 @@ protected:
         QString args;
     };
 
+    QVariant data(const QModelIndex &index, int role) const;
+    Entry entry(int row) const;
+
+    inline int columnCount(const QModelIndex & = QModelIndex()) const { return 4; }
+    inline int rowCount(const QModelIndex & = QModelIndex()) const { return m_data.size(); }
+
+protected:
     QVector<Entry> m_data;
 
     std::ofstream m_file;

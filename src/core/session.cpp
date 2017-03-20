@@ -1,7 +1,7 @@
 #include "session.h"
 #include <QDateTime>
 
-Session::Session(Project &p) :
+Session::Session(Project &p, const QString &sessiondir) :
     project(p),
     dirtyRund(true),
     dirtySearchd(true),
@@ -21,12 +21,22 @@ Session::Session(Project &p) :
     connect(this, SIGNAL(redirectStimulationData(StimulationData)), this, SLOT(setStimulationData(StimulationData)), Qt::BlockingQueuedConnection);
     connect(this, SIGNAL(redirectExperimentData(ExperimentData)), this, SLOT(setExperimentData(ExperimentData)), Qt::BlockingQueuedConnection);
 
-    dir = QDir(project.dir());
-    QString sessiondir = QDateTime::currentDateTime().toString("yyyy.MM.dd-hh.mm.ss");
-    dir.mkdir(sessiondir);
-    dir.cd(sessiondir);
+    if ( sessiondir.isEmpty() ) {
+        dir = QDir(project.dir());
+        QString newsessiondir = QDateTime::currentDateTime().toString("yyyy.MM.dd-hh.mm.ss");
+        dir.mkdir(newsessiondir);
+        dir.cd(newsessiondir);
+    } else {
+        if ( QDir::isRelativePath(sessiondir) ) {
+            dir = QDir(project.dir());
+            dir.cd(sessiondir);
+        } else {
+            dir = QDir(sessiondir);
+        }
+    }
 
     m_log.setLogFile(dir.filePath("session.log"));
+    load(); // Load state from m_log
 
     project.wavegen().setRunData(rund);
     project.experiment().setRunData(rund);
@@ -108,8 +118,7 @@ QString Session::log(const void *actor, const QString &action, const QString &ar
     if ( dirtyRund || dirtySearchd || dirtyStimd || dirtyExpd ) {
         actorName = "Config";
         idx = m_log.put(actorName, "set", "");
-        QString conffile = QString("%1.%2").arg(idx, 4, 10, QChar('0')).arg(actorName);
-        std::ofstream os(dir.filePath(conffile).toStdString());
+        std::ofstream os(dir.filePath(results(idx, actorName, "cfg")).toStdString());
         if ( dirtyRund )
             for ( auto const& p : runAP )
                 p->write(os);
@@ -132,9 +141,62 @@ QString Session::log(const void *actor, const QString &action, const QString &ar
         actorName = "unknown";
 
     idx = m_log.put(actorName, action, args);
-    QString filename = QString("%1.%2.%3").arg(idx, 4, 10, QChar('0')) // 4 digits, pad with zeroes
-                                          .arg(actorName, action);
-    return dir.filePath(filename);
+    return dir.filePath(results(idx, actorName, action));
+}
+
+void Session::load()
+{
+    for ( int row = 0; row < m_log.rowCount(); row++ ) {
+        SessionLog::Entry entry = m_log.entry(row);
+        QString filename = results(row, entry.actor, entry.action);
+        if ( entry.actor == "Wavegen" )
+            wavegen().load(entry.action, entry.args, filename);
+        else if ( entry.actor == "Profiler" )
+            profiler().load(entry.action, entry.args, filename);
+        else if ( entry.actor == "Config" ) {
+            readConfig(filename);
+        } else {
+            std::cout << "Failed to read log line " << row << ": \""
+                      << m_log.data(m_log.index(row, 0), Qt::UserRole).toString() << "\"" << std::endl;
+        }
+    }
+}
+
+void Session::readConfig(const QString &filename)
+{
+    std::ifstream is(filename.toStdString());
+    QString name;
+    AP *it;
+    bool hasRun(false), hasSearch(false), hasStim(false), hasExp(false);
+    is >> name;
+    while ( is.good() ) {
+        // Make short-circuiting do some work - find the (first) matching AP and set the corresponding boolean to true:
+        if ( ((it = AP::find(name, &runAP)) && (hasRun = true))
+             || ((it = AP::find(name, &searchAP)) && (hasSearch = true))
+             || ((it = AP::find(name, &stimAP)) && (hasStim = true))
+             || ((it = AP::find(name, &expAP)) && (hasExp = true))
+           )
+            it->readNow(name, is);
+        is >> name;
+    }
+    if ( hasRun ) {
+        dirtyRund = false;
+        project.wavegen().setRunData(rund);
+        project.experiment().setRunData(rund);
+    }
+    if ( hasSearch )
+        dirtySearchd = false;
+    if ( hasStim )
+        dirtyStimd = false;
+    if ( hasExp )
+        dirtyExpd = false;
+}
+
+QString Session::results(int idx, const QString &actor, const QString &action)
+{
+    return QString("%1.%2.%3")
+            .arg(idx, 4, 10, QChar('0')) // 4 digits, pad with zeroes
+            .arg(actor, action);
 }
 
 void Session::setRunData(RunData d)

@@ -26,6 +26,8 @@ public:
     const ExperimentData &expd;
     ExperimentLibrary &lib;
 
+    void load(const QString &action, const QString &args, const QString &results);
+
     /**
      * @brief The Permutation struct is ErrorProfiler's governing data type.
      */

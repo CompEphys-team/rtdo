@@ -20,7 +20,14 @@ class Session : public QObject
     Q_OBJECT
 
 public:
-    Session(Project &p);
+    /**
+     * @brief Session constructs a new session or loads an existing one.
+     * @param p is the project the session will belong to
+     * @param sessiondir is (a) empty, in which case a completely new session will be created in a timestamped directory
+     * within the project directory; (b) an existing directory containing a session.log, which will be loaded; or
+     * (c) an existing directory without a session.log, in which case a new session will be created in the directory named.
+     */
+    Session(Project &p, const QString &sessiondir = QString());
 
     Wavegen &wavegen();
     ErrorProfiler &profiler();
@@ -75,6 +82,10 @@ protected:
     SessionLog m_log;
 
     void addAPs();
+    void load();
+    void readConfig(const QString &filename);
+
+    static QString results(int idx, const QString &actor, const QString &action);
 
 signals:
     void redirectRunData(RunData d, QPrivateSignal);

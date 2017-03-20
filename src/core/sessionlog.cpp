@@ -53,9 +53,9 @@ int SessionLog::put(const QString &actor, const QString &action, const QString &
 
 QVariant SessionLog::data(const QModelIndex &index, int role) const
 {
-    if ( index.row() < 0 || index.row() > rowCount() )
+    if ( index.row() < 0 || index.row() >= rowCount() )
         return QVariant();
-    // Table mode, display one item at a time
+    // Table mode, display one item at a time. See also shortcut functions timestamp(), actor(), action(), args().
     if ( role == Qt::DisplayRole ) {
         switch ( index.column() ) {
         case 0: return m_data.at(index.row()).timestamp;
@@ -71,4 +71,11 @@ QVariant SessionLog::data(const QModelIndex &index, int role) const
                 .arg(e.actor, e.action, e.args);
     }
     return QVariant();
+}
+
+SessionLog::Entry SessionLog::entry(int row) const
+{
+    if ( row < 0 || row >= rowCount() )
+        return Entry();
+    return m_data.at(row);
 }

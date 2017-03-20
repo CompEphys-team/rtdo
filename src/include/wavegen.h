@@ -19,6 +19,8 @@ public:
 
     WavegenLibrary &lib;
 
+    void load(const QString &action, const QString &args, const QString &results);
+
     void abort(); //!< Abort all queued actions.
 
     static inline size_t mape_multiplier(size_t precision) { return size_t(1) << precision; }

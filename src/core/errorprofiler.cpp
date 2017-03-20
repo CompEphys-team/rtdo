@@ -22,6 +22,11 @@ ErrorProfiler::~ErrorProfiler()
     lib.destroySimulator(simulator);
 }
 
+void ErrorProfiler::load(const QString &action, const QString &args, const QString &results)
+{
+    // NYI
+}
+
 void ErrorProfiler::abort()
 {
     aborted = true;

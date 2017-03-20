@@ -21,6 +21,11 @@ Wavegen::Wavegen(Session &session) :
     connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
 }
 
+void Wavegen::load(const QString &action, const QString &args, const QString &results)
+{
+    // NYI
+}
+
 std::vector<double> Wavegen::getSigmaMaxima()
 {
     // Sigmas probably shouldn't exceed 10% of a parameter's range, so let's use that as a maximum:
