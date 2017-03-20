@@ -3,11 +3,12 @@
 #include <cmath>
 #include <cassert>
 #include "util.h"
-#include "project.h"
+#include "session.h"
 
-ErrorProfiler::ErrorProfiler(ExperimentLibrary &lib, const ExperimentData &expd, DAQ *daq) :
-    expd(expd),
-    lib(lib),
+ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
+    session(session),
+    expd(session.experimentData()),
+    lib(session.project.experiment()),
     permutations(lib.adjustableParams.size()),
     simulator(lib.createSimulator()),
     daq(daq ? daq : simulator),

@@ -10,7 +10,9 @@ class Wavegen : public QObject
 {
     Q_OBJECT
 public:
-    Wavegen(WavegenLibrary &lib, const StimulationData &stimd, const WavegenData &searchd);
+    Wavegen(Session &session);
+
+    Session &session;
 
     const WavegenData &searchd;
     const StimulationData &stimd;

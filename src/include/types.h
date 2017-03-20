@@ -26,6 +26,7 @@ typedef float scalar;
 #endif
 
 class Project; // Forward
+class Session; // Forward
 
 struct Stimulation
 {

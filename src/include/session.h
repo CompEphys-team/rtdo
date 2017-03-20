@@ -41,6 +41,11 @@ public:
 
     inline SessionLog *getLog() { return &m_log; }
 
+    const RunData &runData() const { return rund; }
+    const WavegenData &wavegenData() const { return searchd; }
+    const StimulationData &stimulationData() const { return stimd; }
+    const ExperimentData &experimentData() const { return expd; }
+
 public slots:
     /// Set runtime data
     void setRunData(RunData d);

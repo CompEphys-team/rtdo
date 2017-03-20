@@ -75,7 +75,7 @@ void Session::addAPs()
 Wavegen &Session::wavegen()
 {
     if ( !m_wavegen ) {
-        Wavegen *w = new Wavegen(project.wavegen(), stimd, searchd);
+        Wavegen *w = new Wavegen(*this);
         w->moveToThread(&thread);
         m_wavegen.reset(w);
     }
@@ -85,7 +85,7 @@ Wavegen &Session::wavegen()
 ErrorProfiler &Session::profiler()
 {
     if ( !m_profiler ) {
-        ErrorProfiler *p = new ErrorProfiler(project.experiment(), expd);
+        ErrorProfiler *p = new ErrorProfiler(*this);
         p->moveToThread(&thread);
         m_profiler.reset(p);
     }

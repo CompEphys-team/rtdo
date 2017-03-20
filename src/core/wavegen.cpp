@@ -3,12 +3,13 @@
 #include <cassert>
 #include "cuda_helper.h"
 #include "util.h"
-#include "project.h"
+#include "session.h"
 
-Wavegen::Wavegen(WavegenLibrary &lib, const StimulationData &stimd, const WavegenData &searchd) :
-    searchd(searchd),
-    stimd(stimd),
-    lib(lib),
+Wavegen::Wavegen(Session &session) :
+    session(session),
+    searchd(session.wavegenData()),
+    stimd(session.stimulationData()),
+    lib(session.project.wavegen()),
     RNG(),
     sigmaAdjust(lib.adjustableParams.size(), 1.0),
     sigmax(getSigmaMaxima()),
