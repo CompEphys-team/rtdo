@@ -20,7 +20,7 @@ Project::Project(const QString &projectfile) :
     AP *it;
     proj >> name;
     while ( proj.good() ) {
-        if ( (it = AP::find(name)) )
+        if ( (it = AP::find(name, &ap)) )
             it->readNow(name, proj);
         proj >> name;
     }
