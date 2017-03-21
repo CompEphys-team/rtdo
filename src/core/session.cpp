@@ -104,8 +104,10 @@ ErrorProfiler &Session::profiler()
 
 void Session::quit()
 {
-    m_wavegen->abort();
-    m_profiler->abort();
+    if ( m_wavegen )
+        m_wavegen->abort();
+    if ( m_profiler )
+        m_profiler->abort();
     thread.quit();
     thread.wait();
 }
