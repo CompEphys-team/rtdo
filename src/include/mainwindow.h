@@ -23,6 +23,14 @@ private slots:
     void on_actionWavegen_triggered();
     void on_actionProfiler_triggered();
 
+    void on_actionNew_project_triggered();
+
+    void on_actionOpen_project_triggered();
+
+    void on_actionNew_session_triggered();
+
+    void on_actionOpen_session_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

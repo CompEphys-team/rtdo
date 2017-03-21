@@ -24,7 +24,8 @@ Session::Session(Project &p, const QString &sessiondir) :
     if ( sessiondir.isEmpty() ) {
         dir = QDir(project.dir());
         QString newsessiondir = QDateTime::currentDateTime().toString("yyyy.MM.dd-hh.mm.ss");
-        dir.mkdir(newsessiondir);
+        dir.mkpath(QString("sessions/%1").arg(newsessiondir));
+        dir.cd("sessions");
         dir.cd(newsessiondir);
     } else {
         if ( QDir::isRelativePath(sessiondir) ) {

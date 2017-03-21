@@ -17,26 +17,14 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     wavegenDlg(nullptr),
-    profileDlg(nullptr)
+    profileDlg(nullptr),
+    project(nullptr),
+    session(nullptr)
 {
     ui->setupUi(this);
 
-    QString file = QFileDialog::getOpenFileName(this, "Select model or project file", "", "Model files (*.xml);;Projects (*.dop)");
-    if ( file.isEmpty() )
-        exit(0);
-    if ( file.endsWith(".xml") ) {
-        project = new Project();
-        project->setModel(file);
-        QString loc = QFileDialog::getExistingDirectory(this, "Select project location");
-        if ( loc.isEmpty() )
-            exit(0);
-        project->setLocation(loc + "/project.dop");
-        project->compile();
-    } else {
-        project = new Project(file);
-    }
+    connect(ui->actionQuit, SIGNAL(triggered(bool)), this, SLOT(close()));
 
-    session = new Session(*project);
 
 
 
@@ -101,6 +89,7 @@ MainWindow::~MainWindow()
     delete wavegenDlg;
     delete profileDlg;
     delete project;
+    delete session;
 }
 
 void MainWindow::on_actionWavegen_triggered()
@@ -131,10 +120,54 @@ void MainWindow::on_actionProfiler_triggered()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    session->quit();
+    if ( session )
+        session->quit();
     if ( wavegenDlg )
         wavegenDlg->close();
     if ( profileDlg )
         profileDlg->close();
     event->accept();
+}
+
+void MainWindow::on_actionNew_project_triggered()
+{
+    QString file = QFileDialog::getOpenFileName(this, "Select model file", "", "Model files (*.xml)");
+    if ( file.isEmpty() )
+        return;
+    QString loc = QFileDialog::getExistingDirectory(this, "Select project location");
+    if ( loc.isEmpty() )
+        return;
+    project = new Project();
+    project->setModel(file);
+    project->setLocation(loc + "/project.dop");
+    project->compile();
+    ui->menuProject->setEnabled(false);
+    ui->menuSession->setEnabled(true);
+}
+
+void MainWindow::on_actionOpen_project_triggered()
+{
+    QString file = QFileDialog::getOpenFileName(this, "Select project file", "", "Projects (*.dop)");
+    if ( file.isEmpty() )
+        return;
+    project = new Project(file);
+    ui->menuProject->setEnabled(false);
+    ui->menuSession->setEnabled(true);
+}
+
+void MainWindow::on_actionNew_session_triggered()
+{
+    session = new Session(*project);
+    ui->menuSession->setEnabled(false);
+    ui->mainToolBar->setEnabled(true);
+}
+
+void MainWindow::on_actionOpen_session_triggered()
+{
+    QString loc = QFileDialog::getExistingDirectory(this, "Select session directory");
+    if ( loc.isEmpty() )
+        return;
+    session = new Session(*project, loc);
+    ui->menuSession->setEnabled(false);
+    ui->mainToolBar->setEnabled(true);
 }
