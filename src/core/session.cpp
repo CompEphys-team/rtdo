@@ -120,8 +120,9 @@ QString Session::log(const void *actor, const QString &action, const QString &ar
 
     if ( dirtyRund || dirtySearchd || dirtyStimd || dirtyExpd ) {
         actorName = "Config";
-        idx = m_log.put(actorName, "set", "");
-        std::ofstream os(dir.filePath(results(idx, actorName, "cfg")).toStdString());
+        QString cfg = "cfg";
+        idx = m_log.put(actorName, cfg, "");
+        std::ofstream os(dir.filePath(results(idx, actorName, cfg)).toStdString());
         if ( dirtyRund )
             for ( auto const& p : runAP )
                 p->write(os);
@@ -177,7 +178,7 @@ void Session::load()
     for ( int row = 0; row < m_log.rowCount(); row++ ) {
         SessionLog::Entry entry = m_log.entry(row);
         QString filename = results(row, entry.actor, entry.action);
-        QFile file(filename);
+        QFile file(dir.filePath(filename));
         try {
             if ( entry.actor == "Wavegen" )
                 wavegen().load(entry.action, entry.args, file);

@@ -12,22 +12,17 @@ void SessionLog::setLogFile(const QString &path)
 {
     if ( QFileInfo(path).exists() ) {
         std::ifstream is(path.toStdString());
-        while ( is.good() ) {
-            QString timestamp, actor, action;
-            std::string args;
-            char tab;
-
-            // Read: ISO-formatted timestamp (no whitespace, one word); actor; action; \t (which is not read/discarded by operator>>)
-            is >> timestamp >> actor >> action >> tab;
-            // Read the remainder of the line, if any (reads & discards closing \n)
-            std::getline(is, args);
-
+        while ( is.good() && is.peek() != EOF ) {
+            std::string line;
+            std::getline(is, line);
+            QString qline = QString::fromStdString(line);
+            QStringList list = qline.split(QChar('\t'));
             m_data.push_back({
-                QDateTime::fromString(timestamp, Qt::ISODate),
-                actor,
-                action,
-                QString::fromStdString(args)
-            });
+                 QDateTime::fromString(list[0], Qt::ISODate),
+                 list[1],
+                 list[2],
+                 list.value(3)
+             });
         }
     }
     m_file.open(path.toStdString(), std::ios_base::out | std::ios_base::app);
