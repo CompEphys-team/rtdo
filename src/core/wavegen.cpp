@@ -1,9 +1,23 @@
 #include "wavegen.h"
 #include <algorithm>
 #include <cassert>
+#include <QDataStream>
+#include <QFile>
 #include "cuda_helper.h"
 #include "util.h"
 #include "session.h"
+
+QString Wavegen::permute_action = QString("permute");
+quint32 Wavegen::permute_magic = 0xf1d08bb4;
+quint32 Wavegen::permute_version = 100;
+
+QString Wavegen::sigmaAdjust_action = QString("sigmaAdjust");
+quint32 Wavegen::sigmaAdjust_magic = 0xf084d24b;
+quint32 Wavegen::sigmaAdjust_version = 100;
+
+QString Wavegen::search_action = QString("search");
+quint32 Wavegen::search_magic = 0x8a33c402;
+quint32 Wavegen::search_version = 100;
 
 Wavegen::Wavegen(Session &session) :
     session(session),
@@ -23,7 +37,14 @@ Wavegen::Wavegen(Session &session) :
 
 void Wavegen::load(const QString &action, const QString &args, const QString &results)
 {
-    // NYI
+    if ( action == permute_action )
+        permute_load(results);
+    else if ( action == sigmaAdjust_action )
+        sigmaAdjust_load(results);
+    else if ( action == search_action )
+        search_load(results, args);
+    else
+        throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
 }
 
 std::vector<double> Wavegen::getSigmaMaxima()
@@ -69,8 +90,6 @@ void Wavegen::permute()
         return;
     }
 
-    int stride = 1;
-
     // If the number of permuted models doesn't fit into thread blocks (very likely),
     // generate a few uncorrelated random parameter sets as padding
     int numPermutedGroups = 1;
@@ -79,10 +98,12 @@ void Wavegen::permute()
     }
     int numRandomGroups = lib.numGroups - numPermutedGroups;
 
+    // First, generate the values:
+    QVector<QVector<scalar>> allvalues(lib.adjustableParams.size());
+    auto values = allvalues.begin();
     for ( AdjustableParam &p : lib.adjustableParams ) {
-        // First, generate the values:
-        std::vector<scalar> values(1, p.initial);
-        values.reserve(p.wgPermutations + 1 + numRandomGroups);
+        values->reserve(p.wgPermutations + 1 + numRandomGroups);
+        values->push_back(p.initial);
         if ( p.wgNormal ) {
             // Draw both permuted and uncorrelated random groups from normal distribution
             for ( int i = 0; i < p.wgPermutations + numRandomGroups; i++ ) {
@@ -93,25 +114,40 @@ void Wavegen::permute()
                     v = p.max;
                 else if ( v < p.min )
                     v = p.min;
-                values.push_back(v);
+                values->push_back(v);
             }
         } else {
             // Permuted groups: Space evenly over the parameter range
             auto space = p.multiplicative ? linSpace : logSpace;
             for ( int i = 0; i < p.wgPermutations; i++ ) {
-                values.push_back(space(p.min, p.max, p.wgPermutations, i));
+                values->push_back(space(p.min, p.max, p.wgPermutations, i));
             }
             // Random groups: Draw from uniform distribution
             if ( p.multiplicative ) {
                 double min = std::log(p.min), max = std::log(p.max);
                 for ( int i = 0; i < numRandomGroups; i++ )
-                    values.push_back(std::exp(RNG.uniform(min, max)));
+                    values->push_back(std::exp(RNG.uniform(min, max)));
             } else {
                 for ( int i = 0; i < numRandomGroups; i++ )
-                    values.push_back(RNG.uniform(p.min, p.max));
+                    values->push_back(RNG.uniform(p.min, p.max));
             }
         }
+        ++values;
+    }
 
+    permute_apply(allvalues, numPermutedGroups, numRandomGroups);
+
+    QString filename = session.log(this, permute_action);
+    permute_save(filename, allvalues, numPermutedGroups, numRandomGroups);
+
+    emit done();
+}
+
+void Wavegen::permute_apply(const QVector<QVector<scalar>> &allvalues, int numPermutedGroups, int numRandomGroups)
+{
+    int stride = 1;
+    auto values = allvalues.begin();
+    for ( AdjustableParam &p : lib.adjustableParams ) {
         // Populate this parameter, interleaving them in numGroupsPerBlock-periodic fashion
         // This algorithm is designed to maintain sanity rather than memory locality, so it hits each
         // model group in turn, skipping from warp to warp to fill out that group before moving to the next one.
@@ -120,22 +156,43 @@ void Wavegen::permute()
             if ( group % stride == 0)
                 permutation = (permutation + 1) % (p.wgPermutations + 1);
             for ( int i = 0, end = lib.adjustableParams.size() + 1; i < end; i++ ) {
-                p[i*lib.numGroupsPerBlock + offset] = values.at(permutation);
+                p[i*lib.numGroupsPerBlock + offset] = values->at(permutation);
             }
         }
         for ( int randomGroup = 0; randomGroup < numRandomGroups; randomGroup++ ) {
             int offset = baseModelIndex(randomGroup+numPermutedGroups);
             for ( int i = 0, end = lib.adjustableParams.size() + 1; i < end; i++ ) {
-                p[i*lib.numGroupsPerBlock + offset] = values.at(p.wgPermutations + 1 + randomGroup);
+                p[i*lib.numGroupsPerBlock + offset] = values->at(p.wgPermutations + 1 + randomGroup);
             }
         }
 
         // Permutation stride starts out at 1 and increases from one parameter to the next
         stride *= p.wgPermutations + 1;
+        ++values;
     }
     settled.clear();
+}
 
-    emit done();
+void Wavegen::permute_save(const QString &filename, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups)
+{
+    QDataStream os;
+    if ( !Session::openSaveStream(filename, os, permute_magic, permute_version) )
+        return;
+    os << qint32(numPermutedGroups) << qint32(numRandomGroups);
+    os << values;
+}
+
+void Wavegen::permute_load(const QString &filename)
+{
+    QDataStream is;
+    quint32 version = Session::openLoadStream(filename, is, permute_magic);
+    if ( version < 100 || version > 100 )
+        throw std::runtime_error(std::string("File version mismatch: ") + filename.toStdString());
+    QVector<QVector<scalar>> values;
+    qint32 numPermutedGroups, numRandomGroups;
+    is >> numPermutedGroups >> numRandomGroups;
+    is >> values;
+    permute_apply(values, numPermutedGroups, numRandomGroups);
 }
 
 void Wavegen::detune()
@@ -333,7 +390,27 @@ void Wavegen::adjustSigmas()
         std::cout << lib.adjustableParams[i].name << ":\t" << meanParamErr[i] << '\t'
                   << sigmaAdjust[i] << '\t' << lib.adjustableParams[i].sigma*sigmaAdjust[i] << std::endl;
 
+    QString filename = session.log(this, sigmaAdjust_action);
+    sigmaAdjust_save(filename);
+
     emit done();
+}
+
+void Wavegen::sigmaAdjust_save(const QString &filename)
+{
+    QDataStream os;
+    if ( !Session::openSaveStream(filename, os, sigmaAdjust_magic, sigmaAdjust_version) )
+        return;
+    os << sigmaAdjust;
+}
+
+void Wavegen::sigmaAdjust_load(const QString &filename)
+{
+    QDataStream is;
+    quint32 version = Session::openLoadStream(filename, is, sigmaAdjust_magic);
+    if ( version < 100 || version > 100 )
+        throw std::runtime_error(std::string("File version mismatch: ") + filename.toStdString());
+    is >> sigmaAdjust;
 }
 
 void Wavegen::stimulate(const std::vector<Stimulation> &stim)

@@ -48,6 +48,26 @@ public:
 
     inline SessionLog *getLog() { return &m_log; }
 
+    /**
+     * @brief openSaveStream creates a file for binary results output. @sa openLoadStream()
+     * @param filename is the name of the file to be created (or truncated).
+     * @param os is populated with a ready-to-write data stream.
+     * @param format_magic is an optional "magic number" to indicate file format. It is output as the first object in the stream.
+     * @param version is an optional format version number, which is output in second place.
+     * @return true on success, false if the file could not be opened.
+     */
+    static bool openSaveStream(const QString &filename, QDataStream &os, quint32 format_magic = 0, quint32 version = 0);
+
+    /**
+     * @brief openLoadStream opens a file for binary results loading. Throws a std::runtime_error on failure. @sa openSaveStream()
+     * @param filenameis the name of the file to be created (or truncated).
+     * @param is is populated with a ready-to-read data stream.
+     * @param format_magic is an optional "magic number" to indicate file format. If non-zero, this will be checked against the first
+     * quint32 in the file. An exception is thrown on mismatch.
+     * @return the version number indicated in the file.
+     */
+    static quint32 openLoadStream(const QString &filename, QDataStream &is, quint32 format_magic = 0);
+
     const RunData &runData() const { return rund; }
     const WavegenData &wavegenData() const { return searchd; }
     const StimulationData &stimulationData() const { return stimd; }

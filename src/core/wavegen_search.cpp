@@ -1,7 +1,8 @@
 #include "wavegen.h"
 #include "cuda_helper.h"
 #include <cassert>
-#include "project.h"
+#include <QDataStream>
+#include "session.h"
 
 void Wavegen::search(int param)
 {
@@ -129,6 +130,9 @@ void Wavegen::search(int param)
         e.wave.tObsEnd = e.stats.best.tEnd;
     }
 
+    QString filename = session.log(this, search_action, QString::number(param));
+    search_save(filename);
+
     completedArchives[param] = std::move(mapeArchive);
     archivePrecision[param] = mapeStats.precision;
     mapeArchive.clear();
@@ -221,4 +225,31 @@ std::vector<size_t> Wavegen::mape_bin(const Stimulation &I, const WaveStats &S)
     }
 
     return bin;
+}
+
+void Wavegen::search_save(const QString &filename)
+{
+    QDataStream os;
+    if ( !Session::openSaveStream(filename, os, search_magic, search_version) )
+        return;
+    os << quint32(mapeStats.precision);
+    os << quint32(mapeArchive.size());
+    for ( MAPElite const& e : mapeArchive )
+        os << e;
+}
+
+void Wavegen::search_load(const QString &filename, const QString &args)
+{
+    QDataStream is;
+    quint32 version = Session::openLoadStream(filename, is, search_magic);
+    if ( version < 100 || version > 100 )
+        throw std::runtime_error(std::string("File version mismatch: ") + filename.toStdString());
+    quint32 precision, archSize;
+    is >> precision >> archSize;
+    mapeStats.precision = size_t(precision);
+    std::list<MAPElite> archive(archSize);
+    for ( MAPElite &e : archive )
+        is >> e;
+    int param = args.toInt();
+    completedArchives[param] = std::move(archive);
 }

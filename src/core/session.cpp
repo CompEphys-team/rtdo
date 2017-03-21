@@ -146,20 +146,52 @@ QString Session::log(const void *actor, const QString &action, const QString &ar
     return dir.filePath(results(idx, actorName, action));
 }
 
+bool Session::openSaveStream(const QString &filename, QDataStream &os, quint32 format_magic, quint32 version)
+{
+    QFile file(filename);
+    if ( !file.open(QIODevice::WriteOnly) )
+        return false;
+    os.setDevice(&file);
+    os << format_magic << version;
+    os.setVersion(QDataStream::Qt_5_7);
+    return true;
+}
+
+quint32 Session::openLoadStream(const QString &filename, QDataStream &is, quint32 format_magic)
+{
+    std::string fname = filename.toStdString();
+    QFile file(filename);
+    if ( !file.open(QIODevice::ReadOnly) )
+        throw std::runtime_error(std::string("Failed to open file ") + fname + " for reading.");
+    is.setDevice(&file);
+    quint32 magic, version;
+    is >> magic;
+    if ( format_magic && magic != format_magic )
+        throw std::runtime_error(std::string("File format mismatch in file ") + fname);
+    is >> version;
+    is.setVersion(QDataStream::Qt_5_7);
+    return version;
+}
+
 void Session::load()
 {
     for ( int row = 0; row < m_log.rowCount(); row++ ) {
         SessionLog::Entry entry = m_log.entry(row);
         QString filename = results(row, entry.actor, entry.action);
-        if ( entry.actor == "Wavegen" )
-            wavegen().load(entry.action, entry.args, filename);
-        else if ( entry.actor == "Profiler" )
-            profiler().load(entry.action, entry.args, filename);
-        else if ( entry.actor == "Config" ) {
-            readConfig(filename);
-        } else {
-            std::cout << "Failed to read log line " << row << ": \""
-                      << m_log.data(m_log.index(row, 0), Qt::UserRole).toString() << "\"" << std::endl;
+        try {
+            if ( entry.actor == "Wavegen" )
+                wavegen().load(entry.action, entry.args, filename);
+            else if ( entry.actor == "Profiler" )
+                profiler().load(entry.action, entry.args, filename);
+            else if ( entry.actor == "Config" ) {
+                readConfig(filename);
+            } else {
+                throw std::runtime_error(std::string("Unknown actor: ") + entry.actor.toStdString());
+            }
+        } catch (std::runtime_error err) {
+            std::cerr << "An action could not be loaded (" << m_log.data(m_log.index(row, 0), Qt::UserRole).toString()
+                      << ", " << filename << ") : "
+                      << err.what() << std::endl;
         }
     }
 }

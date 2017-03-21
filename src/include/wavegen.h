@@ -2,6 +2,7 @@
 #define WAVEGEN_H
 
 #include <QObject>
+#include <QVector>
 #include "types.h"
 #include "randutils.hpp"
 #include "wavegenlibrary.h"
@@ -61,6 +62,17 @@ protected slots:
     void clearAbort();
 
 protected:
+    /// Helper functions
+    void permute_apply(const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups);
+    void permute_save(const QString &filename, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups);
+    void permute_load(const QString &filename);
+
+    void sigmaAdjust_save(const QString &filename);
+    void sigmaAdjust_load(const QString &filename);
+
+    void search_save(const QString &filename);
+    void search_load(const QString &filename, const QString &args);
+
     /**
      * @brief detune changes one adjustableParam per model, such that each model block has a tuned version [0]
      * and one detuned version for each adjustableParam.
@@ -138,7 +150,7 @@ protected:
 
     randutils::mt19937_rng RNG;
 
-    std::vector<double> sigmaAdjust;
+    QVector<double> sigmaAdjust;
     std::vector<double> sigmax;
 
     std::list<std::vector<scalar>> settled;
@@ -147,6 +159,10 @@ protected:
     MAPEStats mapeStats; //!< Statistics of the most recent (or current) call to search().
 
     bool aborted;
+
+    static QString permute_action, sigmaAdjust_action, search_action;
+    static quint32 permute_magic, sigmaAdjust_magic, search_magic;
+    static quint32 permute_version, sigmaAdjust_version, search_version;
 
 public:
     std::vector<std::list<MAPElite>> completedArchives;
