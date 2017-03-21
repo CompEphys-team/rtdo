@@ -130,8 +130,8 @@ void Wavegen::search(int param)
         e.wave.tObsEnd = e.stats.best.tEnd;
     }
 
-    QString filename = session.log(this, search_action, QString::number(param));
-    search_save(filename);
+    QFile file(session.log(this, search_action, QString::number(param)));
+    search_save(file);
 
     completedArchives[param] = std::move(mapeArchive);
     archivePrecision[param] = mapeStats.precision;
@@ -227,10 +227,10 @@ std::vector<size_t> Wavegen::mape_bin(const Stimulation &I, const WaveStats &S)
     return bin;
 }
 
-void Wavegen::search_save(const QString &filename)
+void Wavegen::search_save(QFile &file)
 {
     QDataStream os;
-    if ( !Session::openSaveStream(filename, os, search_magic, search_version) )
+    if ( !Session::openSaveStream(file, os, search_magic, search_version) )
         return;
     os << quint32(mapeStats.precision);
     os << quint32(mapeArchive.size());
@@ -238,12 +238,12 @@ void Wavegen::search_save(const QString &filename)
         os << e;
 }
 
-void Wavegen::search_load(const QString &filename, const QString &args)
+void Wavegen::search_load(QFile &file, const QString &args)
 {
     QDataStream is;
-    quint32 version = Session::openLoadStream(filename, is, search_magic);
+    quint32 version = Session::openLoadStream(file, is, search_magic);
     if ( version < 100 || version > 100 )
-        throw std::runtime_error(std::string("File version mismatch: ") + filename.toStdString());
+        throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
     quint32 precision, archSize;
     is >> precision >> archSize;
     mapeStats.precision = size_t(precision);

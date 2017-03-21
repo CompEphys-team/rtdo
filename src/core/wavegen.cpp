@@ -35,7 +35,7 @@ Wavegen::Wavegen(Session &session) :
     connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
 }
 
-void Wavegen::load(const QString &action, const QString &args, const QString &results)
+void Wavegen::load(const QString &action, const QString &args, QFile &results)
 {
     if ( action == permute_action )
         permute_load(results);
@@ -137,8 +137,8 @@ void Wavegen::permute()
 
     permute_apply(allvalues, numPermutedGroups, numRandomGroups);
 
-    QString filename = session.log(this, permute_action);
-    permute_save(filename, allvalues, numPermutedGroups, numRandomGroups);
+    QFile file(session.log(this, permute_action));
+    permute_save(file, allvalues, numPermutedGroups, numRandomGroups);
 
     emit done();
 }
@@ -173,21 +173,21 @@ void Wavegen::permute_apply(const QVector<QVector<scalar>> &allvalues, int numPe
     settled.clear();
 }
 
-void Wavegen::permute_save(const QString &filename, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups)
+void Wavegen::permute_save(QFile &file, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups)
 {
     QDataStream os;
-    if ( !Session::openSaveStream(filename, os, permute_magic, permute_version) )
+    if ( !Session::openSaveStream(file, os, permute_magic, permute_version) )
         return;
     os << qint32(numPermutedGroups) << qint32(numRandomGroups);
     os << values;
 }
 
-void Wavegen::permute_load(const QString &filename)
+void Wavegen::permute_load(QFile &file)
 {
     QDataStream is;
-    quint32 version = Session::openLoadStream(filename, is, permute_magic);
+    quint32 version = Session::openLoadStream(file, is, permute_magic);
     if ( version < 100 || version > 100 )
-        throw std::runtime_error(std::string("File version mismatch: ") + filename.toStdString());
+        throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
     QVector<QVector<scalar>> values;
     qint32 numPermutedGroups, numRandomGroups;
     is >> numPermutedGroups >> numRandomGroups;
@@ -390,26 +390,26 @@ void Wavegen::adjustSigmas()
         std::cout << lib.adjustableParams[i].name << ":\t" << meanParamErr[i] << '\t'
                   << sigmaAdjust[i] << '\t' << lib.adjustableParams[i].sigma*sigmaAdjust[i] << std::endl;
 
-    QString filename = session.log(this, sigmaAdjust_action);
-    sigmaAdjust_save(filename);
+    QFile file(session.log(this, sigmaAdjust_action));
+    sigmaAdjust_save(file);
 
     emit done();
 }
 
-void Wavegen::sigmaAdjust_save(const QString &filename)
+void Wavegen::sigmaAdjust_save(QFile &file)
 {
     QDataStream os;
-    if ( !Session::openSaveStream(filename, os, sigmaAdjust_magic, sigmaAdjust_version) )
+    if ( !Session::openSaveStream(file, os, sigmaAdjust_magic, sigmaAdjust_version) )
         return;
     os << sigmaAdjust;
 }
 
-void Wavegen::sigmaAdjust_load(const QString &filename)
+void Wavegen::sigmaAdjust_load(QFile &file)
 {
     QDataStream is;
-    quint32 version = Session::openLoadStream(filename, is, sigmaAdjust_magic);
+    quint32 version = Session::openLoadStream(file, is, sigmaAdjust_magic);
     if ( version < 100 || version > 100 )
-        throw std::runtime_error(std::string("File version mismatch: ") + filename.toStdString());
+        throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
     is >> sigmaAdjust;
 }
 

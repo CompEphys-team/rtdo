@@ -22,7 +22,7 @@ ErrorProfiler::~ErrorProfiler()
     lib.destroySimulator(simulator);
 }
 
-void ErrorProfiler::load(const QString &action, const QString &args, const QString &results)
+void ErrorProfiler::load(const QString &action, const QString &args, QFile &results)
 {
     // NYI
 }

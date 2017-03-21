@@ -125,15 +125,16 @@ QString Session::log(const void *actor, const QString &action, const QString &ar
         if ( dirtyRund )
             for ( auto const& p : runAP )
                 p->write(os);
-        if ( dirtySearchd)
+        if ( dirtySearchd )
             for ( auto const& p : searchAP )
                 p->write(os);
-        if ( dirtyStimd)
+        if ( dirtyStimd )
             for ( auto const& p : stimAP )
                 p->write(os);
-        if ( dirtyExpd)
+        if ( dirtyExpd )
             for ( auto const& p : expAP )
                 p->write(os);
+        dirtyRund = dirtySearchd = dirtyStimd = dirtyExpd = false;
     }
 
     if ( actor == m_wavegen.get() )
@@ -147,9 +148,8 @@ QString Session::log(const void *actor, const QString &action, const QString &ar
     return dir.filePath(results(idx, actorName, action));
 }
 
-bool Session::openSaveStream(const QString &filename, QDataStream &os, quint32 format_magic, quint32 version)
+bool Session::openSaveStream(QFile &file, QDataStream &os, quint32 format_magic, quint32 version)
 {
-    QFile file(filename);
     if ( !file.open(QIODevice::WriteOnly) )
         return false;
     os.setDevice(&file);
@@ -158,17 +158,15 @@ bool Session::openSaveStream(const QString &filename, QDataStream &os, quint32 f
     return true;
 }
 
-quint32 Session::openLoadStream(const QString &filename, QDataStream &is, quint32 format_magic)
+quint32 Session::openLoadStream(QFile &file, QDataStream &is, quint32 format_magic)
 {
-    std::string fname = filename.toStdString();
-    QFile file(filename);
     if ( !file.open(QIODevice::ReadOnly) )
-        throw std::runtime_error(std::string("Failed to open file ") + fname + " for reading.");
+        throw std::runtime_error(std::string("Failed to open file ") + file.fileName().toStdString() + " for reading.");
     is.setDevice(&file);
     quint32 magic, version;
     is >> magic;
     if ( format_magic && magic != format_magic )
-        throw std::runtime_error(std::string("File format mismatch in file ") + fname);
+        throw std::runtime_error(std::string("File format mismatch in file ") + file.fileName().toStdString());
     is >> version;
     is.setVersion(QDataStream::Qt_5_7);
     return version;
@@ -179,11 +177,12 @@ void Session::load()
     for ( int row = 0; row < m_log.rowCount(); row++ ) {
         SessionLog::Entry entry = m_log.entry(row);
         QString filename = results(row, entry.actor, entry.action);
+        QFile file(filename);
         try {
             if ( entry.actor == "Wavegen" )
-                wavegen().load(entry.action, entry.args, filename);
+                wavegen().load(entry.action, entry.args, file);
             else if ( entry.actor == "Profiler" )
-                profiler().load(entry.action, entry.args, filename);
+                profiler().load(entry.action, entry.args, file);
             else if ( entry.actor == "Config" ) {
                 readConfig(filename);
             } else {

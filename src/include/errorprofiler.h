@@ -2,6 +2,7 @@
 #define ERRORPROFILER_H
 
 #include <QObject>
+#include <QFile>
 #include "experimentlibrary.h"
 
 /**
@@ -26,7 +27,7 @@ public:
     const ExperimentData &expd;
     ExperimentLibrary &lib;
 
-    void load(const QString &action, const QString &args, const QString &results);
+    void load(const QString &action, const QString &args, QFile &results);
 
     /**
      * @brief The Permutation struct is ErrorProfiler's governing data type.

@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QVector>
+#include <QFile>
 #include "types.h"
 #include "randutils.hpp"
 #include "wavegenlibrary.h"
@@ -20,7 +21,7 @@ public:
 
     WavegenLibrary &lib;
 
-    void load(const QString &action, const QString &args, const QString &results);
+    void load(const QString &action, const QString &args, QFile &results);
 
     void abort(); //!< Abort all queued actions.
 
@@ -64,14 +65,14 @@ protected slots:
 protected:
     /// Helper functions
     void permute_apply(const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups);
-    void permute_save(const QString &filename, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups);
-    void permute_load(const QString &filename);
+    void permute_save(QFile &file, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups);
+    void permute_load(QFile &file);
 
-    void sigmaAdjust_save(const QString &filename);
-    void sigmaAdjust_load(const QString &filename);
+    void sigmaAdjust_save(QFile &file);
+    void sigmaAdjust_load(QFile &file);
 
-    void search_save(const QString &filename);
-    void search_load(const QString &filename, const QString &args);
+    void search_save(QFile &file);
+    void search_load(QFile &file, const QString &args);
 
     /**
      * @brief detune changes one adjustableParam per model, such that each model block has a tuned version [0]
