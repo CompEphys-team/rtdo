@@ -1,4 +1,4 @@
-#include "AP.h"
+#include "streamops.h"
 
 std::istream &operator>>(std::istream &is, QString &str)
 {

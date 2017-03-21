@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include "util.h"
+#include "streamops.h"
 
 class AP;
 
@@ -36,9 +37,6 @@ inline AP* addAP(std::vector<std::unique_ptr<AP>> &vec, QString name, T *head, T
  * be set to 0 on insertion. Normal index matching resumes on the remaining indices.
  */
 inline AP* addDeprecatedAP(QString name, AP* target, int nIgnoredEarlyIndices = 0);
-
-std::istream &operator>>(std::istream &is, QString &str);
-std::ostream &operator<<(std::ostream &os, const QString &str);
 
 class AP
 {

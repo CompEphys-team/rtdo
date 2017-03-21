@@ -41,13 +41,13 @@ SOURCES += \
     src/core/supportcode.cpp \
     lib/qcustomplot/qcustomplot.cpp \
     src/core/util.cpp \
-    src/core/AP.cpp \
     src/core/config.cpp \
     src/gui/wavegendialog.cpp \
     src/gui/profiledialog.cpp \
     src/core/project.cpp \
     src/core/session.cpp \
-    src/core/sessionlog.cpp
+    src/core/sessionlog.cpp \
+    src/core/streamops.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -76,7 +76,8 @@ HEADERS  += \
     src/include/profiledialog.h \
     src/include/project.h \
     src/include/session.h \
-    src/include/sessionlog.h
+    src/include/sessionlog.h \
+    src/include/streamops.h
 
 FORMS    += \
     src/gui/mainwindow.ui \

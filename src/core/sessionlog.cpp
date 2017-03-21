@@ -1,6 +1,7 @@
 #include "sessionlog.h"
 #include <QFileInfo>
 #include <cassert>
+#include "streamops.h"
 
 SessionLog::SessionLog()
 {
@@ -12,7 +13,8 @@ void SessionLog::setLogFile(const QString &path)
     if ( QFileInfo(path).exists() ) {
         std::ifstream is(path.toStdString());
         while ( is.good() ) {
-            std::string timestamp, actor, action, args;
+            QString timestamp, actor, action;
+            std::string args;
             char tab;
 
             // Read: ISO-formatted timestamp (no whitespace, one word); actor; action; \t (which is not read/discarded by operator>>)
@@ -21,9 +23,9 @@ void SessionLog::setLogFile(const QString &path)
             std::getline(is, args);
 
             m_data.push_back({
-                QDateTime::fromString(QString::fromStdString(timestamp), Qt::ISODate),
-                QString::fromStdString(actor),
-                QString::fromStdString(action),
+                QDateTime::fromString(timestamp, Qt::ISODate),
+                actor,
+                action,
                 QString::fromStdString(args)
             });
         }
@@ -46,7 +48,7 @@ int SessionLog::put(const QString &actor, const QString &action, const QString &
 
     // Write to log file
     if ( m_file.is_open() )
-        m_file << data(index(idx, 0), Qt::UserRole).toString().toStdString() << std::endl;
+        m_file << data(index(idx, 0), Qt::UserRole).toString() << std::endl;
 
     return idx;
 }
