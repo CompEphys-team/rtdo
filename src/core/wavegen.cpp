@@ -28,9 +28,7 @@ Wavegen::Wavegen(Session &session) :
     sigmaAdjust(lib.adjustableParams.size(), 1.0),
     sigmax(getSigmaMaxima()),
     mapeStats(searchd.historySize, mapeArchive.end()),
-    aborted(false),
-    completedArchives(lib.adjustableParams.size()),
-    archivePrecision(lib.adjustableParams.size())
+    aborted(false)
 {
     connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
 }

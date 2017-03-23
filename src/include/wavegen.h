@@ -27,6 +27,16 @@ public:
 
     static inline size_t mape_multiplier(size_t precision) { return size_t(1) << precision; }
 
+    struct Archive {
+        std::list<MAPElite> elites;
+        size_t precision;
+        size_t iterations;
+        int param;
+        WavegenData searchd;
+    };
+
+    inline const std::vector<Archive> &archives() const { return m_archives; }
+
 public slots:
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.
@@ -46,9 +56,9 @@ public slots:
 
     /**
      * @brief search runs a MAP-Elites algorithm, evolving Stimulations that maximise fitness for a given parameter.
-     * The algorithm will stop when r.stopFunc returns true, evaluating one final set of Stimulations before returning.
-     * Runtime statistics and the archive of elite Stimulations are available until the next call to search.
-     * @see mapeStats, mapeArchive
+     * The algorithm will stop after searchd.maxIterations iterations, evaluating one final set of Stimulations before returning.
+     * The archive of elite Stimulations are made available in archives() at the end of the search.
+     * @see archives()
      * @param param is the index of the parameter to optimise for (0-based, same as for MetaModel::adjustableParams).
      */
     void search(int param);
@@ -156,8 +166,10 @@ protected:
 
     std::list<std::vector<scalar>> settled;
 
-    std::list<MAPElite> mapeArchive; //!< Elite archive of the most recent (or current) call to search().
+    std::list<MAPElite> mapeArchive; //!< Elite archive of the current call to search().
     MAPEStats mapeStats; //!< Statistics of the most recent (or current) call to search().
+
+    std::vector<Archive> m_archives; //!< All archives
 
     bool aborted;
 
@@ -166,6 +178,7 @@ protected:
     static quint32 permute_version, sigmaAdjust_version, search_version;
 
 public:
+
     std::vector<std::list<MAPElite>> completedArchives;
     std::vector<size_t> archivePrecision;
 };

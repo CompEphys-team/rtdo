@@ -8,7 +8,6 @@ void Wavegen::search(int param)
 {
     if ( aborted )
         return;
-    completedArchives[param].clear();
     emit startedSearch(param);
 
     assert(param >= 0 && param < (int)lib.adjustableParams.size());
@@ -130,12 +129,12 @@ void Wavegen::search(int param)
         e.wave.tObsEnd = e.stats.best.tEnd;
     }
 
+    m_archives.push_back(Archive{std::move(mapeArchive), mapeStats.precision, mapeStats.iterations, param, searchd});
+    mapeArchive.clear();
+
     QFile file(session.log(this, search_action, QString::number(param)));
     search_save(file);
 
-    completedArchives[param] = std::move(mapeArchive);
-    archivePrecision[param] = mapeStats.precision;
-    mapeArchive.clear();
     emit done(param);
 }
 
@@ -232,9 +231,11 @@ void Wavegen::search_save(QFile &file)
     QDataStream os;
     if ( !Session::openSaveStream(file, os, search_magic, search_version) )
         return;
-    os << quint32(mapeStats.precision);
-    os << quint32(mapeArchive.size());
-    for ( MAPElite const& e : mapeArchive )
+    const Archive &arch = m_archives.back();
+    os << quint32(arch.precision);
+    os << quint32(arch.iterations);
+    os << quint32(arch.elites.size());
+    for ( MAPElite const& e : arch.elites )
         os << e;
 }
 
@@ -244,12 +245,11 @@ void Wavegen::search_load(QFile &file, const QString &args)
     quint32 version = Session::openLoadStream(file, is, search_magic);
     if ( version < 100 || version > 100 )
         throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
-    quint32 precision, archSize;
-    is >> precision >> archSize;
-    mapeStats.precision = size_t(precision);
-    std::list<MAPElite> archive(archSize);
-    for ( MAPElite &e : archive )
+
+    quint32 precision, iterations, archSize;
+    is >> precision >> iterations >> archSize;
+    m_archives.push_back(Archive{std::list<MAPElite>(archSize), precision, iterations, args.toInt(), searchd});
+    // Note: this->searchd is correctly set up assuming sequential result loading
+    for ( MAPElite &e : m_archives.back().elites )
         is >> e;
-    int param = args.toInt();
-    completedArchives[param] = std::move(archive);
 }
