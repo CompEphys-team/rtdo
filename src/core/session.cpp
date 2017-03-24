@@ -103,12 +103,23 @@ ErrorProfiler &Session::profiler()
     return *m_profiler;
 }
 
+WavegenSelector &Session::wavegenselector()
+{
+    if ( !m_wavegenselector ) {
+        WavegenSelector *s = new WavegenSelector(*this);
+        s->moveToThread(&thread);
+        m_wavegenselector.reset(s);
+    }
+    return *m_wavegenselector;
+}
+
 void Session::quit()
 {
     if ( m_wavegen )
         m_wavegen->abort();
     if ( m_profiler )
         m_profiler->abort();
+    // No abort in m_wavegenselector
     thread.quit();
     thread.wait();
 }
@@ -142,6 +153,8 @@ QString Session::log(const void *actor, const QString &action, const QString &ar
         actorName = "Wavegen";
     else if ( actor == m_profiler.get() )
         actorName = "Profiler";
+    else if ( actor == m_wavegenselector.get() )
+        actorName = "WavegenSelector";
     else
         actorName = "unknown";
 
@@ -186,6 +199,8 @@ void Session::load()
                 profiler().load(entry.action, entry.args, file);
             else if ( entry.actor == "Config" ) {
                 readConfig(filename);
+            } else if ( entry.actor == "WavegenSelector" ) {
+                wavegenselector().load(entry.action, entry.args, file);
             } else {
                 throw std::runtime_error(std::string("Unknown actor: ") + entry.actor.toStdString());
             }

@@ -9,6 +9,7 @@
 #include "wavegen.h"
 #include "experiment.h"
 #include "errorprofiler.h"
+#include "wavegenselector.h"
 
 Q_DECLARE_METATYPE(RunData)
 Q_DECLARE_METATYPE(WavegenData)
@@ -31,6 +32,7 @@ public:
 
     Wavegen &wavegen();
     ErrorProfiler &profiler();
+    WavegenSelector &wavegenselector();
 
     void quit();
 
@@ -96,6 +98,7 @@ protected:
 
     std::unique_ptr<Wavegen> m_wavegen;
     std::unique_ptr<ErrorProfiler> m_profiler;
+    std::unique_ptr<WavegenSelector> m_wavegenselector;
 
     QDir dir;
 
