@@ -229,7 +229,7 @@ std::vector<size_t> Wavegen::mape_bin(const Stimulation &I, const WaveStats &S)
 void Wavegen::search_save(QFile &file)
 {
     QDataStream os;
-    if ( !Session::openSaveStream(file, os, search_magic, search_version) )
+    if ( !openSaveStream(file, os, search_magic, search_version) )
         return;
     const Archive &arch = m_archives.back();
     os << quint32(arch.precision);
@@ -242,7 +242,7 @@ void Wavegen::search_save(QFile &file)
 void Wavegen::search_load(QFile &file, const QString &args)
 {
     QDataStream is;
-    quint32 version = Session::openLoadStream(file, is, search_magic);
+    quint32 version = openLoadStream(file, is, search_magic);
     if ( version < 100 || version > 100 )
         throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
 

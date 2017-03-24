@@ -1,8 +1,6 @@
 #ifndef WAVEGENSELECTOR_H
 #define WAVEGENSELECTOR_H
 
-#include <QObject>
-#include <QFile>
 #include "wavegen.h"
 
 class WavegenSelection
@@ -47,13 +45,11 @@ public:
     std::list<MAPElite>::const_iterator data_absolute(std::vector<double> idx, bool *ok = nullptr) const; //!< Same as above, but behavioural coordinates
 };
 
-class WavegenSelector : public QObject
+class WavegenSelector : public SessionWorker
 {
     Q_OBJECT
 public:
     WavegenSelector(Session &session);
-
-    Session &session;
 
     WavegenSelection select(size_t wavegen_archive_idx) const;
     void limit(WavegenSelection &selection, size_t dimension, double min, double max, bool collapse) const;
@@ -65,9 +61,11 @@ public:
 
     inline const std::vector<WavegenSelection> &selections() const { return m_selections; }
 
-    void load(const QString &action, const QString &args, QFile &results);
-
 protected:
+    friend class Session;
+    void load(const QString &action, const QString &args, QFile &results);
+    inline QString actorName() const { return "WavegenSelector"; }
+
     std::vector<WavegenSelection> m_selections;
 
     const static QString action;

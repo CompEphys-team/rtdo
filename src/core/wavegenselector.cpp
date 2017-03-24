@@ -95,7 +95,7 @@ std::list<MAPElite>::const_iterator WavegenSelection::data_absolute(std::vector<
 
 
 WavegenSelector::WavegenSelector(Session &session) :
-    session(session)
+    SessionWorker(session)
 {
     connect(this, SIGNAL(saved(int)), this, SLOT(log(int)));
 }
@@ -233,7 +233,7 @@ void WavegenSelector::log(int idx)
 {
     QFile file(session.log(this, action));
     QDataStream os;
-    if ( !session.openSaveStream(file, os, magic, version) )
+    if ( !openSaveStream(file, os, magic, version) )
         return;
 
     WavegenSelection const& selection = m_selections.at(idx);
@@ -249,7 +249,7 @@ void WavegenSelector::load(const QString &action, const QString &, QFile &result
     if ( action != this->action )
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     QDataStream is;
-    quint32 ver = session.openLoadStream(results, is, magic);
+    quint32 ver = openLoadStream(results, is, magic);
     if ( ver < 100 || ver > version )
         throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 

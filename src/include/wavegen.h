@@ -1,27 +1,21 @@
 #ifndef WAVEGEN_H
 #define WAVEGEN_H
 
-#include <QObject>
+#include "sessionworker.h"
 #include <QVector>
-#include <QFile>
-#include "types.h"
 #include "randutils.hpp"
 #include "wavegenlibrary.h"
 
-class Wavegen : public QObject
+class Wavegen : public SessionWorker
 {
     Q_OBJECT
 public:
     Wavegen(Session &session);
 
-    Session &session;
-
     const WavegenData &searchd;
     const StimulationData &stimd;
 
     WavegenLibrary &lib;
-
-    void load(const QString &action, const QString &args, QFile &results);
 
     void abort(); //!< Abort all queued actions.
 
@@ -73,6 +67,10 @@ protected slots:
     void clearAbort();
 
 protected:
+    friend class Session;
+    void load(const QString &action, const QString &args, QFile &results);
+    inline QString actorName() const { return "Wavegen"; }
+
     /// Helper functions
     void permute_apply(const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups);
     void permute_save(QFile &file, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups);

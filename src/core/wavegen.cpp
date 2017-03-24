@@ -20,7 +20,7 @@ quint32 Wavegen::search_magic = 0x8a33c402;
 quint32 Wavegen::search_version = 100;
 
 Wavegen::Wavegen(Session &session) :
-    session(session),
+    SessionWorker(session),
     searchd(session.wavegenData()),
     stimd(session.stimulationData()),
     lib(session.project.wavegen()),
@@ -174,7 +174,7 @@ void Wavegen::permute_apply(const QVector<QVector<scalar>> &allvalues, int numPe
 void Wavegen::permute_save(QFile &file, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups)
 {
     QDataStream os;
-    if ( !Session::openSaveStream(file, os, permute_magic, permute_version) )
+    if ( !openSaveStream(file, os, permute_magic, permute_version) )
         return;
     os << qint32(numPermutedGroups) << qint32(numRandomGroups);
     os << values;
@@ -183,7 +183,7 @@ void Wavegen::permute_save(QFile &file, const QVector<QVector<scalar>> &values, 
 void Wavegen::permute_load(QFile &file)
 {
     QDataStream is;
-    quint32 version = Session::openLoadStream(file, is, permute_magic);
+    quint32 version = openLoadStream(file, is, permute_magic);
     if ( version < 100 || version > 100 )
         throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
     QVector<QVector<scalar>> values;
@@ -397,7 +397,7 @@ void Wavegen::adjustSigmas()
 void Wavegen::sigmaAdjust_save(QFile &file)
 {
     QDataStream os;
-    if ( !Session::openSaveStream(file, os, sigmaAdjust_magic, sigmaAdjust_version) )
+    if ( !openSaveStream(file, os, sigmaAdjust_magic, sigmaAdjust_version) )
         return;
     os << sigmaAdjust;
 }
@@ -405,7 +405,7 @@ void Wavegen::sigmaAdjust_save(QFile &file)
 void Wavegen::sigmaAdjust_load(QFile &file)
 {
     QDataStream is;
-    quint32 version = Session::openLoadStream(file, is, sigmaAdjust_magic);
+    quint32 version = openLoadStream(file, is, sigmaAdjust_magic);
     if ( version < 100 || version > 100 )
         throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
     is >> sigmaAdjust;

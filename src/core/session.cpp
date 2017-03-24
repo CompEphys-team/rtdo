@@ -119,18 +119,18 @@ void Session::quit()
         m_wavegen->abort();
     if ( m_profiler )
         m_profiler->abort();
-    // No abort in m_wavegenselector
+    if ( m_wavegenselector )
+        m_wavegenselector->abort();
     thread.quit();
     thread.wait();
 }
 
-QString Session::log(const void *actor, const QString &action, const QString &args)
+QString Session::log(const SessionWorker *actor, const QString &action, const QString &args)
 {
-    QString actorName;
     int idx;
 
     if ( dirtyRund || dirtySearchd || dirtyStimd || dirtyExpd ) {
-        actorName = "Config";
+        QString actorName = "Config";
         QString cfg = "cfg";
         idx = m_log.put(actorName, cfg, "");
         std::ofstream os(dir.filePath(results(idx, actorName, cfg)).toStdString());
@@ -149,41 +149,8 @@ QString Session::log(const void *actor, const QString &action, const QString &ar
         dirtyRund = dirtySearchd = dirtyStimd = dirtyExpd = false;
     }
 
-    if ( actor == m_wavegen.get() )
-        actorName = "Wavegen";
-    else if ( actor == m_profiler.get() )
-        actorName = "Profiler";
-    else if ( actor == m_wavegenselector.get() )
-        actorName = "WavegenSelector";
-    else
-        actorName = "unknown";
-
-    idx = m_log.put(actorName, action, args);
-    return dir.filePath(results(idx, actorName, action));
-}
-
-bool Session::openSaveStream(QFile &file, QDataStream &os, quint32 format_magic, quint32 version)
-{
-    if ( !file.open(QIODevice::WriteOnly) )
-        return false;
-    os.setDevice(&file);
-    os << format_magic << version;
-    os.setVersion(QDataStream::Qt_5_7);
-    return true;
-}
-
-quint32 Session::openLoadStream(QFile &file, QDataStream &is, quint32 format_magic)
-{
-    if ( !file.open(QIODevice::ReadOnly) )
-        throw std::runtime_error(std::string("Failed to open file ") + file.fileName().toStdString() + " for reading.");
-    is.setDevice(&file);
-    quint32 magic, version;
-    is >> magic;
-    if ( format_magic && magic != format_magic )
-        throw std::runtime_error(std::string("File format mismatch in file ") + file.fileName().toStdString());
-    is >> version;
-    is.setVersion(QDataStream::Qt_5_7);
-    return version;
+    idx = m_log.put(actor->actorName(), action, args);
+    return dir.filePath(results(idx, actor->actorName(), action));
 }
 
 void Session::load()
@@ -193,13 +160,13 @@ void Session::load()
         QString filename = results(row, entry.actor, entry.action);
         QFile file(dir.filePath(filename));
         try {
-            if ( entry.actor == "Wavegen" )
+            if ( entry.actor == wavegen().actorName() )
                 wavegen().load(entry.action, entry.args, file);
-            else if ( entry.actor == "Profiler" )
+            else if ( entry.actor == profiler().actorName() )
                 profiler().load(entry.action, entry.args, file);
             else if ( entry.actor == "Config" ) {
                 readConfig(filename);
-            } else if ( entry.actor == "WavegenSelector" ) {
+            } else if ( entry.actor == wavegenselector().actorName() ) {
                 wavegenselector().load(entry.action, entry.args, file);
             } else {
                 throw std::runtime_error(std::string("Unknown actor: ") + entry.actor.toStdString());

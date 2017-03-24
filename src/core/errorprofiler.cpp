@@ -6,7 +6,7 @@
 #include "session.h"
 
 ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
-    session(session),
+    SessionWorker(session),
     expd(session.experimentData()),
     lib(session.project.experiment()),
     permutations(lib.adjustableParams.size()),

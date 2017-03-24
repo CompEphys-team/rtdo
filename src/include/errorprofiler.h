@@ -1,8 +1,7 @@
 #ifndef ERRORPROFILER_H
 #define ERRORPROFILER_H
 
-#include <QObject>
-#include <QFile>
+#include "sessionworker.h"
 #include "experimentlibrary.h"
 
 /**
@@ -15,7 +14,7 @@
  * The idea is to get a sense of how sensitive a certain stimulation is to changes
  * in its target parameter over a wide range of candidate models.
  */
-class ErrorProfiler : public QObject
+class ErrorProfiler : public SessionWorker
 {
     Q_OBJECT
 
@@ -23,11 +22,8 @@ public:
     ErrorProfiler(Session &session, DAQ *daq = nullptr);
     ~ErrorProfiler();
 
-    Session &session;
     const ExperimentData &expd;
     ExperimentLibrary &lib;
-
-    void load(const QString &action, const QString &args, QFile &results);
 
     /**
      * @brief The Permutation struct is ErrorProfiler's governing data type.
@@ -144,6 +140,11 @@ signals:
 
 protected slots:
     void clearAbort();
+
+protected:
+    friend class Session;
+    void load(const QString &action, const QString &args, QFile &results);
+    inline QString actorName() const { return "ErrorProfiler"; }
 
 private:
     DAQ *simulator;
