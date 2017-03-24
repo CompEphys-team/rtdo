@@ -47,7 +47,8 @@ SOURCES += \
     src/core/project.cpp \
     src/core/session.cpp \
     src/core/sessionlog.cpp \
-    src/core/streamops.cpp
+    src/core/streamops.cpp \
+    src/core/wavegenselector.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -77,7 +78,8 @@ HEADERS  += \
     src/include/project.h \
     src/include/session.h \
     src/include/sessionlog.h \
-    src/include/streamops.h
+    src/include/streamops.h \
+    src/include/wavegenselector.h
 
 FORMS    += \
     src/gui/mainwindow.ui \

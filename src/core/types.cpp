@@ -155,12 +155,22 @@ size_t MAPEDimension::bin(const Stimulation &I, const WaveStats &S, size_t multi
         break;
     }
 
-    if ( intermediate < min )
+    return bin(intermediate, multiplier);
+}
+
+size_t MAPEDimension::bin(scalar value, size_t multiplier) const
+{
+    if ( value < min )
         return 0;
-    else if ( intermediate >= max )
+    else if ( value >= max )
         return multiplier * resolution - 1;
     else
-        return multiplier * resolution * (intermediate - min)/(max - min);
+        return multiplier * resolution * (value - min)/(max - min);
+}
+
+scalar MAPEDimension::bin_inverse(size_t bin, size_t multiplier) const
+{
+    return min + bin * (max - min)/(multiplier * resolution);
 }
 
 std::string toString(const MAPEDimension::Func &f)
