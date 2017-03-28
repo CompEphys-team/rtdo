@@ -29,6 +29,18 @@ size_t WavegenSelection::size() const
     return ret;
 }
 
+double WavegenSelection::rmin(size_t i) const
+{
+    size_t multiplier = Wavegen::mape_multiplier(archive().precision);
+    return archive().searchd.mapeDimensions.at(i).bin_inverse(ranges.at(i).min, multiplier);
+}
+
+double WavegenSelection::rmax(size_t i) const
+{
+    size_t multiplier = Wavegen::mape_multiplier(archive().precision);
+    return archive().searchd.mapeDimensions.at(i).bin_inverse(ranges.at(i).max, multiplier);
+}
+
 std::list<MAPElite>::const_iterator WavegenSelection::data_relative(std::vector<size_t> idx, bool *ok) const
 {
     size_t index = 0, multiplier = 1;
@@ -90,36 +102,22 @@ std::list<MAPElite>::const_iterator WavegenSelection::data_absolute(std::vector<
     return data_absolute(bin, ok);
 }
 
-
-
-
-
-WavegenSelector::WavegenSelector(Session &session) :
-    SessionWorker(session)
+void WavegenSelection::limit(size_t dimension, double min, double max, bool collapse)
 {
+    const MAPEDimension &dim = archive().searchd.mapeDimensions.at(dimension);
+    size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
+    limit(dimension, Range{dim.bin(min, multiplier), dim.bin(max, multiplier), collapse});
 }
 
-WavegenSelection WavegenSelector::select(size_t wavegen_archive_idx) const
+void WavegenSelection::limit(size_t dimension, size_t min, size_t max, bool collapse)
 {
-    return WavegenSelection(session, wavegen_archive_idx);
+    limit(dimension, Range{min, max, collapse});
 }
 
-void WavegenSelector::limit(WavegenSelection &selection, size_t dimension, double min, double max, bool collapse) const
+void WavegenSelection::limit(size_t dimension, Range range)
 {
-    const MAPEDimension &dim = selection.archive().searchd.mapeDimensions.at(dimension);
-    size_t multiplier = session.wavegen().mape_multiplier(selection.archive().precision);
-    limit(selection, dimension, WavegenSelection::Range{dim.bin(min, multiplier), dim.bin(max, multiplier), collapse});
-}
-
-void WavegenSelector::limit(WavegenSelection &selection, size_t dimension, size_t min, size_t max, bool collapse) const
-{
-    limit(selection, dimension, WavegenSelection::Range{min, max, collapse});
-}
-
-void WavegenSelector::limit(WavegenSelection &selection, size_t dimension, WavegenSelection::Range range) const
-{
-    const MAPEDimension &dim = selection.archive().searchd.mapeDimensions.at(dimension);
-    size_t multiplier = session.wavegen().mape_multiplier(selection.archive().precision);
+    const MAPEDimension &dim = archive().searchd.mapeDimensions.at(dimension);
+    size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
     size_t rmax = multiplier * dim.resolution - 1;
     if ( range.max < range.min )
         range.max = range.min;
@@ -127,18 +125,18 @@ void WavegenSelector::limit(WavegenSelection &selection, size_t dimension, Waveg
         range.max = rmax;
     if ( range.min > rmax )
         range.min = rmax;
-    selection.ranges.at(dimension) = range;
+    ranges.at(dimension) = range;
 }
 
-void WavegenSelector::finalise(WavegenSelection &selection) const
+void WavegenSelection::finalise()
 {
-    const size_t dimensions = selection.ranges.size();
-    std::list<MAPElite>::const_iterator default_iterator = selection.archive().elites.end();
+    const size_t dimensions = ranges.size();
+    std::list<MAPElite>::const_iterator default_iterator = archive().elites.end();
     size_t uncollapsed_size = 1, collapsed_size = 1;
     std::vector<size_t> offsets, sizes;
     std::vector<size_t> offset_index(dimensions, 0);
     std::vector<size_t> true_index(dimensions);
-    for ( WavegenSelection::Range const& r : selection.ranges ) {
+    for ( Range const& r : ranges ) {
         size_t s(r.max - r.min + 1);
         uncollapsed_size *= s;
         collapsed_size *= r.collapse ? 1 : s;
@@ -146,7 +144,7 @@ void WavegenSelector::finalise(WavegenSelection &selection) const
         sizes.push_back(s);
     }
     std::vector<std::list<MAPElite>::const_iterator> uncollapsed(uncollapsed_size, default_iterator);
-    std::list<MAPElite>::const_iterator archIter = selection.archive().elites.begin();
+    std::list<MAPElite>::const_iterator archIter = archive().elites.begin();
 
     // Populate `uncollapsed` with iterators to the archive by walking the area covered by the selection
     // Cells that are unavailable in the archive remain unchanged in uncollapsed.
@@ -156,15 +154,19 @@ void WavegenSelector::finalise(WavegenSelection &selection) const
             true_index[i] = offsets[i] + offset_index[i];
 
         // Advance archive iterator
-        while ( archIter->bin < true_index )
+        while ( archIter != default_iterator && archIter->bin < true_index )
             ++archIter;
+
+        // Stop on exhausted archive
+        if ( archIter == default_iterator )
+            break;
 
         // Insert archive iterator into uncollapsed
         if ( archIter->bin == true_index )
             element = archIter;
 
         // Advance index
-        for ( int i = dimensions-1; i >= 0; i++ ) {
+        for ( int i = dimensions-1; i >= 0; i-- ) {
             if ( ++offset_index[i] % sizes[i] == 0 ) {
                 offset_index[i] = 0;
             } else {
@@ -175,11 +177,11 @@ void WavegenSelector::finalise(WavegenSelection &selection) const
 
     // If no dimension needs explicit collapsing, our work here is done
     if ( collapsed_size == uncollapsed_size ) {
-        selection.selection = std::move(uncollapsed);
+        selection = std::move(uncollapsed);
         return;
     }
 
-    selection.selection = std::vector<std::list<MAPElite>::const_iterator>(collapsed_size, default_iterator);
+    selection = std::vector<std::list<MAPElite>::const_iterator>(collapsed_size, default_iterator);
 
     // Reset uncollapsed index
     for ( size_t &o : offset_index )
@@ -188,14 +190,14 @@ void WavegenSelector::finalise(WavegenSelection &selection) const
     size_t collapsed_index = 0;
     for ( std::list<MAPElite>::const_iterator &element : uncollapsed ) {
         // Take the final selection that we're collapsing to
-        std::list<MAPElite>::const_iterator &collapsed = selection.selection.at(collapsed_index);
+        std::list<MAPElite>::const_iterator &collapsed = selection.at(collapsed_index);
 
         // Collapse element onto the final selection if it's better
         if ( element != default_iterator && (collapsed == default_iterator || element->stats.fitness > collapsed->stats.fitness) )
             collapsed = element;
 
         // Advance uncollapsed index, corresponding to next element
-        for ( int i = dimensions-1; i >= 0; i++ ) {
+        for ( int i = dimensions-1; i >= 0; i-- ) {
             if ( ++offset_index[i] % sizes[i] == 0 ) {
                 offset_index[i] = 0;
             } else {
@@ -207,11 +209,15 @@ void WavegenSelector::finalise(WavegenSelection &selection) const
         size_t multiplier = 1;
         collapsed_index = 0;
         for ( size_t i = 0; i < dimensions; i++ ) {
-            collapsed_index = offset_index[i] * multiplier;
-            multiplier *= selection.width(i);
+            if ( !ranges[i].collapse ) {
+                collapsed_index += offset_index[i] * multiplier;
+                multiplier *= width(i);
+            }
         }
     }
 }
+
+
 
 
 
@@ -223,7 +229,7 @@ void WavegenSelector::save(const WavegenSelection &selection)
 {
     m_selections.push_back(selection);
     WavegenSelection &sel = m_selections.back();
-    finalise(sel);
+    sel.finalise();
 
     QFile file(session.log(this, action));
     QDataStream os;
@@ -248,12 +254,12 @@ void WavegenSelector::load(const QString &action, const QString &, QFile &result
 
     quint32 idx, nranges, min, max;
     is >> idx >> nranges;
-    m_selections.push_back(select(session.wavegen().archives().size() - idx));
+    m_selections.push_back(WavegenSelection(session, session.wavegen().archives().size() - idx));
     m_selections.back().ranges.resize(nranges);
     for ( WavegenSelection::Range &r : m_selections.back().ranges ) {
         is >> min >> max >> r.collapse;
         r.min = min;
         r.max = max;
     }
-    finalise(m_selections.back());
+    m_selections.back().finalise();
 }

@@ -5,14 +5,12 @@
 
 class WavegenSelection
 {
-private:
+public:
+    WavegenSelection(Session &session, size_t archive_idx);
+
     Session &session;
     size_t archive_idx;
 
-    WavegenSelection(Session &session, size_t archive_idx);
-    friend class WavegenSelector;
-
-public:
     struct Range {
         size_t min;
         size_t max;
@@ -24,6 +22,9 @@ public:
     const Wavegen::Archive &archive() const;
     size_t width(size_t i) const; //!< size of the selected hypercube along the indicated dimension
     size_t size() const; //!< Overall size (i.e. number of selected cells)
+
+    double rmin(size_t i) const; //!< Real-valued min/max for Range i
+    double rmax(size_t i) const;
 
     /**
      * @brief data_relative returns an iterator to the MAPElite at bin coordinates relative to the selected area.
@@ -43,19 +44,25 @@ public:
      */
     std::list<MAPElite>::const_iterator data_absolute(std::vector<size_t> idx, bool *ok = nullptr) const;
     std::list<MAPElite>::const_iterator data_absolute(std::vector<double> idx, bool *ok = nullptr) const; //!< Same as above, but behavioural coordinates
+
+    /**
+     * @brief limit are short-hand functions to modify ranges. Inputs are forced into the given dimension's maximum range.
+     */
+    void limit(size_t dimension, double min, double max, bool collapse);
+    void limit(size_t dimension, size_t min, size_t max, bool collapse);
+    void limit(size_t dimension, Range range);
+
+    /**
+     * @brief finalise readies a selection for data queries (@see data_relative(), data_absolute()).
+     */
+    void finalise();
 };
 
 class WavegenSelector : public SessionWorker
 {
     Q_OBJECT
 public:
-    WavegenSelector(Session &session);
-
-    WavegenSelection select(size_t wavegen_archive_idx) const;
-    void limit(WavegenSelection &selection, size_t dimension, double min, double max, bool collapse) const;
-    void limit(WavegenSelection &selection, size_t dimension, size_t min, size_t max, bool collapse) const;
-    void limit(WavegenSelection &selection, size_t dimension, WavegenSelection::Range range) const;
-    void finalise(WavegenSelection &selection) const;
+    WavegenSelector(Session &session) : SessionWorker(session) {}
 
     void save(const WavegenSelection &selection); //!< Finalises selection and adds it to the database.
 
