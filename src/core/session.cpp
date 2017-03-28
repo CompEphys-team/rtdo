@@ -82,6 +82,18 @@ void Session::addAPs()
     addAP(stimAP, "S.Stimulation.muta.std", this, &Session::stimd, &StimulationData::muta, &MutationData::std);
 
     addAP(expAP, "S.Experiment.settleDuration", this, &Session::expd, &ExperimentData::settleDuration);
+
+    // Defaults
+    scalar maxCycles = 100.0 / project.dt() * rund.simCycles;
+    scalar maxDeviation = stimd.maxVoltage-stimd.baseV > stimd.baseV-stimd.minVoltage
+            ? stimd.maxVoltage - stimd.baseV
+            : stimd.baseV - stimd.minVoltage;
+    searchd.mapeDimensions = {
+        {MAPEDimension::Func::BestBubbleDuration,   0, maxCycles,         32},
+        {MAPEDimension::Func::BestBubbleTime,       0, stimd.duration,    32},
+        {MAPEDimension::Func::VoltageDeviation,     0, maxDeviation,      32}
+    };
+    searchd.precisionIncreaseEpochs = { 100, 500 };
 }
 
 Wavegen &Session::wavegen()

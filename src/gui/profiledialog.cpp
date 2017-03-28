@@ -1,7 +1,6 @@
 #include "profiledialog.h"
 #include "ui_profiledialog.h"
 #include "project.h"
-#include "config.h"
 
 ProfileDialog::ProfileDialog(Session *s, QWidget *parent) :
     QDialog(parent),
@@ -51,8 +50,6 @@ ProfileDialog::ProfileDialog(Session *s, QWidget *parent) :
             ui->sbMax->setValue(range.second);
         }
     });
-
-    session->setExperimentData(Config::Experiment);
 }
 
 ProfileDialog::~ProfileDialog()

@@ -41,7 +41,6 @@ SOURCES += \
     src/core/supportcode.cpp \
     lib/qcustomplot/qcustomplot.cpp \
     src/core/util.cpp \
-    src/core/config.cpp \
     src/gui/wavegendialog.cpp \
     src/gui/profiledialog.cpp \
     src/core/project.cpp \
@@ -74,7 +73,6 @@ HEADERS  += \
     src/include/util.h \
     lib/qcustomplot/qcustomplot.h \
     src/include/AP.h \
-    src/include/config.h \
     src/include/wavegendialog.h \
     src/include/profiledialog.h \
     src/include/project.h \

@@ -8,7 +8,6 @@
 #include <dlfcn.h>
 #include "wavegen.h"
 #include "errorprofiler.h"
-#include "config.h"
 #include <QCloseEvent>
 #include "wavegenfitnessmapper.h"
 

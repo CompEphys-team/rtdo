@@ -1,6 +1,5 @@
 #include "wavegendialog.h"
 #include "ui_wavegendialog.h"
-#include "config.h"
 #include "project.h"
 
 WavegenDialog::WavegenDialog(Session *s, QWidget *parent) :
@@ -56,9 +55,6 @@ void WavegenDialog::initWG()
         wavegen.abort();
         abort = true;
     });
-
-    session->setWavegenData(Config::Wavegen);
-    session->setStimulationData(Config::Stimulation);
 }
 
 WavegenDialog::~WavegenDialog()
