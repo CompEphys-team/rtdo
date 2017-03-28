@@ -94,6 +94,8 @@ protected:
     static QString results(int idx, const QString &actor, const QString &action);
 
 signals:
+    void actionLogged(QString actorName, QString action, QString args, int idx);
+
     void redirectRunData(RunData d, QPrivateSignal);
     void redirectWavegenData(WavegenData d, QPrivateSignal);
     void redirectStimulationData(StimulationData d, QPrivateSignal);

@@ -152,6 +152,7 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
     }
 
     idx = m_log.put(actor->actorName(), action, args);
+    emit actionLogged(actor->actorName(), action, args, idx);
     return dir.filePath(results(idx, actor->actorName(), action));
 }
 
