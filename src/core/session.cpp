@@ -48,39 +48,39 @@ Session::Session(Project &p, const QString &sessiondir) :
 
 void Session::addAPs()
 {
-    addAP(runAP, "Run.accessResistance", this, &Session::rund, &RunData::accessResistance);
-    addAP(runAP, "Run.clampGain", this, &Session::rund, &RunData::clampGain);
-    addAP(runAP, "Run.simCycles", this, &Session::rund, &RunData::simCycles);
+    addAP(runAP, "S.Run.accessResistance", this, &Session::rund, &RunData::accessResistance);
+    addAP(runAP, "S.Run.clampGain", this, &Session::rund, &RunData::clampGain);
+    addAP(runAP, "S.Run.simCycles", this, &Session::rund, &RunData::simCycles);
 
-    addAP(searchAP, "Wavegen.settleTime", this, &Session::searchd, &WavegenData::settleTime);
-    addAP(searchAP, "Wavegen.numSigmaAdjustWaveforms", this, &Session::searchd, &WavegenData::numSigmaAdjustWaveforms);
-    addAP(searchAP, "Wavegen.nInitialWaves", this, &Session::searchd, &WavegenData::nInitialWaves);
-    addAP(searchAP, "Wavegen.precisionIncreaseEpochs[#]", this, &Session::searchd, &WavegenData::precisionIncreaseEpochs);
-    addAP(searchAP, "Wavegen.maxIterations", this, &Session::searchd, &WavegenData::maxIterations);
-    addAP(searchAP, "Wavegen.mapeDimensions[#].func", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::func);
-    addAP(searchAP, "Wavegen.mapeDimensions[#].min", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::min);
-    addAP(searchAP, "Wavegen.mapeDimensions[#].max", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::max);
-    addAP(searchAP, "Wavegen.mapeDimensions[#].resolution", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::resolution);
+    addAP(searchAP, "S.Wavegen.settleTime", this, &Session::searchd, &WavegenData::settleTime);
+    addAP(searchAP, "S.Wavegen.numSigmaAdjustWaveforms", this, &Session::searchd, &WavegenData::numSigmaAdjustWaveforms);
+    addAP(searchAP, "S.Wavegen.nInitialWaves", this, &Session::searchd, &WavegenData::nInitialWaves);
+    addAP(searchAP, "S.Wavegen.precisionIncreaseEpochs[#]", this, &Session::searchd, &WavegenData::precisionIncreaseEpochs);
+    addAP(searchAP, "S.Wavegen.maxIterations", this, &Session::searchd, &WavegenData::maxIterations);
+    addAP(searchAP, "S.Wavegen.mapeDimensions[#].func", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::func);
+    addAP(searchAP, "S.Wavegen.mapeDimensions[#].min", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::min);
+    addAP(searchAP, "S.Wavegen.mapeDimensions[#].max", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::max);
+    addAP(searchAP, "S.Wavegen.mapeDimensions[#].resolution", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::resolution);
 
-    addAP(stimAP, "Stimulation.baseV", this, &Session::stimd, &StimulationData::baseV);
-    addAP(stimAP, "Stimulation.duration", this, &Session::stimd, &StimulationData::duration);
-    addAP(stimAP, "Stimulation.minSteps", this, &Session::stimd, &StimulationData::minSteps);
-    addAP(stimAP, "Stimulation.maxSteps", this, &Session::stimd, &StimulationData::maxSteps);
-    addAP(stimAP, "Stimulation.minVoltage", this, &Session::stimd, &StimulationData::minVoltage);
-    addAP(stimAP, "Stimulation.maxVoltage", this, &Session::stimd, &StimulationData::maxVoltage);
-    addAP(stimAP, "Stimulation.minStepLength", this, &Session::stimd, &StimulationData::minStepLength);
-    addAP(stimAP, "Stimulation.muta.lCrossover", this, &Session::stimd, &StimulationData::muta, &MutationData::lCrossover);
-    addAP(stimAP, "Stimulation.muta.lLevel", this, &Session::stimd, &StimulationData::muta, &MutationData::lLevel);
-    addAP(stimAP, "Stimulation.muta.lNumber", this, &Session::stimd, &StimulationData::muta, &MutationData::lNumber);
-    addAP(stimAP, "Stimulation.muta.lSwap", this, &Session::stimd, &StimulationData::muta, &MutationData::lSwap);
-    addAP(stimAP, "Stimulation.muta.lTime", this, &Session::stimd, &StimulationData::muta, &MutationData::lTime);
-    addAP(stimAP, "Stimulation.muta.lType", this, &Session::stimd, &StimulationData::muta, &MutationData::lType);
-    addAP(stimAP, "Stimulation.muta.n", this, &Session::stimd, &StimulationData::muta, &MutationData::n);
-    addAP(stimAP, "Stimulation.muta.sdLevel", this, &Session::stimd, &StimulationData::muta, &MutationData::sdLevel);
-    addAP(stimAP, "Stimulation.muta.sdTime", this, &Session::stimd, &StimulationData::muta, &MutationData::sdTime);
-    addAP(stimAP, "Stimulation.muta.std", this, &Session::stimd, &StimulationData::muta, &MutationData::std);
+    addAP(stimAP, "S.Stimulation.baseV", this, &Session::stimd, &StimulationData::baseV);
+    addAP(stimAP, "S.Stimulation.duration", this, &Session::stimd, &StimulationData::duration);
+    addAP(stimAP, "S.Stimulation.minSteps", this, &Session::stimd, &StimulationData::minSteps);
+    addAP(stimAP, "S.Stimulation.maxSteps", this, &Session::stimd, &StimulationData::maxSteps);
+    addAP(stimAP, "S.Stimulation.minVoltage", this, &Session::stimd, &StimulationData::minVoltage);
+    addAP(stimAP, "S.Stimulation.maxVoltage", this, &Session::stimd, &StimulationData::maxVoltage);
+    addAP(stimAP, "S.Stimulation.minStepLength", this, &Session::stimd, &StimulationData::minStepLength);
+    addAP(stimAP, "S.Stimulation.muta.lCrossover", this, &Session::stimd, &StimulationData::muta, &MutationData::lCrossover);
+    addAP(stimAP, "S.Stimulation.muta.lLevel", this, &Session::stimd, &StimulationData::muta, &MutationData::lLevel);
+    addAP(stimAP, "S.Stimulation.muta.lNumber", this, &Session::stimd, &StimulationData::muta, &MutationData::lNumber);
+    addAP(stimAP, "S.Stimulation.muta.lSwap", this, &Session::stimd, &StimulationData::muta, &MutationData::lSwap);
+    addAP(stimAP, "S.Stimulation.muta.lTime", this, &Session::stimd, &StimulationData::muta, &MutationData::lTime);
+    addAP(stimAP, "S.Stimulation.muta.lType", this, &Session::stimd, &StimulationData::muta, &MutationData::lType);
+    addAP(stimAP, "S.Stimulation.muta.n", this, &Session::stimd, &StimulationData::muta, &MutationData::n);
+    addAP(stimAP, "S.Stimulation.muta.sdLevel", this, &Session::stimd, &StimulationData::muta, &MutationData::sdLevel);
+    addAP(stimAP, "S.Stimulation.muta.sdTime", this, &Session::stimd, &StimulationData::muta, &MutationData::sdTime);
+    addAP(stimAP, "S.Stimulation.muta.std", this, &Session::stimd, &StimulationData::muta, &MutationData::std);
 
-    addAP(expAP, "Experiment.settleDuration", this, &Session::expd, &ExperimentData::settleDuration);
+    addAP(expAP, "S.Experiment.settleDuration", this, &Session::expd, &ExperimentData::settleDuration);
 }
 
 Wavegen &Session::wavegen()
@@ -165,7 +165,7 @@ void Session::load()
             else if ( entry.actor == profiler().actorName() )
                 profiler().load(entry.action, entry.args, file);
             else if ( entry.actor == "Config" ) {
-                readConfig(filename);
+                readConfig(file.fileName());
             } else if ( entry.actor == wavegenselector().actorName() ) {
                 wavegenselector().load(entry.action, entry.args, file);
             } else {
