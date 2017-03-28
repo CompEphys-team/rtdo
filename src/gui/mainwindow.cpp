@@ -95,11 +95,7 @@ MainWindow::~MainWindow()
 void MainWindow::on_actionWavegen_triggered()
 {
     if ( !wavegenDlg ) {
-        wavegenDlg = new WavegenDialog(session);
-        connect(wavegenDlg, &WavegenDialog::selectionsChanged, [=](){
-            if ( profileDlg )
-                profileDlg->selectionsChanged(wavegenDlg);
-        });
+        wavegenDlg = new WavegenDialog(*session);
     }
     wavegenDlg->show();
     wavegenDlg->raise();
@@ -110,8 +106,6 @@ void MainWindow::on_actionProfiler_triggered()
 {
     if ( !profileDlg ) {
         profileDlg = new ProfileDialog(session);
-        if ( wavegenDlg )
-            wavegenDlg->selectionsChanged();
     }
     profileDlg->show();
     profileDlg->raise();

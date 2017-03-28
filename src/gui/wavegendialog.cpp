@@ -2,30 +2,25 @@
 #include "ui_wavegendialog.h"
 #include "project.h"
 
-WavegenDialog::WavegenDialog(Session *s, QWidget *parent) :
+WavegenDialog::WavegenDialog(Session &s, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::WavegenDialog),
     session(s),
-    wavegen(s->wavegen()),
     abort(false)
 {
     ui->setupUi(this);
     this->setWindowFlags(Qt::Window);
-    initWG();
-}
 
-void WavegenDialog::initWG()
-{
-    ui->btnPermute->setEnabled(session->project.wgPermute());
-    for ( const AdjustableParam &p : wavegen.lib.model.adjustableParams )
+    ui->btnPermute->setEnabled(session.project.wgPermute());
+    for ( const AdjustableParam &p : session.wavegen().lib.model.adjustableParams )
         ui->cbSearch->addItem(QString::fromStdString(p.name));
 
-    connect(this, SIGNAL(permute()), &wavegen, SLOT(permute()));
-    connect(this, SIGNAL(adjustSigmas()), &wavegen, SLOT(adjustSigmas()));
-    connect(this, SIGNAL(search(int)), &wavegen, SLOT(search(int)));
-    connect(&wavegen, SIGNAL(startedSearch(int)), this, SLOT(startedSearch(int)));
-    connect(&wavegen, SIGNAL(searchTick(int)), this, SLOT(searchTick(int)));
-    connect(&wavegen, SIGNAL(done(int)), this, SLOT(end(int)));
+    connect(this, SIGNAL(permute()), &session.wavegen(), SLOT(permute()));
+    connect(this, SIGNAL(adjustSigmas()), &session.wavegen(), SLOT(adjustSigmas()));
+    connect(this, SIGNAL(search(int)), &session.wavegen(), SLOT(search(int)));
+    connect(&session.wavegen(), SIGNAL(startedSearch(int)), this, SLOT(startedSearch(int)));
+    connect(&session.wavegen(), SIGNAL(searchTick(int)), this, SLOT(searchTick(int)));
+    connect(&session.wavegen(), SIGNAL(done(int)), this, SLOT(end(int)));
 
     connect(ui->btnPermute, &QPushButton::clicked, [&](bool){
         ui->log->addItem("Parameter permutation begins...");
@@ -40,19 +35,19 @@ void WavegenDialog::initWG()
         emit adjustSigmas();
     });
     connect(ui->btnSearchAll, &QPushButton::clicked, [&](bool){
-        for ( size_t i = 0; i < wavegen.lib.model.adjustableParams.size(); i++ ) {
-            actions.push_back(QString("Search for %1").arg(QString::fromStdString(wavegen.lib.model.adjustableParams[i].name)));
+        for ( size_t i = 0; i < session.wavegen().lib.model.adjustableParams.size(); i++ ) {
+            actions.push_back(QString("Search for %1").arg(QString::fromStdString(session.wavegen().lib.model.adjustableParams[i].name)));
             emit search(i);
         }
     });
     connect(ui->btnSearchOne, &QPushButton::clicked, [&](bool){
         int i = ui->cbSearch->currentIndex();
-        actions.push_back(QString("Search for %1").arg(QString::fromStdString(wavegen.lib.model.adjustableParams[i].name)));
+        actions.push_back(QString("Search for %1").arg(QString::fromStdString(session.wavegen().lib.model.adjustableParams[i].name)));
         emit search(i);
     });
 
     connect(ui->btnAbort, &QPushButton::clicked, [&](bool){
-        wavegen.abort();
+        session.wavegen().abort();
         abort = true;
     });
 }
