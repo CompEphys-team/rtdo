@@ -68,6 +68,8 @@ public:
 
     inline const std::vector<WavegenSelection> &selections() const { return m_selections; }
 
+    QString prettyName(int n) const; //!< Returns a string describing the nth WavegenSelection
+
 protected:
     friend class Session;
     void load(const QString &action, const QString &args, QFile &results);

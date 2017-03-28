@@ -74,6 +74,14 @@ void Wavegen::abort()
     emit didAbort();
 }
 
+QString Wavegen::prettyName(int n) const
+{
+    return QString("%1 complete archive %2 (%3 iterations)")
+           .arg(QString::fromStdString(lib.model.adjustableParams[m_archives[n].param].name))
+           .arg(n)
+           .arg(m_archives[n].iterations);
+}
+
 void Wavegen::clearAbort()
 {
     aborted = false;

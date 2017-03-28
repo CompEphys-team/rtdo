@@ -263,3 +263,12 @@ void WavegenSelector::load(const QString &action, const QString &, QFile &result
     }
     m_selections.back().finalise();
 }
+
+QString WavegenSelector::prettyName(int n) const
+{
+    return QString("Subset %1 (%2 %3, %4 bins)")
+           .arg(n)
+           .arg(QString::fromStdString(session.project.model().adjustableParams[m_selections[n].archive().param].name))
+           .arg(m_selections[n].archive_idx)
+           .arg(m_selections[n].size());
+}

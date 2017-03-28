@@ -61,24 +61,10 @@ void WavegenFitnessMapper::updateCombo()
     int currentIdx = ui->combo->currentIndex();
     QSize currentData = ui->combo->currentData().toSize();
     ui->combo->clear();
-    int i = 0;
-    for ( Wavegen::Archive const& arch : session.wavegen().archives() ) {
-        ui->combo->addItem(QString("%1 complete archive %2")
-                           .arg(QString::fromStdString(session.project.model().adjustableParams[arch.param].name))
-                           .arg(i),
-                           QSize(0, i));
-        ++i;
-    }
-    i = 0;
-    for ( WavegenSelection const& sel : session.wavegenselector().selections() ) {
-        ui->combo->addItem(QString("Subset %1 (%2 %3, %4 bins)")
-                           .arg(i)
-                           .arg(QString::fromStdString(session.project.model().adjustableParams[sel.archive().param].name))
-                           .arg(sel.archive_idx)
-                           .arg(sel.size()),
-                           QSize(1, i));
-        ++i;
-    }
+    for ( size_t i = 0; i < session.wavegen().archives().size(); i++ )
+        ui->combo->addItem(session.wavegen().prettyName(i), QSize(0, i));
+    for ( size_t i = 0; i < session.wavegenselector().selections().size(); i++ )
+        ui->combo->addItem(session.wavegenselector().prettyName(i), QSize(1, i));
 
     if ( savedSelection ) {
         savedSelection = false;

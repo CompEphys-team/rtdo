@@ -29,6 +29,8 @@ public:
         WavegenData searchd;
     };
 
+    QString prettyName(int n) const; //!< Returns a string describing the nth archive
+
     inline const std::vector<Archive> &archives() const { return m_archives; }
 
 public slots:
