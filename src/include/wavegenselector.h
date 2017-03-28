@@ -57,7 +57,7 @@ public:
     void limit(WavegenSelection &selection, size_t dimension, WavegenSelection::Range range) const;
     void finalise(WavegenSelection &selection) const;
 
-    void save(WavegenSelection &selection); //!< Finalises selection and adds it to the database.
+    void save(const WavegenSelection &selection); //!< Finalises selection and adds it to the database.
 
     inline const std::vector<WavegenSelection> &selections() const { return m_selections; }
 
@@ -70,12 +70,6 @@ protected:
 
     const static QString action;
     const static quint32 magic, version;
-
-protected slots:
-    void log(int idx);
-
-signals:
-    void saved(int idx, QPrivateSignal);
 };
 
 #endif // WAVEGENSELECTOR_H

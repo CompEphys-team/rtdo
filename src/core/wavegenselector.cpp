@@ -97,7 +97,6 @@ std::list<MAPElite>::const_iterator WavegenSelection::data_absolute(std::vector<
 WavegenSelector::WavegenSelector(Session &session) :
     SessionWorker(session)
 {
-    connect(this, SIGNAL(saved(int)), this, SLOT(log(int)));
 }
 
 WavegenSelection WavegenSelector::select(size_t wavegen_archive_idx) const
@@ -220,27 +219,21 @@ const QString WavegenSelector::action = QString("select");
 const quint32 WavegenSelector::magic = 0xa54f3955;
 const quint32 WavegenSelector::version = 100;
 
-void WavegenSelector::save(WavegenSelection &selection)
+void WavegenSelector::save(const WavegenSelection &selection)
 {
     m_selections.push_back(selection);
-    finalise(m_selections.back());
+    WavegenSelection &sel = m_selections.back();
+    finalise(sel);
 
-    // Ensure that session interactions happen on the session thread
-    emit saved(m_selections.size() - 1, QPrivateSignal());
-}
-
-void WavegenSelector::log(int idx)
-{
     QFile file(session.log(this, action));
     QDataStream os;
     if ( !openSaveStream(file, os, magic, version) )
         return;
 
-    WavegenSelection const& selection = m_selections.at(idx);
     // Save archive index in reverse to prevent conflicts during session merge
-    os << quint32(session.wavegen().archives().size() - selection.archive_idx);
-    os << quint32(selection.ranges.size());
-    for ( WavegenSelection::Range const& r : selection.ranges )
+    os << quint32(session.wavegen().archives().size() - sel.archive_idx);
+    os << quint32(sel.ranges.size());
+    for ( WavegenSelection::Range const& r : sel.ranges )
         os << quint32(r.min) << quint32(r.max) << r.collapse;
 }
 
