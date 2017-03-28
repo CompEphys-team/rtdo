@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>649</width>
-    <height>550</height>
+    <width>548</width>
+    <height>163</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,14 +24,11 @@
    </property>
   </widget>
   <widget class="QPushButton" name="btnStart">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
    <property name="geometry">
     <rect>
      <x>250</x>
      <y>40</y>
-     <width>101</width>
+     <width>151</width>
      <height>22</height>
     </rect>
    </property>
@@ -45,9 +42,9 @@
    </property>
    <property name="geometry">
     <rect>
-     <x>250</x>
-     <y>70</y>
-     <width>101</width>
+     <x>410</x>
+     <y>40</y>
+     <width>121</width>
      <height>22</height>
     </rect>
    </property>
@@ -55,22 +52,12 @@
     <string>Abort</string>
    </property>
   </widget>
-  <widget class="QCustomPlot" name="plot" native="true">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>160</y>
-     <width>631</width>
-     <height>381</height>
-    </rect>
-   </property>
-  </widget>
   <widget class="QComboBox" name="cbSelection">
    <property name="geometry">
     <rect>
      <x>250</x>
      <y>10</y>
-     <width>101</width>
+     <width>281</width>
      <height>22</height>
     </rect>
    </property>
@@ -78,8 +65,8 @@
   <widget class="QCheckBox" name="xRange">
    <property name="geometry">
     <rect>
-     <x>370</x>
-     <y>10</y>
+     <x>250</x>
+     <y>70</y>
      <width>111</width>
      <height>20</height>
     </rect>
@@ -94,8 +81,8 @@
    </property>
    <property name="geometry">
     <rect>
-     <x>490</x>
-     <y>10</y>
+     <x>380</x>
+     <y>70</y>
      <width>68</width>
      <height>23</height>
     </rect>
@@ -107,35 +94,14 @@
    </property>
    <property name="geometry">
     <rect>
-     <x>570</x>
-     <y>10</y>
+     <x>460</x>
+     <y>70</y>
      <width>68</width>
      <height>23</height>
     </rect>
    </property>
   </widget>
-  <widget class="QPushButton" name="btnReplot">
-   <property name="geometry">
-    <rect>
-     <x>550</x>
-     <y>130</y>
-     <width>81</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Replot</string>
-   </property>
-  </widget>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QCustomPlot</class>
-   <extends>QWidget</extends>
-   <header>qcustomplot.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -1,55 +1,24 @@
 #include "profiledialog.h"
 #include "ui_profiledialog.h"
-#include "project.h"
+#include "session.h"
 
-ProfileDialog::ProfileDialog(Session *s, QWidget *parent) :
+ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::ProfileDialog),
-    session(s),
-    profiler(session->profiler()),
-    selections(nullptr)
+    session(s)
 {
     ui->setupUi(this);
     setWindowFlags(Qt::Window);
 
-    connect(this, SIGNAL(profile()), &profiler, SLOT(profile()));
-    connect(&profiler, SIGNAL(profileComplete(int)), this, SLOT(profileComplete(int)));
-    connect(&profiler, SIGNAL(done()), this, SLOT(done()));
+    connect(&session, SIGNAL(actionLogged(QString,QString,QString,int)), this, SLOT(updateCombo()));
+    connect(ui->cbSelection, SIGNAL(currentIndexChanged(int)), this, SLOT(updateRange()));
+    connect(ui->xRange, SIGNAL(stateChanged(int)), this, SLOT(updateRange()));
 
-    ui->plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables | QCP::iSelectAxes);
+    connect(this, SIGNAL(profile()), &session.profiler(), SLOT(profile()));
+    connect(&session.profiler(), SIGNAL(profileComplete(int)), this, SLOT(profileComplete(int)));
+    connect(&session.profiler(), SIGNAL(done()), this, SLOT(done()));
 
-    connect(ui->plot, &QCustomPlot::selectionChangedByUser, [=](){
-        QList<QCPAxis *> axes = ui->plot->selectedAxes();
-        if ( axes.isEmpty() )
-           axes = ui->plot->axisRect()->axes();
-        ui->plot->axisRect()->setRangeZoomAxes(axes);
-        ui->plot->axisRect()->setRangeDragAxes(axes);
-
-    });
-    ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
-    ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
-    ui->plot->xAxis->setLabel("Candidate model's target parameter value");
-    ui->plot->yAxis->setLabel("Error");
-
-    connect(ui->xRange, &QCheckBox::stateChanged, [this](int state){
-        ui->sbMin->setEnabled(state == Qt::Checked);
-        ui->sbMax->setEnabled(state == Qt::Checked);
-        int i = ui->cbSelection->currentIndex();
-        if ( state == Qt::Unchecked && i >= 0) {
-            ui->sbMin->setValue(this->profiler.lib.model.adjustableParams[selections->at(i).param].min);
-            ui->sbMax->setValue(this->profiler.lib.model.adjustableParams[selections->at(i).param].max);
-        }
-    });
-    connect(ui->cbSelection, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [this](int i){
-        auto range = std::make_pair(this->profiler.lib.model.adjustableParams[selections->at(i).param].min,
-                                    this->profiler.lib.model.adjustableParams[selections->at(i).param].max);
-        ui->sbMin->setRange(range.first, range.second);
-        ui->sbMax->setRange(range.first, range.second);
-        if ( !ui->xRange->isChecked() ) {
-            ui->sbMin->setValue(range.first);
-            ui->sbMax->setValue(range.second);
-        }
-    });
+    updateCombo();
 }
 
 ProfileDialog::~ProfileDialog()
@@ -57,34 +26,95 @@ ProfileDialog::~ProfileDialog()
     delete ui;
 }
 
-void ProfileDialog::selectionsChanged(WavegenDialog *dlg)
+void ProfileDialog::updateCombo()
 {
-    selections =& dlg->selections;
+    int currentIdx = ui->cbSelection->currentIndex();
+    QSize currentData = ui->cbSelection->currentData().toSize();
     ui->cbSelection->clear();
-    for ( WavegenDialog::Selection const& sel : *selections )
-        ui->cbSelection->addItem(dlg->name(sel));
-    ui->btnStart->setEnabled(selections->size());
+    for ( size_t i = 0; i < session.wavegen().archives().size(); i++ )
+        ui->cbSelection->addItem(session.wavegen().prettyName(i), QSize(0, i));
+    for ( size_t i = 0; i < session.wavegenselector().selections().size(); i++ )
+        ui->cbSelection->addItem(session.wavegenselector().prettyName(i), QSize(1, i));
+
+    if ( currentIdx < 0 )
+        return;
+
+    ui->cbSelection->setCurrentIndex(currentData.width() * session.wavegen().archives().size() + currentData.height());
+}
+
+void ProfileDialog::updateRange()
+{
+    if ( ui->cbSelection->currentIndex() < 0 )
+        return;
+
+    const Wavegen::Archive *archive;
+    QSize collection = ui->cbSelection->currentData().toSize();
+    if ( collection.width() ) {
+        archive =& session.wavegenselector().selections().at(collection.height()).archive();
+    } else {
+        archive =& session.wavegen().archives().at(collection.height());
+    }
+
+    double min = session.project.model().adjustableParams[archive->param].min;
+    double max = session.project.model().adjustableParams[archive->param].max;
+    ui->sbMin->setRange(min, max);
+    ui->sbMax->setRange(min, max);
+    ui->sbMin->setEnabled(ui->xRange->isChecked());
+    ui->sbMax->setEnabled(ui->xRange->isChecked());
+    if ( !ui->xRange->isChecked() ) {
+        ui->sbMin->setValue(min);
+        ui->sbMax->setValue(max);
+    }
 }
 
 void ProfileDialog::on_btnStart_clicked()
 {
-    selection = selections->at(ui->cbSelection->currentIndex());
-    std::vector<Stimulation> stim(selection.elites.size());
-    for ( size_t i = 0; i < stim.size(); i++ ) {
-        stim[i] = selection.elites[i].wave;
-    }
-    profiler.setStimulations(stim);
+    if ( ui->cbSelection->currentIndex() < 0 )
+        return;
 
-    std::vector<ErrorProfiler::Permutation> perm(profiler.lib.model.adjustableParams.size());
-    perm[selection.param].n = 0;
-    if ( ui->xRange->isChecked() ) {
-        perm[selection.param].min = ui->sbMin->value();
-        perm[selection.param].max = ui->sbMax->value();
+    int param;
+    std::vector<Stimulation> stim;
+
+    QSize collection = ui->cbSelection->currentData().toSize();
+    if ( collection.width() ) {
+        const WavegenSelection &sel = session.wavegenselector().selections().at(collection.height());
+        stim.reserve(sel.size());
+        std::vector<size_t> idx(sel.ranges.size());
+        for ( size_t i = 0; i < sel.size(); i++ ) {
+            for ( int j = sel.ranges.size() - 1; j >= 0; j-- ) {
+                if ( ++idx[j] % sel.width(j) == 0 )
+                    idx[j] = 0;
+                else
+                    break;
+            }
+            bool ok;
+            auto it = sel.data_relative(idx, &ok);
+            if ( ok )
+                stim.push_back(it->wave);
+        }
+        param = sel.archive().param;
     } else {
-        perm[selection.param].min = profiler.lib.model.adjustableParams[selection.param].min;
-        perm[selection.param].max = profiler.lib.model.adjustableParams[selection.param].max;
+        const Wavegen::Archive &archive = session.wavegen().archives().at(collection.height());
+        stim.reserve(archive.elites.size());
+        for ( MAPElite const& e : archive.elites )
+            stim.push_back(e.wave);
+        param = archive.param;
     }
-    profiler.setPermutations(perm);
+
+    session.profiler().setStimulations(stim);
+    numStimulations = stim.size();
+
+
+    std::vector<ErrorProfiler::Permutation> perm(session.project.model().adjustableParams.size());
+    perm[param].n = 0;
+    if ( ui->xRange->isChecked() ) {
+        perm[param].min = ui->sbMin->value();
+        perm[param].max = ui->sbMax->value();
+    } else {
+        perm[param].min = session.project.model().adjustableParams[param].min;
+        perm[param].max = session.project.model().adjustableParams[param].max;
+    }
+    session.profiler().setPermutations(perm);
 
     ui->btnStart->setEnabled(false);
     ui->btnAbort->setEnabled(true);
@@ -93,31 +123,18 @@ void ProfileDialog::on_btnStart_clicked()
     ui->log->addItem("");
     ui->log->scrollToBottom();
 
-    ui->plot->clearGraphs();
-    ui->plot->xAxis->setRange(perm[selection.param].min, perm[selection.param].max);
-    ui->plot->yAxis->setRange(0, 1000);
-
     emit profile();
 }
 
 void ProfileDialog::on_btnAbort_clicked()
 {
-    profiler.abort();
+    session.profiler().abort();
 }
 
 void ProfileDialog::profileComplete(int index)
 {
     QListWidgetItem *item = ui->log->item(ui->log->count()-1);
-    item->setText(QString("%1/%2 ...").arg(index+1).arg(selection.elites.size()));
-
-    std::vector<scalar> const& prof = *(std::next(profiler.profiles.begin(), index));
-    if ( prof.empty() )
-        return;
-
-    QCPGraph *graph = ui->plot->addGraph();
-    for ( size_t i = 0; i < prof.size(); i++ )
-        graph->addData(profiler.getParameterValue(selection.param, i), prof.at(i));
-    ui->plot->replot();
+    item->setText(QString("%1/%2 ...").arg(index+1).arg(numStimulations));
 }
 
 void ProfileDialog::done()
@@ -126,20 +143,4 @@ void ProfileDialog::done()
     ui->btnAbort->setEnabled(false);
     ui->log->addItem("Done.");
     ui->log->scrollToBottom();
-}
-
-void ProfileDialog::on_btnReplot_clicked()
-{
-    ui->plot->clearGraphs();
-    for ( std::vector<scalar> const& prof : profiler.profiles ) {
-        if ( prof.empty() )
-            continue;
-        QCPGraph *graph = ui->plot->addGraph();
-        for ( size_t i = 0; i < prof.size(); i++ )
-            graph->addData(profiler.getParameterValue(selection.param, i), prof.at(i));
-    }
-    ui->plot->rescaleAxes();
-    ui->plot->xAxis->setRange(profiler.permutations[selection.param].min, profiler.permutations[selection.param].max);
-    ui->plot->yAxis->setRange(0, 1000);
-    ui->plot->replot();
 }

@@ -105,7 +105,7 @@ void MainWindow::on_actionWavegen_triggered()
 void MainWindow::on_actionProfiler_triggered()
 {
     if ( !profileDlg ) {
-        profileDlg = new ProfileDialog(session);
+        profileDlg = new ProfileDialog(*session);
     }
     profileDlg->show();
     profileDlg->raise();
