@@ -42,10 +42,10 @@ private slots:
     void startedSearch(int);
     void searchTick(int);
 
-    void replot(bool doSelect = true);
-    void setPlotMinMaxSteps(int);
-    void on_btnAddToSel_clicked();
-    void on_cbSelections_currentIndexChanged(int index);
+//    void replot(bool doSelect = true);
+//    void setPlotMinMaxSteps(int);
+//    void on_btnAddToSel_clicked();
+//    void on_cbSelections_currentIndexChanged(int index);
 
 private:
     Ui::WavegenDialog *ui;
