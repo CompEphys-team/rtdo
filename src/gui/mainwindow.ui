@@ -49,7 +49,17 @@
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
+   <widget class="QMenu" name="menuFigures">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>Figures</string>
+    </property>
+    <addaction name="actionWavegen_fitness_map"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuFigures"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <property name="enabled">
@@ -110,6 +120,11 @@
   <action name="actionQuit">
    <property name="text">
     <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionWavegen_fitness_map">
+   <property name="text">
+    <string>Wavegen fitness map</string>
    </property>
   </action>
  </widget>

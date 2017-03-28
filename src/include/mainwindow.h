@@ -31,6 +31,8 @@ private slots:
 
     void on_actionOpen_session_triggered();
 
+    void on_actionWavegen_fitness_map_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

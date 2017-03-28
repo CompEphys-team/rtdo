@@ -10,6 +10,7 @@
 #include "errorprofiler.h"
 #include "config.h"
 #include <QCloseEvent>
+#include "wavegenfitnessmapper.h"
 
 using std::endl;
 
@@ -88,8 +89,8 @@ MainWindow::~MainWindow()
     delete ui;
     delete wavegenDlg;
     delete profileDlg;
-    delete project;
     delete session;
+    delete project;
 }
 
 void MainWindow::on_actionWavegen_triggered()
@@ -160,6 +161,7 @@ void MainWindow::on_actionNew_session_triggered()
     session = new Session(*project);
     ui->menuSession->setEnabled(false);
     ui->mainToolBar->setEnabled(true);
+    ui->menuFigures->setEnabled(true);
 }
 
 void MainWindow::on_actionOpen_session_triggered()
@@ -170,4 +172,11 @@ void MainWindow::on_actionOpen_session_triggered()
     session = new Session(*project, loc);
     ui->menuSession->setEnabled(false);
     ui->mainToolBar->setEnabled(true);
+    ui->menuFigures->setEnabled(true);
+}
+
+void MainWindow::on_actionWavegen_fitness_map_triggered()
+{
+    WavegenFitnessMapper *figure = new WavegenFitnessMapper(*session);
+    figure->show();
 }
