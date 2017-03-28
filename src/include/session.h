@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QThread>
 #include <QDir>
+#include <QMutex>
 #include "sessionlog.h"
 #include "project.h"
 #include "wavegen.h"
@@ -83,6 +84,8 @@ protected:
     QDir dir;
 
     SessionLog m_log;
+
+    QMutex log_mutex;
 
     void addAPs();
     void load();

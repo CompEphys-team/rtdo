@@ -1,5 +1,6 @@
 #include "session.h"
 #include <QDateTime>
+#include <QMutexLocker>
 
 Session::Session(Project &p, const QString &sessiondir) :
     project(p),
@@ -128,6 +129,7 @@ void Session::quit()
 QString Session::log(const SessionWorker *actor, const QString &action, const QString &args)
 {
     int idx;
+    QMutexLocker lock(&log_mutex);
 
     if ( dirtyRund || dirtySearchd || dirtyStimd || dirtyExpd ) {
         QString actorName = "Config";
