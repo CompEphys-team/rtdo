@@ -10,6 +10,7 @@
 #include "errorprofiler.h"
 #include <QCloseEvent>
 #include "wavegenfitnessmapper.h"
+#include "profileplotter.h"
 
 using std::endl;
 
@@ -171,5 +172,11 @@ void MainWindow::on_actionOpen_session_triggered()
 void MainWindow::on_actionWavegen_fitness_map_triggered()
 {
     WavegenFitnessMapper *figure = new WavegenFitnessMapper(*session);
+    figure->show();
+}
+
+void MainWindow::on_actionError_profiles_triggered()
+{
+    ProfilePlotter *figure = new ProfilePlotter(*session);
     figure->show();
 }

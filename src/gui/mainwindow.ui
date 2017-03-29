@@ -57,6 +57,7 @@
      <string>Figures</string>
     </property>
     <addaction name="actionWavegen_fitness_map"/>
+    <addaction name="actionError_profiles"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuFigures"/>
@@ -125,6 +126,11 @@
   <action name="actionWavegen_fitness_map">
    <property name="text">
     <string>Wavegen fitness map</string>
+   </property>
+  </action>
+  <action name="actionError_profiles">
+   <property name="text">
+    <string>Error profiles</string>
    </property>
   </action>
  </widget>

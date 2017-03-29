@@ -49,7 +49,8 @@ SOURCES += \
     src/core/streamops.cpp \
     src/core/wavegenselector.cpp \
     src/core/sessionworker.cpp \
-    src/gui/wavegenfitnessmapper.cpp
+    src/gui/wavegenfitnessmapper.cpp \
+    src/gui/profileplotter.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -81,13 +82,15 @@ HEADERS  += \
     src/include/streamops.h \
     src/include/wavegenselector.h \
     src/include/sessionworker.h \
-    src/include/wavegenfitnessmapper.h
+    src/include/wavegenfitnessmapper.h \
+    src/include/profileplotter.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
     src/gui/wavegendialog.ui \
     src/gui/profiledialog.ui \
-    src/gui/wavegenfitnessmapper.ui
+    src/gui/wavegenfitnessmapper.ui \
+    src/gui/profileplotter.ui
 
 LIBS     += -rdynamic -ldl -lcomedi
 
