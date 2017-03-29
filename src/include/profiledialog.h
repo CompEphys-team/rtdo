@@ -19,10 +19,10 @@ public:
     ~ProfileDialog();
 
 signals:
-    void profile();
+    void generate();
 
 private slots:
-    void profileComplete(int);
+    void profileProgress(int, int);
     void done();
 
     void updateCombo();
@@ -35,8 +35,6 @@ private slots:
 private:
     Ui::ProfileDialog *ui;
     Session &session;
-
-    int numStimulations;
 };
 
 #endif // PROFILEDIALOG_H

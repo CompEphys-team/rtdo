@@ -14,8 +14,8 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
     connect(ui->cbSelection, SIGNAL(currentIndexChanged(int)), this, SLOT(updateRange()));
     connect(ui->xRange, SIGNAL(stateChanged(int)), this, SLOT(updateRange()));
 
-    connect(this, SIGNAL(profile()), &session.profiler(), SLOT(profile()));
-    connect(&session.profiler(), SIGNAL(profileComplete(int)), this, SLOT(profileComplete(int)));
+    connect(this, SIGNAL(generate()), &session.profiler(), SLOT(generate()));
+    connect(&session.profiler(), SIGNAL(progress(int,int)), this, SLOT(profileProgress(int,int)));
     connect(&session.profiler(), SIGNAL(done()), this, SLOT(done()));
 
     updateCombo();
@@ -101,20 +101,19 @@ void ProfileDialog::on_btnStart_clicked()
         param = archive.param;
     }
 
-    session.profiler().setStimulations(stim);
-    numStimulations = stim.size();
+    ErrorProfile profile(session);
+    profile.setStimulations(std::move(stim));
 
-
-    std::vector<ErrorProfiler::Permutation> perm(session.project.model().adjustableParams.size());
-    perm[param].n = 0;
+    ErrorProfile::Permutation perm;
+    perm.n = 0;
     if ( ui->xRange->isChecked() ) {
-        perm[param].min = ui->sbMin->value();
-        perm[param].max = ui->sbMax->value();
+        perm.min = ui->sbMin->value();
+        perm.max = ui->sbMax->value();
     } else {
-        perm[param].min = session.project.model().adjustableParams[param].min;
-        perm[param].max = session.project.model().adjustableParams[param].max;
+        perm.min = session.project.model().adjustableParams[param].min;
+        perm.max = session.project.model().adjustableParams[param].max;
     }
-    session.profiler().setPermutations(perm);
+    profile.setPermutation(param, perm);
 
     ui->btnStart->setEnabled(false);
     ui->btnAbort->setEnabled(true);
@@ -123,7 +122,8 @@ void ProfileDialog::on_btnStart_clicked()
     ui->log->addItem("");
     ui->log->scrollToBottom();
 
-    emit profile();
+    session.profiler().queueProfile(std::move(profile));
+    emit generate();
 }
 
 void ProfileDialog::on_btnAbort_clicked()
@@ -131,10 +131,10 @@ void ProfileDialog::on_btnAbort_clicked()
     session.profiler().abort();
 }
 
-void ProfileDialog::profileComplete(int index)
+void ProfileDialog::profileProgress(int nth, int total)
 {
     QListWidgetItem *item = ui->log->item(ui->log->count()-1);
-    item->setText(QString("%1/%2 ...").arg(index+1).arg(numStimulations));
+    item->setText(QString("%1/%2 ...").arg(nth).arg(total));
 }
 
 void ProfileDialog::done()

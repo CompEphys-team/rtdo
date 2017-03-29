@@ -5,79 +5,57 @@
 #include "util.h"
 #include "session.h"
 
-ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
-    SessionWorker(session),
-    expd(session.experimentData()),
+ErrorProfile::ErrorProfile(Session &session) :
     lib(session.project.experiment()),
-    permutations(lib.adjustableParams.size()),
-    simulator(lib.createSimulator()),
-    daq(daq ? daq : simulator),
-    aborted(false)
+    m_permutations(lib.adjustableParams.size())
 {
-    connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
 }
 
-ErrorProfiler::~ErrorProfiler()
+void ErrorProfile::setPermutations(std::vector<ErrorProfile::Permutation> p)
 {
-    lib.destroySimulator(simulator);
+    assert(errors.empty() /* No changes to settings during or after profiling */);
+    assert(p.size() == m_permutations.size());
+    for ( size_t i = 0; i < m_permutations.size(); i++ )
+        setPermutation(i, p[i]);
 }
 
-void ErrorProfiler::load(const QString &action, const QString &args, QFile &results)
+void ErrorProfile::setPermutation(size_t param, ErrorProfile::Permutation perm)
 {
-    // NYI
+    assert(errors.empty() /* No changes to settings during or after profiling */);
+    assert(param < m_permutations.size());
+    if ( perm.fixed )
+        perm.n = 1;
+    if ( perm.n == 0 )
+        perm.n = lib.project.expNumCandidates();
+    if ( perm.n == 1 )
+        perm.min = perm.max = 0;
+    m_permutations[param] = perm;
 }
 
-void ErrorProfiler::abort()
+void ErrorProfile::setStimulations(std::vector<Stimulation> &&stim)
 {
-    aborted = true;
-    emit didAbort();
+    assert(errors.empty() /* No changes to settings during or after profiling */);
+    m_stimulations = std::move(stim);
 }
 
-void ErrorProfiler::clearAbort()
-{
-    aborted = false;
-}
-
-void ErrorProfiler::setPermutations(std::vector<ErrorProfiler::Permutation> p)
-{
-    assert( p.size() == lib.adjustableParams.size() );
-
-    permutations = p;
-    errors.clear();
-
-    for ( Permutation &perm : permutations ) {
-        if ( perm.fixed )
-            perm.n = 1;
-        if ( perm.n == 0 )
-            perm.n = lib.project.expNumCandidates();
-        if ( perm.n == 1 )
-            perm.min = perm.max = 0;
-    }
-}
-
-size_t ErrorProfiler::getNumPermutations()
+size_t ErrorProfile::numPermutations() const
 {
     size_t i = 1;
-    for ( const Permutation &p : permutations )
+    for ( const Permutation &p : m_permutations )
         i *= p.n;
     return i;
 }
 
-size_t ErrorProfiler::getNumSimulations()
+size_t ErrorProfile::numSimulations() const
 {
     size_t nCand = lib.project.expNumCandidates();
-    return (getNumPermutations() + nCand - 1) / nCand; // Get nearest multiple of nCand, rounded up
+    return (numPermutations() + nCand - 1) / nCand; // Get nearest multiple of nCand, rounded up
 }
 
-void ErrorProfiler::setStimulations(std::vector<Stimulation> stims)
-{
-    stimulations = stims;
-}
-
-double ErrorProfiler::getParameterValue(size_t param, size_t idx)
+double ErrorProfile::parameterValue(size_t param, size_t idx) const
 {
     const AdjustableParam &para = lib.adjustableParams[param];
-    const Permutation &perm = permutations[param];
+    const Permutation &perm = m_permutations[param];
     if ( perm.fixed )
         return perm.value;
     else if ( perm.n == 1 )
@@ -91,10 +69,18 @@ double ErrorProfiler::getParameterValue(size_t param, size_t idx)
     }
 }
 
-size_t ErrorProfiler::getParameterIndex(size_t param, double value)
+std::vector<double> ErrorProfile::parameterValues(size_t param, std::vector<size_t> idx) const
+{
+    std::vector<double> ret(m_permutations.size());
+    for ( size_t i = 0; i < ret.size(); i++ )
+        ret[i] = parameterValue(param, idx[i]);
+    return ret;
+}
+
+size_t ErrorProfile::parameterIndex(size_t param, double value) const
 {
     const AdjustableParam &para = lib.adjustableParams[param];
-    const Permutation &perm = permutations[param];
+    const Permutation &perm = m_permutations[param];
     if ( perm.fixed || perm.n == 1 )
         return 0;
     else {
@@ -109,26 +95,25 @@ size_t ErrorProfiler::getParameterIndex(size_t param, double value)
     }
 }
 
-
-std::vector<ErrorProfiler::Profile> ErrorProfiler::getProfiles(size_t targetParam, const std::vector<scalar> &profile)
+std::vector<std::vector<ErrorProfile::Profile>> ErrorProfile::profiles(size_t targetParam) const
 {
-    if ( profile.size() != getNumPermutations() )
-        throw std::runtime_error("Profile does not match permutation settings.");
+    assert(!errors.empty());
 
     // Find the stride used to populate errors
     size_t stride = 1;
     for ( size_t param = 0; param < targetParam; param++ )
-        stride *= permutations[param].n;
+        stride *= m_permutations[param].n;
 
     // Prepare the vector of non-target parameter indices
-    std::vector<size_t> pIdx(permutations.size(), 0);
+    std::vector<size_t> pIdx(m_permutations.size(), 0);
 
-    // Prepare the vector and count
-    size_t nProfiles = getNumPermutations() / permutations[targetParam].n;
-    std::vector<ErrorProfiler::Profile> ret;
-    ret.reserve(nProfiles);
+    // Prepare the profile vectors and count
+    size_t nProfiles = numPermutations() / m_permutations[targetParam].n;
+    std::vector<std::vector<Profile>> ret(m_stimulations.size());
+    for ( std::vector<Profile> &r : ret )
+        r.reserve(nProfiles);
 
-    // Populate the vector of Profiles
+    // Populate the profile vectors
     for ( size_t i = 0, offset = 0, cluster = 0; i < nProfiles; i++ ) {
         /* The logic here mirrors the way parameters are populated during profiling:
          * A given parameter changes every (stride) field in errors, wrapping around
@@ -138,16 +123,21 @@ std::vector<ErrorProfiler::Profile> ErrorProfiler::getProfiles(size_t targetPara
          * the first one ends), and intermediate profiles are interleaved in clusters,
          * wrapping around every (stride * n) fields.
          */
-        ret.push_back(Profile(profile.cbegin() + offset, stride, permutations[targetParam].n, pIdx));
+        // Populate for each stimulation
+        size_t k = 0;
+        for ( std::vector<scalar> const& err : errors )
+            ret[k++].push_back(Profile(err.cbegin() + offset, stride, m_permutations[targetParam].n, pIdx));
 
+        // Increase offset and cluster (=simulation number)
         if ( ++offset % stride == 0 )
-            offset = ++cluster * stride * permutations[targetParam].n;
+            offset = ++cluster * stride * m_permutations[targetParam].n;
 
-        for ( size_t j = 0; j < permutations.size(); j++ ) {
+        // Adjust non-target parameter indices
+        for ( size_t j = 0; j < m_permutations.size(); j++ ) {
             if ( j == targetParam )
                 continue;
             ++pIdx[j];
-            if ( pIdx[j] < permutations[j].n )
+            if ( pIdx[j] < m_permutations[j].n )
                 break;
             pIdx[j] = 0;
         }
@@ -156,57 +146,38 @@ std::vector<ErrorProfiler::Profile> ErrorProfiler::getProfiles(size_t targetPara
     return ret;
 }
 
-void ErrorProfiler::profile()
-{
-    if ( aborted )
-        return;
-    using std::swap;
-    profiles = std::list<std::vector<scalar>>(stimulations.size());
-    auto iter = profiles.begin();
-    int i = 0;
-    for ( Stimulation const& stim : stimulations ) {
-        if ( aborted )
-            break;
-        if ( stim.duration > 0 ) {
-            profile(stim);
-            swap(*iter, errors);
-        } // else, *iter is an empty vector, as befits an empty stimulation
-        iter++;
-        emit profileComplete(i++);
-    }
-    emit done();
-}
 
-void ErrorProfiler::profile(const Stimulation &stim)
+
+void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors, DAQ *daq, scalar settleDuration)
 {
-    size_t numSimulations = getNumSimulations(), numPermutations = getNumPermutations();
+    size_t nSimulations = numSimulations(), nPermutations = numPermutations();
 
     lib.reset();
-    errors.resize(numPermutations);
+    errors.resize(nPermutations);
 
     // Prepare all parameter values
-    std::vector<double> values[permutations.size()];
-    std::vector<size_t> pStride(permutations.size());
-    std::vector<size_t> pIdx(permutations.size(), 0);
-    for ( size_t param = 0, stride = 1; param < permutations.size(); param++ ) {
-        values[param] = std::vector<double>(permutations[param].n);
-        if ( permutations[param].fixed ) {
-            values[param][0] = permutations[param].value;
-        } else if ( permutations[param].n == 1 ) {
+    std::vector<double> values[m_permutations.size()];
+    std::vector<size_t> pStride(m_permutations.size());
+    std::vector<size_t> pIdx(m_permutations.size(), 0);
+    for ( size_t param = 0, stride = 1; param < m_permutations.size(); param++ ) {
+        values[param] = std::vector<double>(m_permutations[param].n);
+        if ( m_permutations[param].fixed ) {
+            values[param][0] = m_permutations[param].value;
+        } else if ( m_permutations[param].n == 1 ) {
             values[param][0] = lib.adjustableParams[param].initial;
         } else {
-            for ( size_t j = 0; j < permutations[param].n; j++ ) {
-                values[param][j] = getParameterValue(param, j);
+            for ( size_t j = 0; j < m_permutations[param].n; j++ ) {
+                values[param][j] = parameterValue(param, j);
             }
         }
         pStride[param] = stride;
-        stride *= permutations[param].n;
+        stride *= m_permutations[param].n;
     }
 
-    for ( size_t sim = 0, offset = 0; sim < numSimulations; sim++, offset += lib.project.expNumCandidates() ) {
+    for ( size_t sim = 0, offset = 0; sim < nSimulations; sim++, offset += lib.project.expNumCandidates() ) {
         size_t batchSize = lib.project.expNumCandidates();
-        if ( sim == numSimulations-1 )
-            batchSize = numPermutations - sim*lib.project.expNumCandidates(); // Last round does leftovers
+        if ( sim == nSimulations-1 )
+            batchSize = nPermutations - sim*lib.project.expNumCandidates(); // Last round does leftovers
 
         // Populate lib.adjustableParams from values
         for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
@@ -223,10 +194,10 @@ void ErrorProfiler::profile(const Stimulation &stim)
 
         // Settle
         lib.push();
-        settle(stim.baseV);
+        settle(stim.baseV, daq, settleDuration);
 
         // Stimulate
-        stimulate(stim);
+        stimulate(stim, daq);
         lib.pullErr();
 
         // Store errors
@@ -237,11 +208,11 @@ void ErrorProfiler::profile(const Stimulation &stim)
 }
 
 
-void ErrorProfiler::settle(scalar baseV)
+void ErrorProfile::settle(scalar baseV, DAQ *daq, scalar settleDuration)
 {
     // Create holding stimulation
     Stimulation I {};
-    I.duration = expd.settleDuration;
+    I.duration = settleDuration;
     I.baseV = baseV;
 
     // Set up library
@@ -264,7 +235,7 @@ void ErrorProfiler::settle(scalar baseV)
     daq->reset();
 }
 
-void ErrorProfiler::stimulate(const Stimulation &stim)
+void ErrorProfile::stimulate(const Stimulation &stim, DAQ *daq)
 {
     // Set up library
     lib.t = 0.;
@@ -285,4 +256,66 @@ void ErrorProfiler::stimulate(const Stimulation &stim)
     }
 
     daq->reset();
+}
+
+
+
+
+
+
+
+
+ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
+    SessionWorker(session),
+    simulator(session.project.experiment().createSimulator()),
+    daq(daq ? daq : simulator),
+    aborted(false)
+{
+    connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
+}
+
+ErrorProfiler::~ErrorProfiler()
+{
+    session.project.experiment().destroySimulator(simulator);
+}
+
+void ErrorProfiler::load(const QString &action, const QString &args, QFile &results)
+{
+    // NYI
+}
+
+void ErrorProfiler::abort()
+{
+    aborted = true;
+    emit didAbort();
+}
+
+void ErrorProfiler::clearAbort()
+{
+    aborted = false;
+}
+
+void ErrorProfiler::generate()
+{
+    ErrorProfile ep = m_queue.front();
+    m_queue.pop_front();
+    if ( aborted )
+        return;
+    ep.errors.resize(ep.stimulations().size());
+    auto iter = ep.errors.begin();
+    int i = 0;
+    for ( Stimulation const& stim : ep.stimulations() ) {
+        if ( aborted )
+            break;
+        if ( stim.duration > 0 ) {
+            ep.generate(stim, *iter, daq, session.experimentData().settleDuration);
+        } // else, *iter is an empty vector, as befits an empty stimulation
+        iter++;
+        emit progress(++i, ep.stimulations().size());
+    }
+    m_profiles.push_back(std::move(ep));
+    emit done();
+
+    // Saving NYI
+    session.log(this, "generate", "Results NYI");
 }
