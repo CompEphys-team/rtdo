@@ -9,6 +9,8 @@
 namespace Ui {
 class ProfileDialog;
 }
+class QSpinBox;
+class QDoubleSpinBox;
 
 class ProfileDialog : public QDialog
 {
@@ -26,7 +28,6 @@ private slots:
     void done();
 
     void updateCombo();
-    void updateRange();
 
     void on_btnStart_clicked();
 
@@ -35,6 +36,9 @@ private slots:
 private:
     Ui::ProfileDialog *ui;
     Session &session;
+
+    std::vector<QSpinBox*> ns;
+    std::vector<QDoubleSpinBox*> mins, maxes;
 };
 
 #endif // PROFILEDIALOG_H
