@@ -164,6 +164,7 @@ public slots:
 signals:
     void progress(int nth, int total);
     void done();
+    void doAbort();
     void didAbort();
 
 protected slots:

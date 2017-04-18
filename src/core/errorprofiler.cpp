@@ -327,7 +327,7 @@ ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
     daq(daq ? daq : simulator),
     aborted(false)
 {
-    connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
+    connect(this, SIGNAL(doAbort()), this, SLOT(clearAbort()));
 }
 
 ErrorProfiler::~ErrorProfiler()
@@ -351,12 +351,13 @@ void ErrorProfiler::load(const QString &act, const QString &, QFile &results)
 void ErrorProfiler::abort()
 {
     aborted = true;
-    emit didAbort();
+    emit doAbort();
 }
 
 void ErrorProfiler::clearAbort()
 {
     aborted = false;
+    emit didAbort();
 }
 
 void ErrorProfiler::generate()
@@ -370,7 +371,7 @@ void ErrorProfiler::generate()
     int i = 0;
     for ( Stimulation const& stim : ep.stimulations() ) {
         if ( aborted )
-            break;
+            return;
         if ( stim.duration > 0 ) {
             ep.generate(stim, *iter, daq, session.experimentData().settleDuration);
         } // else, *iter is an empty vector, as befits an empty stimulation

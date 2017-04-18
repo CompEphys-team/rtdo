@@ -17,6 +17,7 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
     connect(this, SIGNAL(generate()), &session.profiler(), SLOT(generate()));
     connect(&session.profiler(), SIGNAL(progress(int,int)), this, SLOT(profileProgress(int,int)));
     connect(&session.profiler(), SIGNAL(done()), this, SLOT(done()));
+    connect(&session.profiler(), SIGNAL(didAbort()), this, SLOT(aborted()));
 
     QStringList labels;
     int rows = session.project.model().adjustableParams.size();
@@ -144,9 +145,6 @@ void ProfileDialog::on_btnStart_clicked()
         profile.setPermutation(i, perm);
     }
 
-    ui->btnStart->setEnabled(false);
-    ui->btnAbort->setEnabled(true);
-
     ui->log->addItem(QString("Profiling %1...").arg(ui->cbSelection->currentText()));
     ui->log->addItem("");
     ui->log->scrollToBottom();
@@ -168,8 +166,12 @@ void ProfileDialog::profileProgress(int nth, int total)
 
 void ProfileDialog::done()
 {
-    ui->btnStart->setEnabled(true);
-    ui->btnAbort->setEnabled(false);
     ui->log->addItem("Done.");
+    ui->log->scrollToBottom();
+}
+
+void ProfileDialog::aborted()
+{
+    ui->log->addItem("Aborted.");
     ui->log->scrollToBottom();
 }
