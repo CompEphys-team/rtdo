@@ -260,10 +260,66 @@ void ErrorProfile::stimulate(const Stimulation &stim, DAQ *daq)
 
 
 
+QDataStream &operator<<(QDataStream &os, const ErrorProfile &ep)
+{
+    os << quint32(ep.m_permutations.size());
+    for ( const ErrorProfile::Permutation &p : ep.m_permutations ) {
+        os << quint32(p.n) << p.min << p.max << p.fixed << p.value;
+    }
+
+    os << quint32(ep.m_stimulations.size());
+    for ( const Stimulation &s : ep.m_stimulations ) {
+        os << s;
+    }
+
+    os << quint32(ep.errors.size());
+    for ( const std::vector<scalar> err : ep.errors ) {
+        os << quint32(err.size());
+        for ( const scalar &e : err ) {
+            os << e;
+        }
+    }
+
+    return os;
+}
+
+QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
+{
+    quint32 permutations_size, stimulations_size, errors_size, err_size, n;
+
+    is >> permutations_size;
+    ep.m_permutations.resize(permutations_size);
+    for ( ErrorProfile::Permutation &p : ep.m_permutations ) {
+        is >> n >> p.min >> p.max >> p.fixed >> p.value;
+        p.n = n;
+    }
+
+    is >> stimulations_size;
+    ep.m_stimulations.resize(stimulations_size);
+    for ( Stimulation &s : ep.m_stimulations ) {
+        is >> s;
+    }
+
+    is >> errors_size;
+    ep.errors.resize(errors_size);
+    for ( std::vector<scalar> &err : ep.errors ) {
+        is >> err_size;
+        err.resize(err_size);
+        for ( scalar &e : err ) {
+            is >> e;
+        }
+    }
+
+    return is;
+}
 
 
 
 
+
+const QString ErrorProfiler::action = QString("generate");
+const quint32 ErrorProfiler::magic = 0x2be4e5cb;
+const quint32 ErrorProfiler::version = 100;
 
 ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
     SessionWorker(session),
@@ -279,9 +335,17 @@ ErrorProfiler::~ErrorProfiler()
     session.project.experiment().destroySimulator(simulator);
 }
 
-void ErrorProfiler::load(const QString &action, const QString &args, QFile &results)
+void ErrorProfiler::load(const QString &act, const QString &, QFile &results)
 {
-    // NYI
+    if ( act != action )
+        throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
+    QDataStream is;
+    quint32 ver = openLoadStream(results, is, magic);
+    if ( ver < 100 || ver > version )
+        throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
+
+    m_profiles.push_back(ErrorProfile(session));
+    is >> m_profiles.back();
 }
 
 void ErrorProfiler::abort()
@@ -316,6 +380,9 @@ void ErrorProfiler::generate()
     m_profiles.push_back(std::move(ep));
     emit done();
 
-    // Saving NYI
-    session.log(this, "generate", "Results NYI");
+    // Save
+    QFile file(session.log(this, action, "Descriptive metadata goes here"));
+    QDataStream os;
+    if ( openSaveStream(file, os, magic, version) )
+        os << m_profiles.back();
 }

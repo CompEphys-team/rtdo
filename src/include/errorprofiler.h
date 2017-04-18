@@ -115,6 +115,10 @@ private:
     void settle(scalar baseV, DAQ *daq, scalar settleDuration);
     void stimulate(const Stimulation &stim, DAQ *daq);
 
+    /// Save/load
+    friend QDataStream &operator<<(QDataStream &os, const ErrorProfile &);
+    friend QDataStream &operator>>(QDataStream &is, ErrorProfile &);
+
     friend class ErrorProfiler;
 };
 
@@ -178,6 +182,9 @@ private:
 
     std::list<ErrorProfile> m_queue;
     std::vector<ErrorProfile> m_profiles;
+
+    const static QString action;
+    const static quint32 magic, version;
 };
 
 #endif // ERRORPROFILER_H
