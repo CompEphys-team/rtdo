@@ -15,6 +15,13 @@ ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     connect(ui->profile, SIGNAL(currentIndexChanged(int)), this, SLOT(updateTargets()));
     connect(ui->profile, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
     connect(ui->targetParam, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
+    connect(ui->rescale, SIGNAL(clicked(bool)), this, SLOT(rescale()));
+
+    auto uncheckRescale = [=](const QCPRange &) {
+        ui->rescale->setChecked(false);
+    };
+    connect(ui->plot->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), uncheckRescale);
+    connect(ui->plot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), uncheckRescale);
 
     updateCombo();
     replot();
@@ -86,7 +93,18 @@ void ProfilePlotter::replot()
                 graph->addData(profile.parameterValue(targetParam, it.index()), *it);
         }
     }
-    ui->plot->rescaleAxes();
-    ui->plot->xAxis->setRange(profile.permutations().at(targetParam).min, profile.permutations().at(targetParam).max);
+    rescale();
+}
+
+void ProfilePlotter::rescale()
+{
+    int profileNo = ui->profile->currentIndex();
+    int targetParam = ui->targetParam->currentIndex();
+    if ( profileNo >= 0 && targetParam >= 0 && !updatingCombo && ui->rescale->isChecked() ) {
+        const ErrorProfile &profile = session.profiler().profiles().at(profileNo);
+        ui->plot->rescaleAxes();
+        ui->plot->xAxis->setRange(profile.permutations().at(targetParam).min, profile.permutations().at(targetParam).max);
+        ui->rescale->setChecked(true);
+    }
     ui->plot->replot();
 }

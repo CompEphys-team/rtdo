@@ -20,6 +20,7 @@ private slots:
     void updateCombo();
     void updateTargets();
     void replot();
+    void rescale();
 
 private:
     Ui::ProfilePlotter *ui;
