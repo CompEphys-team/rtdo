@@ -106,33 +106,8 @@ void ProfileDialog::on_btnStart_clicked()
     if ( ui->cbSelection->currentIndex() < 0 )
         return;
 
-    std::vector<Stimulation> stim;
-
-    WaveSource src = ui->cbSelection->currentData().value<WaveSource>();
-    if ( src.type == WaveSource::Selection ) {
-        const WavegenSelection &sel = *src.selection();
-        stim.reserve(sel.size());
-        std::vector<size_t> idx(sel.ranges.size());
-        for ( size_t i = 0; i < sel.size(); i++ ) {
-            for ( int j = sel.ranges.size() - 1; j >= 0; j-- ) {
-                if ( ++idx[j] % sel.width(j) == 0 )
-                    idx[j] = 0;
-                else
-                    break;
-            }
-            bool ok;
-            auto it = sel.data_relative(idx, &ok);
-            if ( ok )
-                stim.push_back(it->wave);
-        }
-    } else {
-        stim.reserve(src.archive().elites.size());
-        for ( MAPElite const& e : src.archive().elites )
-            stim.push_back(e.wave);
-    }
-
     ErrorProfile profile(session);
-    profile.setStimulations(std::move(stim));
+    profile.setSource(ui->cbSelection->currentData().value<WaveSource>());
 
     for ( size_t i = 0; i < session.project.model().adjustableParams.size(); i++ ) {
         ErrorProfile::Permutation perm;
