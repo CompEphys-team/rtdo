@@ -32,7 +32,7 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
 
         QSpinBox *n = new QSpinBox();
         n->setRange(0, session.project.expNumCandidates());
-        n->setSingleStep(100);
+        n->setSingleStep(10);
         ui->table->setCellWidget(i, 0, n);
         ns[i] = n;
 
@@ -61,6 +61,15 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
             }
             min->setEnabled(v > 0);
             max->setEnabled(v > 1);
+
+            double perms = 1;
+            for ( QSpinBox *box : ns ) {
+                if ( box && box->value() == 0 )
+                    perms *= session.project.expNumCandidates();
+                else if ( box )
+                    perms *= box->value();
+            }
+            ui->permutationInfo->setText(QString("Total permutations per waveform: %1").arg(perms));
         });
         connect(min, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), [=](double) {
             ui->table->model()->setData(ui->table->model()->index(i, 1), false, Qt::UserRole); // Set "dirty" flag
@@ -74,6 +83,7 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
     ui->table->setColumnWidth(0, 50);
 
     updateCombo();
+    updatePresets();
 }
 
 ProfileDialog::~ProfileDialog()
@@ -99,6 +109,104 @@ void ProfileDialog::updateCombo()
         return;
 
     ui->cbSelection->setCurrentIndex(currentData.index());
+}
+
+void ProfileDialog::updatePresets()
+{
+    if ( ui->preset->count() == 0 ) {
+        ui->preset->addItem("Target only, full range");
+        ui->preset->addItem("Target only, close range");
+        ui->preset->addItem("Target full range, others close range");
+        ui->preset->addItem("Target close range, others close range");
+        ui->preset->addItem("Target full range, others full range");
+        ui->preset->addItem("Target close range, others full range");
+    }
+
+    int currentIdx = ui->preset->currentIndex();
+    while ( ui->preset->count() > nHardPresets )
+        ui->preset->removeItem(nHardPresets);
+
+    for ( ErrorProfile const& ep : session.profiler().profiles() )
+        ui->preset->addItem(ep.prettyName());
+
+    ui->preset->setCurrentIndex(currentIdx);
+}
+
+void ProfileDialog::setCloseRange(int i)
+{
+    double min, max;
+    const AdjustableParam &p = session.project.model().adjustableParams[i];
+    if ( p.multiplicative ) {
+        max = p.initial * pow(1.0 + p.sigma, ui->presetSig->value());
+        min = p.initial * pow(1.0 - p.sigma, ui->presetSig->value());
+    } else {
+        max = p.initial + p.sigma*ui->presetSig->value();
+        min = p.initial - p.sigma*ui->presetSig->value();
+    }
+    if ( max > p.max )
+        max = p.max;
+    if ( min < p.min )
+        min = p.min;
+    maxes[i]->setValue(max);
+    mins[i]->setValue(min);
+}
+
+void ProfileDialog::on_btnPreset_clicked()
+{
+    if ( ui->preset->currentIndex() < 0 || ui->cbSelection->currentIndex() < 0 )
+        return;
+    WaveSource src = ui->cbSelection->currentData().value<WaveSource>();
+    int preset = ui->preset->currentIndex();
+
+    if ( preset < nHardPresets ) {
+        if ( ns[src.archive().param]->value() == 0 ) // Target: Set full range via valueChanged signal
+            ns[src.archive().param]->valueChanged(0);
+        else
+            ns[src.archive().param]->setValue(0);
+        if ( preset == 1 || preset == 3 || preset == 5 ) { // Target: set close range
+            setCloseRange(src.archive().param);
+        }
+        if ( preset == 0 || preset == 1 ) { // Target only
+            for ( int i = 0; i < int(ns.size()); i++ ) {
+                if ( i != src.archive().param ) {
+                    ns[i]->setValue(1);
+                }
+            }
+        } else if ( preset == 2 || preset == 3 ) { // Others: set close range
+            for ( int i = 0; i < int(ns.size()); i++ ) {
+                if ( i != src.archive().param ) {
+                    ns[i]->setValue(ui->presetN->value());
+                    setCloseRange(i);
+                }
+            }
+        } else if ( preset == 4 || preset == 5 ) { // Others: set full range
+            for ( int i = 0; i < int(ns.size()); i++ ) {
+                if ( i != src.archive().param ) {
+                    ns[i]->setValue(ui->presetN->value());
+                    mins[i]->setValue(mins[i]->minimum());
+                    maxes[i]->setValue(maxes[i]->maximum());
+                }
+            }
+        }
+    } else {
+        const ErrorProfile &ep = session.profiler().profiles().at(preset - nHardPresets);
+        for ( size_t i = 0; i < ep.permutations().size(); i++ ) {
+            const ErrorProfile::Permutation &perm = ep.permutations().at(i);
+            if ( perm.n == session.project.expNumCandidates() ) {
+                ns[i]->setValue(0);
+            } else {
+                ns[i]->setValue(perm.n);
+            }
+            if ( perm.fixed ) {
+                mins[i]->setValue(perm.value);
+            } else if ( perm.n == 1 ) {
+                mins[i]->setValue(session.project.model().adjustableParams[i].initial);
+            } else {
+                mins[i]->setValue(perm.min);
+                maxes[i]->setValue(perm.max);
+            }
+        }
+    }
 }
 
 void ProfileDialog::on_btnStart_clicked()

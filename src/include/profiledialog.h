@@ -29,10 +29,13 @@ private slots:
     void aborted();
 
     void updateCombo();
+    void updatePresets();
 
     void on_btnStart_clicked();
 
     void on_btnAbort_clicked();
+
+    void on_btnPreset_clicked();
 
 private:
     Ui::ProfileDialog *ui;
@@ -40,6 +43,10 @@ private:
 
     std::vector<QSpinBox*> ns;
     std::vector<QDoubleSpinBox*> mins, maxes;
+
+    static constexpr int nHardPresets = 6;
+
+    void setCloseRange(int i);
 };
 
 #endif // PROFILEDIALOG_H
