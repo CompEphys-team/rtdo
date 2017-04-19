@@ -3,6 +3,7 @@
 
 #include "sessionworker.h"
 #include "experimentlibrary.h"
+#include "wavesource.h"
 
 class ErrorProfile
 {
@@ -40,6 +41,9 @@ public:
     void setPermutations(std::vector<Permutation> p); //!< Replace the full set of permutations, ordered by parameter
     void setPermutation(size_t param, Permutation p); //!< Replaces the existing permutation for parameter param
     const inline std::vector<Permutation> &permutations() const { return m_permutations; }
+
+    void setSource(WaveSource src); //!< Sets the stimulations from an existing source
+    const inline WaveSource &source() const { return m_src; }
 
     void setStimulations(std::vector<Stimulation> &&stim); //!< Sets the stimulations to be considered
     const inline std::vector<Stimulation> &stimulations() const { return m_stimulations; }
@@ -106,6 +110,7 @@ private:
     ExperimentLibrary &lib;
     std::vector<Permutation> m_permutations; //!< Input: Describes how each parameter is perturbed
     std::vector<Stimulation> m_stimulations; //!< Input: The waveforms under consideration
+    WaveSource m_src; //!< Optional input: waveform source
     std::list<std::vector<scalar>> errors; //!< Raw output
 
     /// Profiling workhorse, called through ErrorProfiler::generate
@@ -120,6 +125,9 @@ private:
     friend QDataStream &operator>>(QDataStream &is, ErrorProfile &);
 
     friend class ErrorProfiler;
+
+    int version; //!< Used during loading only
+    Session &session; //!< Used during loading only
 };
 
 

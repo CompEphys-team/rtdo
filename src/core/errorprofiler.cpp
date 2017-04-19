@@ -7,7 +7,8 @@
 
 ErrorProfile::ErrorProfile(Session &session) :
     lib(session.project.experiment()),
-    m_permutations(lib.adjustableParams.size())
+    m_permutations(lib.adjustableParams.size()),
+    session(session)
 {
 }
 
@@ -32,10 +33,39 @@ void ErrorProfile::setPermutation(size_t param, ErrorProfile::Permutation perm)
     m_permutations[param] = perm;
 }
 
+void ErrorProfile::setSource(WaveSource src)
+{
+    assert(errors.empty() /* No changes to settings during or after profiling */);
+    m_stimulations.clear();
+    m_src = src;
+    if ( src.type == WaveSource::Selection ) {
+        const WavegenSelection &sel = *src.selection();
+        m_stimulations.reserve(sel.size());
+        std::vector<size_t> idx(sel.ranges.size());
+        for ( size_t i = 0; i < sel.size(); i++ ) {
+            for ( int j = sel.ranges.size() - 1; j >= 0; j-- ) {
+                if ( ++idx[j] % sel.width(j) == 0 )
+                    idx[j] = 0;
+                else
+                    break;
+            }
+            bool ok;
+            auto it = sel.data_relative(idx, &ok);
+            if ( ok )
+                m_stimulations.push_back(it->wave);
+        }
+    } else {
+        m_stimulations.reserve(src.archive().elites.size());
+        for ( MAPElite const& e : src.archive().elites )
+            m_stimulations.push_back(e.wave);
+    }
+}
+
 void ErrorProfile::setStimulations(std::vector<Stimulation> &&stim)
 {
     assert(errors.empty() /* No changes to settings during or after profiling */);
     m_stimulations = std::move(stim);
+    m_src = WaveSource();
 }
 
 size_t ErrorProfile::numPermutations() const
@@ -280,6 +310,11 @@ QDataStream &operator<<(QDataStream &os, const ErrorProfile &ep)
         }
     }
 
+    bool hasSrc = ep.m_src.session != nullptr;
+    os << hasSrc;
+    if ( hasSrc )
+        os << ep.m_src;
+
     return os;
 }
 
@@ -310,6 +345,15 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
         }
     }
 
+    if ( ep.version >= 101 ) {
+        bool hasSrc;
+        is >> hasSrc;
+        if ( hasSrc ) {
+            is >> ep.m_src;
+            ep.m_src.session =& ep.session;
+        }
+    }
+
     return is;
 }
 
@@ -319,7 +363,7 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
 
 const QString ErrorProfiler::action = QString("generate");
 const quint32 ErrorProfiler::magic = 0x2be4e5cb;
-const quint32 ErrorProfiler::version = 100;
+const quint32 ErrorProfiler::version = 101;
 
 ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
     SessionWorker(session),
@@ -345,6 +389,7 @@ void ErrorProfiler::load(const QString &act, const QString &, QFile &results)
         throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
     m_profiles.push_back(ErrorProfile(session));
+    m_profiles.back().version = ver;
     is >> m_profiles.back();
 }
 
