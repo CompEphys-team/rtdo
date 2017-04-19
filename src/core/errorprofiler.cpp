@@ -372,8 +372,8 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
         bool hasSrc;
         is >> hasSrc;
         if ( hasSrc ) {
-            is >> ep.m_src;
             ep.m_src.session =& ep.session;
+            is >> ep.m_src;
         }
     }
 
