@@ -50,7 +50,8 @@ SOURCES += \
     src/core/wavegenselector.cpp \
     src/core/sessionworker.cpp \
     src/gui/wavegenfitnessmapper.cpp \
-    src/gui/profileplotter.cpp
+    src/gui/profileplotter.cpp \
+    src/core/wavesource.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -83,7 +84,8 @@ HEADERS  += \
     src/include/wavegenselector.h \
     src/include/sessionworker.h \
     src/include/wavegenfitnessmapper.h \
-    src/include/profileplotter.h
+    src/include/profileplotter.h \
+    src/include/wavesource.h
 
 FORMS    += \
     src/gui/mainwindow.ui \

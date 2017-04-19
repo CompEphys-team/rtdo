@@ -3,6 +3,7 @@
 #include "session.h"
 #include <QSpinBox>
 #include <QDoubleSpinBox>
+#include "wavesource.h"
 
 ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
     QDialog(parent),
@@ -83,17 +84,21 @@ ProfileDialog::~ProfileDialog()
 void ProfileDialog::updateCombo()
 {
     int currentIdx = ui->cbSelection->currentIndex();
-    QSize currentData = ui->cbSelection->currentData().toSize();
+    WaveSource currentData = ui->cbSelection->currentData().value<WaveSource>();
     ui->cbSelection->clear();
-    for ( size_t i = 0; i < session.wavegen().archives().size(); i++ )
-        ui->cbSelection->addItem(session.wavegen().prettyName(i), QSize(0, i));
-    for ( size_t i = 0; i < session.wavegenselector().selections().size(); i++ )
-        ui->cbSelection->addItem(session.wavegenselector().prettyName(i), QSize(1, i));
+    for ( size_t i = 0; i < session.wavegen().archives().size(); i++ ) {
+        WaveSource src(session, WaveSource::Archive, i);
+        ui->cbSelection->addItem(src.prettyName(), QVariant::fromValue(src));
+    }
+    for ( size_t i = 0; i < session.wavegenselector().selections().size(); i++ ) {
+        WaveSource src(session, WaveSource::Selection, i);
+        ui->cbSelection->addItem(src.prettyName(), QVariant::fromValue(src));
+    }
 
     if ( currentIdx < 0 )
         return;
 
-    ui->cbSelection->setCurrentIndex(currentData.width() * session.wavegen().archives().size() + currentData.height());
+    ui->cbSelection->setCurrentIndex(currentData.index());
 }
 
 void ProfileDialog::on_btnStart_clicked()
@@ -101,12 +106,11 @@ void ProfileDialog::on_btnStart_clicked()
     if ( ui->cbSelection->currentIndex() < 0 )
         return;
 
-    int param;
     std::vector<Stimulation> stim;
 
-    QSize collection = ui->cbSelection->currentData().toSize();
-    if ( collection.width() ) {
-        const WavegenSelection &sel = session.wavegenselector().selections().at(collection.height());
+    WaveSource src = ui->cbSelection->currentData().value<WaveSource>();
+    if ( src.type == WaveSource::Selection ) {
+        const WavegenSelection &sel = *src.selection();
         stim.reserve(sel.size());
         std::vector<size_t> idx(sel.ranges.size());
         for ( size_t i = 0; i < sel.size(); i++ ) {
@@ -121,13 +125,10 @@ void ProfileDialog::on_btnStart_clicked()
             if ( ok )
                 stim.push_back(it->wave);
         }
-        param = sel.archive().param;
     } else {
-        const Wavegen::Archive &archive = session.wavegen().archives().at(collection.height());
-        stim.reserve(archive.elites.size());
-        for ( MAPElite const& e : archive.elites )
+        stim.reserve(src.archive().elites.size());
+        for ( MAPElite const& e : src.archive().elites )
             stim.push_back(e.wave);
-        param = archive.param;
     }
 
     ErrorProfile profile(session);

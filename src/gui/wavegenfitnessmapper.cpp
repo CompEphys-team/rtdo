@@ -2,6 +2,7 @@
 #include "ui_wavegenfitnessmapper.h"
 #include <QButtonGroup>
 #include <QDoubleSpinBox>
+#include "wavesource.h"
 
 WavegenFitnessMapper::WavegenFitnessMapper(Session &session, QWidget *parent) :
     QWidget(parent),
@@ -59,12 +60,16 @@ void WavegenFitnessMapper::initPlot()
 void WavegenFitnessMapper::updateCombo()
 {
     int currentIdx = ui->combo->currentIndex();
-    QSize currentData = ui->combo->currentData().toSize();
+    WaveSource currentData = ui->combo->currentData().value<WaveSource>();
     ui->combo->clear();
-    for ( size_t i = 0; i < session.wavegen().archives().size(); i++ )
-        ui->combo->addItem(session.wavegen().prettyName(i), QSize(0, i));
-    for ( size_t i = 0; i < session.wavegenselector().selections().size(); i++ )
-        ui->combo->addItem(session.wavegenselector().prettyName(i), QSize(1, i));
+    for ( size_t i = 0; i < session.wavegen().archives().size(); i++ ) {
+        WaveSource src(session, WaveSource::Archive, i);
+        ui->combo->addItem(src.prettyName(), QVariant::fromValue(src));
+    }
+    for ( size_t i = 0; i < session.wavegenselector().selections().size(); i++ ) {
+        WaveSource src(session, WaveSource::Selection, i);
+        ui->combo->addItem(src.prettyName(), QVariant::fromValue(src));
+    }
 
     if ( savedSelection ) {
         savedSelection = false;
@@ -75,25 +80,17 @@ void WavegenFitnessMapper::updateCombo()
     if ( currentIdx < 0 )
         return;
 
-    ui->combo->setCurrentIndex(currentData.width() * session.wavegen().archives().size() + currentData.height());
+    ui->combo->setCurrentIndex(currentData.index());
 }
 
 void WavegenFitnessMapper::updateDimensions()
 {
     if ( savedSelection || ui->combo->count() == 0 || ui->combo->currentIndex() < 0 )
         return;
-    const WavegenSelection *sel = nullptr;
-    const Wavegen::Archive *archive;
-    QSize collection = ui->combo->currentData().toSize();
-    if ( collection.width() ) {
-        sel =& session.wavegenselector().selections().at(collection.height());
-        archive =& sel->archive();
-    } else {
-        archive =& session.wavegen().archives().at(collection.height());
-    }
 
-    int i = 0, n = archive->searchd.mapeDimensions.size();
-    size_t multiplier = Wavegen::mape_multiplier(archive->precision);
+    WaveSource src = ui->combo->currentData().value<WaveSource>();
+    int i = 0, n = src.archive().searchd.mapeDimensions.size();
+    size_t multiplier = Wavegen::mape_multiplier(src.archive().precision);
     groupx = new QButtonGroup(this);
     groupy = new QButtonGroup(this);
     mins.resize(n);
@@ -101,7 +98,7 @@ void WavegenFitnessMapper::updateDimensions()
     collapse.resize(n);
     ui->dimensions->setRowCount(n);
     QStringList labels;
-    for ( MAPEDimension const& d : archive->searchd.mapeDimensions ) {
+    for ( MAPEDimension const& d : src.archive().searchd.mapeDimensions ) {
         labels << QString::fromStdString(toString(d.func));
 
         QRadioButton *x = new QRadioButton();
@@ -135,13 +132,13 @@ void WavegenFitnessMapper::updateDimensions()
         ui->dimensions->setCellWidget(i, 3, max);
         maxes[i] = max;
 
-        if ( sel ) {
+        if ( src.selection() ) {
             // Set selection parameters; ensure that min/max aren't rounded the wrong way by placing the values in the center of the bin
-            min->setValue(sel->rmin(i) + step/2);
-            max->setValue(sel->rmax(i) + step/2);
-            c->setChecked(sel->ranges.at(i).collapse);
+            min->setValue(src.selection()->rmin(i) + step/2);
+            max->setValue(src.selection()->rmax(i) + step/2);
+            c->setChecked(src.selection()->ranges.at(i).collapse);
         }
-        if ( !sel || sel->width(i) > 1 ) {
+        if ( !src.selection() || src.selection()->width(i) > 1 ) {
             if ( groupx->checkedId() < 0 )
                 x->setChecked(true);
             else if ( groupy->checkedId() < 0 )
@@ -157,11 +154,11 @@ void WavegenFitnessMapper::updateDimensions()
 
 bool WavegenFitnessMapper::select(bool flattenToPlot)
 {
-    QSize collection = ui->combo->currentData().toSize();
-    if ( collection.width() ) {
-        selection.reset(new WavegenSelection(session.wavegenselector().selections().at(collection.height())));
+    WaveSource src = ui->combo->currentData().value<WaveSource>();
+    if ( src.type == WaveSource::Selection ) {
+        selection.reset(new WavegenSelection(*src.selection()));
     } else {
-        selection.reset(new WavegenSelection(session, collection.height()));
+        selection.reset(new WavegenSelection(session, src.idx));
     }
     WavegenSelection &sel = *selection; // For autocompletion in QtCreator
 
