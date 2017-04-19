@@ -176,6 +176,29 @@ std::vector<std::vector<ErrorProfile::Profile>> ErrorProfile::profiles(size_t ta
     return ret;
 }
 
+QString ErrorProfile::prettyName() const
+{
+    QString source = (m_src.session ? QString("%2 waves from %1").arg(m_src.prettyName()) : QString("%2 unsourced waves"))
+            .arg(m_stimulations.size());
+    QStringList dims;
+    for ( size_t i = 0; i < m_permutations.size(); i++ ) {
+        QString schema;
+        if ( m_permutations[i].n == 1 ) {
+            if ( m_permutations[i].fixed )
+                schema = QString("%10=%1").arg(m_permutations[i].value);
+            else
+                continue;
+        } else {
+            schema = QString("%1 %10 ∈ [%2,%3]")
+                    .arg(m_permutations[i].n)
+                    .arg(m_permutations[i].min)
+                    .arg(m_permutations[i].max);
+        }
+        dims << schema.arg(QString::fromStdString(lib.adjustableParams[i].name));
+    }
+    return QString("%1 {%2}").arg(source).arg(dims.join("; "));
+}
+
 
 
 void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors, DAQ *daq, scalar settleDuration)

@@ -51,8 +51,8 @@ void ProfilePlotter::updateCombo()
     updatingCombo = true;
     int currentIdx = ui->profile->currentIndex();
     ui->profile->clear();
-    for ( size_t i = 0; i < session.profiler().profiles().size(); i++ )
-        ui->profile->addItem(QString("Profile %1").arg(i));
+    for ( const ErrorProfile &ep : session.profiler().profiles() )
+        ui->profile->addItem(ep.prettyName());
     if ( currentIdx >= 0 )
         ui->profile->setCurrentIndex(currentIdx);
     updatingCombo = false;

@@ -74,6 +74,8 @@ public:
      */
     std::vector<std::vector<Profile>> profiles(size_t targetParam) const;
 
+    QString prettyName() const;
+
     class Iterator
     {
     public:
