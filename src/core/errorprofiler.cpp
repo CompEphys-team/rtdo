@@ -422,6 +422,19 @@ void ErrorProfiler::abort()
     emit doAbort();
 }
 
+bool ErrorProfiler::queueProfile(ErrorProfile &&p)
+{
+    try {
+        p.errors.resize(p.stimulations().size());
+        for ( auto &err : p.errors )
+            err.resize(p.numPermutations());
+    } catch (std::bad_alloc) {
+        return false;
+    }
+    m_queue.push_back(p);
+    return true;
+}
+
 void ErrorProfiler::clearAbort()
 {
     aborted = false;

@@ -4,6 +4,7 @@
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include "wavesource.h"
+#include <QMessageBox>
 
 ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
     QDialog(parent),
@@ -233,8 +234,10 @@ void ProfileDialog::on_btnStart_clicked()
     ui->log->addItem("");
     ui->log->scrollToBottom();
 
-    session.profiler().queueProfile(std::move(profile));
-    emit generate();
+    if ( session.profiler().queueProfile(std::move(profile)) )
+        emit generate();
+    else
+        QMessageBox::warning(this, "Combinatorially exploded", "Oops, looks like you're out of memory.");
 }
 
 void ProfileDialog::on_btnAbort_clicked()

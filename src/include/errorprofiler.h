@@ -158,7 +158,7 @@ public:
      * A typical workflow will not require multiple ErrorProfiles in the queue, but passing them
      * directly to the slot is tricky. To clear the queue, call abort().
      */
-    inline void queueProfile(ErrorProfile &&p) { m_queue.push_back(p); }
+    bool queueProfile(ErrorProfile &&p);
 
     const inline std::vector<ErrorProfile> &profiles() const { return m_profiles; }
 
