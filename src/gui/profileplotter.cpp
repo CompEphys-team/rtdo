@@ -7,6 +7,7 @@ ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     session(session)
 {
     ui->setupUi(this);
+    ui->plot->setAutoAddPlottableToLegend(false);
 
     for ( AdjustableParam const& p : session.project.model().adjustableParams )
         ui->targetParam->addItem(QString::fromStdString(p.name));
@@ -15,6 +16,7 @@ ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     connect(ui->profile, SIGNAL(currentIndexChanged(int)), this, SLOT(updateTargets()));
     connect(ui->profile, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
     connect(ui->targetParam, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
+    connect(ui->draw, SIGNAL(clicked(bool)), this, SLOT(replot()));
     connect(ui->rescale, SIGNAL(clicked(bool)), this, SLOT(rescale()));
 
     auto uncheckRescale = [=](const QCPRange &) {
@@ -81,18 +83,44 @@ void ProfilePlotter::updateTargets()
 void ProfilePlotter::replot()
 {
     int profileNo = ui->profile->currentIndex();
-    if ( profileNo < 0 || updatingCombo )
+    if ( profileNo < 0 || updatingCombo || !ui->draw->isChecked() )
         return;
+    ui->draw->setText("Clearing...");
+    QApplication::processEvents();
     ui->plot->clearGraphs();
+    ui->plot->replot();
+    ui->draw->setText("Drawing...");
+    QApplication::processEvents();
     size_t targetParam = ui->targetParam->currentIndex();
     const ErrorProfile &profile = session.profiler().profiles().at(profileNo);
-    for ( std::vector<ErrorProfile::Profile> const& wavep : profile.profiles(targetParam) ) {
+    int i = 0, j, k;
+    auto allProfiles = profile.profiles(targetParam);
+    double ifac = 100.0/allProfiles.size(), jfac;
+    for ( std::vector<ErrorProfile::Profile> const& wavep : allProfiles ) {
+        j = 0;
+        jfac = ifac/wavep.size();
         for ( const ErrorProfile::Profile &singlep : wavep ) {
+            QVector<double> keys(singlep.size()), values(singlep.size());
+            k = 0;
+            for ( ErrorProfile::Iterator it = singlep.begin(); it != singlep.end(); ++it ) {
+                keys[k] = profile.parameterValue(targetParam, it.index());
+                values[k] = *it;
+                k++;
+            }
             QCPGraph *graph = ui->plot->addGraph();
-            for ( ErrorProfile::Iterator it = singlep.begin(); it != singlep.end(); ++it )
-                graph->addData(profile.parameterValue(targetParam, it.index()), *it);
+            graph->addData(keys, values, true);
+
+            ui->draw->setText(QString("Drawing... %1%").arg(int(i*ifac + ++j*jfac)));
+            QApplication::processEvents();
+            if ( !ui->draw->isChecked() ) {
+                rescale();
+                ui->draw->setText("Draw");
+                return;
+            }
         }
+        ++i;
     }
+    ui->draw->setText("Draw");
     rescale();
 }
 
