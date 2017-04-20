@@ -1,5 +1,6 @@
 #include "profileplotter.h"
 #include "ui_profileplotter.h"
+#include <QColorDialog>
 
 ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     QWidget(parent),
@@ -8,6 +9,7 @@ ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
 {
     ui->setupUi(this);
     ui->plot->setAutoAddPlottableToLegend(false);
+    ui->plot->legend->setVisible(true);
 
     for ( AdjustableParam const& p : session.project.model().adjustableParams )
         ui->targetParam->addItem(QString::fromStdString(p.name));
@@ -28,7 +30,14 @@ ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     updateCombo();
     replot();
 
-    ui->plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
+    ui->plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes | QCP::iSelectPlottables );
+
+    connect(ui->plot, &QCustomPlot::selectionChangedByUser, [=](){
+        ui->plot->legend->setSelectedParts(QCPLegend::spNone);
+        for ( QCPGraph *g : ui->plot->selectedGraphs() ) {
+            ui->plot->legend->item(g->name().toInt())->setSelected(true);
+        }
+    });
 
     connect(ui->plot, &QCustomPlot::selectionChangedByUser, [=](){
         QList<QCPAxis *> axes = ui->plot->selectedAxes();
@@ -99,6 +108,7 @@ void ProfilePlotter::replot()
     for ( std::vector<ErrorProfile::Profile> const& wavep : allProfiles ) {
         j = 0;
         jfac = ifac/wavep.size();
+        QPen pen(QColorDialog::standardColor(i));
         for ( const ErrorProfile::Profile &singlep : wavep ) {
             QVector<double> keys(singlep.size()), values(singlep.size());
             k = 0;
@@ -108,7 +118,12 @@ void ProfilePlotter::replot()
                 k++;
             }
             QCPGraph *graph = ui->plot->addGraph();
+            graph->setPen(pen);
             graph->addData(keys, values, true);
+            graph->setName(QString::number(i));
+            if ( j == 0 ) {
+                graph->addToLegend();
+            }
 
             ui->draw->setText(QString("Drawing... %1%").arg(int(i*ifac + ++j*jfac)));
             QApplication::processEvents();
@@ -119,6 +134,7 @@ void ProfilePlotter::replot()
             }
         }
         ++i;
+        ui->plot->replot();
     }
     ui->draw->setText("Draw");
     rescale();
