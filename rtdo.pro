@@ -87,7 +87,8 @@ HEADERS  += \
     src/include/wavegenfitnessmapper.h \
     src/include/profileplotter.h \
     src/include/wavesource.h \
-    src/include/profilestats.h
+    src/include/profilestats.h \
+    src/include/colorbutton.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
