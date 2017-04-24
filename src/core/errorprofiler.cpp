@@ -8,6 +8,7 @@
 ErrorProfile::ErrorProfile(Session &session) :
     lib(session.project.experiment()),
     m_permutations(lib.adjustableParams.size()),
+    m_stats(lib.adjustableParams.size(), ProfileStats(session)),
     session(session)
 {
 }
@@ -176,6 +177,17 @@ std::vector<std::vector<ErrorProfile::Profile>> ErrorProfile::profiles(size_t ta
     return ret;
 }
 
+void ErrorProfile::process_stats()
+{
+    for ( size_t i = 0; i < m_permutations.size(); i++ ) {
+        if ( m_permutations[i].n > 1 ) {
+            m_stats[i].process(this, i);
+        }
+    }
+}
+
+
+
 QString ErrorProfile::prettyName() const
 {
     QString source = (m_src.session ? QString("%2 waves from %1").arg(m_src.prettyName()) : QString("%2 unsourced waves"))
@@ -338,6 +350,12 @@ QDataStream &operator<<(QDataStream &os, const ErrorProfile &ep)
     if ( hasSrc )
         os << ep.m_src;
 
+    for ( size_t i = 0; i < ep.m_stats.size(); i++ ) {
+        if ( ep.m_permutations[i].n > 1 ) {
+            os << ep.m_stats[i];
+        }
+    }
+
     return os;
 }
 
@@ -377,6 +395,16 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
         }
     }
 
+    if ( ep.version >= 102 ) {
+        for ( size_t i = 0; i < ep.m_permutations.size(); i++ ) {
+            if ( ep.m_permutations[i].n > 1 ) {
+                is >> ep.m_stats[i];
+            }
+        }
+    } else {
+        ep.process_stats();
+    }
+
     return is;
 }
 
@@ -386,7 +414,7 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
 
 const QString ErrorProfiler::action = QString("generate");
 const quint32 ErrorProfiler::magic = 0x2be4e5cb;
-const quint32 ErrorProfiler::version = 101;
+const quint32 ErrorProfiler::version = 102;
 
 ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
     SessionWorker(session),
@@ -459,6 +487,9 @@ void ErrorProfiler::generate()
         iter++;
         emit progress(++i, ep.stimulations().size());
     }
+
+    ep.process_stats();
+
     m_profiles.push_back(std::move(ep));
     emit done();
 

@@ -51,7 +51,8 @@ SOURCES += \
     src/core/sessionworker.cpp \
     src/gui/wavegenfitnessmapper.cpp \
     src/gui/profileplotter.cpp \
-    src/core/wavesource.cpp
+    src/core/wavesource.cpp \
+    src/core/profilestats.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -85,7 +86,8 @@ HEADERS  += \
     src/include/sessionworker.h \
     src/include/wavegenfitnessmapper.h \
     src/include/profileplotter.h \
-    src/include/wavesource.h
+    src/include/wavesource.h \
+    src/include/profilestats.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -94,7 +96,7 @@ FORMS    += \
     src/gui/wavegenfitnessmapper.ui \
     src/gui/profileplotter.ui
 
-LIBS     += -rdynamic -ldl -lcomedi
+LIBS     += -rdynamic -ldl -lcomedi -lgsl
 
 DEFINES += CORE_INCLUDE_PATH='\\"$${PWD}/src/include\\"'
 

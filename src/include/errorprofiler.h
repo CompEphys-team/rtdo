@@ -4,6 +4,7 @@
 #include "sessionworker.h"
 #include "experimentlibrary.h"
 #include "wavesource.h"
+#include "profilestats.h"
 
 class ErrorProfile
 {
@@ -74,6 +75,11 @@ public:
      */
     std::vector<std::vector<Profile>> profiles(size_t targetParam) const;
 
+    /**
+     * @brief stats returns a statistics object for the given target parameter.
+     */
+    inline const ProfileStats &stats(size_t targetParam) const { return m_stats[targetParam]; }
+
     QString prettyName() const;
 
     class Iterator
@@ -114,6 +120,7 @@ private:
     std::vector<Stimulation> m_stimulations; //!< Input: The waveforms under consideration
     WaveSource m_src; //!< Optional input: waveform source
     std::list<std::vector<scalar>> errors; //!< Raw output
+    std::vector<ProfileStats> m_stats;
 
     /// Profiling workhorse, called through ErrorProfiler::generate
     void generate(const Stimulation &stim, std::vector<scalar> &errors, DAQ *daq, scalar settleDuration);
@@ -121,6 +128,9 @@ private:
     /// Profiling helpers
     void settle(scalar baseV, DAQ *daq, scalar settleDuration);
     void stimulate(const Stimulation &stim, DAQ *daq);
+
+    /// Stats processing
+    void process_stats();
 
     /// Save/load
     friend QDataStream &operator<<(QDataStream &os, const ErrorProfile &);
