@@ -3,6 +3,8 @@
 
 #include <QWidget>
 #include "session.h"
+#include "colorbutton.h"
+#include <QCheckBox>
 
 namespace Ui {
 class ProfilePlotter;
@@ -19,6 +21,7 @@ public:
 private slots:
     void updateProfiles();
     void updateTargets();
+    void updateWaves();
     void replot();
     void rescale();
 
@@ -29,6 +32,14 @@ private slots:
 private:
     Ui::ProfilePlotter *ui;
     Session &session;
+
+    std::vector<QCheckBox*> includes;
+    std::vector<ColorButton*> colors;
+
+    void includeWave(size_t waveNo, bool on);
+    void paintWave(size_t waveNo, QColor color);
+
+    static constexpr int ValueColumn = 2;
 };
 
 #endif // PROFILEPLOTTER_H

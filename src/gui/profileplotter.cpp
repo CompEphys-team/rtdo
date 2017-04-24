@@ -1,6 +1,5 @@
 #include "profileplotter.h"
 #include "ui_profileplotter.h"
-#include <QColorDialog>
 #include <QtConcurrent/QtConcurrent>
 
 ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
@@ -18,7 +17,14 @@ ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     for ( AdjustableParam const& p : session.project.model().adjustableParams )
         ui->targetParam->addItem(QString::fromStdString(p.name));
 
+    ui->waves->setColumnWidth(0, 22);
+    ui->waves->setColumnWidth(1, 25);
+
+    ui->splitter->setStretchFactor(0, 2);
+    ui->splitter->setStretchFactor(1, 1);
+
     connect(&session.profiler(), SIGNAL(done()), this, SLOT(updateProfiles()));
+    connect(ui->profile, SIGNAL(currentIndexChanged(int)), this, SLOT(updateWaves()));
     connect(ui->profile, SIGNAL(currentIndexChanged(int)), this, SLOT(updateTargets()));
     connect(ui->targetParam, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
     connect(ui->draw, SIGNAL(clicked(bool)), this, SLOT(drawProfiles()));
@@ -76,6 +82,52 @@ void ProfilePlotter::updateTargets()
         replot();
 }
 
+void ProfilePlotter::updateWaves()
+{
+    int profileNo = ui->profile->currentIndex();
+    if ( profileNo < 0 )
+        return;
+
+    const std::vector<Stimulation> &stims = session.profiler().profiles().at(profileNo).stimulations();
+    ui->waves->clearContents();
+    includes.resize(stims.size());
+    colors.resize(stims.size());
+    ui->waves->setRowCount(stims.size());
+    QStringList labels;
+    QTableWidgetItem blank;
+    for ( size_t i = 0; i < stims.size(); i++ ) {
+        labels << QString::number(i);
+
+        QCheckBox *box = new QCheckBox();
+        QWidget *widget = new QWidget();
+        QHBoxLayout *layout = new QHBoxLayout(widget);
+        layout->addWidget(box);
+        layout->setAlignment(Qt::AlignCenter);
+        layout->setMargin(0);
+        widget->setLayout(layout);
+        ui->waves->setCellWidget(i, 0, widget);
+        includes[i] = box;
+        box->setChecked(true);
+        connect(box, &QCheckBox::toggled, [=](bool on){
+            includeWave(i, on);
+        });
+
+        ColorButton *btn = new ColorButton();
+        ui->waves->setCellWidget(i, 1, btn);
+        btn->setColor(QColorDialog::standardColor(i));
+        colors[i] = btn;
+        connect(btn, &ColorButton::colorChanged, [=](QColor color){
+            paintWave(i, color);
+        });
+
+        // Stats are populated in drawStats()
+        ui->waves->setItem(i, ValueColumn, new QTableWidgetItem(blank));
+        ui->waves->setItem(i, ValueColumn+1, new QTableWidgetItem(blank));
+        ui->waves->setItem(i, ValueColumn+2, new QTableWidgetItem(blank));
+    }
+    ui->waves->setVerticalHeaderLabels(labels);
+}
+
 void ProfilePlotter::replot()
 {
     if ( ui->profile->currentIndex() < 0 || ui->targetParam->currentIndex() < 0 )
@@ -89,7 +141,6 @@ void ProfilePlotter::clearProfiles()
     QCustomPlot *newPlot = new QCustomPlot();
     newPlot->setAutoAddPlottableToLegend(false);
     newPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes | QCP::iSelectPlottables );
-    newPlot->legend->setVisible(true);
 
     auto uncheckRescale = [=](const QCPRange &) {
         ui->rescale->setChecked(false);
@@ -98,9 +149,8 @@ void ProfilePlotter::clearProfiles()
     connect(newPlot->yAxis, static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), uncheckRescale);
 
     connect(newPlot, &QCustomPlot::selectionChangedByUser, [=](){
-        newPlot->legend->setSelectedParts(QCPLegend::spNone);
         for ( QCPGraph *g : newPlot->selectedGraphs() ) {
-            newPlot->legend->item(g->name().toInt())->setSelected(true);
+            ui->waves->selectRow(g->name().toInt());
         }
     });
 
@@ -136,7 +186,8 @@ void ProfilePlotter::drawProfiles()
     for ( std::vector<ErrorProfile::Profile> const& wavep : allProfiles ) {
         j = 0;
         jfac = ifac/wavep.size();
-        QPen pen(QColorDialog::standardColor(i));
+        QPen pen(colors[i]->color);
+        bool visible = includes[i]->isChecked();
         for ( const ErrorProfile::Profile &singlep : wavep ) {
             QVector<double> keys(singlep.size()), values(singlep.size());
             k = 0;
@@ -147,11 +198,9 @@ void ProfilePlotter::drawProfiles()
             }
             QCPGraph *graph = ui->plot->addGraph();
             graph->setPen(pen);
+            graph->setVisible(visible);
             graph->setData(keys, values, true);
             graph->setName(QString::number(i));
-            if ( j == 0 ) {
-                graph->addToLegend();
-            }
 
             ui->draw->setText(QString("Drawing... %1%").arg(int(i*ifac + ++j*jfac)));
             QApplication::processEvents();
@@ -218,31 +267,42 @@ void ProfilePlotter::drawStats()
 
     ProfileStats::Statistic ProfileStats::Cluster::* stat;
     switch ( ui->statistic->currentIndex() ) {
-    case 0: stat =& ProfileStats::Cluster::minValue; break;
-    case 1: stat =& ProfileStats::Cluster::minError; break;
-    case 2: stat =& ProfileStats::Cluster::deviation; break;
-    case 3: stat =& ProfileStats::Cluster::localMinima; break;
-    case 4: stat =& ProfileStats::Cluster::slope; break;
-    case 5: stat =& ProfileStats::Cluster::slopeFit; break;
-    case 6: // Performance index - no median or sd, special treatment
+    case 1: stat =& ProfileStats::Cluster::minValue; break;
+    case 2: stat =& ProfileStats::Cluster::minError; break;
+    case 3: stat =& ProfileStats::Cluster::deviation; break;
+    case 4: stat =& ProfileStats::Cluster::localMinima; break;
+    case 5: stat =& ProfileStats::Cluster::slope; break;
+    case 6: stat =& ProfileStats::Cluster::slopeFit; break;
+    case 0: // Performance index - no median or sd, special treatment
     {
         QVector<double> indices(clusters.size());
         for ( i = 0; i < clusters.size(); i++ ) {
             indices[i] = clusters[i]->index;
+            ui->waves->item(i, ValueColumn)->setText(QString::number(indices[i]));
+            ui->waves->item(i, ValueColumn+1)->setText(QString());
+            ui->waves->item(i, ValueColumn+2)->setText(QString());
+
+            QCPBars *bar = new QCPBars(ui->stats->xAxis, ui->stats->yAxis);
+            bar->setBrush(QBrush(colors[i]->color));
+            bar->setPen(QPen(colors[i]->color.lighter()));
+            bar->addData(keys[i], clusters[i]->index);
         }
-        QCPBars *bars = new QCPBars(ui->stats->xAxis, ui->stats->yAxis);
-        bars->setData(keys, indices, true);
         ui->stats->yAxis->rescale();
         ui->stats->replot();
+        ui->waves->horizontalHeaderItem(ValueColumn)->setText("Perform.");
         return;
     }
     }
+    ui->waves->horizontalHeaderItem(ValueColumn)->setText("Mean");
 
     QVector<double> mean(clusters.size()), median(clusters.size()), sd(clusters.size());
     for ( i = 0; i < clusters.size(); i++ ) {
         mean[i] = (*clusters[i].*stat).mean;
         median[i] = (*clusters[i].*stat).median;
         sd[i] = (*clusters[i].*stat).sd;
+        ui->waves->item(i, ValueColumn)->setText(QString::number(mean[i]));
+        ui->waves->item(i, ValueColumn+1)->setText(QString::number(sd[i]));
+        ui->waves->item(i, ValueColumn+2)->setText(QString::number(median[i]));
     }
 
     QCPGraph *means = ui->stats->addGraph();
@@ -261,4 +321,31 @@ void ProfilePlotter::drawStats()
 
     ui->stats->yAxis->rescale();
     ui->stats->replot();
+}
+
+void ProfilePlotter::includeWave(size_t waveNo, bool on)
+{
+    int profileNo = ui->profile->currentIndex(), targetParam = ui->targetParam->currentIndex();
+    if ( profileNo < 0 || targetParam < 0 )
+        return;
+    const ErrorProfile &profile = session.profiler().profiles().at(profileNo);
+    int perWave = profile.numPermutations() / profile.permutations().at(targetParam).n;
+    int end = std::min(ui->plot->graphCount(), int(perWave * (waveNo+1)));
+    for ( int i = perWave * waveNo; i < end; i++ )
+        ui->plot->graph(i)->setVisible(on);
+    ui->plot->replot();
+}
+
+void ProfilePlotter::paintWave(size_t waveNo, QColor color)
+{
+    int profileNo = ui->profile->currentIndex(), targetParam = ui->targetParam->currentIndex();
+    if ( profileNo < 0 || targetParam < 0 )
+        return;
+    const ErrorProfile &profile = session.profiler().profiles().at(profileNo);
+    int perWave = profile.numPermutations() / profile.permutations().at(targetParam).n;
+    int end = std::min(ui->plot->graphCount(), int(perWave * (waveNo+1)));
+    QPen pen(color);
+    for ( int i = perWave * waveNo; i < end; i++ )
+        ui->plot->graph(i)->setPen(pen);
+    ui->plot->replot();
 }
