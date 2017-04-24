@@ -17,16 +17,18 @@ public:
     ~ProfilePlotter();
 
 private slots:
-    void updateCombo();
+    void updateProfiles();
     void updateTargets();
     void replot();
     void rescale();
 
+    void clearProfiles();
+    void drawProfiles();
+    void drawStats();
+
 private:
     Ui::ProfilePlotter *ui;
     Session &session;
-
-    bool updatingCombo;
 };
 
 #endif // PROFILEPLOTTER_H
