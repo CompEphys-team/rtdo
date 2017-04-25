@@ -45,8 +45,6 @@ public:
 
     void setSource(WaveSource src); //!< Sets the stimulations from an existing source
     const inline WaveSource &source() const { return m_src; }
-
-    void setStimulations(std::vector<Stimulation> &&stim); //!< Sets the stimulations to be considered
     const inline std::vector<Stimulation> &stimulations() const { return m_stimulations; }
 
     size_t numPermutations() const; //!< @brief numPermutations returns the total number of models run under current settings
@@ -117,8 +115,8 @@ public:
 private:
     ExperimentLibrary &lib;
     std::vector<Permutation> m_permutations; //!< Input: Describes how each parameter is perturbed
-    std::vector<Stimulation> m_stimulations; //!< Input: The waveforms under consideration
-    WaveSource m_src; //!< Optional input: waveform source
+    std::vector<Stimulation> m_stimulations; //!< Derived input: The waveforms under consideration, provided via m_src
+    WaveSource m_src; //!< Input: waveform source
     std::list<std::vector<scalar>> errors; //!< Raw output
     std::vector<ProfileStats> m_stats;
 

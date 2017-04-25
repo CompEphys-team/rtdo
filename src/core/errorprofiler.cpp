@@ -37,36 +37,8 @@ void ErrorProfile::setPermutation(size_t param, ErrorProfile::Permutation perm)
 void ErrorProfile::setSource(WaveSource src)
 {
     assert(errors.empty() /* No changes to settings during or after profiling */);
-    m_stimulations.clear();
+    m_stimulations = src.stimulations();
     m_src = src;
-    if ( src.type == WaveSource::Selection ) {
-        const WavegenSelection &sel = *src.selection();
-        m_stimulations.reserve(sel.size());
-        std::vector<size_t> idx(sel.ranges.size());
-        for ( size_t i = 0; i < sel.size(); i++ ) {
-            for ( int j = sel.ranges.size() - 1; j >= 0; j-- ) {
-                if ( ++idx[j] % sel.width(j) == 0 )
-                    idx[j] = 0;
-                else
-                    break;
-            }
-            bool ok;
-            auto it = sel.data_relative(idx, &ok);
-            if ( ok )
-                m_stimulations.push_back(it->wave);
-        }
-    } else {
-        m_stimulations.reserve(src.archive().elites.size());
-        for ( MAPElite const& e : src.archive().elites )
-            m_stimulations.push_back(e.wave);
-    }
-}
-
-void ErrorProfile::setStimulations(std::vector<Stimulation> &&stim)
-{
-    assert(errors.empty() /* No changes to settings during or after profiling */);
-    m_stimulations = std::move(stim);
-    m_src = WaveSource();
 }
 
 size_t ErrorProfile::numPermutations() const
@@ -332,11 +304,6 @@ QDataStream &operator<<(QDataStream &os, const ErrorProfile &ep)
         os << quint32(p.n) << p.min << p.max << p.fixed << p.value;
     }
 
-    os << quint32(ep.m_stimulations.size());
-    for ( const Stimulation &s : ep.m_stimulations ) {
-        os << s;
-    }
-
     os << quint32(ep.errors.size());
     for ( const std::vector<scalar> err : ep.errors ) {
         os << quint32(err.size());
@@ -370,10 +337,12 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
         p.n = n;
     }
 
-    is >> stimulations_size;
-    ep.m_stimulations.resize(stimulations_size);
-    for ( Stimulation &s : ep.m_stimulations ) {
-        is >> s;
+    if ( ep.version < 103 ) {
+        is >> stimulations_size;
+        ep.m_stimulations.resize(stimulations_size);
+        for ( Stimulation &s : ep.m_stimulations ) {
+            is >> s;
+        }
     }
 
     is >> errors_size;
@@ -405,6 +374,10 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
         ep.process_stats();
     }
 
+    if ( ep.version >= 103 ) {
+        ep.m_stimulations = ep.m_src.stimulations();
+    }
+
     return is;
 }
 
@@ -414,7 +387,7 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
 
 const QString ErrorProfiler::action = QString("generate");
 const quint32 ErrorProfiler::magic = 0x2be4e5cb;
-const quint32 ErrorProfiler::version = 102;
+const quint32 ErrorProfiler::version = 103;
 
 ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
     SessionWorker(session),
