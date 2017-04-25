@@ -13,6 +13,7 @@ ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     ui->stats->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->stats->axisRect()->setRangeZoomAxes({ui->stats->yAxis});
     ui->stats->axisRect()->setRangeDragAxes({ui->stats->yAxis});
+    ui->stats->xAxis->setLabel("Waveform number");
 
     for ( AdjustableParam const& p : session.project.model().adjustableParams )
         ui->targetParam->addItem(QString::fromStdString(p.name));
@@ -254,13 +255,14 @@ void ProfilePlotter::drawStats()
         });
     }
 
-    QVector<double> keys(clusters.size());
+    QVector<double> keys(clusters.size()), labels(clusters.size());
 
     QSharedPointer<QCPAxisTickerText> ticker(new QCPAxisTickerText);
     for ( i = 0; i < clusters.size(); i++ ) {
         int n = clusters[i] - pstat.stats.cbegin();
         ticker->addTick(i, QString::number(n));
         keys[i] = i;
+        labels[i] = n;
     }
     ui->stats->xAxis->setTicker(ticker);
     ui->stats->xAxis->setRange(-0.5, clusters.size()-0.5);
@@ -275,17 +277,15 @@ void ProfilePlotter::drawStats()
     case 6: stat =& ProfileStats::Cluster::slopeFit; break;
     case 0: // Performance index - no median or sd, special treatment
     {
-        QVector<double> indices(clusters.size());
         for ( i = 0; i < clusters.size(); i++ ) {
-            indices[i] = clusters[i]->index;
-            ui->waves->item(i, ValueColumn)->setText(QString::number(indices[i]));
-            ui->waves->item(i, ValueColumn+1)->setText(QString());
-            ui->waves->item(i, ValueColumn+2)->setText(QString());
+            ui->waves->item(labels[i], ValueColumn)->setText(QString::number(clusters[i]->index));
+            ui->waves->item(labels[i], ValueColumn+1)->setText(QString());
+            ui->waves->item(labels[i], ValueColumn+2)->setText(QString());
 
             QCPBars *bar = new QCPBars(ui->stats->xAxis, ui->stats->yAxis);
-            bar->setBrush(QBrush(colors[i]->color));
-            bar->setPen(QPen(colors[i]->color.lighter()));
-            bar->addData(keys[i], clusters[i]->index);
+            bar->setBrush(QBrush(colors[labels[i]]->color));
+            bar->setPen(QPen(colors[labels[i]]->color.lighter()));
+            bar->addData(i, clusters[i]->index);
         }
         ui->stats->yAxis->rescale();
         ui->stats->replot();
@@ -300,9 +300,9 @@ void ProfilePlotter::drawStats()
         mean[i] = (*clusters[i].*stat).mean;
         median[i] = (*clusters[i].*stat).median;
         sd[i] = (*clusters[i].*stat).sd;
-        ui->waves->item(i, ValueColumn)->setText(QString::number(mean[i]));
-        ui->waves->item(i, ValueColumn+1)->setText(QString::number(sd[i]));
-        ui->waves->item(i, ValueColumn+2)->setText(QString::number(median[i]));
+        ui->waves->item(labels[i], ValueColumn)->setText(QString::number(mean[i]));
+        ui->waves->item(labels[i], ValueColumn+1)->setText(QString::number(sd[i]));
+        ui->waves->item(labels[i], ValueColumn+2)->setText(QString::number(median[i]));
     }
 
     QCPGraph *means = ui->stats->addGraph();
@@ -348,4 +348,5 @@ void ProfilePlotter::paintWave(size_t waveNo, QColor color)
     for ( int i = perWave * waveNo; i < end; i++ )
         ui->plot->graph(i)->setPen(pen);
     ui->plot->replot();
+    drawStats();
 }
