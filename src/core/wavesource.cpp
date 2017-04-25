@@ -19,6 +19,40 @@ const WavegenSelection *WaveSource::selection() const
     }
 }
 
+std::vector<Stimulation> WaveSource::stimulations() const
+{
+    std::vector<Stimulation> ret;
+    switch ( type ) {
+    case Archive :
+    {
+        ret.reserve(archive().elites.size());
+        for ( MAPElite const& e : archive().elites )
+            ret.push_back(e.wave);
+        break;
+    }
+    case Selection :
+    {
+        const WavegenSelection &sel = *selection();
+        ret.reserve(sel.size());
+        std::vector<size_t> idx(sel.ranges.size());
+        for ( size_t i = 0; i < sel.size(); i++ ) {
+            for ( int j = sel.ranges.size() - 1; j >= 0; j-- ) {
+                if ( ++idx[j] % sel.width(j) == 0 )
+                    idx[j] = 0;
+                else
+                    break;
+            }
+            bool ok;
+            auto it = sel.data_relative(idx, &ok);
+            if ( ok )
+                ret.push_back(it->wave);
+        }
+        break;
+    }
+    }
+    return ret;
+}
+
 QString WaveSource::prettyName() const
 {
     switch ( type ) {

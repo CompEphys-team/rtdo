@@ -20,6 +20,9 @@ public:
 
     const Wavegen::Archive &archive() const;
     const WavegenSelection *selection() const; //!< returns null if the type doesn't have a Selection
+
+    std::vector<Stimulation> stimulations() const;
+
     QString prettyName() const;
     int index() const; //!< Returns the overall index (eg. for comboboxes)
 
