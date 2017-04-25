@@ -168,6 +168,8 @@ void ProfilePlotter::clearProfiles()
     newPlot->yAxis->setLabel("Error");
 
     delete ui->tab_profile->layout()->replaceWidget(ui->plot, newPlot);
+    newPlot->xAxis->setRange(ui->plot->xAxis->range());
+    newPlot->yAxis->setRange(ui->plot->yAxis->range());
     std::swap(ui->plot, newPlot);
     QtConcurrent::run([=](){ delete newPlot; }); // Delete asynchronously - many-graph deletion is stupendously slow!
 }
