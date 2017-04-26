@@ -52,7 +52,8 @@ SOURCES += \
     src/gui/wavegenfitnessmapper.cpp \
     src/gui/profileplotter.cpp \
     src/core/wavesource.cpp \
-    src/core/profilestats.cpp
+    src/core/profilestats.cpp \
+    src/core/wavesubsets.cpp \
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -88,7 +89,8 @@ HEADERS  += \
     src/include/profileplotter.h \
     src/include/wavesource.h \
     src/include/profilestats.h \
-    src/include/colorbutton.h
+    src/include/colorbutton.h \
+    src/include/wavesubsets.h \
 
 FORMS    += \
     src/gui/mainwindow.ui \
