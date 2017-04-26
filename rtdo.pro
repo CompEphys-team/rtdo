@@ -54,7 +54,8 @@ SOURCES += \
     src/core/wavesource.cpp \
     src/core/profilestats.cpp \
     src/core/wavesubsets.cpp \
-    src/core/wavesetcreator.cpp
+    src/core/wavesetcreator.cpp \
+    src/gui/deckwidget.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -92,14 +93,16 @@ HEADERS  += \
     src/include/profilestats.h \
     src/include/colorbutton.h \
     src/include/wavesubsets.h \
-    src/include/wavesetcreator.h
+    src/include/wavesetcreator.h \
+    src/include/deckwidget.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
     src/gui/wavegendialog.ui \
     src/gui/profiledialog.ui \
     src/gui/wavegenfitnessmapper.ui \
-    src/gui/profileplotter.ui
+    src/gui/profileplotter.ui \
+    src/gui/deckwidget.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 

@@ -35,6 +35,7 @@ public:
 
     friend QDataStream &operator<<(QDataStream &os, const WaveSource &);
     friend QDataStream &operator>>(QDataStream &is, WaveSource &);
+    friend bool operator==(const WaveSource &lhs, const WaveSource &rhs);
 };
 
 Q_DECLARE_METATYPE(WaveSource)

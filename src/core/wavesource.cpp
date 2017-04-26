@@ -146,3 +146,8 @@ QDataStream &operator>>(QDataStream &is, WaveSource &src)
     }
     return is;
 }
+
+bool operator==(const WaveSource &lhs, const WaveSource &rhs)
+{
+    return lhs.type == rhs.type && lhs.idx == rhs.idx;
+}

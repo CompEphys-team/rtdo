@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include "wavegendialog.h"
 #include "profiledialog.h"
+#include "deckwidget.h"
 #include "project.h"
 #include "session.h"
 
@@ -22,6 +23,7 @@ public:
 private slots:
     void on_actionWavegen_triggered();
     void on_actionProfiler_triggered();
+    void on_actionDecks_triggered();
 
     void on_actionNew_project_triggered();
 
@@ -39,6 +41,7 @@ private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;
     ProfileDialog *profileDlg;
+    std::unique_ptr<DeckWidget> deckWidget;
 
     Project *project;
     Session *session;

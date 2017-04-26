@@ -41,6 +41,15 @@ void MainWindow::on_actionWavegen_triggered()
     wavegenDlg->activateWindow();
 }
 
+void MainWindow::on_actionDecks_triggered()
+{
+    if ( !deckWidget )
+        deckWidget.reset(new DeckWidget(*session));
+    deckWidget->show();
+    deckWidget->raise();
+    deckWidget->activateWindow();
+}
+
 void MainWindow::on_actionProfiler_triggered()
 {
     if ( !profileDlg ) {
@@ -59,6 +68,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
         wavegenDlg->close();
     if ( profileDlg )
         profileDlg->close();
+    if ( deckWidget )
+        deckWidget->close();
     event->accept();
 }
 
