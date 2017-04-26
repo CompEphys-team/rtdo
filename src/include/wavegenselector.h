@@ -56,29 +56,8 @@ public:
      * @brief finalise readies a selection for data queries (@see data_relative(), data_absolute()).
      */
     void finalise();
-};
 
-class WavegenSelector : public SessionWorker
-{
-    Q_OBJECT
-public:
-    WavegenSelector(Session &session) : SessionWorker(session) {}
-
-    void save(const WavegenSelection &selection); //!< Finalises selection and adds it to the database.
-
-    inline const std::vector<WavegenSelection> &selections() const { return m_selections; }
-
-    QString prettyName(int n) const; //!< Returns a string describing the nth WavegenSelection
-
-protected:
-    friend class Session;
-    void load(const QString &action, const QString &args, QFile &results);
-    inline QString actorName() const { return "WavegenSelector"; }
-
-    std::vector<WavegenSelection> m_selections;
-
-    const static QString action;
-    const static quint32 magic, version;
+    QString prettyName() const;
 };
 
 #endif // WAVEGENSELECTOR_H

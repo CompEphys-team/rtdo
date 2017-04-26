@@ -27,9 +27,8 @@ public:
         size_t iterations;
         int param;
         WavegenData searchd;
+        inline QString prettyName() const { return QString("%1 iterations").arg(iterations); }
     };
-
-    QString prettyName(int n) const; //!< Returns a string describing the nth archive
 
     inline const std::vector<Archive> &archives() const { return m_archives; }
 

@@ -6,7 +6,9 @@ const Wavegen::Archive &WaveSource::archive() const
     switch ( type ) {
     default:
     case Archive:   return session->wavegen().archives().at(idx);
-    case Selection: return session->wavegenselector().selections().at(idx).archive();
+    case Selection: return selection()->archive();
+    case Subset:    return subset()->src.archive();
+    case Deck:      return deck()->sources()[0].archive(); // Return first of multiple archives for lack of a better alternative
     }
 }
 
@@ -15,7 +17,33 @@ const WavegenSelection *WaveSource::selection() const
     switch ( type ) {
     default:
     case Archive:   return nullptr;
-    case Selection: return &session->wavegenselector().selections().at(idx);
+    case Selection: return &session->wavesets().selections().at(idx);
+    case Subset:    return subset()->src.selection();
+    case Deck:      return nullptr;
+    }
+}
+
+const WaveSubset *WaveSource::subset() const
+{
+    switch ( type ) {
+    default:
+    case Archive:
+    case Selection: return nullptr;
+    case Subset:    return &session->wavesets().subsets().at(idx);
+    case Deck:      return nullptr;
+    }
+}
+
+const WaveDeck *WaveSource::deck() const
+{
+    switch ( type ) {
+    default:
+    case Archive:
+    case Selection:
+    case Subset:
+        return nullptr;
+    case Deck:
+        return &session->wavesets().decks().at(idx);
     }
 }
 
@@ -49,17 +77,27 @@ std::vector<Stimulation> WaveSource::stimulations() const
         }
         break;
     }
+    case Subset :
+        ret = subset()->stimulations();
+        break;
+    case Deck:
+        ret = deck()->stimulations();
+        break;
     }
     return ret;
 }
 
 QString WaveSource::prettyName() const
 {
+    QString ret;
     switch ( type ) {
-    default:
-    case Archive:   return session->wavegen().prettyName(idx);
-    case Selection: return session->wavegenselector().prettyName(idx);
+    default:        ret = QString("Unknown source type"); break;
+    case Archive:   ret = QString("Archive %2 [%3]: %1").arg(archive().prettyName()); break;
+    case Selection: ret = QString("Selection %2 [%3]: %1").arg(selection()->prettyName()); break;
+    case Subset:    ret = QString("Subset %2 [%3]: %1").arg(subset()->prettyName()); break;
+    case Deck:      ret = QString("Deck %1"); break;
     }
+    return ret.arg(idx).arg(QString::fromStdString(session->project.model().adjustableParams[archive().param].name));
 }
 
 int WaveSource::index() const
@@ -68,7 +106,11 @@ int WaveSource::index() const
     switch ( type ) {
 //    If more source types are added: Iterate up the list, adding the total above at each step like so - don't break:
 //    case NewType:
-//        i += session->wavegenselector().selections.size();
+//        i += session->wavesetcreator().decks().size();
+    case Deck:
+        i += session->wavesets().subsets().size();
+    case Subset:
+        i += session->wavesets().selections().size();
     case Selection:
         i += session->wavegen().archives().size();
     case Archive:
@@ -83,7 +125,9 @@ QDataStream &operator<<(QDataStream &os, const WaveSource &src)
     switch ( src.type ) {
     default:
     case WaveSource::Archive:   os << quint32(src.session->wavegen().archives().size() - src.idx); break;
-    case WaveSource::Selection: os << quint32(src.session->wavegenselector().selections().size() - src.idx); break;
+    case WaveSource::Selection: os << quint32(src.session->wavesets().selections().size() - src.idx); break;
+    case WaveSource::Subset:    os << quint32(src.session->wavesets().subsets().size() - src.idx); break;
+    case WaveSource::Deck:      os << quint32(src.session->wavesets().decks().size() - src.idx); break;
     }
     return os;
 }
@@ -96,7 +140,9 @@ QDataStream &operator>>(QDataStream &is, WaveSource &src)
     switch ( src.type ) {
     default:
     case WaveSource::Archive:   src.idx = src.session->wavegen().archives().size() - idx; break;
-    case WaveSource::Selection: src.idx = src.session->wavegenselector().selections().size() - idx; break;
+    case WaveSource::Selection: src.idx = src.session->wavesets().selections().size() - idx; break;
+    case WaveSource::Subset:    src.idx = src.session->wavesets().subsets().size() - idx; break;
+    case WaveSource::Deck:      src.idx = src.session->wavesets().decks().size() - idx; break;
     }
     return is;
 }

@@ -14,7 +14,8 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
     ui->setupUi(this);
     setWindowFlags(Qt::Window);
 
-    connect(&session, SIGNAL(actionLogged(QString,QString,QString,int)), this, SLOT(updateCombo()));
+    connect(&session.wavesets(), SIGNAL(addedSet()), this, SLOT(updateCombo()));
+    connect(&session.profiler(), SIGNAL(done()), this, SLOT(updatePresets()));
 
     connect(this, SIGNAL(generate()), &session.profiler(), SLOT(generate()));
     connect(&session.profiler(), SIGNAL(progress(int,int)), this, SLOT(profileProgress(int,int)));
@@ -97,12 +98,8 @@ void ProfileDialog::updateCombo()
     int currentIdx = ui->cbSelection->currentIndex();
     WaveSource currentData = ui->cbSelection->currentData().value<WaveSource>();
     ui->cbSelection->clear();
-    for ( size_t i = 0; i < session.wavegen().archives().size(); i++ ) {
-        WaveSource src(session, WaveSource::Archive, i);
-        ui->cbSelection->addItem(src.prettyName(), QVariant::fromValue(src));
-    }
-    for ( size_t i = 0; i < session.wavegenselector().selections().size(); i++ ) {
-        WaveSource src(session, WaveSource::Selection, i);
+    std::vector<WaveSource> sources = session.wavesets().sources();
+    for ( const WaveSource &src : sources ) {
         ui->cbSelection->addItem(src.prettyName(), QVariant::fromValue(src));
     }
 

@@ -217,58 +217,9 @@ void WavegenSelection::finalise()
     }
 }
 
-
-
-
-
-const QString WavegenSelector::action = QString("select");
-const quint32 WavegenSelector::magic = 0xa54f3955;
-const quint32 WavegenSelector::version = 100;
-
-void WavegenSelector::save(const WavegenSelection &selection)
+QString WavegenSelection::prettyName() const
 {
-    m_selections.push_back(selection);
-    WavegenSelection &sel = m_selections.back();
-    sel.finalise();
-
-    QFile file(session.log(this, action));
-    QDataStream os;
-    if ( !openSaveStream(file, os, magic, version) )
-        return;
-
-    // Save archive index in reverse to prevent conflicts during session merge
-    os << quint32(session.wavegen().archives().size() - sel.archive_idx);
-    os << quint32(sel.ranges.size());
-    for ( WavegenSelection::Range const& r : sel.ranges )
-        os << quint32(r.min) << quint32(r.max) << r.collapse;
-}
-
-void WavegenSelector::load(const QString &action, const QString &, QFile &results)
-{
-    if ( action != this->action )
-        throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
-    QDataStream is;
-    quint32 ver = openLoadStream(results, is, magic);
-    if ( ver < 100 || ver > version )
-        throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
-
-    quint32 idx, nranges, min, max;
-    is >> idx >> nranges;
-    m_selections.push_back(WavegenSelection(session, session.wavegen().archives().size() - idx));
-    m_selections.back().ranges.resize(nranges);
-    for ( WavegenSelection::Range &r : m_selections.back().ranges ) {
-        is >> min >> max >> r.collapse;
-        r.min = min;
-        r.max = max;
-    }
-    m_selections.back().finalise();
-}
-
-QString WavegenSelector::prettyName(int n) const
-{
-    return QString("Subset %1 (%2 %3, %4 bins)")
-           .arg(n)
-           .arg(QString::fromStdString(session.project.model().adjustableParams[m_selections[n].archive().param].name))
-           .arg(m_selections[n].archive_idx)
-           .arg(m_selections[n].size());
+    return QString("%1 bins from archive %2")
+            .arg(size())
+            .arg(archive_idx);
 }

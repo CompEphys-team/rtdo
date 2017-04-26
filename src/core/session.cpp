@@ -116,14 +116,14 @@ ErrorProfiler &Session::profiler()
     return *m_profiler;
 }
 
-WavegenSelector &Session::wavegenselector()
+WavesetCreator &Session::wavesets()
 {
-    if ( !m_wavegenselector ) {
-        WavegenSelector *s = new WavegenSelector(*this);
+    if ( !m_wavesets ) {
+        WavesetCreator *s = new WavesetCreator(*this);
         s->moveToThread(&thread);
-        m_wavegenselector.reset(s);
+        m_wavesets.reset(s);
     }
-    return *m_wavegenselector;
+    return *m_wavesets;
 }
 
 void Session::quit()
@@ -132,8 +132,8 @@ void Session::quit()
         m_wavegen->abort();
     if ( m_profiler )
         m_profiler->abort();
-    if ( m_wavegenselector )
-        m_wavegenselector->abort();
+    if ( m_wavesets)
+        m_wavesets->abort();
     thread.quit();
     thread.wait();
 }
@@ -181,8 +181,8 @@ void Session::load()
                 profiler().load(entry.action, entry.args, file);
             else if ( entry.actor == "Config" ) {
                 readConfig(file.fileName());
-            } else if ( entry.actor == wavegenselector().actorName() ) {
-                wavegenselector().load(entry.action, entry.args, file);
+            } else if ( entry.actor == wavesets().actorName() ) {
+                wavesets().load(entry.action, entry.args, file);
             } else {
                 throw std::runtime_error(std::string("Unknown actor: ") + entry.actor.toStdString());
             }

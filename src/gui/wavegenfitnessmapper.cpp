@@ -19,7 +19,7 @@ WavegenFitnessMapper::WavegenFitnessMapper(Session &session, QWidget *parent) :
     updateCombo();
     updateDimensions();
 
-    connect(&session, SIGNAL(actionLogged(QString,QString,QString,int)), this, SLOT(updateCombo()));
+    connect(&session.wavesets(), SIGNAL(addedSet()), this, SLOT(updateCombo()));
     connect(ui->combo, SIGNAL(currentIndexChanged(int)), this, SLOT(updateDimensions()));
     connect(ui->btnDraw, SIGNAL(clicked(bool)), this, SLOT(replot()));
 }
@@ -66,7 +66,7 @@ void WavegenFitnessMapper::updateCombo()
         WaveSource src(session, WaveSource::Archive, i);
         ui->combo->addItem(src.prettyName(), QVariant::fromValue(src));
     }
-    for ( size_t i = 0; i < session.wavegenselector().selections().size(); i++ ) {
+    for ( size_t i = 0; i < session.wavesets().selections().size(); i++ ) {
         WaveSource src(session, WaveSource::Selection, i);
         ui->combo->addItem(src.prettyName(), QVariant::fromValue(src));
     }
@@ -160,15 +160,14 @@ bool WavegenFitnessMapper::select(bool flattenToPlot)
     } else {
         selection.reset(new WavegenSelection(session, src.idx));
     }
-    WavegenSelection &sel = *selection; // For autocompletion in QtCreator
 
     for ( int i = 0; i < ui->dimensions->rowCount(); i++ ) {
         bool flatten = collapse[i]->isChecked();
         if ( flattenToPlot )
             flatten |= !(groupx->checkedId() == i || groupy->checkedId() == i);
-        sel.limit(i, mins[i]->value(), maxes[i]->value(), flatten);
+        selection->limit(i, mins[i]->value(), maxes[i]->value(), flatten);
     }
-    sel.finalise();
+    selection->finalise();
     return true;
 }
 
@@ -223,5 +222,5 @@ void WavegenFitnessMapper::on_btnAdd_clicked()
     if ( !select(false) )
         return;
     savedSelection = true;
-    session.wavegenselector().save(*selection);
+    session.wavesets().select(*selection);
 }
