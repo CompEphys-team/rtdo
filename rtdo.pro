@@ -54,6 +54,7 @@ SOURCES += \
     src/core/wavesource.cpp \
     src/core/profilestats.cpp \
     src/core/wavesubsets.cpp \
+    src/core/wavesetcreator.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -91,6 +92,7 @@ HEADERS  += \
     src/include/profilestats.h \
     src/include/colorbutton.h \
     src/include/wavesubsets.h \
+    src/include/wavesetcreator.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
