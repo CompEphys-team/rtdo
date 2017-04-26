@@ -33,6 +33,16 @@ ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     connect(ui->statistic, SIGNAL(currentIndexChanged(int)), this, SLOT(drawStats()));
     connect(ui->sort, SIGNAL(toggled(bool)), this, SLOT(drawStats()));
 
+    connect(ui->selectAll, &QPushButton::clicked, [=](bool){
+        for ( QCheckBox *inc : includes )
+            inc->setChecked(true);
+    });
+    connect(ui->selectNone, &QPushButton::clicked, [=](bool){
+        for ( QCheckBox *inc : includes )
+            inc->setChecked(false);
+    });
+    connect(ui->selectSubset, SIGNAL(clicked(bool)), this, SLOT(selectSubset()));
+
     updateProfiles();
 }
 
@@ -351,4 +361,24 @@ void ProfilePlotter::paintWave(size_t waveNo, QColor color)
         ui->plot->graph(i)->setPen(pen);
     ui->plot->replot();
     drawStats();
+}
+
+void ProfilePlotter::selectSubset()
+{
+    int profileNo = ui->profile->currentIndex(), targetParam = ui->targetParam->currentIndex();
+    if ( profileNo < 0 || targetParam < 0 )
+        return;
+    WaveSource src = session.profiler().profiles().at(profileNo).source();
+    if ( !src.session )
+        return; // Ignore legacy unsourced profiles
+    size_t size = includes.size();
+    std::vector<size_t> indices;
+    for ( size_t i = 0; i < size; i++ ) {
+        if ( includes[i]->isChecked() ) {
+            indices.push_back(i);
+        }
+    }
+    if ( indices.empty() || indices.size() == size ) // Ignore empty and complete selections
+        return;
+    session.wavesets().subset(src, std::move(indices));
 }

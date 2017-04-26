@@ -144,7 +144,28 @@
      </widget>
      <widget class="QWidget" name="widget_2" native="true">
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="0" column="0">
+       <item row="1" column="1">
+        <widget class="QPushButton" name="selectNone">
+         <property name="text">
+          <string>Select none</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QPushButton" name="selectAll">
+         <property name="text">
+          <string>Select all</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QPushButton" name="selectSubset">
+         <property name="text">
+          <string>Create subset</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="3">
         <widget class="QTableWidget" name="waves">
          <property name="editTriggers">
           <set>QAbstractItemView::NoEditTriggers</set>

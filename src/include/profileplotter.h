@@ -29,6 +29,8 @@ private slots:
     void drawProfiles();
     void drawStats();
 
+    void selectSubset();
+
 private:
     Ui::ProfilePlotter *ui;
     Session &session;
