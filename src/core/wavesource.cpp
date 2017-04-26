@@ -95,7 +95,7 @@ QString WaveSource::prettyName() const
     case Archive:   ret = QString("Archive %2 [%3]: %1").arg(archive().prettyName()); break;
     case Selection: ret = QString("Selection %2 [%3]: %1").arg(selection()->prettyName()); break;
     case Subset:    ret = QString("Subset %2 [%3]: %1").arg(subset()->prettyName()); break;
-    case Deck:      ret = QString("Deck %1"); break;
+    case Deck:      return QString("Deck %1").arg(idx);
     }
     return ret.arg(idx).arg(QString::fromStdString(session->project.model().adjustableParams[archive().param].name));
 }
