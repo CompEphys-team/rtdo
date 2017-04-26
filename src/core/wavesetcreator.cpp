@@ -130,16 +130,15 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
             throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
         quint32 size, idx;
-        WaveSource src;
-        std::vector<size_t> indices;
-        src.session =& session;
-        is >> src >> size;
-        indices.resize(size);
-        for ( size_t &i : indices ) {
+        m_subsets.push_back(WaveSubset(WaveSource(), {}));
+        WaveSubset &subset = m_subsets.back();
+        subset.src.session =& session;
+        is >> subset.src >> size;
+        subset.indices.resize(size);
+        for ( size_t &i : subset.indices ) {
             is >> idx;
             i = idx;
         }
-        m_subsets.push_back(WaveSubset(std::move(src), std::move(indices)));
     } else if ( action == actionDeck ) {
         version = openLoadStream(results, is, magicDeck);
         if ( version < 100 || version > versionDeck )
