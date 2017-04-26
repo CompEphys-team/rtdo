@@ -11,9 +11,9 @@ class WavesetCreator : public SessionWorker
 public:
     WavesetCreator(Session &session);
 
-    void select(const WavegenSelection &selection); //!< Finalises selection and adds it to the selection database
-    void subset(WaveSource src, std::vector<size_t> indices); //!< Creates a subset and adds it to the subset database
-    bool deck(const std::vector<WaveSource> &src); //!< Creates a deck from parameter-ordered single-wave sources (@see WaveDeck::setSource) and adds it to the decks database
+    void makeSelection(const WavegenSelection &selection); //!< Finalises selection and adds it to the selection database
+    void makeSubset(WaveSource src, std::vector<size_t> indices); //!< Creates a subset and adds it to the subset database
+    bool makeDeck(const std::vector<WaveSource> &src); //!< Creates a deck from parameter-ordered single-wave sources (@see WaveDeck::setSource) and adds it to the decks database
 
     inline const std::vector<WavegenSelection> &selections() const { return m_selections; }
     inline const std::vector<WaveSubset> &subsets() const { return m_subsets; }

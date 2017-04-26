@@ -22,7 +22,7 @@ WavesetCreator::WavesetCreator(Session &session) :
     connect(this, SIGNAL(addedDeck()), this, SIGNAL(addedSet()));
 }
 
-void WavesetCreator::select(const WavegenSelection &selection)
+void WavesetCreator::makeSelection(const WavegenSelection &selection)
 {
     m_selections.push_back(selection);
     WavegenSelection &sel = m_selections.back();
@@ -42,7 +42,7 @@ void WavesetCreator::select(const WavegenSelection &selection)
         os << quint32(r.min) << quint32(r.max) << r.collapse;
 }
 
-void WavesetCreator::subset(WaveSource src, std::vector<size_t> indices)
+void WavesetCreator::makeSubset(WaveSource src, std::vector<size_t> indices)
 {
     m_subsets.push_back(WaveSubset(std::move(src), std::move(indices)));
     WaveSubset &set = m_subsets.back();
@@ -59,7 +59,7 @@ void WavesetCreator::subset(WaveSource src, std::vector<size_t> indices)
         os << i;
 }
 
-bool WavesetCreator::deck(const std::vector<WaveSource> &src)
+bool WavesetCreator::makeDeck(const std::vector<WaveSource> &src)
 {
     if ( src.size() != session.project.model().adjustableParams.size() )
         return false;

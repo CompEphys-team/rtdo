@@ -380,5 +380,5 @@ void ProfilePlotter::selectSubset()
     }
     if ( indices.empty() || indices.size() == size ) // Ignore empty and complete selections
         return;
-    session.wavesets().subset(src, std::move(indices));
+    session.wavesets().makeSubset(src, std::move(indices));
 }

@@ -222,5 +222,5 @@ void WavegenFitnessMapper::on_btnAdd_clicked()
     if ( !select(false) )
         return;
     savedSelection = true;
-    session.wavesets().select(*selection);
+    session.wavesets().makeSelection(*selection);
 }
