@@ -175,11 +175,6 @@ protected:
     static QString permute_action, sigmaAdjust_action, search_action;
     static quint32 permute_magic, sigmaAdjust_magic, search_magic;
     static quint32 permute_version, sigmaAdjust_version, search_version;
-
-public:
-
-    std::vector<std::list<MAPElite>> completedArchives;
-    std::vector<size_t> archivePrecision;
 };
 
 #endif // WAVEGEN_H
