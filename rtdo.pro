@@ -54,6 +54,7 @@ SOURCES += \
     src/core/wavesource.cpp \
     src/core/profilestats.cpp \
     src/core/wavesubsets.cpp \
+    src/core/gafitter.cpp \
     src/core/wavesetcreator.cpp \
     src/gui/deckwidget.cpp
 
@@ -93,6 +94,7 @@ HEADERS  += \
     src/include/profilestats.h \
     src/include/colorbutton.h \
     src/include/wavesubsets.h \
+    src/include/gafitter.h \
     src/include/wavesetcreator.h \
     src/include/deckwidget.h
 
