@@ -191,6 +191,7 @@ struct RunData
     int simCycles = 20;
     double clampGain = 1000;
     double accessResistance = 15; // MOhm
+    double settleDuration = 100; // msec
 };
 
 struct WaveStats
@@ -318,7 +319,6 @@ struct WavegenData
 struct ExperimentData
 {
     size_t numCandidates = 10000;
-    double settleDuration = 100;
 };
 
 #endif // TYPES_H

@@ -455,7 +455,7 @@ void ErrorProfiler::generate()
         if ( aborted )
             return;
         if ( stim.duration > 0 ) {
-            ep.generate(stim, *iter, daq, session.experimentData().settleDuration);
+            ep.generate(stim, *iter, daq, session.runData().settleDuration);
         } // else, *iter is an empty vector, as befits an empty stimulation
         iter++;
         emit progress(++i, ep.stimulations().size());

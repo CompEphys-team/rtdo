@@ -52,6 +52,7 @@ void Session::addAPs()
     addAP(runAP, "S.Run.accessResistance", this, &Session::rund, &RunData::accessResistance);
     addAP(runAP, "S.Run.clampGain", this, &Session::rund, &RunData::clampGain);
     addAP(runAP, "S.Run.simCycles", this, &Session::rund, &RunData::simCycles);
+    addAP(runAP, "S.Run.settleDuration", this, &Session::rund, &RunData::settleDuration);
 
     addAP(searchAP, "S.Wavegen.settleTime", this, &Session::searchd, &WavegenData::settleTime);
     addAP(searchAP, "S.Wavegen.numSigmaAdjustWaveforms", this, &Session::searchd, &WavegenData::numSigmaAdjustWaveforms);
@@ -80,8 +81,6 @@ void Session::addAPs()
     addAP(stimAP, "S.Stimulation.muta.sdLevel", this, &Session::stimd, &StimulationData::muta, &MutationData::sdLevel);
     addAP(stimAP, "S.Stimulation.muta.sdTime", this, &Session::stimd, &StimulationData::muta, &MutationData::sdTime);
     addAP(stimAP, "S.Stimulation.muta.std", this, &Session::stimd, &StimulationData::muta, &MutationData::std);
-
-    addAP(expAP, "S.Experiment.settleDuration", this, &Session::expd, &ExperimentData::settleDuration);
 
     // Defaults
     scalar maxCycles = 100.0 / project.dt() * rund.simCycles;

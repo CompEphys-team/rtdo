@@ -64,7 +64,7 @@ void GAFitter::run()
     stimIdx = 0;
 
     Stimulation hold;
-    hold.duration = settings.settleTime;
+    hold.duration = session.runData().settleDuration;
     hold.clear();
 
     // Fit

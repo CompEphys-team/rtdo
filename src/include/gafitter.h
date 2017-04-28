@@ -14,8 +14,6 @@ struct GAFitterSettings {
     bool decaySigma;
     double sigmaInitial;
     double sigmaHalflife;
-
-    double settleTime;
 };
 
 class GAFitter : public SessionWorker
