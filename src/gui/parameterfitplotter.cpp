@@ -113,6 +113,7 @@ void ParameterFitPlotter::replot()
         QCPGraph *graph = plots[i]->addGraph();
         graph->setData(keys, values, true);
         plots[i]->rescaleAxes();
+        plots[i]->replot();
     }
 }
 
