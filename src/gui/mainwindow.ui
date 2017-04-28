@@ -58,6 +58,7 @@
     </property>
     <addaction name="actionWavegen_fitness_map"/>
     <addaction name="actionError_profiles"/>
+    <addaction name="actionFitting_Parameters"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuFigures"/>
@@ -155,6 +156,11 @@
    </property>
    <property name="shortcut">
     <string>G</string>
+   </property>
+  </action>
+  <action name="actionFitting_Parameters">
+   <property name="text">
+    <string>Fitting: Parameters</string>
    </property>
   </action>
  </widget>

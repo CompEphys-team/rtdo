@@ -57,6 +57,7 @@ SOURCES += \
     src/core/wavesetcreator.cpp \
     src/gui/deckwidget.cpp \
     src/gui/gafitterwidget.cpp \
+    src/gui/parameterfitplotter.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -97,6 +98,7 @@ HEADERS  += \
     src/include/wavesetcreator.h \
     src/include/deckwidget.h \
     src/include/gafitterwidget.h \
+    src/include/parameterfitplotter.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -106,6 +108,7 @@ FORMS    += \
     src/gui/profileplotter.ui \
     src/gui/deckwidget.ui \
     src/gui/gafitterwidget.ui \
+    src/gui/parameterfitplotter.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 

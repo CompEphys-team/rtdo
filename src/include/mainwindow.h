@@ -39,6 +39,8 @@ private slots:
 
     void on_actionError_profiles_triggered();
 
+    void on_actionFitting_Parameters_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;
