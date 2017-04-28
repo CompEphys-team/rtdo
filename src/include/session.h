@@ -10,6 +10,7 @@
 #include "wavegen.h"
 #include "errorprofiler.h"
 #include "wavesetcreator.h"
+#include "gafitter.h"
 
 Q_DECLARE_METATYPE(RunData)
 Q_DECLARE_METATYPE(WavegenData)
@@ -33,6 +34,7 @@ public:
     Wavegen &wavegen();
     ErrorProfiler &profiler();
     WavesetCreator &wavesets();
+    GAFitter &gaFitter();
 
     void quit();
 
@@ -79,6 +81,7 @@ protected:
     std::unique_ptr<Wavegen> m_wavegen;
     std::unique_ptr<ErrorProfiler> m_profiler;
     std::unique_ptr<WavesetCreator> m_wavesets;
+    std::unique_ptr<GAFitter> m_gafitter;
 
     QDir dir;
 

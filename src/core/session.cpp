@@ -132,6 +132,16 @@ WavesetCreator &Session::wavesets()
     return *m_wavesets;
 }
 
+GAFitter &Session::gaFitter()
+{
+    if ( !m_gafitter ) {
+        GAFitter *f = new GAFitter(*this);
+        f->moveToThread(&thread);
+        m_gafitter.reset(f);
+    }
+    return *m_gafitter;
+}
+
 void Session::quit()
 {
     if ( m_wavegen )
@@ -189,6 +199,8 @@ void Session::load()
                 readConfig(file.fileName());
             } else if ( entry.actor == wavesets().actorName() ) {
                 wavesets().load(entry.action, entry.args, file);
+            } else if ( entry.actor == gaFitter().actorName() ) {
+                gaFitter().load(entry.action, entry.args, file);
             } else {
                 throw std::runtime_error(std::string("Unknown actor: ") + entry.actor.toStdString());
             }
