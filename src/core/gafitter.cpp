@@ -91,7 +91,7 @@ void GAFitter::run()
 
     // Finish
     output.epochs = epoch;
-    m_results.push_back(std::move(output));
+    m_results.push_back(output);
     emit done();
 
     // Save
