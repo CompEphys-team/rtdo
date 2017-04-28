@@ -4,7 +4,7 @@
 #include <QString>
 #include <memory>
 #include "wavegen.h"
-#include "experiment.h"
+#include "experimentlibrary.h"
 #include "AP.h"
 
 class Project

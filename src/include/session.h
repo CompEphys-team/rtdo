@@ -8,7 +8,6 @@
 #include "sessionlog.h"
 #include "project.h"
 #include "wavegen.h"
-#include "experiment.h"
 #include "errorprofiler.h"
 #include "wavesetcreator.h"
 
