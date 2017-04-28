@@ -55,7 +55,8 @@ SOURCES += \
     src/core/wavesubsets.cpp \
     src/core/gafitter.cpp \
     src/core/wavesetcreator.cpp \
-    src/gui/deckwidget.cpp
+    src/gui/deckwidget.cpp \
+    src/gui/gafitterwidget.cpp \
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -94,7 +95,8 @@ HEADERS  += \
     src/include/wavesubsets.h \
     src/include/gafitter.h \
     src/include/wavesetcreator.h \
-    src/include/deckwidget.h
+    src/include/deckwidget.h \
+    src/include/gafitterwidget.h \
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -102,7 +104,8 @@ FORMS    += \
     src/gui/profiledialog.ui \
     src/gui/wavegenfitnessmapper.ui \
     src/gui/profileplotter.ui \
-    src/gui/deckwidget.ui
+    src/gui/deckwidget.ui \
+    src/gui/gafitterwidget.ui \
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 

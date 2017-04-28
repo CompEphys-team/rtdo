@@ -60,6 +60,15 @@ void MainWindow::on_actionProfiler_triggered()
     profileDlg->activateWindow();
 }
 
+void MainWindow::on_actionGAFitter_triggered()
+{
+    if ( !gaFitterWidget )
+        gaFitterWidget.reset(new GAFitterWidget(*session));
+    gaFitterWidget->show();
+    gaFitterWidget->raise();
+    gaFitterWidget->activateWindow();
+}
+
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     if ( session )
@@ -70,6 +79,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
         profileDlg->close();
     if ( deckWidget )
         deckWidget->close();
+    if ( gaFitterWidget )
+        gaFitterWidget->close();
     event->accept();
 }
 

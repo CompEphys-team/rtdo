@@ -5,6 +5,7 @@
 #include "wavegendialog.h"
 #include "profiledialog.h"
 #include "deckwidget.h"
+#include "gafitterwidget.h"
 #include "project.h"
 #include "session.h"
 
@@ -24,6 +25,7 @@ private slots:
     void on_actionWavegen_triggered();
     void on_actionProfiler_triggered();
     void on_actionDecks_triggered();
+    void on_actionGAFitter_triggered();
 
     void on_actionNew_project_triggered();
 
@@ -42,6 +44,7 @@ private:
     WavegenDialog *wavegenDlg;
     ProfileDialog *profileDlg;
     std::unique_ptr<DeckWidget> deckWidget;
+    std::unique_ptr<GAFitterWidget> gaFitterWidget;
 
     Project *project;
     Session *session;

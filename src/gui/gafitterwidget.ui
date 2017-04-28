@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GAFitterWidget</class>
+ <widget class="QWidget" name="GAFitterWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>602</width>
+    <height>418</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>GA fitting</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0">
+    <widget class="QComboBox" name="decks"/>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="start">
+     <property name="text">
+      <string>Start fitting</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QPushButton" name="abort">
+     <property name="text">
+      <string>Abort</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="3">
+    <widget class="QTabWidget" name="tabWidget">
+     <widget class="QWidget" name="params_plotter">
+      <attribute name="title">
+       <string>Parameters</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="ga_plotter">
+      <attribute name="title">
+       <string>Algorithm</string>
+      </attribute>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
