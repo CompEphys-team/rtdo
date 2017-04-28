@@ -316,9 +316,15 @@ struct WavegenData
     size_t historySize = 20;
 };
 
-struct ExperimentData
-{
-    size_t numCandidates = 10000;
+struct GAFitterSettings {
+    size_t maxEpochs = 5000;
+
+    size_t nElite = 100;
+    bool crossover = false;
+
+    bool decaySigma = true;
+    double sigmaInitial = 5;
+    double sigmaHalflife = 700;
 };
 
 #endif // TYPES_H

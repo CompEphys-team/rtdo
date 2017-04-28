@@ -7,12 +7,12 @@ Session::Session(Project &p, const QString &sessiondir) :
     dirtyRund(true),
     dirtySearchd(true),
     dirtyStimd(true),
-    dirtyExpd(true)
+    dirtyGafs(true)
 {
     qRegisterMetaType<RunData>();
     qRegisterMetaType<WavegenData>();
     qRegisterMetaType<StimulationData>();
-    qRegisterMetaType<ExperimentData>();
+    qRegisterMetaType<GAFitterSettings>();
 
     addAPs();
 
@@ -20,7 +20,7 @@ Session::Session(Project &p, const QString &sessiondir) :
     connect(this, SIGNAL(redirectRunData(RunData)), this, SLOT(setRunData(RunData)), Qt::BlockingQueuedConnection);
     connect(this, SIGNAL(redirectWavegenData(WavegenData)), this, SLOT(setWavegenData(WavegenData)), Qt::BlockingQueuedConnection);
     connect(this, SIGNAL(redirectStimulationData(StimulationData)), this, SLOT(setStimulationData(StimulationData)), Qt::BlockingQueuedConnection);
-    connect(this, SIGNAL(redirectExperimentData(ExperimentData)), this, SLOT(setExperimentData(ExperimentData)), Qt::BlockingQueuedConnection);
+    connect(this, SIGNAL(redirectGAFitterSettings(GAFitterSettings)), this, SLOT(setGAFitterSettings(GAFitterSettings)), Qt::BlockingQueuedConnection);
 
     if ( sessiondir.isEmpty() ) {
         dir = QDir(project.dir());
@@ -82,6 +82,13 @@ void Session::addAPs()
     addAP(stimAP, "S.Stimulation.muta.sdTime", this, &Session::stimd, &StimulationData::muta, &MutationData::sdTime);
     addAP(stimAP, "S.Stimulation.muta.std", this, &Session::stimd, &StimulationData::muta, &MutationData::std);
 
+    addAP(gafAP, "S.GAFitter.maxEpochs", this, &Session::gafs, &GAFitterSettings::maxEpochs);
+    addAP(gafAP, "S.GAFitter.nElite", this, &Session::gafs, &GAFitterSettings::nElite);
+    addAP(gafAP, "S.GAFitter.crossover", this, &Session::gafs, &GAFitterSettings::crossover);
+    addAP(gafAP, "S.GAFitter.decaySigma", this, &Session::gafs, &GAFitterSettings::decaySigma);
+    addAP(gafAP, "S.GAFitter.sigmaInitial", this, &Session::gafs, &GAFitterSettings::sigmaInitial);
+    addAP(gafAP, "S.GAFitter.sigmaHalflife", this, &Session::gafs, &GAFitterSettings::sigmaHalflife);
+
     // Defaults
     scalar maxCycles = 100.0 / project.dt() * rund.simCycles;
     scalar maxDeviation = stimd.maxVoltage-stimd.baseV > stimd.baseV-stimd.minVoltage
@@ -142,7 +149,7 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
     int idx;
     QMutexLocker lock(&log_mutex);
 
-    if ( dirtyRund || dirtySearchd || dirtyStimd || dirtyExpd ) {
+    if ( dirtyRund || dirtySearchd || dirtyStimd || dirtyGafs ) {
         QString actorName = "Config";
         QString cfg = "cfg";
         idx = m_log.put(actorName, cfg, "");
@@ -156,10 +163,10 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
         if ( dirtyStimd )
             for ( auto const& p : stimAP )
                 p->write(os);
-        if ( dirtyExpd )
-            for ( auto const& p : expAP )
+        if ( dirtyGafs)
+            for ( auto const& p : gafAP )
                 p->write(os);
-        dirtyRund = dirtySearchd = dirtyStimd = dirtyExpd = false;
+        dirtyRund = dirtySearchd = dirtyStimd = dirtyGafs = false;
     }
 
     idx = m_log.put(actor->actorName(), action, args);
@@ -198,14 +205,14 @@ void Session::readConfig(const QString &filename)
     std::ifstream is(filename.toStdString());
     QString name;
     AP *it;
-    bool hasRun(false), hasSearch(false), hasStim(false), hasExp(false);
+    bool hasRun(false), hasSearch(false), hasStim(false), hasGafs(false);
     is >> name;
     while ( is.good() ) {
         // Make short-circuiting do some work - find the (first) matching AP and set the corresponding boolean to true:
         if ( ((it = AP::find(name, &runAP)) && (hasRun = true))
              || ((it = AP::find(name, &searchAP)) && (hasSearch = true))
              || ((it = AP::find(name, &stimAP)) && (hasStim = true))
-             || ((it = AP::find(name, &expAP)) && (hasExp = true))
+             || ((it = AP::find(name, &gafAP)) && (hasGafs = true))
            )
             it->readNow(name, is);
         is >> name;
@@ -219,8 +226,8 @@ void Session::readConfig(const QString &filename)
         dirtySearchd = false;
     if ( hasStim )
         dirtyStimd = false;
-    if ( hasExp )
-        dirtyExpd = false;
+    if ( hasGafs )
+        dirtyGafs = false;
 }
 
 QString Session::results(int idx, const QString &actor, const QString &action)
@@ -262,12 +269,12 @@ void Session::setStimulationData(StimulationData d)
     }
 }
 
-void Session::setExperimentData(ExperimentData d)
+void Session::setGAFitterSettings(GAFitterSettings d)
 {
     if ( QThread::currentThread() == &thread ) {
-        expd = d;
-        dirtyExpd = true;
+        gafs = d;
+        dirtyGafs = true;
     } else {
-        redirectExperimentData(d, QPrivateSignal());
+        redirectGAFitterSettings(d, QPrivateSignal());
     }
 }

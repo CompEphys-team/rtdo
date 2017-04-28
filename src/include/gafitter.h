@@ -5,17 +5,6 @@
 #include "experimentlibrary.h"
 #include "wavesubsets.h"
 
-struct GAFitterSettings {
-    size_t maxEpochs;
-
-    size_t nElite;
-    bool crossover;
-
-    bool decaySigma;
-    double sigmaInitial;
-    double sigmaHalflife;
-};
-
 class GAFitter : public SessionWorker
 {
     Q_OBJECT
@@ -29,7 +18,7 @@ public:
 
     ExperimentLibrary &lib;
 
-    GAFitterSettings settings;
+    const GAFitterSettings &settings;
 
     struct Output {
         Output(const GAFitter &fitter);

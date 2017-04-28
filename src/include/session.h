@@ -14,7 +14,7 @@
 Q_DECLARE_METATYPE(RunData)
 Q_DECLARE_METATYPE(WavegenData)
 Q_DECLARE_METATYPE(StimulationData)
-Q_DECLARE_METATYPE(ExperimentData)
+Q_DECLARE_METATYPE(GAFitterSettings)
 
 class Session : public QObject
 {
@@ -53,14 +53,14 @@ public:
     const RunData &runData() const { return rund; }
     const WavegenData &wavegenData() const { return searchd; }
     const StimulationData &stimulationData() const { return stimd; }
-    const ExperimentData &experimentData() const { return expd; }
+    const GAFitterSettings &gaFitterSettings() const { return gafs; }
 
 public slots:
     /// Set runtime data
     void setRunData(RunData d);
     void setWavegenData(WavegenData d);
     void setStimulationData(StimulationData d);
-    void setExperimentData(ExperimentData d);
+    void setGAFitterSettings(GAFitterSettings d);
 
 public:
     Project &project;
@@ -71,10 +71,10 @@ protected:
     RunData rund;
     WavegenData searchd;
     StimulationData stimd;
-    ExperimentData expd;
+    GAFitterSettings gafs;
 
-    bool dirtyRund, dirtySearchd, dirtyStimd, dirtyExpd;
-    std::vector<std::unique_ptr<AP>> runAP, searchAP, stimAP, expAP;
+    bool dirtyRund, dirtySearchd, dirtyStimd, dirtyGafs;
+    std::vector<std::unique_ptr<AP>> runAP, searchAP, stimAP, gafAP;
 
     std::unique_ptr<Wavegen> m_wavegen;
     std::unique_ptr<ErrorProfiler> m_profiler;
@@ -98,7 +98,7 @@ signals:
     void redirectRunData(RunData d, QPrivateSignal);
     void redirectWavegenData(WavegenData d, QPrivateSignal);
     void redirectStimulationData(StimulationData d, QPrivateSignal);
-    void redirectExperimentData(ExperimentData d, QPrivateSignal);
+    void redirectGAFitterSettings(GAFitterSettings d, QPrivateSignal);
 };
 
 #endif // SESSION_H

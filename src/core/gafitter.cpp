@@ -9,6 +9,7 @@ const quint32 GAFitter::version = 100;
 GAFitter::GAFitter(Session &session, DAQ *daq) :
     SessionWorker(session),
     lib(session.project.experiment()),
+    settings(session.gaFitterSettings()),
     simulator(lib.createSimulator()),
     daq(daq ? daq : simulator),
     RNG(),
