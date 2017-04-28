@@ -132,7 +132,7 @@ void GAFitter::load(const QString &act, const QString &, QFile &results)
 
 bool GAFitter::finished()
 {
-    return epoch > settings.maxEpochs;
+    return epoch >= settings.maxEpochs;
 }
 
 void GAFitter::populate()
