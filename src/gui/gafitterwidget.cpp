@@ -13,6 +13,8 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     connect(&session.gaFitter(), SIGNAL(done()), this, SLOT(done()));
     connect(&session.gaFitter(), SIGNAL(progress(quint32)), this, SLOT(progress(quint32)));
 
+    ui->params_plotter->init(&session, true);
+
     updateDecks();
 }
 
@@ -45,6 +47,7 @@ void GAFitterWidget::on_start_clicked()
     if ( currentDeck < 0 )
         return;
     ui->start->setEnabled(false);
+    ui->params_plotter->clear();
     session.gaFitter().stageDeck(WaveSource(session, WaveSource::Deck, currentDeck));
     emit startFitting();
 }

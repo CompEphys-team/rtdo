@@ -47,6 +47,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
     // Enslave to GAFitterWidget
     if ( enslave ) {
         ui->fits->setVisible(false);
+        connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
     } else {
         connect(&session->gaFitter(), SIGNAL(done()), this, SLOT(updateFits()));
         connect(ui->fits, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
@@ -112,5 +113,24 @@ void ParameterFitPlotter::replot()
         QCPGraph *graph = plots[i]->addGraph();
         graph->setData(keys, values, true);
         plots[i]->rescaleAxes();
+    }
+}
+
+void ParameterFitPlotter::clear()
+{
+    for ( QCustomPlot *plot : plots ) {
+        plot->clearGraphs();
+        plot->addGraph();
+        plot->replot();
+    }
+}
+
+void ParameterFitPlotter::progress(quint32 epoch)
+{
+    const std::vector<scalar> &values = session->gaFitter().currentResults().params.at(epoch);
+    for ( size_t i = 0; i < plots.size(); i++ ) {
+        plots[i]->graph()->addData(epoch, values[i]);
+        plots[i]->rescaleAxes();
+        plots[i]->replot(QCustomPlot::rpQueuedReplot);
     }
 }

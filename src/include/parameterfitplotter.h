@@ -19,12 +19,15 @@ public:
     ~ParameterFitPlotter();
 
     void init(Session *session, bool enslave);
+    void clear();
 
 private slots:
     void setColumnCount(int n);
     void resizeTableRows(int, int, int size);
     void updateFits();
+
     void replot();
+    void progress(quint32);
 
 private:
     Ui::ParameterFitPlotter *ui;

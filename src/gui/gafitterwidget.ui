@@ -33,7 +33,7 @@
    </item>
    <item row="1" column="0" colspan="3">
     <widget class="QTabWidget" name="tabWidget">
-     <widget class="QWidget" name="params_plotter">
+     <widget class="ParameterFitPlotter" name="params_plotter">
       <attribute name="title">
        <string>Parameters</string>
       </attribute>
@@ -47,6 +47,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ParameterFitPlotter</class>
+   <extends>QWidget</extends>
+   <header>parameterfitplotter.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
