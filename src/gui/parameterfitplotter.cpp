@@ -21,6 +21,8 @@ ParameterFitPlotter::ParameterFitPlotter(Session &session, QWidget *parent) :
 ParameterFitPlotter::~ParameterFitPlotter()
 {
     delete ui;
+    for ( QCustomPlot *p : plots )
+        delete p;
 }
 
 void ParameterFitPlotter::init(Session *session, bool enslave)
@@ -28,7 +30,8 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
     this->session = session;
 
     // Plots
-    plots.clear();
+    for ( QCustomPlot *p : plots )
+        delete p;
     plots.resize(session->project.model().adjustableParams.size());
     for ( size_t i = 0; i < plots.size(); i++ ) {
         const AdjustableParam &p = session->project.model().adjustableParams[i];
