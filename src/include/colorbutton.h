@@ -3,7 +3,6 @@
 
 #include <QToolButton>
 #include <QColorDialog>
-//#include <QPixmap>
 
 class ColorButton : public QToolButton
 {
@@ -31,12 +30,20 @@ public slots:
         p.setColor(QPalette::Window, c);
         setPalette(p);
 
-        QPixmap px(width(), height());
-        px.fill(c);
-        setIcon(px);
-
         color = c;
+        resizeEvent(nullptr);
         emit colorChanged(c);
+    }
+
+protected:
+    inline void resizeEvent(QResizeEvent *ev)
+    {
+        QPixmap px(width(), height());
+        px.fill(color);
+        setIcon(px);
+        setIconSize(size());
+        if ( ev )
+            QToolButton::resizeEvent(ev);
     }
 
 signals:
