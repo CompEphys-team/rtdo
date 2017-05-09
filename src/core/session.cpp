@@ -54,7 +54,6 @@ void Session::addAPs()
     addAP(runAP, "S.Run.simCycles", this, &Session::rund, &RunData::simCycles);
     addAP(runAP, "S.Run.settleDuration", this, &Session::rund, &RunData::settleDuration);
 
-    addAP(searchAP, "S.Wavegen.settleTime", this, &Session::searchd, &WavegenData::settleTime);
     addAP(searchAP, "S.Wavegen.numSigmaAdjustWaveforms", this, &Session::searchd, &WavegenData::numSigmaAdjustWaveforms);
     addAP(searchAP, "S.Wavegen.nInitialWaves", this, &Session::searchd, &WavegenData::nInitialWaves);
     addAP(searchAP, "S.Wavegen.precisionIncreaseEpochs[#]", this, &Session::searchd, &WavegenData::precisionIncreaseEpochs);

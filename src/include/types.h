@@ -309,7 +309,6 @@ struct WavegenData
                                        //!< If parameters are not permuted, this number is rounded up to the
                                        //!< nearest multiple of the waveform population size.
     size_t nInitialWaves = 1e5; //!< Number of randomly initialised waveforms used to start the search
-    double settleTime = 100; //!< Duration of initial simulation run to get settled state variable values
     std::vector<MAPEDimension> mapeDimensions; //!< List of dimensions along which stimulation behaviour is to be measured
     std::vector<size_t> precisionIncreaseEpochs; //!< Epochs on which MAPE precision/resolution is to double
     size_t maxIterations = 1000;

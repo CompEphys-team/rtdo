@@ -220,7 +220,7 @@ void Wavegen::settle()
 {
     // Simulate for a given time
     Stimulation I;
-    I.duration = searchd.settleTime;
+    I.duration = session.runData().settleDuration;
     I.baseV = stimd.baseV;
     I.clear();
     for ( int group = 0; group < lib.numGroups; group++ )
@@ -230,7 +230,7 @@ void Wavegen::settle()
     lib.t = 0;
     lib.iT = 0;
     lib.push();
-    while ( lib.t < searchd.settleTime ) {
+    while ( lib.t < I.duration ) {
         lib.step();
     }
     lib.pull();
@@ -256,7 +256,7 @@ void Wavegen::settle()
         }
         std::sort(V.begin(), V.end());
         std::cout << "Settled all permuted models to holding potential of " << stimd.baseV << " mV for "
-                  << searchd.settleTime << " ms." << std::endl;
+                  << I.duration << " ms." << std::endl;
         std::cout << "Median achieved potential: " << V[lib.numGroups/2] << " mV (95% within [" << V[lib.numGroups/20]
                   << " mV, " << V[lib.numGroups/20*19] << " mV]), " << valid << "/" << lib.numGroups
                   << " models within +-5 mV of holding." << std::endl;
@@ -268,7 +268,7 @@ void Wavegen::settle()
             (*iter++)[0] = v[0];
         }
 
-        std::cout << "Settled base model to holding potential of " << stimd.baseV << " mV for " << searchd.settleTime << " ms, "
+        std::cout << "Settled base model to holding potential of " << stimd.baseV << " mV for " << I.duration << " ms, "
                   << "achieved " << (*settled.begin())[0] << " mV." << std::endl;
     }
 }
