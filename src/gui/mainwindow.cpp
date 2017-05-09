@@ -7,8 +7,7 @@
 #include "wavegenfitnessmapper.h"
 #include "profileplotter.h"
 #include "parameterfitplotter.h"
-
-using std::endl;
+#include "stimulationplotter.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -145,5 +144,11 @@ void MainWindow::on_actionError_profiles_triggered()
 void MainWindow::on_actionFitting_Parameters_triggered()
 {
     ParameterFitPlotter *figure = new ParameterFitPlotter(*session);
+    figure->show();
+}
+
+void MainWindow::on_actionStimulations_triggered()
+{
+    StimulationPlotter *figure = new StimulationPlotter(*session);
     figure->show();
 }
