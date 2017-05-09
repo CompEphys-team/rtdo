@@ -319,6 +319,8 @@ struct WavegenData
 struct GAFitterSettings {
     size_t maxEpochs = 5000;
 
+    bool randomOrder = true;
+
     size_t nElite = 100;
     bool crossover = false;
 

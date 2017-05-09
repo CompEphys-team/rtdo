@@ -84,7 +84,11 @@ void GAFitter::run()
         lib.pullErr();
         procreate();
         lib.push();
-        stimIdx = (stimIdx+1) % deck.stimulations().size();
+
+        if ( settings.randomOrder )
+            stimIdx = RNG.uniform<quint32>(0, deck.stimulations().size()-1);
+        else
+            stimIdx = (stimIdx+1) % deck.stimulations().size();
 
         emit progress(epoch);
     }
