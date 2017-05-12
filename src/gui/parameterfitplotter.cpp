@@ -114,7 +114,8 @@ void ParameterFitPlotter::updateFits()
     int currentFit = ui->fits->currentIndex();
     ui->fits->clear();
     for ( size_t i = 0; i < session->gaFitter().results().size(); i++ ) {
-        ui->fits->addItem(QString("Fit %1 (%2)").arg(i).arg(session->gaFitter().results().at(i).deck.prettyName()));
+        const GAFitter::Output &fit = session->gaFitter().results().at(i);
+        ui->fits->addItem(QString("Fit %1 (%2 epochs, %3)").arg(i).arg(fit.epochs).arg(fit.deck.prettyName()));
     }
     ui->fits->setCurrentIndex(currentFit < 0 ? 0 : currentFit);
 }
