@@ -106,7 +106,7 @@ void Wavegen::permute()
             // Draw both permuted and uncorrelated random groups from normal distribution
             for ( int i = 0; i < p.wgPermutations + numRandomGroups; i++ ) {
                 scalar v = p.multiplicative
-                    ? RNG.variate<scalar, std::lognormal_distribution>(p.initial, p.wgSD)
+                    ? (p.initial * RNG.variate<scalar, std::lognormal_distribution>(0, p.wgSD))
                     : RNG.variate<scalar, std::normal_distribution>(p.initial, p.wgSD);
                 if ( v > p.max )
                     v = p.max;

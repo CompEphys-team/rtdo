@@ -181,7 +181,7 @@ void GAFitter::procreate()
             if ( iParam == stimIdx ) {
                 // Mutate target param
                 p[p_err[i].idx] = p.multiplicative ?
-                            RNG.variate<scalar, std::lognormal_distribution>(p[p_err[targetSource].idx], sigma) :
+                            (p[p_err[targetSource].idx] * RNG.variate<scalar, std::lognormal_distribution>(0, sigma)) :
                             RNG.variate<scalar, std::normal_distribution>(p[p_err[targetSource].idx], sigma);
             } else {
                 // Copy non-target params
