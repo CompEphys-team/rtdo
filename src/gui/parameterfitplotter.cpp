@@ -43,6 +43,26 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         QCPItemStraightLine *line = new QCPItemStraightLine(plot);
         line->point1->setCoords(0, p.initial);
         line->point2->setCoords(1, p.initial);
+
+        plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
+        connect(plot->xAxis, SIGNAL(rangeChanged(QCPRange)), this, SLOT(rangeChanged(QCPRange)));
+        connect(plot, &QCustomPlot::selectionChangedByUser, [=](){
+            QList<QCPAxis *> axes = plot->selectedAxes();
+            if ( axes.isEmpty() )
+               axes = plot->axisRect()->axes();
+            plot->axisRect()->setRangeZoomAxes(axes);
+            plot->axisRect()->setRangeDragAxes(axes);
+        });
+        connect(plot, &QCustomPlot::axisDoubleClick, this, [=](QCPAxis *axis, QCPAxis::SelectablePart, QMouseEvent*) {
+            if ( axis->axisType() == QCPAxis::atLeft )
+                axis->setRange(p.min, p.max);
+            else
+                axis->rescale();
+            plot->replot();
+        });
+        plot->axisRect()->setRangeZoomAxes(plot->axisRect()->axes());
+        plot->axisRect()->setRangeDragAxes(plot->axisRect()->axes());
+        plot->yAxis->setRange(p.min, p.max);
     }
     ui->columns->setMaximum(plots.size());
     setColumnCount(ui->columns->value());
@@ -51,6 +71,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
     if ( enslave ) {
         ui->fits->setVisible(false);
         connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
+        plots[0]->xAxis->setRange(0, 100);
     } else {
         connect(&session->gaFitter(), SIGNAL(done()), this, SLOT(updateFits()));
         connect(ui->fits, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
@@ -134,7 +155,27 @@ void ParameterFitPlotter::progress(quint32 epoch)
     const std::vector<scalar> &values = session->gaFitter().currentResults().params.at(epoch);
     for ( size_t i = 0; i < plots.size(); i++ ) {
         plots[i]->graph()->addData(epoch, values[i]);
-        plots[i]->rescaleAxes();
-        plots[i]->replot(QCustomPlot::rpQueuedReplot);
+    }
+
+    double xUpper = plots[0]->xAxis->range().upper;
+    if ( double(epoch-1) <= xUpper && double(epoch) > xUpper) {
+        for ( QCustomPlot *plot : plots ) {
+            plot->xAxis->blockSignals(true);
+            plot->xAxis->moveRange(1);
+            plot->xAxis->blockSignals(false);
+        }
+    }
+
+    for ( QCustomPlot *p : plots )
+        p->replot(QCustomPlot::rpQueuedReplot);
+}
+
+void ParameterFitPlotter::rangeChanged(QCPRange range)
+{
+    for ( QCustomPlot *plot : plots ) {
+        plot->xAxis->blockSignals(true);
+        plot->xAxis->setRange(range);
+        plot->replot();
+        plot->xAxis->blockSignals(false);
     }
 }

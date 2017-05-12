@@ -28,6 +28,7 @@ private slots:
 
     void replot();
     void progress(quint32);
+    void rangeChanged(QCPRange range);
 
 private:
     Ui::ParameterFitPlotter *ui;
