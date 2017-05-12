@@ -21,6 +21,9 @@ public:
     void init(Session *session, bool enslave);
     void clear();
 
+protected:
+    void styleErrorGraph(QCPGraph*);
+
 private slots:
     void setColumnCount(int n);
     void resizeTableRows(int, int, int size);
@@ -29,6 +32,7 @@ private slots:
     void replot();
     void progress(quint32);
     void rangeChanged(QCPRange range);
+    void errorRangeChanged(QCPRange range);
 
 private:
     Ui::ParameterFitPlotter *ui;

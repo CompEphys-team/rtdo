@@ -32,18 +32,7 @@
     </widget>
    </item>
    <item row="1" column="0" colspan="3">
-    <widget class="QTabWidget" name="tabWidget">
-     <widget class="ParameterFitPlotter" name="params_plotter">
-      <attribute name="title">
-       <string>Parameters</string>
-      </attribute>
-     </widget>
-     <widget class="QWidget" name="ga_plotter">
-      <attribute name="title">
-       <string>Algorithm</string>
-      </attribute>
-     </widget>
-    </widget>
+    <widget class="ParameterFitPlotter" name="params_plotter" native="true"/>
    </item>
   </layout>
  </widget>

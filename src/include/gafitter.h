@@ -31,7 +31,7 @@ public:
     };
 
     inline const std::vector<Output> &results() const { return m_results; }
-    const Output &currentResults() const { return output; }
+    Output currentResults() const { return output; }
 
 public slots:
     void run();
