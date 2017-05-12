@@ -321,6 +321,7 @@ struct GAFitterSettings {
     bool randomOrder = true;
 
     size_t nElite = 100;
+    size_t nReinit = 100;
     bool crossover = false;
 
     bool decaySigma = true;

@@ -170,7 +170,8 @@ void GAFitter::procreate()
     if ( settings.decaySigma )
         sigma = settings.sigmaInitial * sigma * std::exp2(-double(epoch)/settings.sigmaHalflife);
 
-    for ( size_t i = p_err.size()-1; i >= settings.nElite; i-- ) {
+    // Mutate
+    for ( size_t i = p_err.size()-settings.nReinit-1; i >= settings.nElite; i-- ) {
         // Bias reproductions towards the elite in roughly linear fashion by restricting the choice range
         size_t targetSource = RNG.uniform<size_t>(0, i-settings.nElite);
         size_t otherSource = targetSource;
@@ -191,6 +192,18 @@ void GAFitter::procreate()
                 // Copy non-target params
                 p[p_err[i].idx] = p[p_err[otherSource].idx];
             }
+        }
+    }
+
+    // Reinit
+    for ( size_t source = 0; source < settings.nReinit; source++ ) {
+        size_t i = p_err.size() - source - 1;
+        for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
+            AdjustableParam &p = lib.adjustableParams[iParam];
+            if ( iParam == stimIdx )
+                p[p_err[i].idx] = RNG.uniform(p.min, p.max);
+            else
+                p[p_err[i].idx] = p[p_err[source].idx];
         }
     }
 

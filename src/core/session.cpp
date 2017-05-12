@@ -84,6 +84,7 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.maxEpochs", this, &Session::gafs, &GAFitterSettings::maxEpochs);
     addAP(gafAP, "S.GAFitter.randomOrder", this, &Session::gafs, &GAFitterSettings::randomOrder);
     addAP(gafAP, "S.GAFitter.nElite", this, &Session::gafs, &GAFitterSettings::nElite);
+    addAP(gafAP, "S.GAFitter.nReinit", this, &Session::gafs, &GAFitterSettings::nReinit);
     addAP(gafAP, "S.GAFitter.crossover", this, &Session::gafs, &GAFitterSettings::crossover);
     addAP(gafAP, "S.GAFitter.decaySigma", this, &Session::gafs, &GAFitterSettings::decaySigma);
     addAP(gafAP, "S.GAFitter.sigmaInitial", this, &Session::gafs, &GAFitterSettings::sigmaInitial);
