@@ -125,7 +125,7 @@ void ProfilePlotter::updateWaves()
 
         ColorButton *btn = new ColorButton();
         ui->waves->setCellWidget(i, 1, btn);
-        btn->setColor(QColorDialog::standardColor(i));
+        btn->setColor(QColorDialog::standardColor(i%42));
         colors[i] = btn;
         connect(btn, &ColorButton::colorChanged, [=](QColor color){
             paintWave(i, color);
