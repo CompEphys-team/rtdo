@@ -70,6 +70,7 @@ void GAFitter::run()
 
     // Fit
     populate();
+    quint32 nextStimIdx;
     for ( epoch = 0; !aborted && !finished(); epoch++ ) {
         const Stimulation &stim = deck.stimulations().at(stimIdx);
 
@@ -81,14 +82,16 @@ void GAFitter::run()
         stimulate(stim);
 
         // Advance
+        if ( settings.randomOrder )
+            nextStimIdx = RNG.uniform<quint32>(0, deck.stimulations().size()-1);
+        else
+            nextStimIdx = (stimIdx+1) % deck.stimulations().size();
+
         lib.pullErr();
-        procreate();
+        procreate(nextStimIdx);
         lib.push();
 
-        if ( settings.randomOrder )
-            stimIdx = RNG.uniform<quint32>(0, deck.stimulations().size()-1);
-        else
-            stimIdx = (stimIdx+1) % deck.stimulations().size();
+        stimIdx = nextStimIdx;
 
         emit progress(epoch);
     }
@@ -152,7 +155,7 @@ void GAFitter::populate()
     lib.push();
 }
 
-void GAFitter::procreate()
+void GAFitter::procreate(quint32 nextStimIdx)
 {
     for ( size_t i = 0; i < p_err.size(); i++ ) {
         p_err[i].idx = i;
@@ -200,7 +203,7 @@ void GAFitter::procreate()
         size_t i = p_err.size() - source - 1;
         for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
             AdjustableParam &p = lib.adjustableParams[iParam];
-            if ( iParam == stimIdx )
+            if ( iParam == nextStimIdx )
                 p[p_err[i].idx] = RNG.uniform(p.min, p.max);
             else
                 p[p_err[i].idx] = p[p_err[source].idx];

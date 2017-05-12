@@ -65,7 +65,7 @@ protected:
     void populate();
     void stimulate(const Stimulation &I);
     void settle(const Stimulation &I);
-    void procreate();
+    void procreate(quint32 nextStimIdx);
     bool finished();
 
     struct errTupel {
