@@ -14,6 +14,16 @@
    <string>Parameter fits</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="2">
+    <widget class="QCheckBox" name="param">
+     <property name="text">
+      <string>Parameter</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="0">
     <widget class="QSpinBox" name="columns">
      <property name="sizePolicy">
@@ -40,10 +50,10 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="2">
+   <item row="0" column="5">
     <widget class="QComboBox" name="fits"/>
    </item>
-   <item row="1" column="0" colspan="3">
+   <item row="1" column="0" colspan="6">
     <widget class="QTableWidget" name="table">
      <property name="selectionMode">
       <enum>QAbstractItemView::NoSelection</enum>
@@ -63,6 +73,26 @@
      <attribute name="verticalHeaderDefaultSectionSize">
       <number>300</number>
      </attribute>
+    </widget>
+   </item>
+   <item row="0" column="3">
+    <widget class="QCheckBox" name="error">
+     <property name="text">
+      <string>Error</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="4">
+    <widget class="QCheckBox" name="rescale">
+     <property name="text">
+      <string>Rescale</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
     </widget>
    </item>
   </layout>

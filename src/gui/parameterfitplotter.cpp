@@ -10,6 +10,24 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     ui->table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(setColumnCount(int)));
     connect(ui->table->verticalHeader(), SIGNAL(sectionResized(int,int,int)), this, SLOT(resizeTableRows(int,int,int)));
+    connect(ui->param, &QCheckBox::stateChanged, [=](int state) {
+        bool on = state == Qt::Checked;
+        for ( QCustomPlot *p : plots ) {
+            p->graph(0)->setVisible(on);
+            p->item(0)->setVisible(on); // This should be the target value line
+            p->yAxis->setTicks(on);
+            p->yAxis->setTickLabels(on);
+            p->replot();
+        }
+    });
+    connect(ui->error, &QCheckBox::stateChanged, [=](int state) {
+        bool on = state == Qt::Checked;
+        for ( QCustomPlot *p : plots ) {
+            p->graph(1)->setVisible(on);
+            p->yAxis2->setVisible(on);
+            p->replot();
+        }
+    });
 }
 
 ParameterFitPlotter::ParameterFitPlotter(Session &session, QWidget *parent) :
@@ -43,6 +61,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         QCPItemStraightLine *line = new QCPItemStraightLine(plot);
         line->point1->setCoords(0, p.initial);
         line->point2->setCoords(1, p.initial);
+        line->setVisible(ui->param->isChecked());
 
         plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
         connect(plot->xAxis, SIGNAL(rangeChanged(QCPRange)), this, SLOT(rangeChanged(QCPRange)));
@@ -69,9 +88,11 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         plot->axisRect()->setRangeZoomAxes(plot->axisRect()->axes());
         plot->axisRect()->setRangeDragAxes(plot->axisRect()->axes());
         plot->yAxis->setRange(p.min, p.max);
+        plot->yAxis->setTicks(ui->param->isChecked());
+        plot->yAxis->setTickLabels(ui->param->isChecked());
 
         plot->yAxis2->setLabel("Error");
-        plot->yAxis2->setVisible(true);
+        plot->yAxis2->setVisible(ui->error->isChecked());
         connect(plot->yAxis2, SIGNAL(rangeChanged(QCPRange)), this, SLOT(errorRangeChanged(QCPRange)));
     }
     ui->columns->setMaximum(plots.size());
@@ -80,8 +101,10 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
     // Enslave to GAFitterWidget
     if ( enslave ) {
         ui->fits->setVisible(false);
+        ui->rescale->setVisible(false);
         connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
         plots[0]->xAxis->setRange(0, 100);
+        clear();
     } else {
         connect(&session->gaFitter(), SIGNAL(done()), this, SLOT(updateFits()));
         connect(ui->fits, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
@@ -153,18 +176,24 @@ void ParameterFitPlotter::replot()
         plots[i]->clearGraphs();
         QCPGraph *graph = plots[i]->addGraph();
         graph->setData(keys, values, true);
-        plots[i]->xAxis->rescale();
-        plots[i]->yAxis->rescale();
+        graph->setVisible(ui->param->isChecked());
+        if ( ui->rescale->isChecked() ) {
+            plots[i]->xAxis->rescale();
+            plots[i]->yAxis->rescale();
+        }
 
-        if ( i == 0 )
-            plots[i]->yAxis2->setRange(0,1); // Reset range when selecting a new fit
         QCPGraph *errGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
         errGraph->setData(errKey, errors, true);
+        errGraph->setVisible(ui->error->isChecked());
         styleErrorGraph(errGraph);
-        bool found;
-        QCPRange range = errGraph->getValueRange(found);
-        if ( found && range.upper > plots[i]->yAxis2->range().upper )
-            plots[i]->yAxis2->setRangeUpper(range.upper);
+        if ( ui->rescale->isChecked() ) {
+            if ( i == 0 )
+                plots[i]->yAxis2->setRange(0,1); // Reset range when selecting a new fit
+            bool found;
+            QCPRange range = errGraph->getValueRange(found);
+            if ( found && range.upper > plots[i]->yAxis2->range().upper )
+                plots[i]->yAxis2->setRangeUpper(range.upper);
+        }
 
         plots[i]->replot();
     }
@@ -185,8 +214,8 @@ void ParameterFitPlotter::clear()
 {
     for ( QCustomPlot *plot : plots ) {
         plot->clearGraphs();
-        plot->addGraph();
-        plot->addGraph(0, plot->yAxis2);
+        plot->addGraph()->setVisible(ui->param->isChecked());
+        plot->addGraph(0, plot->yAxis2)->setVisible(ui->error->isChecked());
         styleErrorGraph(plot->graph(1));
         plot->replot();
     }
