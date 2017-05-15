@@ -15,6 +15,7 @@ GAFitter::GAFitter(Session &session, DAQ *daq) :
     RNG(),
     aborted(false),
     deck(session),
+    bias(lib.adjustableParams.size(), 0),
     p_err(lib.project.expNumCandidates()),
     output(*this)
 {
@@ -70,7 +71,6 @@ void GAFitter::run()
 
     // Fit
     populate();
-    quint32 nextStimIdx;
     for ( epoch = 0; !aborted && !finished(); epoch++ ) {
         const Stimulation &stim = deck.stimulations().at(stimIdx);
 
@@ -82,16 +82,9 @@ void GAFitter::run()
         stimulate(stim);
 
         // Advance
-        if ( settings.randomOrder )
-            nextStimIdx = RNG.uniform<quint32>(0, deck.stimulations().size()-1);
-        else
-            nextStimIdx = (stimIdx+1) % deck.stimulations().size();
-
         lib.pullErr();
-        procreate(nextStimIdx);
+        procreate();
         lib.push();
-
-        stimIdx = nextStimIdx;
 
         emit progress(epoch);
     }
@@ -155,7 +148,40 @@ void GAFitter::populate()
     lib.push();
 }
 
-void GAFitter::procreate(quint32 nextStimIdx)
+quint32 GAFitter::findNextStim()
+{
+    quint32 nextStimIdx(stimIdx);
+    if ( settings.randomOrder == 2 ) {
+        if ( epoch == stimIdx ) // Initial: Full error
+            bias[stimIdx] = p_err[0].err;
+        else // Recursively decay bias according to settings
+            bias[stimIdx] = settings.orderBiasDecay * p_err[0].err + (1-settings.orderBiasDecay) * bias[stimIdx];
+
+        if ( epoch + 1 < bias.size() ) { // Initial round: Sequential order
+            nextStimIdx = stimIdx + 1;
+        } else if ( epoch < settings.orderBiasStartEpoch ) { // Further unbiased rounds: Random order
+            nextStimIdx = RNG.uniform<quint32>(0, deck.stimulations().size()-1);
+        } else { // Biased rounds
+            double sumBias;
+            for ( double b : bias )
+                sumBias += b;
+            double choice = RNG.uniform(0.0, sumBias);
+            for ( size_t i = 0; i < bias.size(); i++ ) {
+                choice -= bias[i];
+                if ( choice < 0 ) {
+                    nextStimIdx = i;
+                    break;
+                }
+            }
+        }
+    } else if ( settings.randomOrder == 1 )
+        nextStimIdx = RNG.uniform<quint32>(0, deck.stimulations().size()-1);
+    else
+        nextStimIdx = (stimIdx + 1) % deck.stimulations().size();
+    return nextStimIdx;
+}
+
+void GAFitter::procreate()
 {
     for ( size_t i = 0; i < p_err.size(); i++ ) {
         p_err[i].idx = i;
@@ -168,6 +194,8 @@ void GAFitter::procreate(quint32 nextStimIdx)
         if ( std::isnan(y.err) ) return true;
         return x.err < y.err;
     });
+
+    quint32 nextStimIdx = findNextStim();
 
     scalar sigma = lib.adjustableParams[stimIdx].sigma;
     if ( settings.decaySigma )
@@ -215,6 +243,7 @@ void GAFitter::procreate(quint32 nextStimIdx)
     }
     output.error[epoch] = p_err[0].err;
     output.stimIdx[epoch] = stimIdx;
+    stimIdx = nextStimIdx;
 }
 
 void GAFitter::stimulate(const Stimulation &I)

@@ -318,7 +318,9 @@ struct WavegenData
 struct GAFitterSettings {
     size_t maxEpochs = 5000;
 
-    bool randomOrder = true;
+    int randomOrder = 1; //!< Stimulation order; 0: sequential, 1: random, 2: biased by error
+    double orderBiasDecay = 0.2; //!< The bias for each error is a recursive average: bias = decay*error + (1-decay)*bias
+    int orderBiasStartEpoch = 100; //!< The first epoch on which stimulation selection is biased. Before that, the order is sequential for the first nParam epochs, then random.
 
     size_t nElite = 100;
     size_t nReinit = 100;
