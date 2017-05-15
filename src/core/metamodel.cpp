@@ -39,7 +39,7 @@ MetaModel::MetaModel(const Project &p) :
 /// State variables:
 /// <variable name="V" value="-63.5">           <!-- refer to as `$(name)` in code sections; value is the initial default -->
 ///     <tmp name="foo">code section</tmp>      <!-- temporary variable, refer to as `name` in code sections -->
-///     <tmp current="1" name="I_Na">code section</tmp>     <!-- Saved for diagnostic purposes during wavegen -->
+///     <tmp current="1" name="I_Na">code section</tmp>     <!-- Saved for diagnostic purposes during wavegen, and available to all state vars -->
 ///     <dYdt>code section</dYdt>               <!-- diff. eqn d(var)/dt. -->
 /// </variable>
     bool hasV = false;
@@ -191,36 +191,69 @@ std::string MetaModel::kernel(const std::string &tab, bool wrapVariables, bool d
     std::stringstream ss;
     switch ( project.method() ) {
     case IntegrationMethod::ForwardEuler:
+        // Locally declare currents
+        for ( const StateVariable &v : stateVariables ) {
+            for ( const Variable &t : v.tmp ) {
+                if ( isCurrent(t) ) {
+                    ss << tab << t.type << " " << t.name << ";" << endl;
+                }
+            }
+        }
+        // Define dYdt for each state variable
         for ( const StateVariable &v : stateVariables ) {
             ss << tab << v.type << " ddt__" << v.name << ";" << endl;
             ss << tab << "{" << endl;
             for ( const Variable &t : v.tmp ) {
-                ss << tab << tab << t.type << " " << t.name << " = " << unwrap(t.code) << ";" << endl;
-                if ( defineCurrents && isCurrent(t) )
-                    ss << tab << tab << wrap(t.name) << " = " << t.name << ";" << endl;
+                if ( isCurrent(t) ) {
+                    ss << tab << tab << t.name << " = " << unwrap(t.code) << ";" << endl;
+                    if ( defineCurrents )
+                        ss << tab << tab << wrap(t.name) << " = " << t.name << ";" << endl;
+                } else {
+                    ss << tab << tab << t.type << " " << t.name << " = " << unwrap(t.code) << ";" << endl;
+                }
+
             }
             ss << tab << tab << "ddt__" << v.name << " = " << unwrap(v.code) << ";" << endl;
             ss << tab << "}" << endl;
         }
+        // Update state variables
         for ( const StateVariable &v : stateVariables )
             ss << tab << wrap(v.name) << " += ddt__" << v.name << " * mdt;" << endl;
         break;
+
     case IntegrationMethod::RungeKutta4:
         // Y0:
         for ( const StateVariable &v : stateVariables ) {
             ss << tab << v.type << " Y0__" << v.name << " = " << wrap(v.name) << ";" << endl;
+            for ( int i = 1; i < 5; i++ ) {
+                ss << tab << v.type << " " << k(v.name, i) << ";" << endl;
+            }
         }
 
         for ( int i = 1; i < 5; i++ ) {
             ss << endl;
+            ss << tab << "{ // Begin Runge-Kutta, step " << i << endl;
+            // Locally declare currents
+            for ( const StateVariable &v : stateVariables ) {
+                for ( const Variable &t : v.tmp ) {
+                    if ( isCurrent(t) ) {
+                        ss << tab << t.type << " " << t.name << ";" << endl;
+                    }
+                }
+            }
+
+            // Define k_i
             ss << tab << "// k_i = dYdt(Y_(i-1)), i = " << i << ":" << endl;
             for ( const StateVariable &v : stateVariables ) {
-                ss << tab << v.type << " " << k(v.name, i) << ";" << endl;
                 ss << tab << "{" << endl;
                 for ( const Variable &t : v.tmp ) {
-                    ss << tab << tab << t.type << " " << t.name << " = " << unwrap(t.code) << ";" << endl;
-                    if ( defineCurrents && i == 1 && isCurrent(t) )
-                        ss << tab << tab << wrap(t.name) << " = " << t.name << ";" << endl;
+                    if ( isCurrent(t) ) {
+                        ss << tab << tab << t.name << " = " << unwrap(t.code) << ";" << endl;
+                        if ( defineCurrents && i == 1 )
+                            ss << tab << tab << wrap(t.name) << " = " << t.name << ";" << endl;
+                    } else {
+                        ss << tab << tab << t.type << " " << t.name << " = " << unwrap(t.code) << ";" << endl;
+                    }
                 }
                 ss << tab << tab << k(v.name, i) << " = " << unwrap(v.code) << ";" << endl;
                 ss << tab << "}" << endl;
@@ -242,6 +275,7 @@ std::string MetaModel::kernel(const std::string &tab, bool wrapVariables, bool d
                        << ");" << endl;
                 }
             }
+            ss << tab << "} // End Runge-Kutta, step " << i << endl;
         }
         break;
     }
