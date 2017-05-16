@@ -223,12 +223,28 @@ void Session::readConfig(const QString &filename)
     bool hasRun(false), hasSearch(false), hasStim(false), hasGafs(false);
     is >> name;
     while ( is.good() ) {
-        // Make short-circuiting do some work - find the (first) matching AP and set the corresponding boolean to true:
-        if ( ((it = AP::find(name, &runAP)) && (hasRun = true))
-             || ((it = AP::find(name, &searchAP)) && (hasSearch = true))
-             || ((it = AP::find(name, &stimAP)) && (hasStim = true))
-             || ((it = AP::find(name, &gafAP)) && (hasGafs = true))
-           )
+        if ( (it = AP::find(name, &runAP)) ) {
+            if ( !hasRun ) {
+                rund = RunData();
+                hasRun = true;
+            }
+        } else if ( (it = AP::find(name, &searchAP)) ) {
+            if ( !hasSearch ) {
+                searchd = WavegenData();
+                hasSearch = true;
+            }
+        } else if ( (it = AP::find(name, &stimAP)) ) {
+            if ( !hasStim ) {
+                stimd = StimulationData();
+                hasStim = true;
+            }
+        } else if ( (it = AP::find(name, &gafAP)) ) {
+            if ( !hasGafs ) {
+                gafs = GAFitterSettings();
+                hasGafs = true;
+            }
+        }
+        if ( it )
             it->readNow(name, is);
         is >> name;
     }
