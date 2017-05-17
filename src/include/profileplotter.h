@@ -38,6 +38,8 @@ private:
     std::vector<QCheckBox*> includes;
     std::vector<ColorButton*> colors;
 
+    bool tickingBoxes;
+
     void includeWave(size_t waveNo, bool on);
     void paintWave(size_t waveNo, QColor color);
 

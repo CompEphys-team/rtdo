@@ -5,7 +5,8 @@
 ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::ProfilePlotter),
-    session(session)
+    session(session),
+    tickingBoxes(false)
 {
     ui->setupUi(this);
 
@@ -34,12 +35,25 @@ ProfilePlotter::ProfilePlotter(Session &session, QWidget *parent) :
     connect(ui->sort, SIGNAL(toggled(bool)), this, SLOT(drawStats()));
 
     connect(ui->selectAll, &QPushButton::clicked, [=](bool){
+        tickingBoxes = true;
         for ( QCheckBox *inc : includes )
             inc->setChecked(true);
+        tickingBoxes = false;
+        ui->plot->replot();
     });
     connect(ui->selectNone, &QPushButton::clicked, [=](bool){
+        tickingBoxes = true;
         for ( QCheckBox *inc : includes )
             inc->setChecked(false);
+        tickingBoxes = false;
+        ui->plot->replot();
+    });
+    connect(ui->selectInv, &QPushButton::clicked, [=](bool){
+        tickingBoxes = true;
+        for ( QCheckBox *inc : includes )
+            inc->toggle();
+        tickingBoxes = false;
+        ui->plot->replot();
     });
     connect(ui->selectSubset, SIGNAL(clicked(bool)), this, SLOT(selectSubset()));
 
@@ -226,7 +240,7 @@ void ProfilePlotter::drawProfiles()
             }
         }
         ++i;
-        ui->plot->replot();
+        //ui->plot->replot();
     }
     ui->draw->setText("Draw");
     rescale();
@@ -345,7 +359,8 @@ void ProfilePlotter::includeWave(size_t waveNo, bool on)
     int end = std::min(ui->plot->graphCount(), int(perWave * (waveNo+1)));
     for ( int i = perWave * waveNo; i < end; i++ )
         ui->plot->graph(i)->setVisible(on);
-    ui->plot->replot();
+    if ( !tickingBoxes )
+        ui->plot->replot();
 }
 
 void ProfilePlotter::paintWave(size_t waveNo, QColor color)
