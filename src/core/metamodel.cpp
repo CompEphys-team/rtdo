@@ -92,6 +92,9 @@ MetaModel::MetaModel(const Project &p) :
         if ( (sub = el->FirstChildElement("range")) ) {
             sub->QueryDoubleAttribute("min", &p.min);
             sub->QueryDoubleAttribute("max", &p.max);
+            using std::swap;
+            if ( p.min > p.max )
+                swap(p.min, p.max);
         }
         if ( (sub = el->FirstChildElement("perturbation")) ) {
             sub->QueryDoubleAttribute("rate", &p.sigma);
