@@ -154,10 +154,10 @@ quint32 GAFitter::findNextStim()
 
         if ( epoch + 1 < bias.size() ) { // Initial round: Sequential order
             nextStimIdx = stimIdx + 1;
-        } else if ( epoch < settings.orderBiasStartEpoch ) { // Further unbiased rounds: Random order
+        } else if ( int(epoch) < settings.orderBiasStartEpoch ) { // Further unbiased rounds: Random order
             nextStimIdx = RNG.uniform<quint32>(0, deck.stimulations().size()-1);
         } else { // Biased rounds
-            double sumBias;
+            double sumBias = 0;
             for ( double b : bias )
                 sumBias += b;
             double choice = RNG.uniform(0.0, sumBias);
