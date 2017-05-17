@@ -37,8 +37,13 @@ void GAFitterWidget::progress(quint32 idx)
 
 void GAFitterWidget::done()
 {
-    ui->start->setText("Start");
-    ui->start->setEnabled(true);
+    if ( ui->repeats->value() == 1 ) {
+        ui->start->setText("Start");
+        ui->start->setEnabled(true);
+    } else {
+        ui->repeats->setValue(ui->repeats->value()-1);
+        ui->params_plotter->clear();
+    }
 }
 
 void GAFitterWidget::on_start_clicked()
@@ -49,6 +54,7 @@ void GAFitterWidget::on_start_clicked()
     ui->start->setEnabled(false);
     ui->params_plotter->clear();
     WaveSource deck(session, WaveSource::Deck, currentDeck);
+    for ( int i = 0; i < ui->repeats->value(); i++ )
         emit startFitting(deck);
 }
 

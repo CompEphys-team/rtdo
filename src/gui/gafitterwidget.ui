@@ -17,22 +17,32 @@
    <item row="0" column="0">
     <widget class="QComboBox" name="decks"/>
    </item>
-   <item row="0" column="1">
+   <item row="0" column="2">
     <widget class="QPushButton" name="start">
      <property name="text">
       <string>Start fitting</string>
      </property>
     </widget>
    </item>
-   <item row="0" column="2">
+   <item row="0" column="3">
     <widget class="QPushButton" name="abort">
      <property name="text">
       <string>Abort</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="3">
+   <item row="1" column="0" colspan="4">
     <widget class="ParameterFitPlotter" name="params_plotter" native="true"/>
+   </item>
+   <item row="0" column="1">
+    <widget class="QSpinBox" name="repeats">
+     <property name="suffix">
+      <string> repeats</string>
+     </property>
+     <property name="minimum">
+      <number>1</number>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
