@@ -39,6 +39,7 @@ void MainWindow::on_actionWavegen_triggered()
     wavegenDlg->show();
     wavegenDlg->raise();
     wavegenDlg->activateWindow();
+    wavegenDlg->setWindowTitle(wavegenDlg->windowTitle() + " : " + title);
 }
 
 void MainWindow::on_actionDecks_triggered()
@@ -48,6 +49,7 @@ void MainWindow::on_actionDecks_triggered()
     deckWidget->show();
     deckWidget->raise();
     deckWidget->activateWindow();
+    deckWidget->setWindowTitle(deckWidget->windowTitle() + " : " + title);
 }
 
 void MainWindow::on_actionProfiler_triggered()
@@ -58,6 +60,7 @@ void MainWindow::on_actionProfiler_triggered()
     profileDlg->show();
     profileDlg->raise();
     profileDlg->activateWindow();
+    profileDlg->setWindowTitle(profileDlg->windowTitle() + " : " + title);
 }
 
 void MainWindow::on_actionGAFitter_triggered()
@@ -67,6 +70,7 @@ void MainWindow::on_actionGAFitter_triggered()
     gaFitterWidget->show();
     gaFitterWidget->raise();
     gaFitterWidget->activateWindow();
+    gaFitterWidget->setWindowTitle(gaFitterWidget->windowTitle() + " : " + title);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -116,6 +120,7 @@ void MainWindow::on_actionNew_session_triggered()
     ui->menuSession->setEnabled(false);
     ui->mainToolBar->setEnabled(true);
     ui->menuFigures->setEnabled(true);
+    setTitle();
 }
 
 void MainWindow::on_actionOpen_session_triggered()
@@ -127,28 +132,42 @@ void MainWindow::on_actionOpen_session_triggered()
     ui->menuSession->setEnabled(false);
     ui->mainToolBar->setEnabled(true);
     ui->menuFigures->setEnabled(true);
+    setTitle();
+}
+
+void MainWindow::setTitle()
+{
+    title = QString("%1 (%2) | %3")
+            .arg(QDir(project->dir()).dirName())
+            .arg(QString::fromStdString(project->model().name()))
+            .arg(session->name());
+    setWindowTitle(title);
 }
 
 void MainWindow::on_actionWavegen_fitness_map_triggered()
 {
     WavegenFitnessMapper *figure = new WavegenFitnessMapper(*session);
+    figure->setWindowTitle(figure->windowTitle() + " : " + title);
     figure->show();
 }
 
 void MainWindow::on_actionError_profiles_triggered()
 {
     ProfilePlotter *figure = new ProfilePlotter(*session);
+    figure->setWindowTitle(figure->windowTitle() + " : " + title);
     figure->show();
 }
 
 void MainWindow::on_actionFitting_Parameters_triggered()
 {
     ParameterFitPlotter *figure = new ParameterFitPlotter(*session);
+    figure->setWindowTitle(figure->windowTitle() + " : " + title);
     figure->show();
 }
 
 void MainWindow::on_actionStimulations_triggered()
 {
     StimulationPlotter *figure = new StimulationPlotter(*session);
+    figure->setWindowTitle(figure->windowTitle() + " : " + title);
     figure->show();
 }

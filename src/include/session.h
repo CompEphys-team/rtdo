@@ -57,6 +57,8 @@ public:
     const StimulationData &stimulationData() const { return stimd; }
     const GAFitterSettings &gaFitterSettings() const { return gafs; }
 
+    inline QString name() const { return dir.dirName(); }
+
 public slots:
     /// Set runtime data
     void setRunData(RunData d);

@@ -159,6 +159,11 @@ neuronModel MetaModel::generate(NNmodel &m, std::vector<double> &fixedParamIni, 
 
 }
 
+std::string MetaModel::name() const
+{
+    return _name;
+}
+
 string MetaModel::name(ModuleType type) const
 {
     switch ( type ) {

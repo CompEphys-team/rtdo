@@ -43,6 +43,8 @@ private slots:
 
     void on_actionStimulations_triggered();
 
+    void setTitle();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;
@@ -52,6 +54,8 @@ private:
 
     Project *project;
     Session *session;
+
+    QString title;
 
     void closeEvent(QCloseEvent *event);
 };
