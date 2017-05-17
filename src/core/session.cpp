@@ -9,10 +9,17 @@ Session::Session(Project &p, const QString &sessiondir) :
     dirtyStimd(true),
     dirtyGafs(true)
 {
-    qRegisterMetaType<RunData>();
-    qRegisterMetaType<WavegenData>();
-    qRegisterMetaType<StimulationData>();
-    qRegisterMetaType<GAFitterSettings>();
+    static bool registered = false;
+    if ( !registered ) {
+        qRegisterMetaType<RunData>();
+        qRegisterMetaType<WavegenData>();
+        qRegisterMetaType<StimulationData>();
+        qRegisterMetaType<GAFitterSettings>();
+
+        qRegisterMetaType<WaveSource>();
+
+        registered = true;
+    }
 
     addAPs();
 

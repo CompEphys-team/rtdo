@@ -27,13 +27,6 @@ GAFitter::~GAFitter()
     lib.destroySimulator(simulator);
 }
 
-void GAFitter::stageDeck(WaveSource deck)
-{
-    if ( deck.type != WaveSource::Deck )
-        throw std::runtime_error("Wave source for GAFitter must be a deck.");
-    stagedDeck = std::move(deck);
-}
-
 void GAFitter::abort()
 {
     aborted = true;
@@ -54,14 +47,16 @@ GAFitter::Output::Output(const GAFitter &f) :
     deck.session =& f.session;
 }
 
-void GAFitter::run()
+void GAFitter::run(WaveSource src)
 {
     if ( aborted )
         return;
+    if ( src.type != WaveSource::Deck )
+        throw std::runtime_error("Wave source for GAFitter must be a deck.");
 
     // Prepare
     output = Output(*this);
-    output.deck = stagedDeck;
+    output.deck = std::move(src);
     deck = *output.deck.deck();
     stimIdx = 0;
 

@@ -17,7 +17,7 @@ public:
     ~GAFitterWidget();
 
 signals:
-    void startFitting();
+    void startFitting(WaveSource deck);
 
 private slots:
     void updateDecks();

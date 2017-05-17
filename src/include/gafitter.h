@@ -34,7 +34,7 @@ public:
     Output currentResults() const { return output; }
 
 public slots:
-    void run();
+    void run(WaveSource src);
 
 signals:
     void didAbort();
@@ -55,8 +55,6 @@ protected:
     randutils::mt19937_rng RNG;
 
     bool aborted;
-
-    WaveSource stagedDeck;
 
     WaveDeck deck;
     quint32 stimIdx;
