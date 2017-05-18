@@ -26,9 +26,6 @@
          <property name="text">
           <string>Rescale</string>
          </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
         </widget>
        </item>
        <item row="1" column="0" colspan="5">
@@ -103,33 +100,21 @@
      </widget>
      <widget class="QWidget" name="sidebar" native="true">
       <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="0">
-        <widget class="QSpinBox" name="opacity">
-         <property name="suffix">
-          <string>% opacity</string>
-         </property>
-         <property name="maximum">
-          <number>100</number>
-         </property>
-         <property name="singleStep">
-          <number>5</number>
-         </property>
-         <property name="value">
-          <number>100</number>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QPushButton" name="sepcols">
-         <property name="text">
-          <string>Separate colours</string>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
        <item row="2" column="0">
+        <widget class="QPushButton" name="copy">
+         <property name="text">
+          <string>Copy</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="paste">
+         <property name="text">
+          <string>Paste</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0" colspan="2">
         <widget class="QTableWidget" name="fits">
          <property name="selectionBehavior">
           <enum>QAbstractItemView::SelectRows</enum>
@@ -152,9 +137,38 @@
          <attribute name="verticalHeaderVisible">
           <bool>false</bool>
          </attribute>
+         <attribute name="verticalHeaderDefaultSectionSize">
+          <number>25</number>
+         </attribute>
          <column/>
          <column/>
          <column/>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QPushButton" name="sepcols">
+         <property name="text">
+          <string>Separate colours</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <widget class="QSpinBox" name="opacity">
+         <property name="suffix">
+          <string>% opacity</string>
+         </property>
+         <property name="maximum">
+          <number>100</number>
+         </property>
+         <property name="singleStep">
+          <number>5</number>
+         </property>
+         <property name="value">
+          <number>100</number>
+         </property>
         </widget>
        </item>
       </layout>

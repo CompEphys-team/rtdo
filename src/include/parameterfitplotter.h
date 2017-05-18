@@ -4,6 +4,7 @@
 #include <QWidget>
 #include "session.h"
 #include "qcustomplot.h"
+#include "colorbutton.h"
 
 namespace Ui {
 class ParameterFitPlotter;
@@ -22,7 +23,9 @@ public:
     void clear();
 
 protected:
-    void styleErrorGraph(QCPGraph*);
+    std::vector<int> getSelectedRows();
+    ColorButton *getGraphColorBtn(int row);
+    ColorButton *getErrorColorBtn(int row);
 
 private slots:
     void setColumnCount(int n);
@@ -41,6 +44,8 @@ private:
     std::vector<QCustomPlot*> plots;
 
     bool resizing, enslaved;
+
+    std::vector<QColor> clipboard;
 };
 
 #endif // PARAMETERFITPLOTTER_H

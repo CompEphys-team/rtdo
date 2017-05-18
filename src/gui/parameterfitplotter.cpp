@@ -34,8 +34,25 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     connect(ui->opacity, SIGNAL(valueChanged(int)), this, SLOT(replot()));
     connect(ui->sepcols, &QPushButton::clicked, [=](bool on) {
         for ( int i = 0; i < ui->fits->rowCount(); i++ ) {
-            qobject_cast<ColorButton*>(ui->fits->cellWidget(i, 0))->setColor(on ? QColorDialog::standardColor(i%20) : Qt::blue);
-            qobject_cast<ColorButton*>(ui->fits->cellWidget(i, 1))->setColor(on ? QColorDialog::standardColor(i%20 + 21) : Qt::magenta);
+            getGraphColorBtn(i)->setColor(on ? QColorDialog::standardColor(i%20) : Qt::blue);
+            getErrorColorBtn(i)->setColor(on ? QColorDialog::standardColor(i%20 + 21) : Qt::magenta);
+        }
+        replot();
+    });
+    connect(ui->copy, &QPushButton::clicked, [=]() {
+        std::vector<int> rows = getSelectedRows();
+        clipboard.clear();
+        clipboard.reserve(2*rows.size());
+        for ( int row : rows ) {
+            clipboard.push_back(getGraphColorBtn(row)->color);
+            clipboard.push_back(getErrorColorBtn(row)->color);
+        }
+    });
+    connect(ui->paste, &QPushButton::clicked, [=]() {
+        std::vector<int> rows = getSelectedRows();
+        for ( size_t i = 0; i < rows.size() && 2*i < clipboard.size(); i++ ) {
+            getGraphColorBtn(rows[i])->setColor(clipboard[2*i]);
+            getErrorColorBtn(rows[i])->setColor(clipboard[2*i+1]);
         }
         replot();
     });
@@ -115,13 +132,13 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         ui->sidebar->setVisible(false);
         ui->rescale->setVisible(false);
         connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
-        plots[0]->xAxis->setRange(0, 100);
         clear();
     } else {
         connect(&session->gaFitter(), SIGNAL(done()), this, SLOT(updateFits()));
         connect(ui->fits, SIGNAL(itemSelectionChanged()), this, SLOT(replot()));
         updateFits();
     }
+    plots[0]->xAxis->setRange(0, 1000);
 }
 
 void ParameterFitPlotter::setColumnCount(int n)
@@ -172,11 +189,7 @@ void ParameterFitPlotter::updateFits()
 void ParameterFitPlotter::replot()
 {
     bool initial = true;
-    QList<QTableWidgetSelectionRange> selection = ui->fits->selectedRanges();
-    std::vector<int> rows;
-    for ( auto range : selection )
-        for ( int i = range.topRow(); i <= range.bottomRow(); i++)
-            rows.push_back(i);
+    std::vector<int> rows = getSelectedRows();
     if ( rows.empty() )
         return;
 
@@ -201,7 +214,7 @@ void ParameterFitPlotter::replot()
             }
 
             QCPGraph *graph = plots[i]->addGraph();
-            QColor col(qobject_cast<ColorButton*>(ui->fits->cellWidget(row, 0))->color);
+            QColor col(getGraphColorBtn(row)->color);
             col.setAlphaF(ui->opacity->value()/100.);
             graph->setPen(QPen(col));
             graph->setData(keys, values, true);
@@ -212,7 +225,7 @@ void ParameterFitPlotter::replot()
             }
 
             QCPGraph *errGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
-            QColor errCol(qobject_cast<ColorButton*>(ui->fits->cellWidget(row, 1))->color);
+            QColor errCol(getErrorColorBtn(row)->color);
             errCol.setAlphaF(ui->opacity->value()/100.);
             errGraph->setPen(QPen(errCol));
             errGraph->setLineStyle(QCPGraph::lsStepLeft);
@@ -245,6 +258,26 @@ void ParameterFitPlotter::clear()
         plot->graph(1)->setPen(QPen(Qt::magenta));
         plot->replot();
     }
+}
+
+std::vector<int> ParameterFitPlotter::getSelectedRows()
+{
+    QList<QTableWidgetSelectionRange> selection = ui->fits->selectedRanges();
+    std::vector<int> rows;
+    for ( auto range : selection )
+        for ( int i = range.topRow(); i <= range.bottomRow(); i++)
+            rows.push_back(i);
+    return rows;
+}
+
+ColorButton *ParameterFitPlotter::getGraphColorBtn(int row)
+{
+    return qobject_cast<ColorButton*>(ui->fits->cellWidget(row, 0));
+}
+
+ColorButton *ParameterFitPlotter::getErrorColorBtn(int row)
+{
+    return qobject_cast<ColorButton*>(ui->fits->cellWidget(row, 1));
 }
 
 void ParameterFitPlotter::progress(quint32 epoch)
