@@ -40,7 +40,7 @@ private:
 
     std::vector<QCustomPlot*> plots;
 
-    bool resizing;
+    bool resizing, enslaved;
 };
 
 #endif // PARAMETERFITPLOTTER_H

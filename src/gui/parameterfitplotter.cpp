@@ -1,5 +1,6 @@
 #include "parameterfitplotter.h"
 #include "ui_parameterfitplotter.h"
+#include "colorbutton.h"
 
 ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     QWidget(parent),
@@ -13,7 +14,8 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     connect(ui->param, &QCheckBox::stateChanged, [=](int state) {
         bool on = state == Qt::Checked;
         for ( QCustomPlot *p : plots ) {
-            p->graph(0)->setVisible(on);
+            for ( int i = 0; i < p->plottableCount(); i += 2 )
+                p->graph(i)->setVisible(on);
             p->item(0)->setVisible(on); // This should be the target value line
             p->yAxis->setTicks(on);
             p->yAxis->setTickLabels(on);
@@ -23,10 +25,19 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     connect(ui->error, &QCheckBox::stateChanged, [=](int state) {
         bool on = state == Qt::Checked;
         for ( QCustomPlot *p : plots ) {
-            p->graph(1)->setVisible(on);
+            for ( int i = 1; i < p->plottableCount(); i += 2 )
+                p->graph(i)->setVisible(on);
             p->yAxis2->setVisible(on);
             p->replot();
         }
+    });
+    connect(ui->opacity, SIGNAL(valueChanged(int)), this, SLOT(replot()));
+    connect(ui->sepcols, &QPushButton::clicked, [=](bool on) {
+        for ( int i = 0; i < ui->fits->rowCount(); i++ ) {
+            qobject_cast<ColorButton*>(ui->fits->cellWidget(i, 0))->setColor(on ? QColorDialog::standardColor(i%20) : Qt::blue);
+            qobject_cast<ColorButton*>(ui->fits->cellWidget(i, 1))->setColor(on ? QColorDialog::standardColor(i%20 + 21) : Qt::magenta);
+        }
+        replot();
     });
 }
 
@@ -46,6 +57,7 @@ ParameterFitPlotter::~ParameterFitPlotter()
 void ParameterFitPlotter::init(Session *session, bool enslave)
 {
     this->session = session;
+    this->enslaved = enslave;
 
     // Plots
     for ( QCustomPlot *p : plots )
@@ -100,14 +112,14 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
 
     // Enslave to GAFitterWidget
     if ( enslave ) {
-        ui->fits->setVisible(false);
+        ui->sidebar->setVisible(false);
         ui->rescale->setVisible(false);
         connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
         plots[0]->xAxis->setRange(0, 100);
         clear();
     } else {
         connect(&session->gaFitter(), SIGNAL(done()), this, SLOT(updateFits()));
-        connect(ui->fits, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
+        connect(ui->fits, SIGNAL(itemSelectionChanged()), this, SLOT(replot()));
         updateFits();
     }
 }
@@ -144,70 +156,83 @@ void ParameterFitPlotter::resizeTableRows(int, int, int size)
 
 void ParameterFitPlotter::updateFits()
 {
-    int currentFit = ui->fits->currentIndex();
-    ui->fits->clear();
-    for ( size_t i = 0; i < session->gaFitter().results().size(); i++ ) {
+    for ( size_t i = ui->fits->rowCount(); i < session->gaFitter().results().size(); i++ ) {
         const GAFitter::Output &fit = session->gaFitter().results().at(i);
-        ui->fits->addItem(QString("Fit %1 (%2 epochs, %3)").arg(i).arg(fit.epochs).arg(fit.deck.prettyName()));
+        ui->fits->insertRow(i);
+        ui->fits->setItem(i, 2, new QTableWidgetItem(QString("Fit %1 (%2 epochs, %3)").arg(i).arg(fit.epochs).arg(fit.deck.prettyName())));
+        ColorButton *c = new ColorButton();
+        c->setColor(ui->sepcols->isChecked() ? QColorDialog::standardColor(i%20) : Qt::blue);
+        ui->fits->setCellWidget(i, 0, c);
+        c = new ColorButton();
+        c->setColor(ui->sepcols->isChecked() ? QColorDialog::standardColor(i%20 + 21) : Qt::magenta);
+        ui->fits->setCellWidget(i, 1, c);
     }
-    ui->fits->setCurrentIndex(currentFit < 0 ? 0 : currentFit);
 }
 
 void ParameterFitPlotter::replot()
 {
-    int currentFit = ui->fits->currentIndex();
-    if ( currentFit < 0 )
+    bool initial = true;
+    QList<QTableWidgetSelectionRange> selection = ui->fits->selectedRanges();
+    std::vector<int> rows;
+    for ( auto range : selection )
+        for ( int i = range.topRow(); i <= range.bottomRow(); i++)
+            rows.push_back(i);
+    if ( rows.empty() )
         return;
-    const GAFitter::Output fit = session->gaFitter().results().at(currentFit);
-    QVector<double> keys(fit.epochs);
-    for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ )
-        keys[epoch] = epoch;
-    for ( size_t i = 0; i < plots.size(); i++ ) {
-        QVector<double> values(fit.epochs), errors, errKey;
-        errors.reserve(fit.epochs);
-        errKey.reserve(fit.epochs);
-        for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ ) {
-            values[epoch] = fit.params[epoch][i];
-            if ( fit.stimIdx[epoch] == i ) {
-                errors.push_back(fit.error[epoch]);
-                errKey.push_back(epoch);
+
+    for ( QCustomPlot *p : plots )
+        p->clearGraphs();
+
+    for ( int row : rows ) {
+        const GAFitter::Output fit = session->gaFitter().results().at(row);
+        QVector<double> keys(fit.epochs);
+        for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ )
+            keys[epoch] = epoch;
+        for ( size_t i = 0; i < plots.size(); i++ ) {
+            QVector<double> values(fit.epochs), errors, errKey;
+            errors.reserve(fit.epochs);
+            errKey.reserve(fit.epochs);
+            for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ ) {
+                values[epoch] = fit.params[epoch][i];
+                if ( fit.stimIdx[epoch] == i ) {
+                    errors.push_back(fit.error[epoch]);
+                    errKey.push_back(epoch);
+                }
+            }
+
+            QCPGraph *graph = plots[i]->addGraph();
+            QColor col(qobject_cast<ColorButton*>(ui->fits->cellWidget(row, 0))->color);
+            col.setAlphaF(ui->opacity->value()/100.);
+            graph->setPen(QPen(col));
+            graph->setData(keys, values, true);
+            graph->setVisible(ui->param->isChecked());
+            if ( ui->rescale->isChecked() ) {
+                plots[i]->xAxis->rescale();
+                plots[i]->yAxis->rescale();
+            }
+
+            QCPGraph *errGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
+            QColor errCol(qobject_cast<ColorButton*>(ui->fits->cellWidget(row, 1))->color);
+            errCol.setAlphaF(ui->opacity->value()/100.);
+            errGraph->setPen(QPen(errCol));
+            errGraph->setLineStyle(QCPGraph::lsStepLeft);
+            errGraph->setData(errKey, errors, true);
+            errGraph->setVisible(ui->error->isChecked());
+            if ( ui->rescale->isChecked() ) {
+                if ( initial ) {
+                    plots[i]->yAxis2->setRange(0,1); // Reset range when selecting a new fit
+                    initial = false;
+                }
+                bool found;
+                QCPRange range = errGraph->getValueRange(found);
+                if ( found && range.upper > plots[i]->yAxis2->range().upper )
+                    plots[i]->yAxis2->setRangeUpper(range.upper);
             }
         }
-        plots[i]->clearGraphs();
-        QCPGraph *graph = plots[i]->addGraph();
-        graph->setData(keys, values, true);
-        graph->setVisible(ui->param->isChecked());
-        if ( ui->rescale->isChecked() ) {
-            plots[i]->xAxis->rescale();
-            plots[i]->yAxis->rescale();
-        }
-
-        QCPGraph *errGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
-        errGraph->setData(errKey, errors, true);
-        errGraph->setVisible(ui->error->isChecked());
-        styleErrorGraph(errGraph);
-        if ( ui->rescale->isChecked() ) {
-            if ( i == 0 )
-                plots[i]->yAxis2->setRange(0,1); // Reset range when selecting a new fit
-            bool found;
-            QCPRange range = errGraph->getValueRange(found);
-            if ( found && range.upper > plots[i]->yAxis2->range().upper )
-                plots[i]->yAxis2->setRangeUpper(range.upper);
-        }
-
-        plots[i]->replot();
     }
-}
 
-void ParameterFitPlotter::styleErrorGraph(QCPGraph *g)
-{
-    static QPen *pen = nullptr;
-    if ( !pen ) {
-        pen = new QPen();
-        pen->setColor(Qt::magenta);
-    }
-    g->setLineStyle(QCPGraph::lsStepLeft);
-    g->setPen(*pen);
+    for ( QCustomPlot *p : plots )
+        p->replot();
 }
 
 void ParameterFitPlotter::clear()
@@ -216,7 +241,8 @@ void ParameterFitPlotter::clear()
         plot->clearGraphs();
         plot->addGraph()->setVisible(ui->param->isChecked());
         plot->addGraph(0, plot->yAxis2)->setVisible(ui->error->isChecked());
-        styleErrorGraph(plot->graph(1));
+        plot->graph(1)->setLineStyle(QCPGraph::lsStepLeft);
+        plot->graph(1)->setPen(QPen(Qt::magenta));
         plot->replot();
     }
 }
