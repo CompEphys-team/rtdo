@@ -256,6 +256,7 @@ void ParameterFitPlotter::clear()
         plot->addGraph(0, plot->yAxis2)->setVisible(ui->error->isChecked());
         plot->graph(1)->setLineStyle(QCPGraph::lsStepLeft);
         plot->graph(1)->setPen(QPen(Qt::magenta));
+        plot->xAxis->moveRange(-plot->xAxis->range().lower);
         plot->replot();
     }
 }
