@@ -324,7 +324,7 @@ struct GAFitterSettings {
 
     size_t nElite = 100;
     size_t nReinit = 100;
-    bool crossover = false;
+    double crossover = 0.0;
 
     bool decaySigma = true;
     double sigmaInitial = 5;
