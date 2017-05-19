@@ -40,6 +40,7 @@ void GAFitterWidget::done()
     if ( ui->repeats->value() == 1 ) {
         ui->start->setText("Start");
         ui->start->setEnabled(true);
+        ui->repeats->setEnabled(true);
     } else {
         ui->repeats->setValue(ui->repeats->value()-1);
         ui->params_plotter->clear();
@@ -52,6 +53,7 @@ void GAFitterWidget::on_start_clicked()
     if ( currentDeck < 0 )
         return;
     ui->start->setEnabled(false);
+    ui->repeats->setEnabled(false);
     ui->params_plotter->clear();
     WaveSource deck(session, WaveSource::Deck, currentDeck);
     for ( int i = 0; i < ui->repeats->value(); i++ )
@@ -63,4 +65,5 @@ void GAFitterWidget::on_abort_clicked()
     session.gaFitter().abort();
     ui->start->setText("Start");
     ui->start->setEnabled(true);
+    ui->repeats->setEnabled(true);
 }
