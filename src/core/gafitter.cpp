@@ -4,7 +4,7 @@
 
 const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 100;
+const quint32 GAFitter::version = 101;
 
 GAFitter::GAFitter(Session &session, DAQ *daq) :
     SessionWorker(session),
@@ -42,9 +42,12 @@ GAFitter::Output::Output(const GAFitter &f) :
     params(f.settings.maxEpochs, std::vector<scalar>(f.lib.adjustableParams.size())),
     error(f.settings.maxEpochs),
     stimIdx(f.settings.maxEpochs),
+    targets(f.lib.adjustableParams.size()),
     epochs(0)
 {
     deck.session =& f.session;
+    for ( size_t i = 0; i < targets.size(); i++ ) // Initialise for back compat
+        targets[i] = f.lib.adjustableParams.at(i).initial;
 }
 
 void GAFitter::run(WaveSource src)
@@ -59,6 +62,16 @@ void GAFitter::run(WaveSource src)
     output.deck = std::move(src);
     deck = *output.deck.deck();
     stimIdx = 0;
+
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+        const AdjustableParam &p = lib.adjustableParams.at(i);
+        switch ( settings.targetType ) {
+        case 0: output.targets[i] = p.initial; break;
+        case 1: output.targets[i] = settings.targetValues[i]; break;
+        case 2: output.targets[i] = RNG.uniform(p.min, p.max); break;
+        }
+        simulator->setAdjustableParam(i, output.targets[i]);
+    }
 
     Stimulation hold;
     hold.duration = session.runData().settleDuration;
@@ -100,6 +113,8 @@ void GAFitter::run(WaveSource src)
             for ( const scalar &p : out.params[i] )
                 os << p;
         }
+        for ( const scalar &t : out.targets )
+            os << t;
     }
 }
 
@@ -122,6 +137,9 @@ void GAFitter::load(const QString &act, const QString &, QFile &results)
         for ( scalar &p : out.params[i] )
             is >> p;
     }
+    if ( ver >= 101 )
+        for ( scalar &t : out.targets )
+            is >> t;
     m_results.push_back(std::move(out));
 }
 

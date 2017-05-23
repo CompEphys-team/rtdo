@@ -17,7 +17,7 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
         for ( QCustomPlot *p : plots ) {
             for ( QCPGraph *g : p->yAxis->graphs() )
                 g->setVisible(on);
-            p->item(0)->setVisible(on && summarising); // This should be the target value line
+            p->layer("target")->setVisible(on && summarising);
             p->yAxis->setTicks(on);
             p->yAxis->setTickLabels(on);
             p->replot();
@@ -91,10 +91,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
         plot->xAxis->setLabel("Epoch");
         plot->yAxis->setLabel(QString::fromStdString(p.name));
-        QCPItemStraightLine *line = new QCPItemStraightLine(plot);
-        line->point1->setCoords(0, p.initial);
-        line->point2->setCoords(1, p.initial);
-        line->setVisible(ui->param->isChecked());
+        plot->addLayer("target");
 
         plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
         connect(plot->xAxis, SIGNAL(rangeChanged(QCPRange)), this, SLOT(rangeChanged(QCPRange)));
@@ -201,7 +198,8 @@ void ParameterFitPlotter::replot()
         return;
 
     for ( QCustomPlot *p : plots ) {
-        p->item(0)->setVisible(ui->param->isChecked());
+        p->layer("target")->setVisible(ui->param->isChecked());
+        p->clearItems();
         p->clearGraphs();
     }
 
@@ -211,6 +209,12 @@ void ParameterFitPlotter::replot()
         for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ )
             keys[epoch] = epoch;
         for ( size_t i = 0; i < plots.size(); i++ ) {
+            QCPItemStraightLine *line = new QCPItemStraightLine(plots[i]);
+            line->setLayer("target");
+            line->setPen(QPen(getGraphColorBtn(row)->color));
+            line->point1->setCoords(0, fit.targets[i]);
+            line->point2->setCoords(1, fit.targets[i]);
+
             QVector<double> values(fit.epochs), errors, errKey;
             errors.reserve(fit.epochs);
             errKey.reserve(fit.epochs);
@@ -261,6 +265,7 @@ void ParameterFitPlotter::clear()
 {
     for ( QCustomPlot *plot : plots ) {
         plot->clearGraphs();
+        plot->clearItems();
         plot->addGraph()->setVisible(ui->param->isChecked());
         plot->addGraph(0, plot->yAxis2)->setVisible(ui->error->isChecked());
         plot->graph(1)->setLineStyle(QCPGraph::lsStepLeft);
@@ -298,6 +303,14 @@ ColorButton *ParameterFitPlotter::getGroupColorBtn(int row)
 void ParameterFitPlotter::progress(quint32 epoch)
 {
     GAFitter::Output fit = session->gaFitter().currentResults();
+    if ( epoch == 0 ) {
+        for ( size_t i = 0; i < plots.size(); i++ ) {
+            QCPItemStraightLine *line = new QCPItemStraightLine(plots[i]);
+            line->setLayer("target");
+            line->point1->setCoords(0, fit.targets[i]);
+            line->point2->setCoords(1, fit.targets[i]);
+        }
+    }
     for ( size_t i = 0; i < plots.size(); i++ ) {
         plots[i]->graph(0)->addData(epoch, fit.params[epoch][i]);
     }
@@ -387,7 +400,7 @@ void ParameterFitPlotter::plotSummary()
 
     for ( QCustomPlot *p : plots ) {
         p->clearGraphs();
-        p->item(0)->setVisible(false);
+        p->layer("target")->setVisible(false);
     }
 
     for ( int row : rows ) {
@@ -401,7 +414,7 @@ void ParameterFitPlotter::plotSummary()
             QVector<double> mean(epochs, 0), sem(epochs, 0), max(epochs, 0);
             QVector<double> errMean(epochs, 0), errSEM(epochs, 0), errMax(epochs, 0);
             getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
-                return std::fabs(fit.params[ep][i] - session->project.model().adjustableParams[i].initial);
+                return std::fabs(fit.params[ep][i] - fit.targets[i]);
             }, mean, sem, max);
             getSummary(groups[row], [=](const GAFitter::Output &fit, int ep) -> double {
                 for ( ; ep >= 0; ep-- )

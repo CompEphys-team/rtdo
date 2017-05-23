@@ -26,6 +26,7 @@ public:
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]
         std::vector<scalar> error; //!< Best performing model's error in each epoch
         std::vector<quint32> stimIdx; //!< Index of the stimulation at each epoch
+        std::vector<scalar> targets; //!< Simulator's parameters
         quint32 epochs;
         WaveSource deck;
     };
