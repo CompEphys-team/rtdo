@@ -23,10 +23,16 @@ public:
     void clear();
 
 protected:
-    std::vector<int> getSelectedRows();
+    std::vector<int> getSelectedRows(QTableWidget *table);
     ColorButton *getGraphColorBtn(int row);
     ColorButton *getErrorColorBtn(int row);
+    ColorButton *getGroupColorBtn(int row);
 
+    void getSummary(std::vector<int> fits, //!< Integers identifying the fits to be used
+                    std::function<double (const GAFitter::Output &, int)> value, //!< Function to extract the value to be analysed (eg param residual or error)
+                    QVector<double> &mean, //!< Return: the mean value per epoch. Must be of appropriate size and all zeroes.
+                    QVector<double> &meanPlusSEM, //!< Return: The SEM added onto the mean. Must be of appropriate size and all zeroes.
+                    QVector<double> &max); //!< Return: The maximum value per epoch. Must be of appropriate size and all zeroes.
 private slots:
     void setColumnCount(int n);
     void resizeTableRows(int, int, int size);
@@ -37,15 +43,21 @@ private slots:
     void rangeChanged(QCPRange range);
     void errorRangeChanged(QCPRange range);
 
+    void plotSummary();
+    void addGroup();
+    void removeGroup();
+
 private:
     Ui::ParameterFitPlotter *ui;
     Session *session;
 
     std::vector<QCustomPlot*> plots;
 
-    bool resizing, enslaved;
+    bool resizing, enslaved, summarising;
 
     std::vector<QColor> clipboard;
+
+    std::vector<std::vector<int>> groups;
 };
 
 #endif // PARAMETERFITPLOTTER_H
