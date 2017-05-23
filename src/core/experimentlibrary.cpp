@@ -155,7 +155,7 @@ std::string ExperimentLibrary::daqCode()
 {
     std::stringstream ss;
     ss << R"EOF(
-class Simulator : public DAQ
+class SimulatorImpl : public Simulator
 {
 private:
     struct CacheStruct {
@@ -174,12 +174,12 @@ private:
     size_t currentSample;
 
 public:
-    Simulator() : DAQ(nullptr)
+    SimulatorImpl() : Simulator()
     {
         initialise();
     }
 
-    ~Simulator() {}
+    ~SimulatorImpl() {}
 
     void run(Stimulation s)
     {
@@ -204,7 +204,6 @@ public:
     ss << "            scalar Vcmd = getCommandVoltage(s, t);" << endl;
     ss << "            for ( unsigned int mt = 0; mt < simCycles" << SUFFIX << "; mt++ ) {" << endl;
     ss << "                Isyn = (clampGain" << SUFFIX << "*(Vcmd-V) - V) / accessResistance" << SUFFIX << ";" << endl;
-//    ss << "printf(\"Host %2.2f + %2d: %f\t%.1f\t%f\\n\", t, mt, V, Vcmd, Isyn);" << endl;
     ss << model.kernel("                ", false, false);
     ss << R"EOF(
             } // end for mt
@@ -252,14 +251,23 @@ public:
         ss << "        " << v.name << " = " << v.initial << ";" << endl;
     ss << "    }" << endl << endl;
 
+    ss << "    void setAdjustableParam(size_t idx, double value)" << endl;
+    ss << "    {" << endl;
+    ss << "        switch ( idx ) {" << endl;
+    for ( size_t i = 0; i < adjustableParams.size(); i++ )
+        ss << "        case " << i << ": " << adjustableParams[i].name << " = value; break;" << endl;
+    ss << "        }" << endl;
+    ss << "    cache.clear();" << endl;
+    ss << "    initialise();" << endl;
+    ss << "    }" << endl << endl;
+
     // Declarations
-    for ( const StateVariable &v : stateVariables ) {
+    for ( const StateVariable &v : stateVariables )
         ss << "    " << v.type << " " << v.name << ";" << endl;
-        ss << "    std::vector<" << v.type << "> settled_" << v.name << ";" << endl;
-    }
+
     ss << endl;
     for ( const AdjustableParam &p : adjustableParams )
-        ss << "    constexpr static " << p.type << " " << p.name << " = " << p.initial << ";" << endl;
+        ss << "    " << p.type << " " << p.name << " = " << p.initial << ";" << endl;
 
     ss << "};" << endl;
     return ss.str();
@@ -281,8 +289,8 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
 
     ss << daqCode();
     ss << endl;
-    ss << "inline DAQ *createSim() { return new Simulator(); }" << endl;
-    ss << "inline void destroySim(DAQ *sim) { delete sim; }" << endl;
+    ss << "inline Simulator *createSim() { return new SimulatorImpl(); }" << endl;
+    ss << "inline void destroySim(Simulator *sim) { delete sim; }" << endl;
     ss << endl;
 
     ss << "extern \"C\" ExperimentLibrary::Pointers populate(std::vector<StateVariable> &state, "

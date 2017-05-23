@@ -194,7 +194,7 @@ protected:
     inline QString actorName() const { return "ErrorProfiler"; }
 
 private:
-    DAQ *simulator;
+    Simulator *simulator;
     DAQ *daq;
 
     bool aborted;

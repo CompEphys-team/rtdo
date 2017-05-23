@@ -49,7 +49,7 @@ protected:
     void load(const QString &action, const QString &args, QFile &results);
     inline QString actorName() const { return "GAFitter"; }
 
-    DAQ *simulator;
+    Simulator *simulator;
     DAQ *daq;
 
     randutils::mt19937_rng RNG;
