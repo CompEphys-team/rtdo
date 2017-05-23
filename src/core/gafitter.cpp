@@ -57,6 +57,9 @@ void GAFitter::run(WaveSource src)
     if ( src.type != WaveSource::Deck )
         throw std::runtime_error("Wave source for GAFitter must be a deck.");
 
+    QTime wallclock = QTime::currentTime();
+    double simtime = 0;
+
     // Prepare
     output = Output(*this);
     output.deck = std::move(src);
@@ -88,6 +91,7 @@ void GAFitter::run(WaveSource src)
 
         // Stimulate
         stimulate(stim);
+        simtime += stim.duration + hold.duration;
 
         // Advance
         lib.pullErr();
@@ -96,6 +100,12 @@ void GAFitter::run(WaveSource src)
 
         emit progress(epoch);
     }
+
+    double wallclockms = wallclock.msecsTo(QTime::currentTime());
+    std::cout << "ms elapsed: " << wallclockms << std::endl;
+    std::cout << "ms simulated: " << simtime << std::endl;
+    std::cout << "Ratio: " << (simtime/wallclockms) << std::endl;
+
 
     // Finish
     output.epochs = epoch;
