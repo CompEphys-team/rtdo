@@ -68,7 +68,11 @@ bool Project::compile()
 {
     if ( frozen || !m_model || p_modelfile.isEmpty() || p_projectfile.isEmpty() )
         return false;
-    QFile::copy(p_modelfile, dir() + "/model.xml");
+    QString dest = dir() + "/model.xml";
+    QFile destFile(dest);
+    if ( destFile.exists() )
+        destFile.remove();
+    QFile::copy(p_modelfile, dest);
     wglib.reset(new WavegenLibrary(*this, true));
     explib.reset(new ExperimentLibrary(*this, true));
     std::ofstream proj(p_projectfile.toStdString());
