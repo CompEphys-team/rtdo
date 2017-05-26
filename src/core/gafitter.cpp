@@ -218,7 +218,13 @@ void GAFitter::procreate()
         return x.err < y.err;
     });
 
-    quint32 nextStimIdx = findNextStim();
+    output.error[epoch] = p_err[0].err;
+    output.stimIdx[epoch] = stimIdx;
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+        output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
+    }
+
+    stimIdx = findNextStim();
 
     scalar sigma = lib.adjustableParams[stimIdx].sigma;
     if ( settings.decaySigma )
@@ -254,19 +260,12 @@ void GAFitter::procreate()
         size_t i = p_err.size() - source - 1;
         for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
             AdjustableParam &p = lib.adjustableParams[iParam];
-            if ( iParam == nextStimIdx )
+            if ( iParam == stimIdx )
                 p[p_err[i].idx] = RNG.uniform(p.min, p.max);
             else
                 p[p_err[i].idx] = p[p_err[source].idx];
         }
     }
-
-    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-        output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
-    }
-    output.error[epoch] = p_err[0].err;
-    output.stimIdx[epoch] = stimIdx;
-    stimIdx = nextStimIdx;
 }
 
 void GAFitter::stimulate(const Stimulation &I)
