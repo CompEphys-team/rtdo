@@ -89,8 +89,8 @@ void WavegenFitnessMapper::updateDimensions()
         return;
 
     WaveSource src = ui->combo->currentData().value<WaveSource>();
-    int i = 0, n = src.archive().searchd.mapeDimensions.size();
-    size_t multiplier = Wavegen::mape_multiplier(src.archive().precision);
+    int i = 0, n = src.archive()->searchd.mapeDimensions.size();
+    size_t multiplier = Wavegen::mape_multiplier(src.archive()->precision);
     groupx = new QButtonGroup(this);
     groupy = new QButtonGroup(this);
     mins.resize(n);
@@ -98,7 +98,7 @@ void WavegenFitnessMapper::updateDimensions()
     collapse.resize(n);
     ui->dimensions->setRowCount(n);
     QStringList labels;
-    for ( MAPEDimension const& d : src.archive().searchd.mapeDimensions ) {
+    for ( MAPEDimension const& d : src.archive()->searchd.mapeDimensions ) {
         labels << QString::fromStdString(toString(d.func));
 
         QRadioButton *x = new QRadioButton();

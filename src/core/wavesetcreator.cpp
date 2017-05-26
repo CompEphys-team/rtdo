@@ -13,6 +13,10 @@ const QString WavesetCreator::actionDeck = QString("deck");
 const quint32 WavesetCreator::magicDeck = 0xbfb1aa06;
 const quint32 WavesetCreator::versionDeck = 100;
 
+const QString WavesetCreator::actionManual = QString("manual");
+const quint32 WavesetCreator::magicManual = 0xee4ea782;
+const quint32 WavesetCreator::versionManual = 100;
+
 WavesetCreator::WavesetCreator(Session &session) :
     SessionWorker(session)
 {
@@ -20,6 +24,7 @@ WavesetCreator::WavesetCreator(Session &session) :
     connect(this, SIGNAL(addedSelection()), this, SIGNAL(addedSet()));
     connect(this, SIGNAL(addedSubset()), this, SIGNAL(addedSet()));
     connect(this, SIGNAL(addedDeck()), this, SIGNAL(addedSet()));
+    connect(this, SIGNAL(addedManual()), this, SIGNAL(addedSet()));
 }
 
 void WavesetCreator::makeSelection(const WavegenSelection &selection)
@@ -83,6 +88,20 @@ bool WavesetCreator::makeDeck(const std::vector<WaveSource> &src)
     return true;
 }
 
+void WavesetCreator::makeManual(std::vector<Stimulation> stim)
+{
+    m_manual.push_back(stim);
+    emit addedManual();
+
+    QFile file(session.log(this, actionManual));
+    QDataStream os;
+    if ( !openSaveStream(file, os, magicManual, versionManual) )
+        return;
+    os << quint32(stim.size());
+    for ( const Stimulation &s : stim )
+        os << s;
+}
+
 std::vector<WaveSource> WavesetCreator::sources() const
 {
     // Include, in this order, Wavegen::Archives, Selections, Subsets, Decks
@@ -100,6 +119,9 @@ std::vector<WaveSource> WavesetCreator::sources() const
     }
     for ( size_t i = 0; i < m_decks.size(); i++ ) {
         src.emplace_back(session, WaveSource::Deck, i);
+    }
+    for ( size_t i = 0; i < m_manual.size(); i++ ) {
+        src.emplace_back(session, WaveSource::Manual, i);
     }
     return src;
 }
@@ -152,6 +174,17 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
             deck.setSource(i, src);
         }
         m_decks.push_back(std::move(deck));
+    } else if ( action == actionManual ) {
+        version = openLoadStream(results, is, magicManual);
+        if ( version < 100 || version > versionManual )
+            throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
+
+        quint32 size;
+        is >> size;
+        std::vector<Stimulation> stim(size);
+        for ( Stimulation &s : stim )
+            is >> s;
+        m_manual.push_back(std::move(stim));
     } else {
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     }

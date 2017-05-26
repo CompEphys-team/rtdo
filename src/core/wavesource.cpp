@@ -1,14 +1,15 @@
 #include "wavesource.h"
 #include "session.h"
 
-const Wavegen::Archive &WaveSource::archive() const
+const Wavegen::Archive *WaveSource::archive() const
 {
     switch ( type ) {
     default:
-    case Archive:   return session->wavegen().archives().at(idx);
-    case Selection: return selection()->archive();
+    case Archive:   return &session->wavegen().archives().at(idx);
+    case Selection: return &selection()->archive();
     case Subset:    return subset()->src.archive();
-    case Deck:      return deck()->sources()[0].archive(); // Return first of multiple archives for lack of a better alternative
+    case Deck:      return nullptr;
+    case Manual:    return nullptr;
     }
 }
 
@@ -20,6 +21,7 @@ const WavegenSelection *WaveSource::selection() const
     case Selection: return &session->wavesets().selections().at(idx);
     case Subset:    return subset()->src.selection();
     case Deck:      return nullptr;
+    case Manual:    return nullptr;
     }
 }
 
@@ -31,6 +33,7 @@ const WaveSubset *WaveSource::subset() const
     case Selection: return nullptr;
     case Subset:    return &session->wavesets().subsets().at(idx);
     case Deck:      return nullptr;
+    case Manual:    return nullptr;
     }
 }
 
@@ -41,6 +44,7 @@ const WaveDeck *WaveSource::deck() const
     case Archive:
     case Selection:
     case Subset:
+    case Manual:
         return nullptr;
     case Deck:
         return &session->wavesets().decks().at(idx);
@@ -53,8 +57,8 @@ std::vector<Stimulation> WaveSource::stimulations() const
     switch ( type ) {
     case Archive :
     {
-        ret.reserve(archive().elites.size());
-        for ( MAPElite const& e : archive().elites )
+        ret.reserve(archive()->elites.size());
+        for ( MAPElite const& e : archive()->elites )
             ret.push_back(e.wave);
         break;
     }
@@ -83,6 +87,9 @@ std::vector<Stimulation> WaveSource::stimulations() const
     case Deck:
         ret = deck()->stimulations();
         break;
+    case Manual:
+        ret = session->wavesets().manuals().at(idx);
+        break;
     }
     return ret;
 }
@@ -92,12 +99,13 @@ QString WaveSource::prettyName() const
     QString ret;
     switch ( type ) {
     default:        ret = QString("Unknown source type"); break;
-    case Archive:   ret = QString("Archive %2 [%3]: %1").arg(archive().prettyName()); break;
+    case Archive:   ret = QString("Archive %2 [%3]: %1").arg(archive()->prettyName()); break;
     case Selection: ret = QString("Selection %2 [%3]: %1").arg(selection()->prettyName()); break;
     case Subset:    ret = QString("Subset %2 [%3]: %1").arg(subset()->prettyName()); break;
     case Deck:      return QString("Deck %1").arg(idx);
+    case Manual:    return QString("Manual %1").arg(idx);
     }
-    return ret.arg(idx).arg(QString::fromStdString(session->project.model().adjustableParams[archive().param].name));
+    return ret.arg(idx).arg(QString::fromStdString(session->project.model().adjustableParams[archive()->param].name));
 }
 
 int WaveSource::index() const
@@ -106,7 +114,9 @@ int WaveSource::index() const
     switch ( type ) {
 //    If more source types are added: Iterate up the list, adding the total above at each step like so - don't break:
 //    case NewType:
-//        i += session->wavesetcreator().decks().size();
+//        i += session->wavesets().manuals().size();
+    case Manual:
+        i += session->wavesets().decks().size();
     case Deck:
         i += session->wavesets().subsets().size();
     case Subset:
@@ -128,6 +138,7 @@ QDataStream &operator<<(QDataStream &os, const WaveSource &src)
     case WaveSource::Selection: os << quint32(src.session->wavesets().selections().size() - src.idx); break;
     case WaveSource::Subset:    os << quint32(src.session->wavesets().subsets().size() - src.idx); break;
     case WaveSource::Deck:      os << quint32(src.session->wavesets().decks().size() - src.idx); break;
+    case WaveSource::Manual:    os << quint32(src.session->wavesets().manuals().size() - src.idx); break;
     }
     return os;
 }
@@ -143,6 +154,7 @@ QDataStream &operator>>(QDataStream &is, WaveSource &src)
     case WaveSource::Selection: src.idx = src.session->wavesets().selections().size() - idx; break;
     case WaveSource::Subset:    src.idx = src.session->wavesets().subsets().size() - idx; break;
     case WaveSource::Deck:      src.idx = src.session->wavesets().decks().size() - idx; break;
+    case WaveSource::Manual:    src.idx = src.session->wavesets().manuals().size() - idx; break;
     }
     return is;
 }
