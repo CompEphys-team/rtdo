@@ -48,20 +48,4 @@ private:
     Stimulation stim;
 };
 
-
-
-class StimulationGraph: public QCPGraph
-{
-    Q_OBJECT
-public:
-    StimulationGraph(QCPAxis *keyAxis, QCPAxis *valueAxis, Stimulation stim);
-
-    virtual ~StimulationGraph();
-
-protected:
-    Stimulation m_stim;
-
-    virtual void draw(QCPPainter *painter);
-};
-
 #endif // STIMULATIONPLOTTER_H
