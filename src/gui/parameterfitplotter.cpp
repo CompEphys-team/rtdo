@@ -32,7 +32,52 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
             p->replot();
         }
     });
-    connect(ui->opacity, SIGNAL(valueChanged(int)), this, SLOT(replot()));
+    connect(ui->opacity, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int op){
+        double opacity = op/100.;
+        for ( QCustomPlot *p : plots ) {
+            QList<QCPLayerable*> normalGraphs;
+            normalGraphs.append(p->layer("main")->children());
+            normalGraphs.append(p->layer("mean")->children());
+            normalGraphs.append(p->layer("max")->children());
+            for ( QCPLayerable *l : normalGraphs ) {
+                QCPGraph *g = qobject_cast<QCPGraph*>(l);
+                if ( !g ) continue;
+                QPen pen = g->pen();
+                QColor col = pen.color();
+                col.setAlphaF(opacity);
+                pen.setColor(col);
+                g->setPen(pen);
+            }
+            for ( QCPLayerable *l : p->layer("sem")->children() ) {
+                QCPGraph *g = qobject_cast<QCPGraph*>(l);
+                if ( !g ) continue;
+                QColor col = g->pen().color();
+                col.setAlphaF(0.4*opacity);
+                g->setPen(QPen(col));
+                col.setAlphaF(0.2*opacity);
+                g->setBrush(QBrush(col));
+            }
+            p->replot();
+        }
+    });
+    connect(ui->mean, &QCheckBox::toggled, [=](bool on){
+        for ( QCustomPlot *p : plots ) {
+            p->layer("mean")->setVisible(on);
+            p->replot();
+        }
+    });
+    connect(ui->SEM, &QCheckBox::toggled, [=](bool on){
+        for ( QCustomPlot *p : plots ) {
+            p->layer("sem")->setVisible(on);
+            p->replot();
+        }
+    });
+    connect(ui->max, &QCheckBox::toggled, [=](bool on){
+        for ( QCustomPlot *p : plots ) {
+            p->layer("max")->setVisible(on);
+            p->replot();
+        }
+    });
     connect(ui->sepcols, &QPushButton::clicked, [=](bool on) {
         for ( int i = 0; i < ui->fits->rowCount(); i++ ) {
             getGraphColorBtn(i)->setColor(on ? QColorDialog::standardColor(i%20) : Qt::blue);
@@ -91,6 +136,11 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
         plot->xAxis->setLabel("Epoch");
         plot->yAxis->setLabel(QString::fromStdString(p.name));
+        plot->addLayer("mean");
+        plot->addLayer("sem");
+        plot->layer("sem")->setVisible(ui->SEM->isChecked());
+        plot->addLayer("max");
+        plot->layer("max")->setVisible(ui->max->isChecked());
         plot->addLayer("target");
 
         plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
@@ -137,9 +187,6 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         connect(&session->gaFitter(), SIGNAL(done()), this, SLOT(updateFits()));
         connect(ui->fits, SIGNAL(itemSelectionChanged()), this, SLOT(replot()));
         connect(ui->groups, SIGNAL(itemSelectionChanged()), this, SLOT(plotSummary()));
-        connect(ui->mean, SIGNAL(toggled(bool)), this, SLOT(plotSummary()));
-        connect(ui->SEM, SIGNAL(toggled(bool)), this, SLOT(plotSummary()));
-        connect(ui->max, SIGNAL(toggled(bool)), this, SLOT(plotSummary()));
         updateFits();
     }
     plots[0]->xAxis->setRange(0, 1000);
@@ -426,45 +473,57 @@ void ParameterFitPlotter::plotSummary()
             double opacity = ui->opacity->value()/100.;
             col.setAlphaF(opacity);
 
-            if ( ui->mean->isChecked() ) {
-                QCPGraph *graph = plots[i]->addGraph();
-                graph->setPen(QPen(col));
-                graph->setData(keys, mean, true);
+            // Mean
+            QCPGraph *graph = plots[i]->addGraph();
+            graph->setPen(QPen(col));
+            graph->setData(keys, mean, true);
+            graph->setLayer("mean");
+            graph->setVisible(ui->param->isChecked());
 
-                QCPGraph *errGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
-                errGraph->setPen(QPen(col));
-                errGraph->setData(keys, errMean, true);
+            // Error mean
+            QCPGraph *errGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
+            errGraph->setPen(QPen(col));
+            errGraph->setData(keys, errMean, true);
+            errGraph->setLayer("mean");
+            errGraph->setVisible(ui->error->isChecked());
 
-                if ( ui->SEM->isChecked() ) {
-                    QCPGraph *semGraph = plots[i]->addGraph();
-                    col.setAlphaF(0.2*opacity);
-                    QBrush brush(col);
-                    col.setAlphaF(0.4*opacity);
-                    semGraph->setPen(QPen(col));
-                    semGraph->setBrush(brush);
-                    semGraph->setChannelFillGraph(graph);
-                    semGraph->setData(keys, sem, true);
+            // SEM
+            QCPGraph *semGraph = plots[i]->addGraph();
+            col.setAlphaF(0.2*opacity);
+            QBrush brush(col);
+            col.setAlphaF(0.4*opacity);
+            semGraph->setPen(QPen(col));
+            semGraph->setBrush(brush);
+            semGraph->setChannelFillGraph(graph);
+            semGraph->setData(keys, sem, true);
+            semGraph->setLayer("sem");
+            semGraph->setVisible(ui->param->isChecked());
 
-                    QCPGraph *errSemGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
-                    errSemGraph->setPen(QPen(col));
-                    errSemGraph->setBrush(brush);
-                    errSemGraph->setChannelFillGraph(errGraph);
-                    errSemGraph->setData(keys, errSEM, true);
-                }
-            }
+            // Error SEM
+            QCPGraph *errSemGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
+            errSemGraph->setPen(QPen(col));
+            errSemGraph->setBrush(brush);
+            errSemGraph->setChannelFillGraph(errGraph);
+            errSemGraph->setData(keys, errSEM, true);
+            errSemGraph->setLayer("sem");
+            errSemGraph->setVisible(ui->error->isChecked());
 
-            if ( ui->max->isChecked() ) {
-                QCPGraph *maxGraph = plots[i]->addGraph();
-                col.setAlphaF(0.6*opacity);
-                QPen pen(col);
-                pen.setStyle(Qt::DotLine);
-                maxGraph->setPen(pen);
-                maxGraph->setData(keys, max, true);
+            // Max
+            QCPGraph *maxGraph = plots[i]->addGraph();
+            col.setAlphaF(0.6*opacity);
+            QPen pen(col);
+            pen.setStyle(Qt::DotLine);
+            maxGraph->setPen(pen);
+            maxGraph->setData(keys, max, true);
+            maxGraph->setLayer("max");
+            maxGraph->setVisible(ui->param->isChecked());
 
-                QCPGraph *errMaxGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
-                errMaxGraph->setPen(pen);
-                errMaxGraph->setData(keys, errMax, true);
-            }
+            // Error max
+            QCPGraph *errMaxGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
+            errMaxGraph->setPen(pen);
+            errMaxGraph->setData(keys, errMax, true);
+            errMaxGraph->setLayer("max");
+            errMaxGraph->setVisible(ui->error->isChecked());
         }
     }
 
