@@ -1,12 +1,14 @@
 #include "wavegen.h"
 #include <cassert>
 
-Stimulation Wavegen::getRandomStim()
+Stimulation Wavegen::getRandomStim() const
 {
     Stimulation I = Stimulation();
     int failedPos, failedAgain = 0;
     I.baseV = stimd.baseV;
     I.duration = stimd.duration;
+    I.tObsBegin = RNG.uniform(scalar(0), stimd.duration);
+    I.tObsEnd = RNG.uniform(I.tObsBegin, stimd.duration);
     int n = RNG.uniform(stimd.minSteps, stimd.maxSteps);
 tryagain:
     failedPos = 0;

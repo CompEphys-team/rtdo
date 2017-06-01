@@ -32,6 +32,11 @@ public:
 
     inline const std::vector<Archive> &archives() const { return m_archives; }
 
+    /**
+     * @brief getRandomStim generates a fully randomised stimulation according to the Wavegen's StimulationData
+     */
+    Stimulation getRandomStim() const;
+
 public slots:
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.
@@ -115,11 +120,6 @@ protected:
     void stimulate(const std::vector<Stimulation> &stim);
 
     /**
-     * @brief getRandomStim generates a fully randomised stimulation according to the Wavegen's StimulationData
-     */
-    Stimulation getRandomStim();
-
-    /**
      * @brief mutate returns a mutant offspring of the parent referred to by @p parentIter.
      * @param parentIter is an iterator into mapeArchive
      * @param offset is the position of parentIter within mapeArchive, used for efficient crossover parent lookup.
@@ -158,7 +158,7 @@ protected:
                 + (group/lib.numGroupsPerBlock) * lib.numModelsPerBlock; // Modelspace offset of the block this group belongs to
     }
 
-    randutils::mt19937_rng RNG;
+    mutable randutils::mt19937_rng RNG;
 
     QVector<double> sigmaAdjust;
     std::vector<double> sigmax;
