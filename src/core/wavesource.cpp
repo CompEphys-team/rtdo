@@ -101,7 +101,12 @@ QString WaveSource::prettyName() const
     default:        ret = QString("Unknown source type"); break;
     case Archive:   ret = QString("Archive %2 [%3]: %1").arg(archive()->prettyName()); break;
     case Selection: ret = QString("Selection %2 [%3]: %1").arg(selection()->prettyName()); break;
-    case Subset:    ret = QString("Subset %2 [%3]: %1").arg(subset()->prettyName()); break;
+    case Subset:
+        if ( archive() ) {
+                    ret = QString("Subset %2 [%3]: %1").arg(subset()->prettyName()); break;
+        } else {
+                    return QString("Subset %2: %1").arg(subset()->prettyName()).arg(idx);
+        }
     case Deck:      return QString("Deck %1").arg(idx);
     case Manual:    return QString("Manual %1").arg(idx);
     }
