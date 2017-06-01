@@ -51,7 +51,7 @@ struct Stimulation
     CUDA_CALLABLE_MEMBER inline const Step* begin() const { return steps; }
     CUDA_CALLABLE_MEMBER inline Step* end() { return steps + numSteps; }
     CUDA_CALLABLE_MEMBER inline const Step* end() const { return steps + numSteps; }
-    CUDA_HOST_MEMBER void insert(Step* position, Step&& value);
+    CUDA_HOST_MEMBER void insert(Step* position, const Step & value);
     CUDA_HOST_MEMBER void erase(Step* position);
     CUDA_HOST_MEMBER inline void clear() { numSteps = 0; }
     CUDA_CALLABLE_MEMBER inline size_t size() const { return numSteps; }

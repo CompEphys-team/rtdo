@@ -2,7 +2,7 @@
 #include <cassert>
 #include <cmath>
 
-void Stimulation::insert(Stimulation::Step *position, Stimulation::Step &&value)
+void Stimulation::insert(Stimulation::Step *position, const Step &value)
 {
     if ( position < steps || position > end() )
         throw std::runtime_error("Stimulation::insert: invalid position.");
