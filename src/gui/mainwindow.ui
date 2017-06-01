@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>506</width>
     <height>300</height>
    </rect>
   </property>
@@ -19,7 +19,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>400</width>
+     <width>506</width>
      <height>19</height>
     </rect>
    </property>
@@ -78,6 +78,7 @@
    <addaction name="actionProfiler"/>
    <addaction name="actionDecks"/>
    <addaction name="actionGAFitter"/>
+   <addaction name="actionStimulation_editor"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionWavegen">
@@ -167,6 +168,17 @@
   <action name="actionStimulations">
    <property name="text">
     <string>Stimulations</string>
+   </property>
+  </action>
+  <action name="actionStimulation_editor">
+   <property name="text">
+    <string>Stimulation editor</string>
+   </property>
+   <property name="iconText">
+    <string>Stimulation &amp;editor</string>
+   </property>
+   <property name="shortcut">
+    <string>E</string>
    </property>
   </action>
  </widget>

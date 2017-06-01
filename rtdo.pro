@@ -59,7 +59,8 @@ SOURCES += \
     src/gui/gafitterwidget.cpp \
     src/gui/parameterfitplotter.cpp \
     src/gui/stimulationplotter.cpp \
-    src/gui/stimulationgraph.cpp
+    src/gui/stimulationgraph.cpp \
+    src/gui/stimulationcreator.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -103,7 +104,8 @@ HEADERS  += \
     src/include/parameterfitplotter.h \
     src/include/stimulationplotter.h \
     src/include/simulator.h \
-    src/include/stimulationgraph.h
+    src/include/stimulationgraph.h \
+    src/include/stimulationcreator.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -114,7 +116,8 @@ FORMS    += \
     src/gui/deckwidget.ui \
     src/gui/gafitterwidget.ui \
     src/gui/parameterfitplotter.ui \
-    src/gui/stimulationplotter.ui
+    src/gui/stimulationplotter.ui \
+    src/gui/stimulationcreator.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 

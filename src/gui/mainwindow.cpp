@@ -8,6 +8,7 @@
 #include "profileplotter.h"
 #include "parameterfitplotter.h"
 #include "stimulationplotter.h"
+#include "stimulationcreator.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -170,4 +171,11 @@ void MainWindow::on_actionStimulations_triggered()
     StimulationPlotter *figure = new StimulationPlotter(*session);
     figure->setWindowTitle(figure->windowTitle() + " : " + title);
     figure->show();
+}
+
+void MainWindow::on_actionStimulation_editor_triggered()
+{
+    StimulationCreator *sc = new StimulationCreator(*session);
+    sc->setWindowTitle(sc->windowTitle() + " : " + title);
+    sc->show();
 }

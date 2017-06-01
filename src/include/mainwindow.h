@@ -45,6 +45,8 @@ private slots:
 
     void setTitle();
 
+    void on_actionStimulation_editor_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;
