@@ -61,8 +61,18 @@
     <addaction name="actionFitting_Parameters"/>
     <addaction name="actionStimulations"/>
    </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <addaction name="actionGA_Fitter"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuFigures"/>
+   <addaction name="menuSettings"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <property name="enabled">
@@ -179,6 +189,11 @@
    </property>
    <property name="shortcut">
     <string>E</string>
+   </property>
+  </action>
+  <action name="actionGA_Fitter">
+   <property name="text">
+    <string>GA Fitter</string>
    </property>
   </action>
  </widget>

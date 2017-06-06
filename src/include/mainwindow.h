@@ -47,6 +47,8 @@ private slots:
 
     void on_actionStimulation_editor_triggered();
 
+    void on_actionGA_Fitter_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

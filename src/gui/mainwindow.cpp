@@ -9,6 +9,7 @@
 #include "parameterfitplotter.h"
 #include "stimulationplotter.h"
 #include "stimulationcreator.h"
+#include "gafittersettingsdialog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -121,6 +122,7 @@ void MainWindow::on_actionNew_session_triggered()
     ui->menuSession->setEnabled(false);
     ui->mainToolBar->setEnabled(true);
     ui->menuFigures->setEnabled(true);
+    ui->menuSettings->setEnabled(true);
     setTitle();
 }
 
@@ -133,6 +135,7 @@ void MainWindow::on_actionOpen_session_triggered()
     ui->menuSession->setEnabled(false);
     ui->mainToolBar->setEnabled(true);
     ui->menuFigures->setEnabled(true);
+    ui->menuSettings->setEnabled(true);
     setTitle();
 }
 
@@ -178,4 +181,11 @@ void MainWindow::on_actionStimulation_editor_triggered()
     StimulationCreator *sc = new StimulationCreator(*session);
     sc->setWindowTitle(sc->windowTitle() + " : " + title);
     sc->show();
+}
+
+void MainWindow::on_actionGA_Fitter_triggered()
+{
+    GAFitterSettingsDialog *dlg = new GAFitterSettingsDialog(*session);
+    dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
+    dlg->show();
 }
