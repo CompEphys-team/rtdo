@@ -104,7 +104,7 @@ void WavesetCreator::makeManual(std::vector<Stimulation> stim)
 
 std::vector<WaveSource> WavesetCreator::sources() const
 {
-    // Include, in this order, Wavegen::Archives, Selections, Subsets, Decks
+    // Include, in this order, Wavegen::Archives, Selections, Subsets, Decks, Manuals
     std::vector<WaveSource> src;
     size_t nArchives = session.wavegen().archives().size();
     src.reserve(nArchives + m_selections.size() + m_subsets.size() + m_decks.size());

@@ -47,8 +47,17 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
         setStimulation();
     });
 
-    connect(ui->save, &QPushButton::clicked, [=](){
+    connect(ui->saveSet, &QPushButton::clicked, [=](){
         this->session.wavesets().makeManual(stims);
+    });
+    connect(ui->saveDeck, &QPushButton::clicked, [=](){
+        this->session.wavesets().makeManual(stims);
+        size_t idx = this->session.wavesets().manuals().size()-1;
+        std::vector<WaveSource> src;
+        for ( size_t i = 0; i < stims.size(); i++ ) {
+            src.emplace_back(this->session, WaveSource::Manual, idx, i);
+        }
+        this->session.wavesets().makeDeck(src);
     });
 
     connect(ui->copy, &QPushButton::clicked, [=](){
@@ -93,13 +102,18 @@ void StimulationCreator::setNStims(int n)
     stims.resize(n, stimCopy);
     ui->stimulations->clearContents();
     ui->stimulations->setRowCount(stims.size());
+    bool named = (n == session.project.model().adjustableParams.size());
+    QStringList labels;
     for ( int row = 0; row < n; row++ ) {
         ColorButton *c = new ColorButton();
         c->setColor(QColorDialog::standardColor(row % 42));
         connect(c, SIGNAL(colorChanged(QColor)), this, SLOT(redraw()));
         ui->stimulations->setCellWidget(row, 0, c);
         ui->stimulations->setItem(row, 1, new QTableWidgetItem(QString("%1 ms, %2 steps").arg(stims[row].duration).arg(stims[row].size())));
+        labels << (named ? QString::fromStdString(session.project.model().adjustableParams.at(row).name) : QString::number(row));
     }
+    ui->stimulations->setVerticalHeaderLabels(labels);
+    ui->saveDeck->setEnabled(named);
 }
 
 void StimulationCreator::setLimits()
