@@ -99,7 +99,7 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.sigmaInitial", this, &Session::gafs, &GAFitterSettings::sigmaInitial);
     addAP(gafAP, "S.GAFitter.sigmaHalflife", this, &Session::gafs, &GAFitterSettings::sigmaHalflife);
     addAP(gafAP, "S.GAFitter.targetType", this, &Session::gafs, &GAFitterSettings::targetType);
-    addAP(gafAP, "S.GAFitter.targetValues", this, &Session::gafs, &GAFitterSettings::targetValues);
+    addAP(gafAP, "S.GAFitter.targetValues[#]", this, &Session::gafs, &GAFitterSettings::targetValues);
 
     // Defaults
     scalar maxCycles = 100.0 / project.dt() * rund.simCycles;
