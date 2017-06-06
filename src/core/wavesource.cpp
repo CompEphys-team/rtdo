@@ -91,7 +91,11 @@ std::vector<Stimulation> WaveSource::stimulations() const
         ret = session->wavesets().manuals().at(idx);
         break;
     }
-    return ret;
+
+    if ( waveno >= 0 )
+        return {ret[waveno]};
+    else
+        return ret;
 }
 
 QString WaveSource::prettyName() const
@@ -136,7 +140,7 @@ int WaveSource::index() const
 
 QDataStream &operator<<(QDataStream &os, const WaveSource &src)
 {
-    os << quint32(src.type);
+    os << WaveSource::version << quint32(src.type);
     switch ( src.type ) {
     default:
     case WaveSource::Archive:   os << quint32(src.session->wavegen().archives().size() - src.idx); break;
@@ -145,13 +149,22 @@ QDataStream &operator<<(QDataStream &os, const WaveSource &src)
     case WaveSource::Deck:      os << quint32(src.session->wavesets().decks().size() - src.idx); break;
     case WaveSource::Manual:    os << quint32(src.session->wavesets().manuals().size() - src.idx); break;
     }
+    os << qint32(src.waveno);
     return os;
 }
 
 QDataStream &operator>>(QDataStream &is, WaveSource &src)
 {
-    quint32 type, idx;
-    is >> type >> idx;
+    quint32 version, type, idx;
+    qint32 waveno;
+    is >> version;
+    if ( version < 100 ) {
+        type = version;
+        is >> idx;
+        waveno = -1;
+    } else {
+        is >> type >> idx >> waveno;
+    }
     src.type = WaveSource::Type(type);
     switch ( src.type ) {
     default:
@@ -161,10 +174,11 @@ QDataStream &operator>>(QDataStream &is, WaveSource &src)
     case WaveSource::Deck:      src.idx = src.session->wavesets().decks().size() - idx; break;
     case WaveSource::Manual:    src.idx = src.session->wavesets().manuals().size() - idx; break;
     }
+    src.waveno = waveno;
     return is;
 }
 
 bool operator==(const WaveSource &lhs, const WaveSource &rhs)
 {
-    return lhs.type == rhs.type && lhs.idx == rhs.idx;
+    return lhs.type == rhs.type && lhs.idx == rhs.idx && lhs.waveno == rhs.waveno;
 }

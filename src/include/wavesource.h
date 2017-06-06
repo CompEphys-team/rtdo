@@ -19,10 +19,11 @@ public:
 
     Type type;
     size_t idx;
+    int waveno;
     Session *session;
 
-    WaveSource() : session(nullptr) {}
-    WaveSource(Session &session, Type type, size_t idx) : type(type), idx(idx), session(&session) {}
+    WaveSource() : waveno(-1), session(nullptr) {}
+    WaveSource(Session &session, Type type, size_t idx, int waveno = -1) : type(type), idx(idx), waveno(waveno), session(&session) {}
 
     const Wavegen::Archive *archive() const;
     const WavegenSelection *selection() const; //!< returns the nearest ancestor Selection, if any
@@ -32,11 +33,13 @@ public:
     std::vector<Stimulation> stimulations() const;
 
     QString prettyName() const;
-    int index() const; //!< Returns the overall index (eg. for comboboxes)
+    int index() const; //!< Returns the overall index (eg. for comboboxes), ignoring waveno.
 
     friend QDataStream &operator<<(QDataStream &os, const WaveSource &);
     friend QDataStream &operator>>(QDataStream &is, WaveSource &);
     friend bool operator==(const WaveSource &lhs, const WaveSource &rhs);
+
+    static constexpr quint32 version = 100;
 };
 
 Q_DECLARE_METATYPE(WaveSource)

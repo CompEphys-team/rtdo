@@ -53,22 +53,7 @@ void DeckWidget::create()
     }
     for ( size_t i = 0; i < sources.size(); i++ ) {
         WaveSource candidate = sources[i]->currentData().value<WaveSource>();
-        if ( candidate.stimulations().size() > 1 ) { // Not a single-wave source: Make a subset from the chosen source & index
-            // Check for existing
-            bool found = false;
-            for ( size_t j = 0; j < session.wavesets().subsets().size(); j++ ) {
-                const WaveSubset &sub = session.wavesets().subsets().at(j);
-                if ( sub.src == candidate && sub.indices.size() == 1 && sub.indices[0] == size_t(indices[i]->value()) ) {
-                    candidate = WaveSource(session, WaveSource::Subset, j);
-                    found = true;
-                    break;
-                }
-            }
-            if ( !found ) {
-                session.wavesets().makeSubset(std::move(candidate), {size_t(indices[i]->value())});
-                candidate = WaveSource(session, WaveSource::Subset, session.wavesets().subsets().size()-1);
-            }
-        }
+        candidate.waveno = indices[i]->value();
         src[i] = std::move(candidate);
     }
     session.wavesets().makeDeck(src);
@@ -82,7 +67,7 @@ void DeckWidget::showExisting()
     const WaveDeck &deck = session.wavesets().decks().at(currentIndex);
     for ( size_t i = 0; i < sources.size(); i++ ) {
         sources[i]->setCurrentIndex(deck.sources().at(i).index());
-        // No need to set indices[i], as deck sources are always single-wave
+        indices[i]->setValue(deck.sources().at(i).waveno);
     }
 }
 
