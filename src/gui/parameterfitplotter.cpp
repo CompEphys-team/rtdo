@@ -184,6 +184,16 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
         clear();
     } else {
+        for ( const AdjustableParam &p : session->project.model().adjustableParams ) {
+            int c = ui->fits->columnCount();
+            ui->fits->insertColumn(c);
+            ui->fits->setHorizontalHeaderItem(c, new QTableWidgetItem(QString::fromStdString(p.name)));
+            ui->fits->setColumnWidth(c, 70);
+        }
+        ui->fits->setColumnWidth(0, 15);
+        ui->fits->setColumnWidth(1, 15);
+        ui->fits->setColumnWidth(3, 40);
+        ui->fits->setColumnWidth(5, 40);
         connect(&session->gaFitter(), SIGNAL(done()), this, SLOT(updateFits()));
         connect(ui->fits, SIGNAL(itemSelectionChanged()), this, SLOT(replot()));
         connect(ui->groups, SIGNAL(itemSelectionChanged()), this, SLOT(plotSummary()));
@@ -227,13 +237,21 @@ void ParameterFitPlotter::updateFits()
     for ( size_t i = ui->fits->rowCount(); i < session->gaFitter().results().size(); i++ ) {
         const GAFitter::Output &fit = session->gaFitter().results().at(i);
         ui->fits->insertRow(i);
-        ui->fits->setItem(i, 2, new QTableWidgetItem(QString("Fit %1 (%2 epochs, %3)").arg(i).arg(fit.epochs).arg(fit.deck.prettyName())));
+        ui->fits->setVerticalHeaderItem(i, new QTableWidgetItem(QString::number(i)));
         ColorButton *c = new ColorButton();
         c->setColor(ui->sepcols->isChecked() ? QColorDialog::standardColor(i%20) : Qt::blue);
         ui->fits->setCellWidget(i, 0, c);
         c = new ColorButton();
         c->setColor(ui->sepcols->isChecked() ? QColorDialog::standardColor(i%20 + 21) : Qt::magenta);
         ui->fits->setCellWidget(i, 1, c);
+        ui->fits->setItem(i, 2, new QTableWidgetItem(QString::number(fit.deck.idx)));
+        ui->fits->setItem(i, 3, new QTableWidgetItem(QString::number(fit.epochs)));
+        ui->fits->setItem(i, 4, new QTableWidgetItem(QString::number(fit.settings.randomOrder)));
+        ui->fits->setItem(i, 5, new QTableWidgetItem(QString::number(fit.settings.crossover, 'g', 2)));
+        ui->fits->setItem(i, 6, new QTableWidgetItem(fit.settings.decaySigma ? "Y" : "N"));
+        ui->fits->setItem(i, 7, new QTableWidgetItem(QString::number(fit.settings.targetType)));
+        for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
+            ui->fits->setItem(i, 8+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
     }
 }
 
