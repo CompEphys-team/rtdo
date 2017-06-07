@@ -41,11 +41,19 @@ MetaModel::MetaModel(const Project &p) :
 ///     <tmp name="foo">code section</tmp>      <!-- temporary variable, refer to as `name` in code sections -->
 ///     <tmp current="1" name="I_Na">code section</tmp>     <!-- Saved for diagnostic purposes during wavegen, and available to all state vars -->
 ///     <dYdt>code section</dYdt>               <!-- diff. eqn d(var)/dt. -->
+///     <range min="0" max="1" />               <!-- Optional: Permissible value range, inclusive of bounds -->
 /// </variable>
     bool hasV = false;
     for ( el = model->FirstChildElement("variable"); el; el = el->NextSiblingElement("variable") ) {
         StateVariable p(el->Attribute("name"), el->FirstChildElement("dYdt")->GetText());
         el->QueryDoubleAttribute("value", &p.initial);
+        if ( (sub = el->FirstChildElement("range")) ) {
+            sub->QueryDoubleAttribute("min", &p.min);
+            sub->QueryDoubleAttribute("max", &p.max);
+            using std::swap;
+            if ( p.min > p.max )
+                swap(p.min, p.max);
+        }
         for ( sub = el->FirstChildElement("tmp"); sub; sub = sub->NextSiblingElement("tmp") ) {
             Variable tmp(sub->Attribute("name"), sub->GetText());
             bool isCur;
@@ -225,8 +233,15 @@ std::string MetaModel::kernel(const std::string &tab, bool wrapVariables, bool d
             ss << tab << "}" << endl;
         }
         // Update state variables
-        for ( const StateVariable &v : stateVariables )
+        for ( const StateVariable &v : stateVariables ) {
             ss << tab << wrap(v.name) << " += ddt__" << v.name << " * mdt;" << endl;
+            if ( v.max > v.min ) {
+                ss << tab << "if ( " << wrap(v.name) << " < " << v.min << " ) "
+                   << wrap(v.name) << " = " << v.min << ";" << endl;
+                ss << tab << "else if ( " << wrap(v.name) << " > " << v.max << " ) "
+                   << wrap(v.name) << " = " << v.max << ";" << endl;
+            }
+        }
         break;
 
     case IntegrationMethod::RungeKutta4:
@@ -281,6 +296,12 @@ std::string MetaModel::kernel(const std::string &tab, bool wrapVariables, bool d
                        << " + 2*" << k(v.name, 3)
                        << " + " << k(v.name, 4)
                        << ");" << endl;
+                    if ( v.max > v.min ) {
+                        ss << tab << "if ( " << wrap(v.name) << " < " << v.min << " ) "
+                           << wrap(v.name) << " = " << v.min << ";" << endl;
+                        ss << tab << "else if ( " << wrap(v.name) << " > " << v.max << " ) "
+                           << wrap(v.name) << " = " << v.max << ";" << endl;
+                    }
                 }
             }
             ss << tab << "} // End Runge-Kutta, step " << i << endl;

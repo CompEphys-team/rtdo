@@ -134,6 +134,8 @@ struct Variable {
     std::string type;
     std::string code;
     double initial;
+    double min = 0;
+    double max = 0;
 
     scalar *v;
     inline scalar &operator[](std::size_t i) { return v[i]; }
@@ -148,8 +150,6 @@ struct StateVariable : public Variable {
 struct AdjustableParam : public Variable {
     AdjustableParam() {}
     AdjustableParam(std::string n, std::string c = "", std::string t = "scalar") : Variable(n,c,t) {}
-    double min;
-    double max;
     double sigma;
     bool multiplicative;
     int wgPermutations;

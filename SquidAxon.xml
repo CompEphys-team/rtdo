@@ -6,21 +6,25 @@
 		<tmp current="1" name="I_K">$(n)*$(n)*$(n)*$(n)*$(gK) * ($(V)-$(EK))</tmp>
 		<tmp current="1" name="I_l">$(gl) * ($(V)-$(El))</tmp>
 		<dYdt>(Isyn - I_Na - I_K - I_l)/$(C)</dYdt>
+		<range min="-150" max="100" />
 	</variable>
 	<variable name="m" value="0.0285961">
 		<tmp name="alpha_">(3.5 + 0.1*$(V))/(1.0 - exp(-3.5 - 0.1*$(V)))</tmp>
 		<tmp name="beta_">4.0*exp((-$(V)-60.0)/18.0)</tmp>
 		<dYdt>alpha_*(1-$(m)) - beta_*$(m)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="h" value="0.9977761">
 		<tmp name="alpha_">0.07*exp(-$(V)/20.0 - 3.0)</tmp>
 		<tmp name="beta_">1.0/(1.0 + exp(-3.0 - 0.1*$(V)))</tmp>
 		<dYdt>alpha_*(1-$(h)) - beta_*$(h)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="n" value="0.0285961">
 		<tmp name="alpha_">(-0.5 - 0.01*$(V))/(exp(-5.0 - 0.1*$(V)) - 1.0)</tmp>
 		<tmp name="beta_">0.125*exp((-$(V)-60.0)/80.0)</tmp>
 		<dYdt>alpha_*(1-$(n)) - beta_*$(n)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 
 	<adjustableParam name="gNa" value="120">

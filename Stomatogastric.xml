@@ -11,59 +11,71 @@
 		<tmp current="1" name="I_Kd">$(m_Kd)*$(m_Kd)*$(m_Kd)*$(m_Kd) * $(gKd) * ($(V)-$(EK))</tmp>
 		<tmp current="1" name="I_l">$(gl) * ($(V)-$(El))</tmp>
 		<dYdt>(Isyn - I_Na - I_CaT - I_CaS - I_A - I_KCa - I_Kd - I_l)/$(C)</dYdt>
+		<range min="-150" max="100" />
 	</variable>
 	<variable name="Ca_uM" value="0.05">
 		<dYdt>(0.05 - $(Ca_uM) - 14.96*(I_CaS+I_CaT))/200</dYdt>
+		<range min="0" max="20" />
 	</variable>
 	<variable name="m_Na" value="0.02">
 		<tmp name="_inf">1.0/(1.0 + exp(($(V)+25.5)/(-5.29)))</tmp>
 		<tmp name="tau_">1.32 - 1.26/(1 + exp(($(V)+120.0)/(-25.0)))</tmp>
 		<dYdt>((_inf-$(m_Na))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="h_Na" value="0.98">
 		<tmp name="_inf">1.0/(1.0 + exp(($(V)+48.9)/(5.18)))</tmp>
 		<tmp name="tau_">0.67/(1 + exp(($(V)+62.9)/(-10.0))) * (1.5 + 1/(1+exp(($(V)+34.9)/3.6)))</tmp>
 		<dYdt>((_inf-$(h_Na))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="m_CaT" value="0.02">
 		<tmp name="_inf">1.0/(1.0 + exp(($(V)+27.1)/(-7.2)))</tmp>
 		<tmp name="tau_">21.7 - 21.3/(1 + exp(($(V)+68.1)/(-20.5)))</tmp>
 		<dYdt>((_inf-$(m_CaT))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="h_CaT" value="0.98">
 		<tmp name="_inf">1.0/(1.0 + exp(($(V)+32.1)/(5.5)))</tmp>
 		<tmp name="tau_">105 - 89.8/(1 + exp(($(V)+55)/(-16.9)))</tmp>
 		<dYdt>((_inf-$(h_CaT))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="m_CaS" value="0.02">
 		<tmp name="_inf">1.0/(1.0 + exp(($(V)+33)/(-8.1)))</tmp>
 		<tmp name="tau_">14 + 7/(exp(($(V)+27)/10) + exp(($(V)+70)/(-13)))</tmp>
 		<dYdt>((_inf-$(m_CaS))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="h_CaS" value="0.98">
 		<tmp name="_inf">1.0/(1.0 + exp(($(V)+60)/(6.2)))</tmp>
 		<tmp name="tau_">60 + 150/(exp(($(V)+55)/9) + exp(($(V)+65)/(-16)))</tmp>
 		<dYdt>((_inf-$(h_CaS))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="m_A" value="0.02">
 		<tmp name="_inf">1.0/(1.0 + exp(($(V)+27.2)/(-8.7)))</tmp>
 		<tmp name="tau_">11.6 - 10.4/(1 + exp(($(V)+32.9)/(-15.2)))</tmp>
 		<dYdt>((_inf-$(m_A))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="h_A" value="0.98">
 		<tmp name="_inf">1.0/(1.0 + exp(($(V)+56.9)/(4.9)))</tmp>
 		<tmp name="tau_">38.6 - 29.2/(1 + exp(($(V)+38.9)/(-26.5)))</tmp>
 		<dYdt>((_inf-$(h_A))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="m_KCa" value="0.02">
 		<tmp name="_inf">($(Ca_uM)/($(Ca_uM)+3)) * 1.0/(1.0 + exp(($(V)+28.3)/(-12.6)))</tmp>
 		<tmp name="tau_">90.3 - 75.1/(1 + exp(($(V)+46)/(-22.7)))</tmp>
 		<dYdt>((_inf-$(m_KCa))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 	<variable name="m_Kd" value="0.02">
 		<tmp name="_inf">1.0/(1.0 + exp(($(V)+12.3)/(-11.8)))</tmp>
 		<tmp name="tau_">7.2 - 6.4/(1 + exp(($(V)+28.3)/(-19.2)))</tmp>
 		<dYdt>((_inf-$(m_Kd))/tau_)</dYdt>
+		<range min="0" max="1" />
 	</variable>
 
 	<adjustableParam name="gNa" value="283">
