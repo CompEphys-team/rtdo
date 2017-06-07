@@ -30,9 +30,10 @@ protected:
 
     void getSummary(std::vector<int> fits, //!< Integers identifying the fits to be used
                     std::function<double (const GAFitter::Output &, int)> value, //!< Function to extract the value to be analysed (eg param residual or error)
-                    QVector<double> &mean, //!< Return: the mean value per epoch. Must be of appropriate size and all zeroes.
-                    QVector<double> &meanPlusSEM, //!< Return: The SEM added onto the mean. Must be of appropriate size and all zeroes.
-                    QVector<double> &max); //!< Return: The maximum value per epoch. Must be of appropriate size and all zeroes.
+                    QVector<double> &mean, //!< Return: the mean value per epoch. Must be of appropriate size.
+                    QVector<double> &meanPlusSEM, //!< Return: The SEM added onto the mean. Must be of appropriate size.
+                    QVector<double> &median, //!< Return: the median value per epoch. Must be of appropriate size.
+                    QVector<double> &max); //!< Return: The maximum value per epoch. Must be of appropriate size.
 private slots:
     void setColumnCount(int n);
     void resizeTableRows(int, int, int size);

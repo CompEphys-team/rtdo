@@ -237,14 +237,7 @@
       </widget>
       <widget class="QWidget" name="widget_2" native="true">
        <layout class="QGridLayout" name="gridLayout_2">
-        <item row="0" column="0" colspan="2">
-         <widget class="QPushButton" name="addGroup">
-          <property name="text">
-           <string>Add group</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0" colspan="3">
+        <item row="2" column="0" colspan="4">
          <widget class="QTableWidget" name="groups">
           <property name="selectionBehavior">
            <enum>QAbstractItemView::SelectRows</enum>
@@ -274,14 +267,7 @@
           <column/>
          </widget>
         </item>
-        <item row="0" column="2">
-         <widget class="QPushButton" name="delGroup">
-          <property name="text">
-           <string>Remove</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
+        <item row="1" column="3">
          <widget class="QCheckBox" name="max">
           <property name="text">
            <string>Max</string>
@@ -293,6 +279,20 @@
           <property name="text">
            <string>Mean</string>
           </property>
+         </widget>
+        </item>
+        <item row="0" column="2" colspan="2">
+         <widget class="QPushButton" name="delGroup">
+          <property name="text">
+           <string>Remove</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QCheckBox" name="median">
+          <property name="text">
+           <string>Median</string>
+          </property>
           <property name="checked">
            <bool>true</bool>
           </property>
@@ -302,6 +302,13 @@
          <widget class="QCheckBox" name="SEM">
           <property name="text">
            <string>SEM</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0" colspan="2">
+         <widget class="QPushButton" name="addGroup">
+          <property name="text">
+           <string>Add group</string>
           </property>
          </widget>
         </item>

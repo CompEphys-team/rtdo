@@ -38,6 +38,7 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
             QList<QCPLayerable*> normalGraphs;
             normalGraphs.append(p->layer("main")->children());
             normalGraphs.append(p->layer("mean")->children());
+            normalGraphs.append(p->layer("median")->children());
             normalGraphs.append(p->layer("max")->children());
             for ( QCPLayerable *l : normalGraphs ) {
                 QCPGraph *g = qobject_cast<QCPGraph*>(l);
@@ -69,6 +70,12 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     connect(ui->SEM, &QCheckBox::toggled, [=](bool on){
         for ( QCustomPlot *p : plots ) {
             p->layer("sem")->setVisible(on);
+            p->replot();
+        }
+    });
+    connect(ui->median, &QCheckBox::toggled, [=](bool on){
+        for ( QCustomPlot *p : plots ) {
+            p->layer("median")->setVisible(on);
             p->replot();
         }
     });
@@ -137,8 +144,11 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         plot->xAxis->setLabel("Epoch");
         plot->yAxis->setLabel(QString::fromStdString(p.name));
         plot->addLayer("mean");
+        plot->layer("mean")->setVisible(ui->mean->isChecked());
         plot->addLayer("sem");
         plot->layer("sem")->setVisible(ui->SEM->isChecked());
+        plot->addLayer("median");
+        plot->layer("median")->setVisible(ui->median->isChecked());
         plot->addLayer("max");
         plot->layer("max")->setVisible(ui->max->isChecked());
         plot->addLayer("target");
@@ -476,17 +486,17 @@ void ParameterFitPlotter::plotSummary()
         for ( size_t i = 0; i < epochs; i++ )
             keys[i] = i;
         for ( size_t i = 0; i < plots.size(); i++ ) {
-            QVector<double> mean(epochs, 0), sem(epochs, 0), max(epochs, 0);
-            QVector<double> errMean(epochs, 0), errSEM(epochs, 0), errMax(epochs, 0);
+            QVector<double> mean(epochs), sem(epochs), median(epochs), max(epochs);
+            QVector<double> errMean(epochs), errSEM(epochs), errMedian(epochs), errMax(epochs);
             getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
                 return std::fabs(fit.params[ep][i] - fit.targets[i]);
-            }, mean, sem, max);
+            }, mean, sem, median, max);
             getSummary(groups[row], [=](const GAFitter::Output &fit, int ep) -> double {
                 for ( ; ep >= 0; ep-- )
                     if ( fit.stimIdx[ep] == i )
                         return fit.error[ep];
                 return 0;
-            }, errMean, errSEM, errMax);
+            }, errMean, errSEM, errMedian, errMax);
             QColor col(getGroupColorBtn(row)->color);
             double opacity = ui->opacity->value()/100.;
             col.setAlphaF(opacity);
@@ -504,6 +514,20 @@ void ParameterFitPlotter::plotSummary()
             errGraph->setData(keys, errMean, true);
             errGraph->setLayer("mean");
             errGraph->setVisible(ui->error->isChecked());
+
+            // Median
+            QCPGraph *medianGraph = plots[i]->addGraph();
+            medianGraph->setPen(QPen(col));
+            medianGraph->setData(keys, median, true);
+            medianGraph->setLayer("median");
+            medianGraph->setVisible(ui->param->isChecked());
+
+            // Error median
+            QCPGraph *errMedianGraph = plots[i]->addGraph(0, plots[i]->yAxis2);
+            errMedianGraph->setPen(QPen(col));
+            errMedianGraph->setData(keys, errMedian, true);
+            errMedianGraph->setLayer("median");
+            errMedianGraph->setVisible(ui->error->isChecked());
 
             // SEM
             QCPGraph *semGraph = plots[i]->addGraph();
@@ -553,30 +577,42 @@ void ParameterFitPlotter::getSummary(std::vector<int> fits,
                                      std::function<double(const GAFitter::Output &fit, int epoch)> value,
                                      QVector<double> &mean,
                                      QVector<double> &meanPlusSEM,
+                                     QVector<double> &median,
                                      QVector<double> &max)
 {
-    std::vector<int> n(mean.size(), 0);
-    for ( int row : fits ) {
-        const GAFitter::Output &fit = session->gaFitter().results().at(row);
-        for ( size_t i = 0; i < fit.epochs; i++ ) {
-            double diff = value(fit, i);
-            mean[i] += diff;
-            n[i]++;
-            if ( diff > max[i] )
-                max[i] = diff;
+    for ( int i = 0; i < mean.size(); i++ ) {
+        std::vector<double> values;
+        values.reserve(fits.size());
+        int n = 0;
+        double sum = 0;
+        for ( int row : fits ) {
+            const GAFitter::Output &fit = session->gaFitter().results().at(row);
+            if ( i < (int)fit.epochs ) {
+                double v = value(fit, i);
+                values.push_back(v);
+                sum += v;
+                n++;
+            }
         }
-    }
-    for ( int i = 0; i < mean.size(); i++ )
-        mean[i] /= n[i];
-    for ( int row : fits ) {
-        const GAFitter::Output fit = session->gaFitter().results().at(row);
-        for ( size_t i = 0; i < fit.epochs; i++ ) {
-            double diff = value(fit, i);
-            double error = diff - mean[i];
-            meanPlusSEM[i] += error*error;
+        if ( values.empty() )
+            break;
+
+        mean[i] = sum / n;
+
+        sum = 0;
+        for ( int v : values ) {
+            double error = v - mean[i];
+            sum += error*error;
         }
-    }
-    for ( int i = 0; i < meanPlusSEM.size(); i++ )
         // SEM = (corrected sd)/sqrt(n); corrected sd = sqrt(sum(error^2)/(n-1))
-        meanPlusSEM[i] = mean[i] + std::sqrt(meanPlusSEM[i]/(n[i]*(n[i]-1)));
+        meanPlusSEM[i] = mean[i] + std::sqrt(sum / (n*(n-1)));
+
+        std::sort(values.begin(), values.end());
+        if ( values.size() %2 == 1 )
+            median[i] = values[values.size()/2];
+        else
+            median[i] = (values[values.size()/2] + values[values.size()/2 - 1]) / 2;
+
+        max[i] = values.back();
+    }
 }
