@@ -14,9 +14,6 @@
    <string>GA fitting</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QComboBox" name="decks"/>
-   </item>
    <item row="0" column="2">
     <widget class="QPushButton" name="start">
      <property name="text">
@@ -31,7 +28,10 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="4">
+   <item row="0" column="0">
+    <widget class="QComboBox" name="decks"/>
+   </item>
+   <item row="2" column="0" colspan="4">
     <widget class="ParameterFitPlotter" name="params_plotter" native="true"/>
    </item>
    <item row="0" column="1">
@@ -41,6 +41,32 @@
      </property>
      <property name="minimum">
       <number>1</number>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_queued">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>0 queued</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QLabel" name="label_epoch">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string/>
      </property>
     </widget>
    </item>

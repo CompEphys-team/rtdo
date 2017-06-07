@@ -31,6 +31,7 @@ private slots:
 private:
     Ui::GAFitterWidget *ui;
     Session &session;
+    int nQueued;
 };
 
 #endif // GAFITTERWIDGET_H

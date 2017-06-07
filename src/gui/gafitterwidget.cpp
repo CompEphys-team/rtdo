@@ -4,7 +4,8 @@
 GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::GAFitterWidget),
-    session(session)
+    session(session),
+    nQueued(0)
 {
     ui->setupUi(this);
 
@@ -31,20 +32,16 @@ void GAFitterWidget::updateDecks()
 
 void GAFitterWidget::progress(quint32 idx)
 {
-    ui->start->setText(QString("%1 iterations...").arg(idx));
-    // ...
+    ui->label_epoch->setText(QString("Epoch %1/%2").arg(idx).arg(session.gaFitterSettings().maxEpochs));
 }
 
 void GAFitterWidget::done()
 {
-    if ( ui->repeats->value() == 1 ) {
-        ui->start->setText("Start");
-        ui->start->setEnabled(true);
-        ui->repeats->setEnabled(true);
-    } else {
-        ui->repeats->setValue(ui->repeats->value()-1);
+    nQueued--;
+    ui->label_epoch->setText("");
+    ui->label_queued->setText(QString("%1 queued").arg(nQueued));
+    if ( nQueued > 0 )
         ui->params_plotter->clear();
-    }
 }
 
 void GAFitterWidget::on_start_clicked()
@@ -52,9 +49,12 @@ void GAFitterWidget::on_start_clicked()
     int currentDeck = ui->decks->currentIndex();
     if ( currentDeck < 0 )
         return;
-    ui->start->setEnabled(false);
-    ui->repeats->setEnabled(false);
-    ui->params_plotter->clear();
+    if ( nQueued == 0 ) {
+        ui->params_plotter->clear();
+        ui->label_epoch->setText(QString("Epoch 0/%1").arg(session.gaFitterSettings().maxEpochs));
+    }
+    nQueued += ui->repeats->value();
+    ui->label_queued->setText(QString("%1 queued").arg(nQueued));
     WaveSource deck(session, WaveSource::Deck, currentDeck);
     for ( int i = 0; i < ui->repeats->value(); i++ )
         emit startFitting(deck);
@@ -62,8 +62,6 @@ void GAFitterWidget::on_start_clicked()
 
 void GAFitterWidget::on_abort_clicked()
 {
+    nQueued = 1;
     session.gaFitter().abort();
-    ui->start->setText("Start");
-    ui->start->setEnabled(true);
-    ui->repeats->setEnabled(true);
 }
