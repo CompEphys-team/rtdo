@@ -29,6 +29,7 @@ public:
         std::vector<scalar> targets; //!< Simulator's parameters
         quint32 epochs;
         WaveSource deck;
+        GAFitterSettings settings;
     };
 
     inline const std::vector<Output> &results() const { return m_results; }

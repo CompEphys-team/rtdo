@@ -43,7 +43,8 @@ GAFitter::Output::Output(const GAFitter &f) :
     error(f.settings.maxEpochs),
     stimIdx(f.settings.maxEpochs),
     targets(f.lib.adjustableParams.size()),
-    epochs(0)
+    epochs(0),
+    settings(f.settings)
 {
     deck.session =& f.session;
     for ( size_t i = 0; i < targets.size(); i++ ) // Initialise for back compat
