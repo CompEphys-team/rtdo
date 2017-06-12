@@ -61,7 +61,8 @@ SOURCES += \
     src/gui/stimulationplotter.cpp \
     src/gui/stimulationgraph.cpp \
     src/gui/stimulationcreator.cpp \
-    src/gui/gafittersettingsdialog.cpp
+    src/gui/gafittersettingsdialog.cpp \
+    src/core/errorprofile.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -107,7 +108,8 @@ HEADERS  += \
     src/include/simulator.h \
     src/include/stimulationgraph.h \
     src/include/stimulationcreator.h \
-    src/include/gafittersettingsdialog.h
+    src/include/gafittersettingsdialog.h \
+    src/include/errorprofile.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
