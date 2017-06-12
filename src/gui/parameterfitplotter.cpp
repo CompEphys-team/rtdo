@@ -15,9 +15,15 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     connect(ui->param, &QCheckBox::stateChanged, [=](int state) {
         bool on = state == Qt::Checked;
         for ( QCustomPlot *p : plots ) {
-            for ( QCPGraph *g : p->yAxis->graphs() )
-                g->setVisible(on);
-            p->layer("target")->setVisible(on && summarising);
+            if ( summarising )
+                for ( QCPGraph *g : p->axisRect()->axis(QCPAxis::atLeft, 1)->graphs() )
+                    g->setVisible(on);
+            else
+                for ( QCPGraph *g : p->yAxis->graphs() )
+                    g->setVisible(on);
+            p->layer("target")->setVisible(on && !summarising);
+            p->axisRect()->axis(QCPAxis::atLeft, 1)->setVisible(on && summarising);
+            p->yAxis->setVisible(!(on && summarising));
             p->yAxis->setTicks(on);
             p->yAxis->setTickLabels(on);
             p->replot();
@@ -143,6 +149,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
         plot->xAxis->setLabel("Epoch");
         plot->yAxis->setLabel(QString::fromStdString(p.name));
+        QCPAxis *yAxis3 = plot->axisRect()->addAxis(QCPAxis::atLeft);
         plot->addLayer("mean");
         plot->layer("mean")->setVisible(ui->mean->isChecked());
         plot->addLayer("sem");
@@ -154,7 +161,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         plot->addLayer("target");
 
         plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
-        connect(plot->xAxis, SIGNAL(rangeChanged(QCPRange)), this, SLOT(rangeChanged(QCPRange)));
+        connect(plot->xAxis, SIGNAL(rangeChanged(QCPRange)), this, SLOT(xRangeChanged(QCPRange)));
         connect(plot, &QCustomPlot::selectionChangedByUser, [=](){
             QList<QCPAxis *> axes = plot->selectedAxes();
             if ( axes.isEmpty() )
@@ -167,6 +174,8 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
                 axis->setRange(p.min, p.max);
             else if ( axis == plot->xAxis )
                 axis->rescale();
+            else if ( axis == yAxis3 )
+                axis->setRange(0, 100);
             else if ( plot->graph(1) ) {
                 bool foundRange;
                 QCPRange range = plot->graph(1)->getValueRange(foundRange, QCP::sdBoth, plot->xAxis->range());
@@ -184,6 +193,12 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         plot->yAxis2->setLabel("Error");
         plot->yAxis2->setVisible(ui->error->isChecked());
         connect(plot->yAxis2, SIGNAL(rangeChanged(QCPRange)), this, SLOT(errorRangeChanged(QCPRange)));
+
+        yAxis3->setLabel(QString("Δ %1 (%%2)").arg(QString::fromStdString(p.name)).arg(p.multiplicative ? "" : " range"));
+        yAxis3->setRange(0,100);
+        yAxis3->grid()->setVisible(true);
+        yAxis3->setVisible(false);
+        connect(yAxis3, SIGNAL(rangeChanged(QCPRange)), this, SLOT(percentileRangeChanged(QCPRange)));
     }
     ui->columns->setMaximum(plots.size());
     setColumnCount(ui->columns->value());
@@ -274,9 +289,12 @@ void ParameterFitPlotter::replot()
 
     for ( QCustomPlot *p : plots ) {
         p->layer("target")->setVisible(ui->param->isChecked());
+        p->yAxis->setVisible(true);
+        p->axisRect()->axis(QCPAxis::atLeft, 1)->setVisible(false);
         p->clearItems();
         p->clearGraphs();
     }
+    summarising = false;
 
     for ( int row : rows ) {
         const GAFitter::Output fit = session->gaFitter().results().at(row);
@@ -404,7 +422,7 @@ void ParameterFitPlotter::progress(quint32 epoch)
         p->replot(QCustomPlot::rpQueuedReplot);
 }
 
-void ParameterFitPlotter::rangeChanged(QCPRange range)
+void ParameterFitPlotter::xRangeChanged(QCPRange range)
 {
     for ( QCustomPlot *plot : plots ) {
         plot->xAxis->blockSignals(true);
@@ -421,6 +439,17 @@ void ParameterFitPlotter::errorRangeChanged(QCPRange range)
         plot->yAxis2->setRange(QCPRange(0, range.upper));
         plot->replot();
         plot->yAxis2->blockSignals(false);
+    }
+}
+
+void ParameterFitPlotter::percentileRangeChanged(QCPRange range)
+{
+    for ( QCustomPlot *plot : plots ) {
+        QCPAxis *y3 = plot->axisRect()->axis(QCPAxis::atLeft, 1);
+        y3->blockSignals(true);
+        y3->setRange(QCPRange(0, range.upper));
+        plot->replot();
+        y3->blockSignals(false);
     }
 }
 
@@ -476,7 +505,10 @@ void ParameterFitPlotter::plotSummary()
     for ( QCustomPlot *p : plots ) {
         p->clearGraphs();
         p->layer("target")->setVisible(false);
+        p->yAxis->setVisible(false);
+        p->axisRect()->axis(QCPAxis::atLeft, 1)->setVisible(true);
     }
+    summarising = true;
 
     for ( int row : rows ) {
         quint32 epochs = 0;
@@ -488,9 +520,16 @@ void ParameterFitPlotter::plotSummary()
         for ( size_t i = 0; i < plots.size(); i++ ) {
             QVector<double> mean(epochs), sem(epochs), median(epochs), max(epochs);
             QVector<double> errMean(epochs), errSEM(epochs), errMedian(epochs), errMax(epochs);
-            getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
-                return std::fabs(fit.params[ep][i] - fit.targets[i]);
-            }, mean, sem, median, max);
+            const AdjustableParam &p = session->project.model().adjustableParams[i];
+            if ( p.multiplicative ) {
+                getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
+                    return 100 * std::fabs(1 - fit.params[ep][i] / fit.targets[i]); // Parameter error relative to target (%)
+                }, mean, sem, median, max);
+            } else {
+                getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
+                    return 100 * std::fabs((fit.params[ep][i] - fit.targets[i]) / (p.max - p.min)); // Parameter error relative to range (%)
+                }, mean, sem, median, max);
+            }
             getSummary(groups[row], [=](const GAFitter::Output &fit, int ep) -> double {
                 for ( ; ep >= 0; ep-- )
                     if ( fit.stimIdx[ep] == i )
@@ -501,8 +540,10 @@ void ParameterFitPlotter::plotSummary()
             double opacity = ui->opacity->value()/100.;
             col.setAlphaF(opacity);
 
+            QCPAxis *yAxis3 = plots[i]->axisRect()->axis(QCPAxis::atLeft, 1);
+
             // Mean
-            QCPGraph *graph = plots[i]->addGraph();
+            QCPGraph *graph = plots[i]->addGraph(0, yAxis3);
             graph->setPen(QPen(col));
             graph->setData(keys, mean, true);
             graph->setLayer("mean");
@@ -516,7 +557,7 @@ void ParameterFitPlotter::plotSummary()
             errGraph->setVisible(ui->error->isChecked());
 
             // Median
-            QCPGraph *medianGraph = plots[i]->addGraph();
+            QCPGraph *medianGraph = plots[i]->addGraph(0, yAxis3);
             medianGraph->setPen(QPen(col));
             medianGraph->setData(keys, median, true);
             medianGraph->setLayer("median");
@@ -530,7 +571,7 @@ void ParameterFitPlotter::plotSummary()
             errMedianGraph->setVisible(ui->error->isChecked());
 
             // SEM
-            QCPGraph *semGraph = plots[i]->addGraph();
+            QCPGraph *semGraph = plots[i]->addGraph(0, yAxis3);
             col.setAlphaF(0.2*opacity);
             QBrush brush(col);
             col.setAlphaF(0.4*opacity);
@@ -551,7 +592,7 @@ void ParameterFitPlotter::plotSummary()
             errSemGraph->setVisible(ui->error->isChecked());
 
             // Max
-            QCPGraph *maxGraph = plots[i]->addGraph();
+            QCPGraph *maxGraph = plots[i]->addGraph(0, yAxis3);
             col.setAlphaF(0.6*opacity);
             QPen pen(col);
             pen.setStyle(Qt::DotLine);
