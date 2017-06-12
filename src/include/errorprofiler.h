@@ -121,11 +121,7 @@ private:
     std::vector<ProfileStats> m_stats;
 
     /// Profiling workhorse, called through ErrorProfiler::generate
-    void generate(const Stimulation &stim, std::vector<scalar> &errors, DAQ *daq, scalar settleDuration);
-
-    /// Profiling helpers
-    void settle(scalar baseV, DAQ *daq, scalar settleDuration);
-    void stimulate(const Stimulation &stim, DAQ *daq);
+    void generate(const Stimulation &stim, std::vector<scalar> &errors);
 
     /// Stats processing
     void process_stats();
@@ -156,7 +152,7 @@ class ErrorProfiler : public SessionWorker
     Q_OBJECT
 
 public:
-    ErrorProfiler(Session &session, DAQ *daq = nullptr);
+    ErrorProfiler(Session &session);
     ~ErrorProfiler();
 
     void abort(); //!< Abort all queued slot actions.
@@ -193,9 +189,13 @@ protected:
     void load(const QString &action, const QString &args, QFile &results);
     inline QString actorName() const { return "ErrorProfiler"; }
 
+    friend class ErrorProfile;
+    void settle(scalar baseV, scalar settleDuration);
+    void stimulate(const Stimulation &stim);
+
 private:
-    Simulator *simulator;
-    DAQ *daq;
+    ExperimentLibrary &lib;
+    Simulator *daq;
 
     bool aborted;
 

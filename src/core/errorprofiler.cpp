@@ -185,7 +185,7 @@ QString ErrorProfile::prettyName() const
 
 
 
-void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors, DAQ *daq, scalar settleDuration)
+void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors)
 {
     size_t nSimulations = numSimulations(), nPermutations = numPermutations();
 
@@ -231,10 +231,10 @@ void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors
 
         // Settle
         lib.push();
-        settle(stim.baseV, daq, settleDuration);
+        session.profiler().settle(stim.baseV, session.runData().settleDuration);
 
         // Stimulate
-        stimulate(stim, daq);
+        session.profiler().stimulate(stim);
         lib.pullErr();
 
         // Store errors
@@ -242,57 +242,6 @@ void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors
             errors[iM + offset] = lib.err[iM];
         }
     }
-}
-
-
-void ErrorProfile::settle(scalar baseV, DAQ *daq, scalar settleDuration)
-{
-    // Create holding stimulation
-    Stimulation I {};
-    I.duration = settleDuration;
-    I.baseV = baseV;
-
-    // Set up library
-    lib.t = 0.;
-    lib.iT = 0;
-    lib.getErr = false;
-    lib.VC = true;
-    lib.Vmem = I.baseV;
-
-    // Set up DAQ
-    daq->reset();
-    daq->run(I);
-
-    // Run
-    while ( lib.t < I.duration ) {
-        daq->next();
-        lib.step();
-    }
-
-    daq->reset();
-}
-
-void ErrorProfile::stimulate(const Stimulation &stim, DAQ *daq)
-{
-    // Set up library
-    lib.t = 0.;
-    lib.iT = 0;
-    lib.VC = true;
-
-    // Set up DAQ
-    daq->reset();
-    daq->run(stim);
-
-    // Stimulate both
-    while ( lib.t < stim.duration ) {
-        daq->next();
-        lib.Imem = daq->current;
-        lib.Vmem = getCommandVoltage(stim, lib.t);
-        lib.getErr = (lib.t > stim.tObsBegin && lib.t < stim.tObsEnd);
-        lib.step();
-    }
-
-    daq->reset();
 }
 
 
@@ -389,10 +338,10 @@ const QString ErrorProfiler::action = QString("generate");
 const quint32 ErrorProfiler::magic = 0x2be4e5cb;
 const quint32 ErrorProfiler::version = 103;
 
-ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
+ErrorProfiler::ErrorProfiler(Session &session) :
     SessionWorker(session),
-    simulator(session.project.experiment().createSimulator()),
-    daq(daq ? daq : simulator),
+    lib(session.project.experiment()),
+    daq(lib.createSimulator()),
     aborted(false)
 {
     connect(this, SIGNAL(doAbort()), this, SLOT(clearAbort()));
@@ -400,7 +349,7 @@ ErrorProfiler::ErrorProfiler(Session &session, DAQ *daq) :
 
 ErrorProfiler::~ErrorProfiler()
 {
-    session.project.experiment().destroySimulator(simulator);
+    session.project.experiment().destroySimulator(daq);
 }
 
 void ErrorProfiler::load(const QString &act, const QString &, QFile &results)
@@ -448,14 +397,14 @@ void ErrorProfiler::generate()
     m_queue.pop_front();
     if ( aborted )
         return;
-    ep.errors.resize(ep.stimulations().size());
+
     auto iter = ep.errors.begin();
     int i = 0;
     for ( Stimulation const& stim : ep.stimulations() ) {
         if ( aborted )
             return;
         if ( stim.duration > 0 ) {
-            ep.generate(stim, *iter, daq, session.runData().settleDuration);
+            ep.generate(stim, *iter);
         } // else, *iter is an empty vector, as befits an empty stimulation
         iter++;
         emit progress(++i, ep.stimulations().size());
@@ -471,4 +420,55 @@ void ErrorProfiler::generate()
     QDataStream os;
     if ( openSaveStream(file, os, magic, version) )
         os << m_profiles.back();
+}
+
+
+void ErrorProfiler::settle(scalar baseV, scalar settleDuration)
+{
+    // Create holding stimulation
+    Stimulation I {};
+    I.duration = settleDuration;
+    I.baseV = baseV;
+
+    // Set up library
+    lib.t = 0.;
+    lib.iT = 0;
+    lib.getErr = false;
+    lib.VC = true;
+    lib.Vmem = I.baseV;
+
+    // Set up DAQ
+    daq->reset();
+    daq->run(I);
+
+    // Run
+    while ( lib.t < I.duration ) {
+        daq->next();
+        lib.step();
+    }
+
+    daq->reset();
+}
+
+void ErrorProfiler::stimulate(const Stimulation &stim)
+{
+    // Set up library
+    lib.t = 0.;
+    lib.iT = 0;
+    lib.VC = true;
+
+    // Set up DAQ
+    daq->reset();
+    daq->run(stim);
+
+    // Stimulate both
+    while ( lib.t < stim.duration ) {
+        daq->next();
+        lib.Imem = daq->current;
+        lib.Vmem = getCommandVoltage(stim, lib.t);
+        lib.getErr = (lib.t > stim.tObsBegin && lib.t < stim.tObsEnd);
+        lib.step();
+    }
+
+    daq->reset();
 }
