@@ -62,7 +62,8 @@ SOURCES += \
     src/gui/stimulationgraph.cpp \
     src/gui/stimulationcreator.cpp \
     src/gui/gafittersettingsdialog.cpp \
-    src/core/errorprofile.cpp
+    src/core/errorprofile.cpp \
+    src/core/profilerlibrary.cpp \
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -109,7 +110,8 @@ HEADERS  += \
     src/include/stimulationgraph.h \
     src/include/stimulationcreator.h \
     src/include/gafittersettingsdialog.h \
-    src/include/errorprofile.h
+    src/include/errorprofile.h \
+    src/include/profilerlibrary.h \
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -225,4 +227,5 @@ SOURCES += \
 
 DISTFILES += \
     src/include/experimentlibrary.cu \
-    src/include/wavegenlibrary.cu
+    src/include/wavegenlibrary.cu \
+    src/include/profilerlibrary.cu

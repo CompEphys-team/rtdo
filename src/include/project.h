@@ -5,6 +5,7 @@
 #include <memory>
 #include "wavegen.h"
 #include "experimentlibrary.h"
+#include "profilerlibrary.h"
 #include "AP.h"
 
 class Project
@@ -24,6 +25,7 @@ public:
     inline void setWgPermute(bool permute) { if ( !frozen ) wg_permute = permute; }
     inline void setWgWavesPerEpoch(size_t num) { if ( !frozen ) wg_numWavesPerEpoch = num; }
     inline void setExpNumCandidates(size_t num) { if ( !frozen ) exp_numCandidates = num; }
+    inline void setProfNumPairs(size_t num) { if ( !frozen ) prof_numPairs = (num+31)/32; /* ensure numPairs == k*32 */ }
 
     /// Get compile-time parameters
     inline QString modelfile() const { return p_modelfile; }
@@ -32,19 +34,21 @@ public:
     inline bool wgPermute() const { return wg_permute; }
     inline size_t wgWavesPerEpoch() const { return wg_numWavesPerEpoch; }
     inline size_t expNumCandidates() const { return exp_numCandidates; }
+    inline size_t profNumPairs() const { return prof_numPairs; }
 
     QString dir() const; //!< @brief dir() returns the absolute path to the project directory
 
     /// Check if compilation has already happened
     inline bool isFrozen() const { return frozen; }
 
-    /// Compile and load both Wavegen and Experiment libraries
+    /// Compile and load libraries
     bool compile();
 
     /// Get the project objects
     MetaModel &model() const { return *m_model; }
     WavegenLibrary &wavegen() const { return *wglib; }
     ExperimentLibrary &experiment() const { return *explib; }
+    ProfilerLibrary &profiler() const { return *proflib; }
 
 protected:
     void addAPs();
@@ -60,6 +64,8 @@ protected:
 
     size_t exp_numCandidates = 10000;
 
+    size_t prof_numPairs = 8192; //!< Number of tuned/detuned model pairs to profile against each other
+
     bool frozen = false;
 
     bool loadExisting;
@@ -67,6 +73,7 @@ protected:
     std::unique_ptr<MetaModel> m_model;
     std::unique_ptr<WavegenLibrary> wglib;
     std::unique_ptr<ExperimentLibrary> explib;
+    std::unique_ptr<ProfilerLibrary> proflib;
 
     std::vector<std::unique_ptr<AP>> ap;
 };

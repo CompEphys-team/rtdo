@@ -29,6 +29,7 @@ Project::Project(const QString &projectfile) :
     setModel(dir() + "/model.xml");
     wglib.reset(new WavegenLibrary(*this, false));
     explib.reset(new ExperimentLibrary(*this, false));
+    proflib.reset(new ProfilerLibrary(*this, false));
 
     frozen = true;
 }
@@ -40,6 +41,7 @@ void Project::addAPs()
     addAP(ap, "Wavegen.permute", this, &Project::wg_permute);
     addAP(ap, "Wavegen.numWavesPerEpoch", this, &Project::wg_numWavesPerEpoch);
     addAP(ap, "Experiment.numCandidates", this, &Project::exp_numCandidates);
+    addAP(ap, "Profiler.numPairs", this, &Project::prof_numPairs);
 }
 
 void Project::setModel(const QString &modelfile)
@@ -75,6 +77,7 @@ bool Project::compile()
     QFile::copy(p_modelfile, dest);
     wglib.reset(new WavegenLibrary(*this, true));
     explib.reset(new ExperimentLibrary(*this, true));
+    proflib.reset(new ProfilerLibrary(*this, true));
     std::ofstream proj(p_projectfile.toStdString());
     for ( auto const& p : ap )
         p->write(proj);

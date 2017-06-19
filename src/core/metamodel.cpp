@@ -181,6 +181,8 @@ string MetaModel::name(ModuleType type) const
     case ModuleType::Wavegen:
         return _name + "_wavegen";
         break;
+    case ModuleType::Profiler:
+        return _name + "_profiler";
     default:
         return _name + "_no_such_type";
     }

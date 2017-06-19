@@ -119,7 +119,7 @@ enum class IntegrationMethod { ForwardEuler, RungeKutta4 };
 std::ostream& operator<<(std::ostream& os, const IntegrationMethod &m);
 std::istream& operator>>(std::istream& is, IntegrationMethod &m);
 
-enum class ModuleType { Experiment = 0, Wavegen = 1 };
+enum class ModuleType { Experiment = 0, Wavegen = 1, Profiler = 2 };
 struct ModelData {
     double dt = 0.25;
     IntegrationMethod method = IntegrationMethod::RungeKutta4;
