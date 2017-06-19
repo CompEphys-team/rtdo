@@ -49,6 +49,7 @@ Session::Session(Project &p, const QString &sessiondir) :
 
     project.wavegen().setRunData(rund);
     project.experiment().setRunData(rund);
+    project.profiler().setRunData(rund);
 
     moveToThread(&thread);
     thread.start();
@@ -154,6 +155,16 @@ GAFitter &Session::gaFitter()
     return *m_gafitter;
 }
 
+SamplingProfiler &Session::samplingProfiler()
+{
+    if ( !m_sprofiler) {
+        SamplingProfiler *f = new SamplingProfiler(*this);
+        f->moveToThread(&thread);
+        m_sprofiler.reset(f);
+    }
+    return *m_sprofiler;
+}
+
 void Session::quit()
 {
     if ( m_wavegen )
@@ -162,6 +173,8 @@ void Session::quit()
         m_profiler->abort();
     if ( m_wavesets)
         m_wavesets->abort();
+    if ( m_sprofiler )
+        m_sprofiler->abort();
     thread.quit();
     thread.wait();
 }
@@ -213,6 +226,8 @@ void Session::load()
                 wavesets().load(entry.action, entry.args, file);
             } else if ( entry.actor == gaFitter().actorName() ) {
                 gaFitter().load(entry.action, entry.args, file);
+            } else if ( entry.actor == samplingProfiler().actorName() ) {
+                samplingProfiler().load(entry.action, entry.args, file);
             } else {
                 throw std::runtime_error(std::string("Unknown actor: ") + entry.actor.toStdString());
             }
@@ -261,6 +276,7 @@ void Session::readConfig(const QString &filename)
         dirtyRund = false;
         project.wavegen().setRunData(rund);
         project.experiment().setRunData(rund);
+        project.profiler().setRunData(rund);
     }
     if ( hasSearch )
         dirtySearchd = false;
@@ -282,6 +298,7 @@ void Session::setRunData(RunData d)
     if ( QThread::currentThread() == &thread ) {
         project.wavegen().setRunData(d);
         project.experiment().setRunData(d);
+        project.profiler().setRunData(d);
         rund = d;
         dirtyRund = true;
     } else {

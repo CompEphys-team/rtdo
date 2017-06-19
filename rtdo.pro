@@ -64,6 +64,7 @@ SOURCES += \
     src/gui/gafittersettingsdialog.cpp \
     src/core/errorprofile.cpp \
     src/core/profilerlibrary.cpp \
+    src/core/samplingprofiler.cpp \
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -112,6 +113,7 @@ HEADERS  += \
     src/include/gafittersettingsdialog.h \
     src/include/errorprofile.h \
     src/include/profilerlibrary.h \
+    src/include/samplingprofiler.h \
 
 FORMS    += \
     src/gui/mainwindow.ui \
