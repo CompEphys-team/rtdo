@@ -65,6 +65,17 @@ void MainWindow::on_actionProfiler_triggered()
     profileDlg->setWindowTitle(profileDlg->windowTitle() + " : " + title);
 }
 
+void MainWindow::on_actionSampling_profiler_triggered()
+{
+    if ( !sprofileDlg ) {
+        sprofileDlg.reset(new SamplingProfileDialog(*session));
+    }
+    sprofileDlg->show();
+    sprofileDlg->raise();
+    sprofileDlg->activateWindow();
+    sprofileDlg->setWindowTitle(sprofileDlg->windowTitle() + " : " + title);
+}
+
 void MainWindow::on_actionGAFitter_triggered()
 {
     if ( !gaFitterWidget )
@@ -83,6 +94,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
         wavegenDlg->close();
     if ( profileDlg )
         profileDlg->close();
+    if ( sprofileDlg )
+        sprofileDlg->close();
     if ( deckWidget )
         deckWidget->close();
     if ( gaFitterWidget )

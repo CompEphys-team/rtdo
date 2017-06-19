@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include "wavegendialog.h"
 #include "profiledialog.h"
+#include "samplingprofiledialog.h"
 #include "deckwidget.h"
 #include "gafitterwidget.h"
 #include "project.h"
@@ -49,12 +50,15 @@ private slots:
 
     void on_actionGA_Fitter_triggered();
 
+    void on_actionSampling_profiler_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;
     ProfileDialog *profileDlg;
     std::unique_ptr<DeckWidget> deckWidget;
     std::unique_ptr<GAFitterWidget> gaFitterWidget;
+    std::unique_ptr<SamplingProfileDialog> sprofileDlg;
 
     Project *project;
     Session *session;

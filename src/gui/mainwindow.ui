@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>506</width>
+    <width>537</width>
     <height>300</height>
    </rect>
   </property>
@@ -19,7 +19,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>506</width>
+     <width>537</width>
      <height>19</height>
     </rect>
    </property>
@@ -86,6 +86,7 @@
    </attribute>
    <addaction name="actionWavegen"/>
    <addaction name="actionProfiler"/>
+   <addaction name="actionSampling_profiler"/>
    <addaction name="actionDecks"/>
    <addaction name="actionGAFitter"/>
    <addaction name="actionStimulation_editor"/>
@@ -194,6 +195,17 @@
   <action name="actionGA_Fitter">
    <property name="text">
     <string>GA Fitter</string>
+   </property>
+  </action>
+  <action name="actionSampling_profiler">
+   <property name="text">
+    <string>Sampling profiler</string>
+   </property>
+   <property name="iconText">
+    <string>&amp;Sampling profiler</string>
+   </property>
+   <property name="shortcut">
+    <string>S</string>
    </property>
   </action>
  </widget>
