@@ -106,6 +106,7 @@ MetaModel::MetaModel(const Project &p) :
         }
         if ( (sub = el->FirstChildElement("perturbation")) ) {
             sub->QueryDoubleAttribute("rate", &p.sigma);
+            p.adjustedSigma = p.sigma;
             std::string ptype = sub->Attribute("type");
             p.multiplicative = !ptype.compare("*") || !ptype.compare("multiplicative");
         }

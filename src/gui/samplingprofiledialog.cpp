@@ -113,11 +113,11 @@ void SamplingProfileDialog::setCloseRange(int i)
     double min, max;
     const AdjustableParam &p = session.project.model().adjustableParams[i];
     if ( p.multiplicative ) {
-        max = p.initial * pow(1.0 + p.sigma, ui->presetSig->value());
-        min = p.initial * pow(1.0 - p.sigma, ui->presetSig->value());
+        max = p.initial * pow(1.0 + p.adjustedSigma, ui->presetSig->value());
+        min = p.initial * pow(1.0 - p.adjustedSigma, ui->presetSig->value());
     } else {
-        max = p.initial + p.sigma*ui->presetSig->value();
-        min = p.initial - p.sigma*ui->presetSig->value();
+        max = p.initial + p.adjustedSigma*ui->presetSig->value();
+        min = p.initial - p.adjustedSigma*ui->presetSig->value();
     }
     if ( max > p.max )
         max = p.max;

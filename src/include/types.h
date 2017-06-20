@@ -151,6 +151,7 @@ struct AdjustableParam : public Variable {
     AdjustableParam() {}
     AdjustableParam(std::string n, std::string c = "", std::string t = "scalar") : Variable(n,c,t) {}
     double sigma;
+    double adjustedSigma;
     bool multiplicative;
     int wgPermutations;
     double wgSD;

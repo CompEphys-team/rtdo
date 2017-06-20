@@ -227,7 +227,7 @@ void GAFitter::procreate()
 
     stimIdx = findNextStim();
 
-    scalar sigma = lib.adjustableParams[stimIdx].sigma;
+    scalar sigma = lib.adjustableParams[stimIdx].adjustedSigma;
     if ( settings.decaySigma )
         sigma = settings.sigmaInitial * sigma * std::exp2(-double(epoch)/settings.sigmaHalflife);
 

@@ -160,9 +160,6 @@ protected:
 
     mutable randutils::mt19937_rng RNG;
 
-    QVector<double> sigmaAdjust;
-    std::vector<double> sigmax;
-
     std::list<std::vector<scalar>> settled;
 
     std::list<MAPElite> mapeArchive; //!< Elite archive of the current call to search().
