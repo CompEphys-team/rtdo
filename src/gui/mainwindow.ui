@@ -58,6 +58,7 @@
     </property>
     <addaction name="actionWavegen_fitness_map"/>
     <addaction name="actionError_profiles"/>
+    <addaction name="actionSampled_profiles"/>
     <addaction name="actionFitting_Parameters"/>
     <addaction name="actionStimulations"/>
    </widget>
@@ -206,6 +207,11 @@
    </property>
    <property name="shortcut">
     <string>S</string>
+   </property>
+  </action>
+  <action name="actionSampled_profiles">
+   <property name="text">
+    <string>Sampled profiles</string>
    </property>
   </action>
  </widget>

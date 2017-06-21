@@ -10,6 +10,7 @@
 #include "stimulationplotter.h"
 #include "stimulationcreator.h"
 #include "gafittersettingsdialog.h"
+#include "samplingprofileplotter.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -201,4 +202,11 @@ void MainWindow::on_actionGA_Fitter_triggered()
     GAFitterSettingsDialog *dlg = new GAFitterSettingsDialog(*session);
     dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
     dlg->show();
+}
+
+void MainWindow::on_actionSampled_profiles_triggered()
+{
+    SamplingProfilePlotter *figure = new SamplingProfilePlotter(*session);
+    figure->setWindowTitle(figure->windowTitle() + " : " + title);
+    figure->show();
 }
