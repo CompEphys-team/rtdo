@@ -22,12 +22,14 @@ public:
         scalar *clampGain;
         scalar *accessResistance;
         scalar **current;
+        bool *settling;
 
         std::vector<scalar*> d_param;
 
         void (*push)(void);
         void (*pull)(void);
         void (*pushStim)(const Stimulation &);
+        void (*step)(void);
         void (*doProfile)(Pointers&, size_t, unsigned int, double&, double&);
         void (*reset)(void);
     };
@@ -61,6 +63,7 @@ public:
     scalar &clampGain;
     scalar &accessResistance;
 
+    void settle(Stimulation stim); // Settle (i.e. apply stim), saving the state back into device memory.
     void profile(Stimulation stim, size_t targetParam, double &accuracy, double &median_norm_gradient);
 };
 

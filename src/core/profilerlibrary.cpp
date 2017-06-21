@@ -91,7 +91,8 @@ void ProfilerLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("samplingInterval", "", "int"),
         Variable("clampGain"),
         Variable("accessResistance"),
-        Variable("current", "" , "scalar*")
+        Variable("current", "" , "scalar*"),
+        Variable("settling", "", "bool")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -122,9 +123,13 @@ for ( unsigned int mt = 0; t < stim.duration && t < stim.tObsEnd; mt++ ) {
 )EOF"
     + model.kernel("    ", true, false)
     + R"EOF(
-    if ( (mt+1) % $(samplingInterval) == 0 && t > stim.tObsBegin && t < stim.tObsEnd )
+    if ( !$(settling) && (mt+1) % $(samplingInterval) == 0 && t > stim.tObsBegin && t < stim.tObsEnd )
         $(current)[id + NMODELS * samples++] = Isyn;
 }
+
+if ( !$(settling) )
+    return; // do not overwrite settled initial state
+
 #else
 Isyn += 0.;
 #endif
@@ -175,6 +180,7 @@ std::string ProfilerLibrary::supportCode(const std::vector<Variable> &globals, c
     ss << "    pointers.push =& push" << SUFFIX << "StateToDevice;" << endl;
     ss << "    pointers.pull =& pull" << SUFFIX << "StateFromDevice;" << endl;
     ss << "    pointers.pushStim =& pushStim;" << endl;
+    ss << "    pointers.step =& stepTimeGPU;" << endl;
     ss << "    pointers.doProfile =& doProfile;" << endl;
     ss << "    pointers.reset =& initialize;" << endl;
     ss << "    libInitPost(pointers);" << endl;
@@ -187,10 +193,18 @@ std::string ProfilerLibrary::supportCode(const std::vector<Variable> &globals, c
     return ss.str();
 }
 
+void ProfilerLibrary::settle(Stimulation stim)
+{
+    pointers.pushStim(stim);
+    *pointers.settling = true;
+    pointers.step();
+}
+
 void ProfilerLibrary::profile(Stimulation stim, size_t targetParam, double &accuracy, double &median_norm_gradient)
 {
     unsigned int nSamples = std::ceil((stim.tObsEnd-stim.tObsBegin) / (samplingInterval * project.dt() / simCycles));
     pointers.pushStim(stim);
+    *pointers.settling = false;
     pointers.doProfile(pointers, targetParam, nSamples, accuracy, median_norm_gradient);
 }
 

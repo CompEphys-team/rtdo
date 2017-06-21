@@ -71,13 +71,25 @@ void SamplingProfiler::generate(SamplingProfiler::Profile prof)
 
     lib.samplingInterval = prof.samplingInterval;
 
-    // Run
+    Stimulation hold;
+    hold.clear();
+    hold.duration = session.runData().settleDuration;
+    hold.baseV = NAN;
+
     std::vector<Stimulation> stims = prof.src.stimulations();
     size_t total = stims.size();
     prof.gradient.resize(total);
     prof.accuracy.resize(total);
 
+    // Run
     for ( size_t i = 0; i < total && !aborted; i++ ) {
+        // Settle, if necessary - lib maintains settled state
+        if ( hold.baseV != stims[i].baseV ) {
+            hold.baseV = stims[i].baseV;
+            lib.settle(hold);
+        }
+
+        // Stimulate
         lib.profile(stims[i], prof.target, prof.accuracy[i], prof.gradient[i]);
         prof.gradient[i] /= prof.sigma;
         std::cout << prof.gradient[i] << "\t" << prof.accuracy[i] << std::endl;
