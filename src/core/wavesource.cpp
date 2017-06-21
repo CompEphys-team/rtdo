@@ -64,21 +64,10 @@ std::vector<Stimulation> WaveSource::stimulations() const
     }
     case Selection :
     {
-        const WavegenSelection &sel = *selection();
-        ret.reserve(sel.size());
-        std::vector<size_t> idx(sel.ranges.size());
-        for ( size_t i = 0; i < sel.size(); i++ ) {
-            for ( int j = sel.ranges.size() - 1; j >= 0; j-- ) {
-                if ( ++idx[j] % sel.width(j) == 0 )
-                    idx[j] = 0;
-                else
-                    break;
-            }
-            bool ok;
-            auto it = sel.data_relative(idx, &ok);
-            if ( ok )
-                ret.push_back(it->wave);
-        }
+        std::vector<MAPElite> el = elites();
+        ret.reserve(el.size());
+        for ( const MAPElite &e : el )
+            ret.push_back(e.wave);
         break;
     }
     case Subset :
@@ -90,6 +79,60 @@ std::vector<Stimulation> WaveSource::stimulations() const
     case Manual:
         ret = session->wavesets().manuals().at(idx);
         break;
+    }
+
+    if ( waveno >= 0 )
+        return {ret[waveno]};
+    else
+        return ret;
+}
+
+std::vector<MAPElite> WaveSource::elites() const
+{
+    std::vector<MAPElite> ret;
+    switch ( type ) {
+    case Archive:
+    {
+        ret.reserve(archive()->elites.size());
+        for ( const MAPElite &el : archive()->elites )
+            ret.push_back(el);
+        break;
+    }
+    case Selection:
+    {
+        const WavegenSelection &sel = *selection();
+        ret.reserve(sel.size());
+        for ( auto const &it : sel.selection )
+            if ( it != sel.archive().elites.end() )
+                ret.push_back(*it);
+        break;
+    }
+    case Subset:
+    {
+        std::vector<MAPElite> srcEl = subset()->src.elites();
+        ret.reserve(subset()->size());
+        for ( size_t i : subset()->indices )
+            ret.push_back(srcEl[i]);
+        break;
+    }
+    case Deck:
+    {
+        ret.reserve(deck()->sources().size());
+        for ( const WaveSource &src : deck()->sources() )
+            ret.push_back(src.elites()[0]);
+        break;
+    }
+    case Manual:
+    {
+        std::vector<Stimulation> stims = stimulations();
+        ret.reserve(stims.size());
+        for ( Stimulation &stim : stims ) {
+            MAPElite el;
+            el.wave = stim;
+            ret.push_back(el);
+        }
+        break;
+    }
     }
 
     if ( waveno >= 0 )

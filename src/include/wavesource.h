@@ -31,6 +31,7 @@ public:
     const WaveDeck *deck() const; //!< returns the deck, if type is Deck
 
     std::vector<Stimulation> stimulations() const;
+    std::vector<MAPElite> elites() const;
 
     QString prettyName() const;
     int index() const; //!< Returns the overall index (eg. for comboboxes), ignoring waveno.
