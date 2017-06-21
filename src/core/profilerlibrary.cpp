@@ -90,29 +90,10 @@ void ProfilerLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("simCycles", "", "int"),
         Variable("samplingInterval", "", "int"),
         Variable("clampGain"),
-        Variable("accessResistance")
+        Variable("accessResistance"),
+        Variable("current", "" , "scalar*")
     };
     for ( Variable &p : globals ) {
-        n.extraGlobalNeuronKernelParameters.push_back(p.name);
-        n.extraGlobalNeuronKernelParameterTypes.push_back(p.type);
-    }
-
-    std::vector<Variable> stimArg = {
-        Variable("current", "" , "scalar*"),
-        Variable("stim", "", "void*")
-
-//        Variable("stim_duration"),
-//        Variable("stim_tObsBegin"),
-//        Variable("stim_tObsEnd"),
-//        Variable("stim_baseV"),
-//        Variable("stim_numSteps", "", "size_t")
-    };
-//    for ( size_t i = 0; i < 10; i++ ) {
-//        stimArg.push_back(Variable(QString("stim_step%1_t").arg(i).toStdString()));
-//        stimArg.push_back(Variable(QString("stim_step%1_V").arg(i).toStdString()));
-//        stimArg.push_back(Variable(QString("stim_step%1_ramp").arg(i).toStdString(), "", "bool"));
-//    }
-    for ( Variable &p : stimArg ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
         n.extraGlobalNeuronKernelParameterTypes.push_back(p.type);
     }
@@ -132,7 +113,6 @@ std::string ProfilerLibrary::simCode()
 {
     return std::string("\n#ifndef _") + model.name(ModuleType::Profiler) + "_neuronFnct_cc\n"
     + R"EOF(
-const Stimulation stim = *(Stimulation*)$(stim);
 scalar mdt = DT/$(simCycles);
 t = 0.;
 unsigned int samples = 0;
@@ -194,8 +174,10 @@ std::string ProfilerLibrary::supportCode(const std::vector<Variable> &globals, c
     ss << endl;
     ss << "    pointers.push =& push" << SUFFIX << "StateToDevice;" << endl;
     ss << "    pointers.pull =& pull" << SUFFIX << "StateFromDevice;" << endl;
+    ss << "    pointers.pushStim =& pushStim;" << endl;
     ss << "    pointers.doProfile =& doProfile;" << endl;
     ss << "    pointers.reset =& initialize;" << endl;
+    ss << "    libInitPost(pointers);" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 
@@ -208,7 +190,7 @@ std::string ProfilerLibrary::supportCode(const std::vector<Variable> &globals, c
 void ProfilerLibrary::profile(Stimulation stim, size_t targetParam, double &accuracy, double &median_norm_gradient)
 {
     unsigned int nSamples = std::ceil((stim.tObsEnd-stim.tObsBegin) / (samplingInterval * project.dt() / simCycles));
-    *pointers.stim = stim;
+    pointers.pushStim(stim);
     pointers.doProfile(pointers, targetParam, nSamples, accuracy, median_norm_gradient);
 }
 

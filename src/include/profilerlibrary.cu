@@ -7,35 +7,35 @@
 #include <thrust/sort.h>
 #include <thrust/count.h>
 
-static __device__ scalar *dd_current;
-static __device__ scalar *dd_gradient;
-static __device__ scalar *dd_err;
-static scalar *d_current, *d_gradient, *d_err;
+static scalar *d_gradient, *d_err;
 static unsigned int currentSz = 1024;
 static constexpr unsigned int gradientSz = NCOMP - NPAIRS; // No diagonal
 static constexpr unsigned int errSz = (NCOMP - NPAIRS)/2; // Above diagonal only
 
-static __constant__ Stimulation *dd_stim;
+__constant__ Stimulation stim;
+
+extern "C" void pushStim(const Stimulation &h_stim)
+{
+    cudaMemcpyToSymbol(stim, &h_stim, sizeof(Stimulation));
+}
 
 void libInit(ProfilerLibrary::Pointers &pointers)
 {
-    CHECK_CUDA_ERRORS(cudaHostAlloc(&pointers.stim, sizeof(Stimulation), cudaHostAllocPortable));
-        deviceMemAllocate(&pointers.d_stim, dd_stim, sizeof(Stimulation));
-
-    deviceMemAllocate(&d_current, dd_current, currentSz * NMODELS * sizeof(scalar));
-    deviceMemAllocate(&d_gradient, dd_gradient, gradientSz * sizeof(scalar));
-    deviceMemAllocate(&d_err, dd_err, errSz * sizeof(scalar));
+    CHECK_CUDA_ERRORS(cudaMalloc(&d_gradient, gradientSz * sizeof(scalar)));
+    CHECK_CUDA_ERRORS(cudaMalloc(&d_err, errSz * sizeof(scalar)));
 
     allocateMem();
     initialize();
+}
+void libInitPost(ProfilerLibrary::Pointers &pointers)
+{
+    CHECK_CUDA_ERRORS(cudaMalloc(pointers.current, currentSz * NMODELS * sizeof(scalar)));
 }
 
 extern "C" void libExit(ProfilerLibrary::Pointers &pointers)
 {
     freeMem();
-    CHECK_CUDA_ERRORS(cudaFreeHost(pointers.stim));
-    CHECK_CUDA_ERRORS(cudaFree(pointers.d_stim));
-    CHECK_CUDA_ERRORS(cudaFree(d_current));
+    CHECK_CUDA_ERRORS(cudaFree(*pointers.current));
     CHECK_CUDA_ERRORS(cudaFree(d_gradient));
     CHECK_CUDA_ERRORS(cudaFree(d_err));
 }
@@ -45,11 +45,11 @@ extern "C" void resetDevice()
     cudaDeviceReset();
 }
 
-void resize_current(unsigned int nSamples)
+void resize_current(unsigned int nSamples, ProfilerLibrary::Pointers &pointers)
 {
     if ( currentSz < nSamples ) {
-        CHECK_CUDA_ERRORS(cudaFree(d_current));
-        deviceMemAllocate(&d_current, dd_current, nSamples * NMODELS * sizeof(scalar));
+        CHECK_CUDA_ERRORS(cudaFree(*pointers.current));
+        CHECK_CUDA_ERRORS(cudaMalloc(pointers.current, nSamples * NMODELS * sizeof(scalar)));
         currentSz = nSamples;
     }
 }
@@ -83,17 +83,13 @@ struct is_positive : public thrust::unary_function<scalar, bool>
 
 extern "C" void doProfile(ProfilerLibrary::Pointers &pointers, size_t target, unsigned int nSamples,double &accuracy, double &median_norm_gradient)
 {
-    CHECK_CUDA_ERRORS(cudaMemcpy(pointers.d_stim, pointers.stim, sizeof(Stimulation), cudaMemcpyHostToDevice));
-    stimPROF = pointers.d_stim;
-
-    resize_current(nSamples);
-    currentPROF = d_current;
+    resize_current(nSamples, pointers);
 
     stepTimeGPU();
 
     dim3 block(32, 16);
     dim3 grid(NPAIRS/32, NPAIRS/16);
-    compute_err_and_gradient<<<grid, block>>>(nSamples, pointers.d_param[target], d_current, d_gradient, d_err);
+    compute_err_and_gradient<<<grid, block>>>(nSamples, pointers.d_param[target], *pointers.current, d_gradient, d_err);
 
     thrust::device_ptr<scalar> gradient = thrust::device_pointer_cast(d_gradient);
     thrust::device_ptr<scalar> err = thrust::device_pointer_cast(d_err);

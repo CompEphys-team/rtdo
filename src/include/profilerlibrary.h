@@ -21,13 +21,13 @@ public:
         int *samplingInterval;
         scalar *clampGain;
         scalar *accessResistance;
-
-        Stimulation *stim, *d_stim;
+        scalar **current;
 
         std::vector<scalar*> d_param;
 
         void (*push)(void);
         void (*pull)(void);
+        void (*pushStim)(const Stimulation &);
         void (*doProfile)(Pointers&, size_t, unsigned int, double&, double&);
         void (*reset)(void);
     };
