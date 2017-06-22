@@ -7,6 +7,9 @@
 static __device__ WaveStats *dd_wavestats;
 static __device__ Stimulation *dd_waveforms;
 
+static __device__ scalar dd_err[MM_NumModels];
+static scalar err[MM_NumModels];
+
 void allocateGroupMem(WavegenLibrary::Pointers &pointers)
 {
     cudaHostAlloc(&pointers.wavestats, MM_NumGroups * sizeof(WaveStats), cudaHostAllocPortable);
@@ -43,11 +46,12 @@ void libInit(WavegenLibrary::Pointers &pointers, size_t numGroups, size_t numMod
         CHECK_CUDA_ERRORS(cudaMemcpy(pointers.waveforms, pointers.d_waveforms, numGroups * sizeof(Stimulation), cudaMemcpyDeviceToHost))
     };
     pointers.pushErr = [&pointers, numModels](){
-        CHECK_CUDA_ERRORS(cudaMemcpy(pointers.d_err, pointers.err, numModels * sizeof(scalar), cudaMemcpyHostToDevice))
+        CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(dd_err, pointers.err, numModels * sizeof(scalar)))
     };
     pointers.pullErr = [&pointers, numModels](){
-        CHECK_CUDA_ERRORS(cudaMemcpy(pointers.err, pointers.d_err, numModels * sizeof(scalar), cudaMemcpyDeviceToHost))
+        CHECK_CUDA_ERRORS(cudaMemcpyFromSymbol(pointers.err, dd_err, numModels * sizeof(scalar)))
     };
+    pointers.err = err;
 
     allocateMem();
     allocateGroupMem(pointers);

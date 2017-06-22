@@ -21,8 +21,8 @@ void Wavegen::search(int param)
     size_t nInitialWaves = numWavesPerEpisode;
 
     // Initiate a first stimulation with nothing going on in parallel:
-    restoreSettled();
     detune();
+    settle();
     lib.targetParam = param+1;
     lib.getErr = true;
     lib.clearStats();
@@ -44,7 +44,6 @@ void Wavegen::search(int param)
     while ( true ) {
         lib.pullStats(); // Pull stats from the previous episode (returnedWaves' performance) to host memory
         lib.clearStats(); // Reset device memory stats
-        restoreSettled(); // Reset state
         stimulate(*newWaves); // Initiate next stimulation episode
 
         // Calculate fitness & MAPE coordinates of the previous episode's waves, and compete with the elite

@@ -20,20 +20,16 @@ public:
         scalar *clampGain;
         scalar *accessResistance;
         int *targetParam;
-        bool *final;
+        bool *settling;
         bool *getErr;
 
         scalar *err;
-        scalar *d_err;
 
         Stimulation *waveforms;
         Stimulation *d_waveforms;
         WaveStats *wavestats;
         WaveStats *clear_wavestats;
         WaveStats *d_wavestats;
-
-        scalar *t;
-        unsigned long long *iT;
 
         void (*push)(void);
         void (*pull)(void);
@@ -85,15 +81,12 @@ private:
     Pointers pointers;
 
 public:
-    scalar &t;
-    unsigned long long &iT;
-
     // Model globals
     int &simCycles;
     scalar &clampGain;
     scalar &accessResistance;
     int &targetParam;
-    bool &final;
+    bool &settling;
     bool &getErr;
 
     // Model vars

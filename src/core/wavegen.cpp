@@ -166,7 +166,6 @@ void Wavegen::permute_apply(const QVector<QVector<scalar>> &allvalues, int numPe
         stride *= p.wgPermutations + 1;
         ++values;
     }
-    settled.clear();
 }
 
 void Wavegen::permute_save(QFile &file, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups)
@@ -216,7 +215,7 @@ void Wavegen::detune()
 
 void Wavegen::settle()
 {
-    // Simulate for a given time
+    // Simulate for a given time, retaining the final state
     Stimulation I;
     I.duration = session.runData().settleDuration;
     I.baseV = stimd.baseV;
@@ -225,87 +224,17 @@ void Wavegen::settle()
         lib.waveforms[group] = I;
     lib.pushWaveforms();
     lib.getErr = false;
-    lib.t = 0;
-    lib.iT = 0;
+    lib.settling = true;
     lib.push();
-    while ( lib.t < I.duration ) {
-        lib.step();
-    }
-    lib.pull();
-    if ( lib.project.wgPermute() ) {
-        // Collect the state variables of every base model, i.e. the tuned version
-        settled = std::list<std::vector<scalar>>(lib.stateVariables.size(), std::vector<scalar>(lib.numGroups));
-        auto iter = settled.begin();
-        for ( StateVariable &v : lib.stateVariables ) {
-            for ( int group = 0; group < lib.numGroups; group++ ) {
-                (*iter)[group] = v[baseModelIndex(group)];
-            }
-            ++iter;
-        }
-
-        // Provide some auditing info
-        std::vector<scalar> V;
-        int valid = 0;
-        for ( int group = 0; group < lib.numGroups; group++ ) {
-            scalar const& v = lib.stateVariables[0].v[baseModelIndex(group)];
-            V.push_back(v);
-            if ( v > stimd.baseV-5 && v < stimd.baseV+5 )
-                valid++;
-        }
-        std::sort(V.begin(), V.end());
-        std::cout << "Settled all permuted models to holding potential of " << stimd.baseV << " mV for "
-                  << I.duration << " ms." << std::endl;
-        std::cout << "Median achieved potential: " << V[lib.numGroups/2] << " mV (95% within [" << V[lib.numGroups/20]
-                  << " mV, " << V[lib.numGroups/20*19] << " mV]), " << valid << "/" << lib.numGroups
-                  << " models within +-5 mV of holding." << std::endl;
-    } else {
-        // Collect the state of one base model
-        settled = std::list<std::vector<scalar>>(lib.stateVariables.size(), std::vector<scalar>(1));
-        auto iter = settled.begin();
-        for ( StateVariable &v : lib.stateVariables ) {
-            (*iter++)[0] = v[0];
-        }
-
-        std::cout << "Settled base model to holding potential of " << stimd.baseV << " mV for " << I.duration << " ms, "
-                  << "achieved " << (*settled.begin())[0] << " mV." << std::endl;
-    }
-}
-
-void Wavegen::restoreSettled()
-{
-    if ( settled.empty() ) {
-        settle();
-        return;
-    }
-
-    // Restore to previously found settled state
-    auto iter = settled.begin();
-    if ( lib.project.wgPermute() ) {
-        for ( StateVariable &v : lib.stateVariables ) {
-            for ( int i = 0; i < lib.numModels; i++ ) {
-                int group = i % lib.numGroupsPerBlock            // Group index within the block
-                        + (i/lib.numModelsPerBlock) * lib.numGroupsPerBlock; // Offset (in group space) of the block this model belongs to
-                v[i] = (*iter)[group];
-            }
-            ++iter;
-        }
-    } else {
-        for ( StateVariable &v : lib.stateVariables ) {
-            for ( int i = 0; i < lib.numModels; i++ ) {
-                v[i] = (*iter)[0];
-            }
-            ++iter;
-        }
-    }
-    lib.push();
+    lib.step();
 }
 
 void Wavegen::adjustSigmas()
 {
     if ( aborted )
         return;
-    restoreSettled();
     detune();
+    settle();
     for ( int i = 0; i < lib.numModels; i++ )
         lib.err[i] = 0;
     lib.getErr = true;
@@ -321,6 +250,7 @@ void Wavegen::adjustSigmas()
               // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
             : ((searchd.numSigmaAdjustWaveforms + lib.numGroups - 1) / lib.numGroups);
     for ( int i = 0; i < end && !aborted; i++ ) {
+        lib.pushErr();
 
         // Generate random wave/s
         if ( lib.project.wgPermute() ) {
@@ -335,7 +265,6 @@ void Wavegen::adjustSigmas()
         }
 
         // Simulate
-        restoreSettled();
         stimulate(waves);
 
         // Collect per-parameter error
@@ -428,32 +357,17 @@ void Wavegen::sigmaAdjust_load(QFile &file)
 
 void Wavegen::stimulate(const std::vector<Stimulation> &stim)
 {
-    lib.t = 0;
-    lib.iT = 0;
+    lib.settling = false;
     if ( lib.project.wgPermute() ) {
         const Stimulation &s = stim.at(0);
         for ( int group = 0; group < lib.numGroups; group++ )
             lib.waveforms[group] = s;
-        lib.pushWaveforms();
-        while ( lib.t < s.duration ) {
-            lib.final = lib.t + lib.project.dt() >= s.duration;
-            lib.step();
-        }
     } else { //-------------- !m.cfg.permute ------------------------------------------------------------
         assert((int)stim.size() >= lib.numGroups);
-        double maxDuration = 0.0, minDuration = stim[0].duration;
         for ( int group = 0; group < lib.numGroups; group++ ) {
             lib.waveforms[group] = stim[group];
-            if ( maxDuration < stim[group].duration )
-                maxDuration = stim[group].duration;
-            if ( minDuration > stim[group].duration )
-                minDuration = stim[group].duration;
-        }
-        lib.pushWaveforms();
-
-        while ( lib.t < maxDuration ) {
-            lib.final = lib.t + lib.project.dt() >= maxDuration;
-            lib.step();
         }
     }
+    lib.pushWaveforms();
+    lib.step();
 }

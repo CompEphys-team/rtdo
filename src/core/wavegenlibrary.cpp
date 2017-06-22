@@ -22,13 +22,11 @@ WavegenLibrary::WavegenLibrary(const Project &p, bool compile) :
     lib(compile ? compile_and_load() : load()),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(*this)),
-    t(*(pointers.t)),
-    iT(*(pointers.iT)),
     simCycles(*(pointers.simCycles)),
     clampGain(*(pointers.clampGain)),
     accessResistance(*(pointers.accessResistance)),
     targetParam(*(pointers.targetParam)),
-    final(*(pointers.final)),
+    settling(*(pointers.settling)),
     getErr(*(pointers.getErr)),
     err(pointers.err),
     waveforms(pointers.waveforms),
@@ -99,20 +97,11 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("accessResistance"),
         Variable("targetParam", "", "int"),
         Variable("getErr", "", "bool"),
-        Variable("final", "", "bool")
+        Variable("settling", "", "bool")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
         n.extraGlobalNeuronKernelParameterTypes.push_back(p.type);
-    }
-
-    std::vector<Variable> vars = {
-        Variable("err")
-    };
-    for ( Variable &v : vars ) {
-        n.varNames.push_back(v.name);
-        n.varTypes.push_back(v.type);
-        variableIni.push_back(0.0);
     }
 
     for ( const Variable &c : model.currents ) {
@@ -158,7 +147,7 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
     numModels = numGroups * (model.adjustableParams.size() + 1);
 
     n.simCode = simCode();
-    n.supportCode = supportCode(globals, vars);
+    n.supportCode = supportCode(globals, {});
 
     int idx = nModels.size();
     nModels.push_back(n);
@@ -176,13 +165,19 @@ std::string WavegenLibrary::simCode()
 const int groupID = id % MM_NumGroupsPerBlock;                                  // Block-local group id
 const int group = groupID + (id/MM_NumModelsPerBlock) * MM_NumGroupsPerBlock;   // Global group id
 const int paramID = (id % MM_NumModelsPerBlock) / MM_NumGroupsPerBlock;
-WaveStats *stats;
-if ( $(getErr) && paramID == $(targetParam) ) // Preload for @fn processStats - other threads don't need this
-    stats =& dd_wavestats[group];
-scalar Vcmd = getCommandVoltage(dd_waveforms[group], t);
-
-scalar mdt = DT/$(simCycles);
-for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
+const scalar mdt = DT/$(simCycles);
+scalar gathErr = 0.;
+WaveStats stats {};
+Stimulation stim = dd_waveforms[group];
+Stimulation::Step nextStep;
+t = 0.;
+scalar Vcmd = getStep(nextStep, stim, t, mdt);
+for ( unsigned int mt = 0; t < stim.duration; mt++ ) {
+    t = mt*mdt;
+    if ( t >= nextStep.t )
+        Vcmd = getStep(nextStep, stim, t, mdt);
+    else if ( nextStep.ramp )
+        Vcmd += nextStep.V;
     Isyn = ($(clampGain)*(Vcmd-$(V)) - $(V)) / $(accessResistance);
 )EOF";
     ss << model.kernel("    ", true, true) << endl;
@@ -200,7 +195,7 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
         if ( paramID ) {
             err = fabs(Isyn - errShare[groupID]);
             if ( $(targetParam) < 0 )
-                $(err) += err * mdt;
+                gathErr += err * mdt;
             errShare[paramID*MM_NumGroupsPerBlock + groupID] = err;
         }
         __syncthreads();
@@ -213,13 +208,20 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
                 if ( i == paramID )
                     continue;
             }
-            processStats(err, total / NPARAM, t + mt*mdt, *stats, $(final) && mt == $(simCycles)-1 );
+            processStats(err, total / NPARAM, t, stats);
         }
     }
 } // end for mt
 
-if ( $(getErr) && paramID == $(targetParam) )
-    dd_wavestats[group] = *stats;
+if ( $(getErr) && paramID == $(targetParam) ) {
+    closeBubble(stats, t);
+    dd_wavestats[group] = stats;
+} else if ( $(getErr) && $(targetParam) < 0 ) {
+    dd_err[id] = gathErr;
+}
+
+if ( !$(settling) )
+    return;
 
 #else
 Isyn += 0.; // Squelch Wunused in neuronFnct.cc
@@ -280,8 +282,6 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
         ss << "    pointers.d_" << v.name << " = d_" << v.name << SUFFIX << ";" << endl;
     }
     ss << endl;
-    ss << "    pointers.t =& t;" << endl;
-    ss << "    pointers.iT =& iT;" << endl;
     ss << "    pointers.push =& push" << SUFFIX << "StateToDevice;" << endl;
     ss << "    pointers.pull =& pull" << SUFFIX << "StateFromDevice;" << endl;
     ss << "    pointers.step =& stepTimeGPU;" << endl;

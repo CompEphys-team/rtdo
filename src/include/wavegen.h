@@ -40,7 +40,7 @@ public:
 public slots:
     /**
      * @brief permute populates all models with a fresh permutation of adjustableParam values.
-     * Changes: Host values of all adjustable parameters; forces resettling on next call to @fn settle.
+     * Changes: Host values of all adjustable parameters.
      */
     void permute();
 
@@ -50,7 +50,7 @@ public slots:
      * A number (>= WavegenData::numSigmaAdjustWaveforms) of randomly generated waveforms is used to estimate the average
      * error for each adjustableParam, and an adjustment factor computed to bring the error closer to the median error
      * across all parameters. Multiple invocations may improve convergence.
-     * Changes: getErr to true, host err to 0, targetParam to -1, t&iT; calls @fn detune, @fn restoreSettled and @fn stimulate.
+     * Changes: getErr to true, host err to 0, targetParam to -1, calls @fn detune, @fn settle and @fn stimulate.
      */
     void adjustSigmas();
 
@@ -99,22 +99,15 @@ protected:
     /**
      * @brief settle puts all models into a settled state clamped at StimulationData::baseV by simulating
      * for the configured time (see RunData::settleTime).
-     * Changes: getErr to false, waveforms, t&iT. Pushes full state to device, simulates, and pulls full state to host.
+     * Changes: getErr to false, waveforms. Pushes full state to device, simulates, and saves final state on device.
      */
     void settle();
-
-    /**
-     * @brief restoreSettled restores the state variables of all models to the state they were in at the end of the last
-     * call to @fn settle. If no settled state was found, calls settle() instead.
-     * Changes: All state variables. Pushes full state to device.
-     */
-    void restoreSettled();
 
     /**
      * @brief stimulate runs one full stimulation on every model. In permuted mode, all models receive the same stimulation,
      * namely the first element of @param stim. In unpermuted mode, each model group receives its corresponding stimulation
      * from @param stim.
-     * Changes: waveforms, final, t&iT.
+     * Changes: waveforms.
      * @param stim A vector with at least 1 (permuted mode) or MetaModel::numGroups (unpermuted mode) elements.
      */
     void stimulate(const std::vector<Stimulation> &stim);
@@ -159,8 +152,6 @@ protected:
     }
 
     mutable randutils::mt19937_rng RNG;
-
-    std::list<std::vector<scalar>> settled;
 
     std::list<MAPElite> mapeArchive; //!< Elite archive of the current call to search().
     MAPEStats mapeStats; //!< Statistics of the most recent (or current) call to search().
