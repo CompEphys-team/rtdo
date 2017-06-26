@@ -97,7 +97,9 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("accessResistance"),
         Variable("targetParam", "", "int"),
         Variable("getErr", "", "bool"),
-        Variable("settling", "", "bool")
+        Variable("settling", "", "bool"),
+        Variable("findObs", "", "bool"),
+        Variable("findObsValues", "", "scalar*")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -166,9 +168,10 @@ const int groupID = id % MM_NumGroupsPerBlock;                                  
 const int group = groupID + (id/MM_NumModelsPerBlock) * MM_NumGroupsPerBlock;   // Global group id
 const int paramID = (id % MM_NumModelsPerBlock) / MM_NumGroupsPerBlock;
 const scalar mdt = DT/$(simCycles);
+unsigned int findObs_start = 0;
 scalar gathErr = 0.;
 WaveStats stats {};
-Stimulation stim = dd_waveforms[group];
+Stimulation stim = dd_waveforms[$(findObs) ? 0 : group];
 Stimulation::Step nextStep;
 t = 0.;
 scalar Vcmd = getStep(nextStep, stim, t, mdt);
@@ -182,7 +185,7 @@ for ( unsigned int mt = 0; t < stim.duration; mt++ ) {
 )EOF";
     ss << model.kernel("    ", true, true) << endl;
     ss <<   R"EOF(
-    if ( $(getErr) ) {
+    if ( $(getErr) || ($(findObs) && t > stim.tObsBegin && t < stim.tObsEnd) ) {
         __shared__ double errShare[MM_NumModelsPerBlock];
         scalar err;
 
@@ -208,7 +211,12 @@ for ( unsigned int mt = 0; t < stim.duration; mt++ ) {
                 if ( i == paramID )
                     continue;
             }
-            processStats(err, total / NPARAM, t, stats);
+            if ( $(findObs) ) {
+                $(findObsValues)[groupID + (mt-findObs_start)*MM_NumGroups] = fitnessPartial(err, total/NPARAM);
+                ++findObs_start;
+            } else {
+                processStats(err, total / NPARAM, t, stats);
+            }
         }
     }
 } // end for mt
@@ -286,6 +294,8 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "    pointers.pull =& pull" << SUFFIX << "StateFromDevice;" << endl;
     ss << "    pointers.step =& stepTimeGPU;" << endl;
     ss << "    pointers.reset =& initialize;" << endl;
+    ss << "    pointers.findObservationWindow =& findObservationWindow;" << endl;
+    ss << "    *pointers.findObs = false;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 
@@ -293,6 +303,17 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "namespace " << SUFFIX << "_neuron {" << endl;
 
     return ss.str();
+}
+
+void WavegenLibrary::findObservationWindow(Stimulation &stim, scalar tLastBegin, scalar tFirstEnd)
+{
+    scalar cycleDuration = project.dt() / simCycles;
+    unsigned int nSamples = std::ceil((stim.tObsEnd-stim.tObsBegin) / cycleDuration);
+    unsigned int nStart = std::ceil((tLastBegin-stim.tObsBegin) / cycleDuration);
+    unsigned int nEnd = std::ceil((stim.tObsEnd-tFirstEnd) / cycleDuration);
+    *pointers.findObs = true;
+    pointers.findObservationWindow(pointers, stim, nStart, nEnd, nSamples, cycleDuration);
+    *pointers.findObs = false;
 }
 
 void WavegenLibrary::setRunData(RunData rund)

@@ -22,6 +22,8 @@ public:
         int *targetParam;
         bool *settling;
         bool *getErr;
+        bool *findObs;
+        scalar **findObsValues;
 
         scalar *err;
 
@@ -41,6 +43,7 @@ public:
         std::function<void(void)> pullWaveforms;
         std::function<void(void)> pushErr;
         std::function<void(void)> pullErr;
+        void (*findObservationWindow)(Pointers&, Stimulation&, unsigned int, unsigned int, unsigned int, scalar);
     };
 
     const Project &project;
@@ -68,6 +71,8 @@ public:
     inline void pullWaveforms() { pointers.pullWaveforms(); }
     inline void pushErr() { pointers.pushErr(); }
     inline void pullErr() { pointers.pullErr(); }
+
+    void findObservationWindow(Stimulation &stim, scalar tLastBegin, scalar tFirstEnd);
 
 private:
     void *load();

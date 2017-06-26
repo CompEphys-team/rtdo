@@ -3,6 +3,11 @@
 
 #include "supportcode.h"
 
+__device__ inline scalar fitnessPartial(scalar err, scalar mean)
+{
+    return err/mean;
+}
+
 __device__ void closeBubble(WaveStats &s, const scalar t)
 {
     if ( s.current.cycles ) {
@@ -24,7 +29,7 @@ __device__ void processStats(const scalar err,  //!< Target parameter's absolute
                              const scalar t,    //!< Time, including substep contribution
                              WaveStats &s) //!< Stats struct for this group & target param
 {
-    scalar rel = err/mean;
+    scalar rel = fitnessPartial(err, mean);
     if ( rel > 1 ) {
         s.current.rel += rel;
         s.current.cycles++;
