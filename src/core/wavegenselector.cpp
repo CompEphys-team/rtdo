@@ -208,7 +208,7 @@ void WavegenSelection::finalise()
         // Update collapsed index
         size_t multiplier = 1;
         collapsed_index = 0;
-        for ( size_t i = 0; i < dimensions; i++ ) {
+        for ( int i = dimensions-1; i >= 0; i-- ) {
             if ( !ranges[i].collapse ) {
                 collapsed_index += offset_index[i] * multiplier;
                 multiplier *= width(i);
