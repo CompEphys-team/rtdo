@@ -37,6 +37,8 @@ public:
      */
     Stimulation getRandomStim() const;
 
+    void sanitiseWavegenData(WavegenData*);
+
 public slots:
     /**
      * @brief adjustSigmas changes the perturbation factor for adjustableParams such that each perturbation causes
@@ -77,6 +79,13 @@ protected:
 
     void search_save(QFile &file);
     void search_load(QFile &file, const QString &args);
+
+    /**
+     * @brief initModels initialises model parameters with random values. Typically, every WavegenData::nGroupsPerWave groups, there
+     * is a base parameter set. If only randomised models are to be generated, supply withBase==false.
+     * Changes: Host parameter values
+     */
+    void initModels(bool withBase = true);
 
     /**
      * @brief detune changes one adjustableParam per model, such that each model block has a tuned version [0]

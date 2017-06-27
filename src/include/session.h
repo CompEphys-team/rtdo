@@ -103,6 +103,8 @@ protected:
 signals:
     void actionLogged(QString actorName, QString action, QString args, int idx);
 
+    void sanitiseWavegenData(WavegenData *d);
+
     void redirectRunData(RunData d, QPrivateSignal);
     void redirectWavegenData(WavegenData d, QPrivateSignal);
     void redirectStimulationData(StimulationData d, QPrivateSignal);

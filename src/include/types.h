@@ -310,9 +310,20 @@ struct WavegenData
                                        //!< If parameters are not permuted, this number is rounded up to the
                                        //!< nearest multiple of the waveform population size.
     size_t nInitialWaves = 1e5; //!< Number of randomly initialised waveforms used to start the search
+    size_t nGroupsPerWave = 32; //!< Number of model groups (base + each param detuned) used for each waveform.
+                                 //! The number is rounded down to fit into project.wgNumGroups an integer number of times.
+                                 //! One group per wave is always the base model,
+                                 //! while all others are randomly initialised within parameter range.
+                                 //! Note that while nGroupsPerWave has a direct impact on runtime, the number of epochs/iterations
+                                 //! is independent of it.
+    size_t nWavesPerEpoch = 10000; //!< Number of waveforms that constitute one "epoch" or iteration for the purposes of
+                                   //! precisionIncreaseEpochs, maxIterations etc. nWavesPerEpoch is rounded up to the nearest
+                                   //! multiple of project.wgNumGroups / round_down(nGroupsPerWave).
+    bool rerandomiseParameters = false; //!< Indicates whether model parameters should be randomised at each epoch, rather than only
+                                        //! once per run.
     std::vector<MAPEDimension> mapeDimensions; //!< List of dimensions along which stimulation behaviour is to be measured
     std::vector<size_t> precisionIncreaseEpochs; //!< Epochs on which MAPE precision/resolution is to double
-    size_t maxIterations = 1000;
+    size_t maxIterations = 1000; //!< Total number of epochs (cf nWavesPerEpoch)
     size_t historySize = 20;
 };
 

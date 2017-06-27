@@ -64,6 +64,9 @@ void Session::addAPs()
 
     addAP(searchAP, "S.Wavegen.numSigmaAdjustWaveforms", this, &Session::searchd, &WavegenData::numSigmaAdjustWaveforms);
     addAP(searchAP, "S.Wavegen.nInitialWaves", this, &Session::searchd, &WavegenData::nInitialWaves);
+    addAP(searchAP, "S.Wavegen.nGroupsPerWave", this, &Session::searchd, &WavegenData::nGroupsPerWave);
+    addAP(searchAP, "S.Wavegen.nWavesPerEpoch", this, &Session::searchd, &WavegenData::nWavesPerEpoch);
+    addAP(searchAP, "S.Wavegen.rerandomiseParameters", this, &Session::searchd, &WavegenData::rerandomiseParameters);
     addAP(searchAP, "S.Wavegen.precisionIncreaseEpochs[#]", this, &Session::searchd, &WavegenData::precisionIncreaseEpochs);
     addAP(searchAP, "S.Wavegen.maxIterations", this, &Session::searchd, &WavegenData::maxIterations);
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].func", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::func);
@@ -112,7 +115,7 @@ void Session::addAPs()
         {MAPEDimension::Func::BestBubbleTime,       0, stimd.duration,    32},
         {MAPEDimension::Func::VoltageDeviation,     0, maxDeviation,      32}
     };
-    searchd.precisionIncreaseEpochs = { 100, 500 };
+    searchd.precisionIncreaseEpochs = { 100 };
 }
 
 Wavegen &Session::wavegen()
@@ -309,6 +312,7 @@ void Session::setRunData(RunData d)
 void Session::setWavegenData(WavegenData d)
 {
     if ( QThread::currentThread() == &thread ) {
+        sanitiseWavegenData(&d);
         searchd = d;
         dirtySearchd = true;
     } else {

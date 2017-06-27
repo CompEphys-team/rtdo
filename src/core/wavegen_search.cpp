@@ -12,7 +12,11 @@ void Wavegen::search(int param)
 
     assert(param >= 0 && param < (int)lib.adjustableParams.size());
 
-    const int numWavesPerEpisode = lib.numGroups;
+    // Note: Episode == a single call to stimulate and lib.step; Epoch == a full iteration, containing one or more episode.
+    const int numWavesPerEpisode = lib.numGroups / searchd.nGroupsPerWave;
+    const int numEpisodesPerEpoch = searchd.nWavesPerEpoch / numWavesPerEpisode;
+    int episodeCounter = 0;
+
     std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
 
     // Initialise the population for episode 1:
@@ -21,6 +25,7 @@ void Wavegen::search(int param)
     size_t nInitialWaves = numWavesPerEpisode;
 
     // Initiate a first stimulation with nothing going on in parallel:
+    initModels();
     detune();
     settle();
     lib.targetParam = param+1;
@@ -55,17 +60,30 @@ void Wavegen::search(int param)
         using std::swap;
         swap(newWaves, returnedWaves);
 
-        emit searchTick(mapeStats.iterations);
+        if ( ++episodeCounter == numEpisodesPerEpoch ) {
+            episodeCounter = 0;
+            emit searchTick(++mapeStats.iterations);
 
-        if ( mapeStats.iterations == searchd.maxIterations-1 || aborted )
+            if ( mapeStats.iterations == searchd.maxIterations || aborted )
+                break;
+
+            if ( mapeStats.precision < searchd.precisionIncreaseEpochs.size() &&
+                 mapeStats.iterations == searchd.precisionIncreaseEpochs[mapeStats.precision] ) {
+                mapeStats.precision++;
+                for ( MAPElite &e : mapeArchive )
+                    e.bin = mape_bin(e.wave, e.stats);
+            }
+
+            if ( searchd.rerandomiseParameters ) {
+                initModels();
+                detune();
+                settle();
+            }
+        }
+
+        if ( aborted )
             break;
 
-        if ( mapeStats.precision < searchd.precisionIncreaseEpochs.size() &&
-             mapeStats.iterations == searchd.precisionIncreaseEpochs[mapeStats.precision] ) {
-            mapeStats.precision++;
-            for ( MAPElite &e : mapeArchive )
-                e.bin = mape_bin(e.wave, e.stats);
-        }
 
         // Prepare next episode's waves
         if ( initialising ) {
@@ -148,13 +166,25 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
     *mapeStats.histIter = {};
 
     std::vector<MAPElite> candidates;
-    candidates.reserve(lib.numGroups);
+    candidates.reserve(waves.size());
+    WaveStats meanStats;
+    int meanFac = 0;
+    auto stim = waves.begin();
     for ( int group = 0; group < lib.numGroups; group++ ) {
-        candidates.push_back(MAPElite {
-                                 mape_bin(waves[group], lib.wavestats[group]),
-                                 waves[group],
-                                 lib.wavestats[group]
-                             });
+        // Accumulate fitness and behaviour
+        if ( !std::isnan(lib.wavestats[group].fitness) ) {
+            meanStats += lib.wavestats[group];
+            ++meanFac;
+        }
+
+        if ( group+1 % searchd.nGroupsPerWave == 0 ) {
+            // Average across stats for this stim
+            meanStats /= meanFac;
+            candidates.push_back(MAPElite {mape_bin(*stim, meanStats), *stim, meanStats});
+            ++stim;
+            meanFac = 0;
+        }
+    }
     // Compare to elite & insert
     mape_insert(candidates);
 
@@ -164,7 +194,6 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
     mapeStats.histIter->insertions = mapeStats.insertions - prevInsertions;
     mapeStats.histIter->population = mapeStats.population;
     mapeStats.historicInsertions += mapeStats.histIter->insertions;
-    ++mapeStats.iterations;
 }
 
 void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
