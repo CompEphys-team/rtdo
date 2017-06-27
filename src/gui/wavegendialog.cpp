@@ -11,23 +11,15 @@ WavegenDialog::WavegenDialog(Session &s, QWidget *parent) :
     ui->setupUi(this);
     this->setWindowFlags(Qt::Window);
 
-    ui->btnPermute->setEnabled(session.project.wgPermute());
     for ( const AdjustableParam &p : session.wavegen().lib.model.adjustableParams )
         ui->cbSearch->addItem(QString::fromStdString(p.name));
 
-    connect(this, SIGNAL(permute()), &session.wavegen(), SLOT(permute()));
     connect(this, SIGNAL(adjustSigmas()), &session.wavegen(), SLOT(adjustSigmas()));
     connect(this, SIGNAL(search(int)), &session.wavegen(), SLOT(search(int)));
     connect(&session.wavegen(), SIGNAL(startedSearch(int)), this, SLOT(startedSearch(int)));
     connect(&session.wavegen(), SIGNAL(searchTick(int)), this, SLOT(searchTick(int)));
     connect(&session.wavegen(), SIGNAL(done(int)), this, SLOT(end(int)));
 
-    connect(ui->btnPermute, &QPushButton::clicked, [&](bool){
-        ui->log->addItem("Parameter permutation begins...");
-        ui->log->scrollToBottom();
-        actions.push_back("Parameter permutation");
-        emit permute();
-    });
     connect(ui->btnSigadjust, &QPushButton::clicked, [&](bool){
         ui->log->addItem("Sigma adjustment begins...");
         ui->log->scrollToBottom();

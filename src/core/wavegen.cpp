@@ -7,10 +7,6 @@
 #include "util.h"
 #include "session.h"
 
-QString Wavegen::permute_action = QString("permute");
-quint32 Wavegen::permute_magic = 0xf1d08bb4;
-quint32 Wavegen::permute_version = 100;
-
 QString Wavegen::sigmaAdjust_action = QString("sigmaAdjust");
 quint32 Wavegen::sigmaAdjust_magic = 0xf084d24b;
 quint32 Wavegen::sigmaAdjust_version = 101;
@@ -33,9 +29,7 @@ Wavegen::Wavegen(Session &session) :
 
 void Wavegen::load(const QString &action, const QString &args, QFile &results)
 {
-    if ( action == permute_action )
-        permute_load(results);
-    else if ( action == sigmaAdjust_action )
+    if ( action == sigmaAdjust_action )
         sigmaAdjust_load(results);
     else if ( action == search_action )
         search_load(results, args);
@@ -75,119 +69,6 @@ void Wavegen::abort()
 void Wavegen::clearAbort()
 {
     aborted = false;
-}
-
-void Wavegen::permute()
-{
-    if ( aborted )
-        return;
-    if ( !lib.project.wgPermute() ) {
-        emit done();
-        return;
-    }
-
-    // If the number of permuted models doesn't fit into thread blocks (very likely),
-    // generate a few uncorrelated random parameter sets as padding
-    int numPermutedGroups = 1;
-    for ( AdjustableParam &p : lib.adjustableParams ) {
-        numPermutedGroups *= p.wgPermutations + 1;
-    }
-    int numRandomGroups = lib.numGroups - numPermutedGroups;
-
-    // First, generate the values:
-    QVector<QVector<scalar>> allvalues(lib.adjustableParams.size());
-    auto values = allvalues.begin();
-    for ( AdjustableParam &p : lib.adjustableParams ) {
-        values->reserve(p.wgPermutations + 1 + numRandomGroups);
-        values->push_back(p.initial);
-        if ( p.wgNormal ) {
-            // Draw both permuted and uncorrelated random groups from normal distribution
-            for ( int i = 0; i < p.wgPermutations + numRandomGroups; i++ ) {
-                scalar v = p.multiplicative
-                    ? (p.initial * RNG.variate<scalar, std::lognormal_distribution>(0, p.wgSD))
-                    : RNG.variate<scalar, std::normal_distribution>(p.initial, p.wgSD);
-                if ( v > p.max )
-                    v = p.max;
-                else if ( v < p.min )
-                    v = p.min;
-                values->push_back(v);
-            }
-        } else {
-            // Permuted groups: Space evenly over the parameter range
-            auto space = p.multiplicative ? linSpace : logSpace;
-            for ( int i = 0; i < p.wgPermutations; i++ ) {
-                values->push_back(space(p.min, p.max, p.wgPermutations, i));
-            }
-            // Random groups: Draw from uniform distribution
-            if ( p.multiplicative ) {
-                double min = std::log(p.min), max = std::log(p.max);
-                for ( int i = 0; i < numRandomGroups; i++ )
-                    values->push_back(std::exp(RNG.uniform(min, max)));
-            } else {
-                for ( int i = 0; i < numRandomGroups; i++ )
-                    values->push_back(RNG.uniform(p.min, p.max));
-            }
-        }
-        ++values;
-    }
-
-    permute_apply(allvalues, numPermutedGroups, numRandomGroups);
-
-    QFile file(session.log(this, permute_action));
-    permute_save(file, allvalues, numPermutedGroups, numRandomGroups);
-
-    emit done();
-}
-
-void Wavegen::permute_apply(const QVector<QVector<scalar>> &allvalues, int numPermutedGroups, int numRandomGroups)
-{
-    int stride = 1;
-    auto values = allvalues.begin();
-    for ( AdjustableParam &p : lib.adjustableParams ) {
-        // Populate this parameter, interleaving them in numGroupsPerBlock-periodic fashion
-        // This algorithm is designed to maintain sanity rather than memory locality, so it hits each
-        // model group in turn, skipping from warp to warp to fill out that group before moving to the next one.
-        for ( int group = 0, permutation = p.wgPermutations; group < numPermutedGroups; group++ ) {
-            int offset = baseModelIndex(group);
-            if ( group % stride == 0)
-                permutation = (permutation + 1) % (p.wgPermutations + 1);
-            for ( int i = 0, end = lib.adjustableParams.size() + 1; i < end; i++ ) {
-                p[i*lib.numGroupsPerBlock + offset] = values->at(permutation);
-            }
-        }
-        for ( int randomGroup = 0; randomGroup < numRandomGroups; randomGroup++ ) {
-            int offset = baseModelIndex(randomGroup+numPermutedGroups);
-            for ( int i = 0, end = lib.adjustableParams.size() + 1; i < end; i++ ) {
-                p[i*lib.numGroupsPerBlock + offset] = values->at(p.wgPermutations + 1 + randomGroup);
-            }
-        }
-
-        // Permutation stride starts out at 1 and increases from one parameter to the next
-        stride *= p.wgPermutations + 1;
-        ++values;
-    }
-}
-
-void Wavegen::permute_save(QFile &file, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups)
-{
-    QDataStream os;
-    if ( !openSaveStream(file, os, permute_magic, permute_version) )
-        return;
-    os << qint32(numPermutedGroups) << qint32(numRandomGroups);
-    os << values;
-}
-
-void Wavegen::permute_load(QFile &file)
-{
-    QDataStream is;
-    quint32 version = openLoadStream(file, is, permute_magic);
-    if ( version < 100 || version > 100 )
-        throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
-    QVector<QVector<scalar>> values;
-    qint32 numPermutedGroups, numRandomGroups;
-    is >> numPermutedGroups >> numRandomGroups;
-    is >> values;
-    permute_apply(values, numPermutedGroups, numRandomGroups);
 }
 
 void Wavegen::detune()
@@ -244,25 +125,15 @@ void Wavegen::adjustSigmas()
     // simulate each (in turn across all model permutations, or in parallel), and collect the
     // per-parameter average deviation from the base model produced by that parameter's detuning.
     std::vector<double> sumParamErr(lib.adjustableParams.size(), 0);
-    std::vector<Stimulation> waves;
-    int end = lib.project.wgPermute()
-            ? searchd.numSigmaAdjustWaveforms
-              // round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
-            : ((searchd.numSigmaAdjustWaveforms + lib.numGroups - 1) / lib.numGroups);
+    std::vector<Stimulation> waves(lib.numGroups);
+    // Round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
+    int end = (searchd.numSigmaAdjustWaveforms + lib.numGroups - 1) / lib.numGroups;
     for ( int i = 0; i < end && !aborted; i++ ) {
         lib.pushErr();
 
         // Generate random wave/s
-        if ( lib.project.wgPermute() ) {
-            if ( !i )
-                waves.resize(1);
-            waves[0] = getRandomStim();
-        } else {
-            if ( !i )
-                waves.resize(lib.numGroups);
-            for ( Stimulation &w : waves )
-                w = getRandomStim();
-        }
+        for ( Stimulation &w : waves )
+            w = getRandomStim();
 
         // Simulate
         stimulate(waves);
@@ -358,15 +229,8 @@ void Wavegen::sigmaAdjust_load(QFile &file)
 void Wavegen::stimulate(const std::vector<Stimulation> &stim)
 {
     lib.settling = false;
-    if ( lib.project.wgPermute() ) {
-        const Stimulation &s = stim.at(0);
-        for ( int group = 0; group < lib.numGroups; group++ )
-            lib.waveforms[group] = s;
-    } else { //-------------- !m.cfg.permute ------------------------------------------------------------
-        assert((int)stim.size() >= lib.numGroups);
-        for ( int group = 0; group < lib.numGroups; group++ ) {
-            lib.waveforms[group] = stim[group];
-        }
+    for ( int group = 0; group < lib.numGroups; group++ ) {
+        lib.waveforms[group] = stim[group];
     }
     lib.pushWaveforms();
     lib.step();

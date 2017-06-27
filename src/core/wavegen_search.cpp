@@ -12,7 +12,7 @@ void Wavegen::search(int param)
 
     assert(param >= 0 && param < (int)lib.adjustableParams.size());
 
-    const int numWavesPerEpisode = lib.project.wgPermute() ? 1 : lib.numGroups;
+    const int numWavesPerEpisode = lib.numGroups;
     std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
 
     // Initialise the population for episode 1:
@@ -147,36 +147,16 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
     mapeStats.historicInsertions -= mapeStats.histIter->insertions;
     *mapeStats.histIter = {};
 
-    if ( lib.project.wgPermute() ) {
-        // For both fitness and bin coordinates, take the mean fitness/behaviour of the stim across all evaluated model groups
-
-        // Accumulate
-        WaveStats meanStats = WaveStats();
-        for ( int group = 0; group < lib.numGroups; group++ ) {
-            meanStats += lib.wavestats[group];
-        }
-
-        // Average
-        meanStats /= lib.numGroups;
-
-        // Compare averages to elite & insert
-        std::vector<MAPElite> candidate(1, MAPElite{mape_bin(waves[0], meanStats), waves[0], meanStats});
-        mape_insert(candidate);
-
-    } else {
-        std::vector<MAPElite> candidates;
-        candidates.reserve(lib.numGroups);
-        for ( int group = 0; group < lib.numGroups; group++ ) {
-            candidates.push_back(MAPElite {
-                                     mape_bin(waves[group], lib.wavestats[group]),
-                                     waves[group],
-                                     lib.wavestats[group]
-                                 });
-        }
-
-        // Compare to elite & insert
-        mape_insert(candidates);
-    }
+    std::vector<MAPElite> candidates;
+    candidates.reserve(lib.numGroups);
+    for ( int group = 0; group < lib.numGroups; group++ ) {
+        candidates.push_back(MAPElite {
+                                 mape_bin(waves[group], lib.wavestats[group]),
+                                 waves[group],
+                                 lib.wavestats[group]
+                             });
+    // Compare to elite & insert
+    mape_insert(candidates);
 
     // Record statistics
     if ( !mapeStats.histIter->insertions ) // Set to 1 by mape_insert when a new best is found

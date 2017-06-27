@@ -38,7 +38,6 @@ void Project::addAPs()
 {
     addAP(ap, "dt", this, &Project::m_dt);
     addAP(ap, "method", this, &Project::m_method);
-    addAP(ap, "Wavegen.permute", this, &Project::wg_permute);
     addAP(ap, "Wavegen.numWavesPerEpoch", this, &Project::wg_numWavesPerEpoch);
     addAP(ap, "Experiment.numCandidates", this, &Project::exp_numCandidates);
     addAP(ap, "Profiler.numPairs", this, &Project::prof_numPairs);

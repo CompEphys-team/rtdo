@@ -39,12 +39,6 @@ public:
 
 public slots:
     /**
-     * @brief permute populates all models with a fresh permutation of adjustableParam values.
-     * Changes: Host values of all adjustable parameters.
-     */
-    void permute();
-
-    /**
      * @brief adjustSigmas changes the perturbation factor for adjustableParams such that each perturbation causes
      * roughly the same error (current deviation, vs the corresponding tuned model, during a waveform injection).
      * A number (>= WavegenData::numSigmaAdjustWaveforms) of randomly generated waveforms is used to estimate the average
@@ -78,10 +72,6 @@ protected:
     inline QString actorName() const { return "Wavegen"; }
 
     /// Helper functions
-    void permute_apply(const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups);
-    void permute_save(QFile &file, const QVector<QVector<scalar>> &values, int numPermutedGroups, int numRandomGroups);
-    void permute_load(QFile &file);
-
     void sigmaAdjust_save(QFile &file);
     void sigmaAdjust_load(QFile &file);
 
@@ -160,9 +150,9 @@ protected:
 
     bool aborted;
 
-    static QString permute_action, sigmaAdjust_action, search_action;
-    static quint32 permute_magic, sigmaAdjust_magic, search_magic;
-    static quint32 permute_version, sigmaAdjust_version, search_version;
+    static QString sigmaAdjust_action, search_action;
+    static quint32 sigmaAdjust_magic, search_magic;
+    static quint32 sigmaAdjust_version, search_version;
 };
 
 #endif // WAVEGEN_H

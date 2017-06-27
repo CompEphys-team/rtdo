@@ -7,7 +7,7 @@
 class WavegenLibrary
 {
 public:
-    WavegenLibrary(const Project &p, bool compile);
+    WavegenLibrary(Project &p, bool compile);
     ~WavegenLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -46,7 +46,7 @@ public:
         void (*findObservationWindow)(Pointers&, Stimulation&, unsigned int, unsigned int, unsigned int, scalar);
     };
 
-    const Project &project;
+    Project &project;
 
     MetaModel &model;
 

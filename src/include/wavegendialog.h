@@ -17,7 +17,6 @@ public:
     ~WavegenDialog();
 
 signals:
-    void permute();
     void adjustSigmas();
     void search(int param);
 

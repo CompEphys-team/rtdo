@@ -13,7 +13,7 @@
 static WavegenLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-WavegenLibrary::WavegenLibrary(const Project &p, bool compile) :
+WavegenLibrary::WavegenLibrary(Project &p, bool compile) :
     project(p),
     model(p.model()),
     stateVariables(model.stateVariables),
@@ -135,16 +135,9 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
     GENN_PREFERENCES::optimiseBlockSize = 0;
     GENN_PREFERENCES::neuronBlockSize = numModelsPerBlock;
 
-    if ( project.wgPermute() ) {
-        numGroups = 1;
-        for ( AdjustableParam &p : model.adjustableParams ) {
-            numGroups *= p.wgPermutations + 1;
-        }
-    } else {
-        numGroups = project.wgWavesPerEpoch();
-    }
     // Round up to nearest multiple of numGroupsPerBlock to achieve full occupancy and regular interleaving:
-    numGroups = ((numGroups + numGroupsPerBlock - 1) / numGroupsPerBlock) * numGroupsPerBlock;
+    numGroups = ((project.wgNumGroups() + numGroupsPerBlock - 1) / numGroupsPerBlock) * numGroupsPerBlock;
+    project.setWgNumGroups(numGroups);
     numBlocks = numGroups / numGroupsPerBlock;
     numModels = numGroups * (model.adjustableParams.size() + 1);
 
