@@ -177,7 +177,7 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
             ++meanFac;
         }
 
-        if ( group+1 % searchd.nGroupsPerWave == 0 ) {
+        if ( (group+1) % searchd.nGroupsPerWave == 0 ) {
             // Average across stats for this stim
             meanStats /= meanFac;
             candidates.push_back(MAPElite {mape_bin(*stim, meanStats), *stim, meanStats});
