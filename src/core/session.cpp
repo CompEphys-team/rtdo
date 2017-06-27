@@ -44,15 +44,15 @@ Session::Session(Project &p, const QString &sessiondir) :
         }
     }
 
+    moveToThread(&thread);
+    thread.start();
+
     m_log.setLogFile(dir.filePath("session.log"));
     load(); // Load state from m_log
 
     project.wavegen().setRunData(rund);
     project.experiment().setRunData(rund);
     project.profiler().setRunData(rund);
-
-    moveToThread(&thread);
-    thread.start();
 }
 
 void Session::addAPs()
