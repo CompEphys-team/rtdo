@@ -69,6 +69,7 @@
     <property name="title">
      <string>Settings</string>
     </property>
+    <addaction name="actionRunData"/>
     <addaction name="actionGA_Fitter"/>
    </widget>
    <addaction name="menuFile"/>
@@ -212,6 +213,11 @@
   <action name="actionSampled_profiles">
    <property name="text">
     <string>Sampled profiles</string>
+   </property>
+  </action>
+  <action name="actionRunData">
+   <property name="text">
+    <string>RunData</string>
    </property>
   </action>
  </widget>

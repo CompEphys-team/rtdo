@@ -11,6 +11,7 @@
 #include "stimulationcreator.h"
 #include "gafittersettingsdialog.h"
 #include "samplingprofileplotter.h"
+#include "rundatadialog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -209,4 +210,11 @@ void MainWindow::on_actionSampled_profiles_triggered()
     SamplingProfilePlotter *figure = new SamplingProfilePlotter(*session);
     figure->setWindowTitle(figure->windowTitle() + " : " + title);
     figure->show();
+}
+
+void MainWindow::on_actionRunData_triggered()
+{
+    RunDataDialog *dlg = new RunDataDialog(*session);
+    dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
+    dlg->show();
 }

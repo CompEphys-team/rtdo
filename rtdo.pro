@@ -66,7 +66,8 @@ SOURCES += \
     src/core/profilerlibrary.cpp \
     src/core/samplingprofiler.cpp \
     src/gui/samplingprofiledialog.cpp \
-    src/gui/samplingprofileplotter.cpp
+    src/gui/samplingprofileplotter.cpp \
+    src/gui/rundatadialog.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -117,7 +118,8 @@ HEADERS  += \
     src/include/profilerlibrary.h \
     src/include/samplingprofiler.h \
     src/include/samplingprofiledialog.h \
-    src/include/samplingprofileplotter.h
+    src/include/samplingprofileplotter.h \
+    src/include/rundatadialog.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -132,7 +134,8 @@ FORMS    += \
     src/gui/stimulationcreator.ui \
     src/gui/gafittersettingsdialog.ui \
     src/gui/samplingprofiledialog.ui \
-    src/gui/samplingprofileplotter.ui
+    src/gui/samplingprofileplotter.ui \
+    src/gui/rundatadialog.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 
