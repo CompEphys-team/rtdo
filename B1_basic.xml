@@ -47,42 +47,42 @@
 	</variable>
 
 	<adjustableParam name="gNa" value="7">
-		<range min="0" max="500"/>
+		<range min="0.1" max="25"/>
 		<perturbation type="*" rate="0.03"/>
 	</adjustableParam>
 	<adjustableParam name="ENa" value="35">
-		<range min="0" max="100"/>
+		<range min="20" max="50"/>
 		<perturbation type="+" rate="1.14"/>
 	</adjustableParam>
 
 	<adjustableParam name="gKA" value="1.44">
-		<range min="0" max="100"/>
+		<range min="0.01" max="10"/>
 		<perturbation type="*" rate="0.008"/>
 	</adjustableParam>
 	<adjustableParam name="gKB" value="2.88">
-		<range min="0" max="100"/>
+		<range min="0.01" max="10"/>
 		<perturbation type="*" rate="0.002"/>
 	</adjustableParam>
 	<adjustableParam name="gA" value="12">
-		<range min="0" max="100"/>
+		<range min="0.1" max="40"/>
 		<perturbation type="*" rate="0.016"/>
 	</adjustableParam>
 	<adjustableParam name="EK" value="-67">
-		<range min="-100" max="0"/>
+		<range min="-82" max="-52"/>
 		<perturbation type="+" rate="0.1"/>
 	</adjustableParam>
 
 	<adjustableParam name="gl" value="0.02">
-		<range min="0" max="100"/>
+		<range min="0.0001" max="1"/>
 		<perturbation type="*" rate="0.1"/>
 	</adjustableParam>
 	<adjustableParam name="El" value="-20">
-		<range min="-100" max="100"/>
+		<range min="-50" max="10"/>
 		<perturbation type="+" rate="3.4"/>
 	</adjustableParam>
 
 	<adjustableParam name="C" value="3.5">
-		<range min="0.1" max="10"/>
+		<range min="1" max="6"/>
 		<perturbation type="*" rate="0.029"/>
 	</adjustableParam>
 </model>
