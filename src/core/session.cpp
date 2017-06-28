@@ -65,6 +65,7 @@ void Session::addAPs()
     addAP(searchAP, "S.Wavegen.numSigmaAdjustWaveforms", this, &Session::searchd, &WavegenData::numSigmaAdjustWaveforms);
     addAP(searchAP, "S.Wavegen.nInitialWaves", this, &Session::searchd, &WavegenData::nInitialWaves);
     addAP(searchAP, "S.Wavegen.nGroupsPerWave", this, &Session::searchd, &WavegenData::nGroupsPerWave);
+    addAP(searchAP, "S.Wavegen.useBaseParameters", this, &Session::searchd, &WavegenData::useBaseParameters);
     addAP(searchAP, "S.Wavegen.nWavesPerEpoch", this, &Session::searchd, &WavegenData::nWavesPerEpoch);
     addAP(searchAP, "S.Wavegen.rerandomiseParameters", this, &Session::searchd, &WavegenData::rerandomiseParameters);
     addAP(searchAP, "S.Wavegen.precisionIncreaseEpochs[#]", this, &Session::searchd, &WavegenData::precisionIncreaseEpochs);

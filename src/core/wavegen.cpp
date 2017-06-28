@@ -31,7 +31,7 @@ Wavegen::Wavegen(Session &session) :
 
 void Wavegen::sanitiseWavegenData(WavegenData *d)
 {
-    if ( d->nGroupsPerWave > lib.numGroups )
+    if ( d->nGroupsPerWave > (size_t) lib.numGroups )
         d->nGroupsPerWave = lib.numGroups;
     while ( lib.numGroups % d->nGroupsPerWave )
         --d->nGroupsPerWave;
@@ -85,11 +85,12 @@ void Wavegen::clearAbort()
 
 void Wavegen::initModels(bool withBase)
 {
+    withBase &= searchd.useBaseParameters;
     scalar value;
     for ( AdjustableParam &p : lib.adjustableParams ) {
         for ( int block = 0; block < lib.numBlocks; block++ ) {
             for ( int group = 0; group < lib.numGroupsPerBlock; group++ ) {
-                if ( searchd.nGroupsPerWave == 1 || (withBase && lib.numModelsPerBlock*block + group % searchd.nGroupsPerWave == 0) )
+                if ( withBase && (lib.numGroupsPerBlock*block + group) % searchd.nGroupsPerWave == 0 )
                     value = p.initial;
                 else
                     value = RNG.uniform<scalar>(p.min, p.max);
