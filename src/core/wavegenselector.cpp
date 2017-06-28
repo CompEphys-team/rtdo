@@ -44,7 +44,7 @@ double WavegenSelection::rmax(size_t i) const
 std::list<MAPElite>::const_iterator WavegenSelection::data_relative(std::vector<size_t> idx, bool *ok) const
 {
     size_t index = 0, multiplier = 1;
-    for ( size_t i = 0; i < ranges.size(); i++ ) {
+    for ( int i = ranges.size()-1; i >= 0; i-- ) {
         if ( !ranges[i].collapse && idx[i] >= width(i) ) {
             if ( ok )
                 *ok = false;
