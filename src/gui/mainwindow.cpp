@@ -13,6 +13,7 @@
 #include "samplingprofileplotter.h"
 #include "rundatadialog.h"
 #include "wavegendatadialog.h"
+#include "stimulationdatadialog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -227,6 +228,13 @@ void MainWindow::on_actionRunData_triggered()
 void MainWindow::on_actionWavegenData_triggered()
 {
     WavegenDataDialog *dlg = new WavegenDataDialog(*session);
+    dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
+    dlg->show();
+}
+
+void MainWindow::on_actionStimulationData_triggered()
+{
+    StimulationDataDialog *dlg = new StimulationDataDialog(*session);
     dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
     dlg->show();
 }

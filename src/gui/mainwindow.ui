@@ -67,6 +67,7 @@
      <string>Settings</string>
     </property>
     <addaction name="actionWavegenData"/>
+    <addaction name="actionStimulationData"/>
     <addaction name="actionRunData"/>
     <addaction name="actionGA_Fitter"/>
    </widget>
@@ -221,6 +222,11 @@
   <action name="actionWavegenData">
    <property name="text">
     <string>WavegenData</string>
+   </property>
+  </action>
+  <action name="actionStimulationData">
+   <property name="text">
+    <string>StimulationData</string>
    </property>
   </action>
  </widget>

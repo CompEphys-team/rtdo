@@ -69,7 +69,8 @@ SOURCES += \
     src/gui/samplingprofileplotter.cpp \
     src/gui/rundatadialog.cpp \
     src/gui/projectsettingsdialog.cpp \
-    src/gui/wavegendatadialog.cpp
+    src/gui/wavegendatadialog.cpp \
+    src/gui/stimulationdatadialog.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -123,7 +124,8 @@ HEADERS  += \
     src/include/samplingprofileplotter.h \
     src/include/rundatadialog.h \
     src/include/projectsettingsdialog.h \
-    src/include/wavegendatadialog.h
+    src/include/wavegendatadialog.h \
+    src/include/stimulationdatadialog.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -141,7 +143,8 @@ FORMS    += \
     src/gui/samplingprofileplotter.ui \
     src/gui/rundatadialog.ui \
     src/gui/projectsettingsdialog.ui \
-    src/gui/wavegendatadialog.ui
+    src/gui/wavegendatadialog.ui \
+    src/gui/stimulationdatadialog.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 
