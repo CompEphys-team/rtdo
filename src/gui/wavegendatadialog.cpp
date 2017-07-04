@@ -7,12 +7,7 @@ WavegenDataDialog::WavegenDataDialog(Session &s, QWidget *parent) :
     session(s)
 {
     ui->setupUi(this);
-    connect(this, SIGNAL(accepted()), this, SLOT(exportData()));
-    connect(this, SIGNAL(rejected()), this, SLOT(importData()));
-    connect(&session, &Session::actionLogged, [=](QString actor, QString action, QString, int) {
-        if ( actor == "Config" && action == "cfg" )
-            importData();
-    });
+    connect(&session, SIGNAL(wavegenDataChanged()), this, SLOT(importData()));
     connect(this, SIGNAL(apply(WavegenData)), &session, SLOT(setWavegenData(WavegenData)));
 
     importData();
@@ -91,4 +86,21 @@ void WavegenDataDialog::exportData()
     p.mapeDimensions = dims;
 
     emit apply(p);
+}
+
+void WavegenDataDialog::on_buttonBox_clicked(QAbstractButton *button)
+{
+    QDialogButtonBox::ButtonRole role = ui->buttonBox->buttonRole(button);
+    if ( role  == QDialogButtonBox::AcceptRole ) {
+        //ok
+        exportData();
+        close();
+    } else if ( role == QDialogButtonBox::ApplyRole ) {
+        // apply
+        exportData();
+    } else {
+        // cancel
+        importData();
+        close();
+    }
 }

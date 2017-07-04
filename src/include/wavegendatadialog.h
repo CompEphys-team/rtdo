@@ -7,6 +7,7 @@
 namespace Ui {
 class WavegenDataDialog;
 }
+class QAbstractButton;
 
 class WavegenDataDialog : public QDialog
 {
@@ -22,6 +23,9 @@ public slots:
 
 signals:
     void apply(WavegenData);
+
+private slots:
+    void on_buttonBox_clicked(QAbstractButton *button);
 
 private:
     Ui::WavegenDataDialog *ui;
