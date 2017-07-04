@@ -280,13 +280,20 @@ void Session::readConfig(const QString &filename)
         project.wavegen().setRunData(rund);
         project.experiment().setRunData(rund);
         project.profiler().setRunData(rund);
+        emit runDataChanged();
     }
-    if ( hasSearch )
+    if ( hasSearch ) {
         dirtySearchd = false;
-    if ( hasStim )
+        emit wavegenDataChanged();
+    }
+    if ( hasStim ) {
         dirtyStimd = false;
-    if ( hasGafs )
+        emit stimulationDataChanged();
+    }
+    if ( hasGafs ) {
         dirtyGafs = false;
+        emit GAFitterSettingsChanged();
+    }
 }
 
 QString Session::results(int idx, const QString &actor, const QString &action)
@@ -304,6 +311,7 @@ void Session::setRunData(RunData d)
         project.profiler().setRunData(d);
         rund = d;
         dirtyRund = true;
+        emit runDataChanged();
     } else {
         redirectRunData(d, QPrivateSignal());
     }
@@ -315,6 +323,7 @@ void Session::setWavegenData(WavegenData d)
         sanitiseWavegenData(&d);
         searchd = d;
         dirtySearchd = true;
+        emit wavegenDataChanged();
     } else {
         redirectWavegenData(d, QPrivateSignal());
     }
@@ -325,6 +334,7 @@ void Session::setStimulationData(StimulationData d)
     if ( QThread::currentThread() == &thread ) {
         stimd = d;
         dirtyStimd = true;
+        emit stimulationDataChanged();
     } else {
         redirectStimulationData(d, QPrivateSignal());
     }
@@ -335,6 +345,7 @@ void Session::setGAFitterSettings(GAFitterSettings d)
     if ( QThread::currentThread() == &thread ) {
         gafs = d;
         dirtyGafs = true;
+        emit GAFitterSettingsChanged();
     } else {
         redirectGAFitterSettings(d, QPrivateSignal());
     }

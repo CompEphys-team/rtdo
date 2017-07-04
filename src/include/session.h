@@ -109,6 +109,11 @@ signals:
     void redirectWavegenData(WavegenData d, QPrivateSignal);
     void redirectStimulationData(StimulationData d, QPrivateSignal);
     void redirectGAFitterSettings(GAFitterSettings d, QPrivateSignal);
+
+    void runDataChanged();
+    void wavegenDataChanged();
+    void stimulationDataChanged();
+    void GAFitterSettingsChanged();
 };
 
 #endif // SESSION_H
