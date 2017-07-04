@@ -107,32 +107,33 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::on_actionNew_project_triggered()
 {
-    QString file = QFileDialog::getOpenFileName(this, "Select model file", "", "Model files (*.xml)");
-    if ( file.isEmpty() )
-        return;
-    QString loc = QFileDialog::getExistingDirectory(this, "Select project location");
-    if ( loc.isEmpty() )
-        return;
-    project = new Project();
-    project->setModel(file);
-    project->setLocation(loc + "/project.dop");
-    project->compile();
-    ui->menuProject->setEnabled(false);
-    ui->menuSession->setEnabled(true);
+    if ( !project )
+        project = new Project();
+    if ( !projectSettingsDlg )
+        projectSettingsDlg.reset(new ProjectSettingsDialog(project));
+    else if ( project->isFrozen() )
+        projectSettingsDlg->setProject(project);
+    projectSettingsDlg->show();
+    projectSettingsDlg->raise();
+    projectSettingsDlg->activateWindow();
 }
 
 void MainWindow::on_actionOpen_project_triggered()
 {
+    if ( project && project->isFrozen() )
+        return;
+
     QString file = QFileDialog::getOpenFileName(this, "Select project file", "", "Projects (*.dop)");
     if ( file.isEmpty() )
         return;
     project = new Project(file);
-    ui->menuProject->setEnabled(false);
-    ui->menuSession->setEnabled(true);
 }
 
 void MainWindow::on_actionNew_session_triggered()
 {
+    if ( !project || !project->isFrozen() )
+        return;
+
     session = new Session(*project);
     ui->menuSession->setEnabled(false);
     ui->mainToolBar->setEnabled(true);
@@ -143,6 +144,9 @@ void MainWindow::on_actionNew_session_triggered()
 
 void MainWindow::on_actionOpen_session_triggered()
 {
+    if ( !project || !project->isFrozen() )
+        return;
+
     QString loc = QFileDialog::getExistingDirectory(this, "Select session directory");
     if ( loc.isEmpty() )
         return;

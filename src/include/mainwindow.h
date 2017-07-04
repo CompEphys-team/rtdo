@@ -9,6 +9,7 @@
 #include "gafitterwidget.h"
 #include "project.h"
 #include "session.h"
+#include "projectsettingsdialog.h"
 
 namespace Ui {
 class MainWindow;
@@ -63,6 +64,7 @@ private:
     std::unique_ptr<DeckWidget> deckWidget;
     std::unique_ptr<GAFitterWidget> gaFitterWidget;
     std::unique_ptr<SamplingProfileDialog> sprofileDlg;
+    std::unique_ptr<ProjectSettingsDialog> projectSettingsDlg;
 
     Project *project;
     Session *session;

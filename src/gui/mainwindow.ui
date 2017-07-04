@@ -35,9 +35,6 @@
      <addaction name="actionOpen_project"/>
     </widget>
     <widget class="QMenu" name="menuSession">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
      <property name="title">
       <string>Session</string>
      </property>
@@ -118,7 +115,7 @@
   </action>
   <action name="actionNew_project">
    <property name="text">
-    <string>New...</string>
+    <string>Settings...</string>
    </property>
   </action>
   <action name="actionOpen_project">
