@@ -57,6 +57,8 @@ private slots:
 
     void on_actionRunData_triggered();
 
+    void on_actionWavegenData_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

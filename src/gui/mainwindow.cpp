@@ -12,6 +12,7 @@
 #include "gafittersettingsdialog.h"
 #include "samplingprofileplotter.h"
 #include "rundatadialog.h"
+#include "wavegendatadialog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -219,6 +220,13 @@ void MainWindow::on_actionSampled_profiles_triggered()
 void MainWindow::on_actionRunData_triggered()
 {
     RunDataDialog *dlg = new RunDataDialog(*session);
+    dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
+    dlg->show();
+}
+
+void MainWindow::on_actionWavegenData_triggered()
+{
+    WavegenDataDialog *dlg = new WavegenDataDialog(*session);
     dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
     dlg->show();
 }
