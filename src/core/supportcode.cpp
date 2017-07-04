@@ -8,22 +8,6 @@ __device__ inline scalar fitnessPartial(scalar err, scalar mean)
     return err/mean;
 }
 
-__device__ void closeBubble(WaveStats &s, const scalar t)
-{
-    if ( s.current.cycles ) {
-        scalar fitness = s.current.rel / s.current.cycles;
-        if ( fitness > s.fitness ) {
-            s.best = {
-                s.current.cycles,
-                t
-            };
-            s.fitness = fitness;
-        }
-        s.current = {};
-        s.bubbles++;
-    }
-}
-
 __device__ void closeBubble(Bubble &best, Bubble &current, int mt)
 {
     if ( current.startCycle >= 0 ) {
@@ -46,20 +30,6 @@ __device__ void extendBubble(Bubble &best, Bubble &current, scalar parfit, int m
             current.startCycle = mt;
     } else {
         closeBubble(best, current, mt);
-    }
-}
-
-__device__ void processStats(const scalar err,  //!< Target parameter's absolute deviation from base model on this cycle
-                             const scalar mean, //!< Mean deviation across all parameters
-                             const scalar t,    //!< Time, including substep contribution
-                             WaveStats &s) //!< Stats struct for this group & target param
-{
-    scalar rel = fitnessPartial(err, mean);
-    if ( rel > 1 ) {
-        s.current.rel += rel;
-        s.current.cycles++;
-    } else if ( s.current.cycles ) {
-        closeBubble(s, t);
     }
 }
 

@@ -59,18 +59,3 @@ QDataStream &operator>>(QDataStream &is, Stimulation &stim)
     }
     return is;
 }
-
-QDataStream &operator<<(QDataStream &os, const WaveStats &stats)
-{
-    os << qint32(stats.bubbles) << stats.fitness << qint32(stats.best.cycles) << stats.best.tEnd;
-    return os;
-}
-
-QDataStream &operator>>(QDataStream &is, WaveStats &stats)
-{
-    qint32 cycles, bubbles;
-    is >> bubbles >> stats.fitness >> cycles >> stats.best.tEnd;
-    stats.bubbles = bubbles;
-    stats.best.cycles = cycles;
-    return is;
-}

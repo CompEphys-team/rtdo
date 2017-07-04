@@ -93,13 +93,6 @@ bool MAPElite::compete(const MAPElite &rhs)
     return false;
 }
 
-std::ostream &operator<<(std::ostream &os, const WaveStats &S)
-{
-    os << "{" << S.bubbles << " bubbles, best one lasting " << S.best.cycles
-       << " cycles until " << S.best.tEnd << " and achieving " << S.fitness << " fitness.}" << std::endl;
-     return os;
-}
-
 size_t MAPEDimension::bin(const Stimulation &I, size_t multiplier) const
 {
     scalar intermediate = 0.0;

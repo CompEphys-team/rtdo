@@ -195,39 +195,6 @@ struct RunData
     double settleDuration = 100; // msec
 };
 
-struct WaveStats
-{
-    struct {
-        int cycles;
-        scalar rel;
-    } current;
-
-    struct {
-        int cycles; //!< Duration of bubble
-        scalar tEnd; //!< Time at end
-    } best;
-
-    scalar fitness; //!< Fitness of best bubble (= mean((target err / mean err) - 1) ; target err > mean err )
-
-    int bubbles; //!< Number of bubbles
-
-    inline WaveStats &operator+=(const WaveStats &rhs) {
-        best.cycles += rhs.best.cycles;
-        best.tEnd += rhs.best.tEnd;
-        fitness += rhs.fitness;
-        bubbles += rhs.bubbles;
-        return *this;
-    }
-    inline WaveStats &operator/=(int n) {
-        best.cycles /= n;
-        best.tEnd /= n;
-        fitness /= n;
-        bubbles /= n;
-        return *this;
-    }
-};
-std::ostream &operator<<(std::ostream&os, const WaveStats&S);
-
 struct Bubble
 {
     int startCycle;
@@ -291,10 +258,10 @@ struct MAPEDimension
     size_t resolution; //!< initial number of bins
 
     /**
-     * @brief bin classifies the given Stimulation/WaveStats pair along this dimension.
+     * @brief bin classifies the given Stimulation along this dimension.
      * @param I: A Stimulation with a finalised observation window
      * @param multiplier: Multiplier to the resolution (i.e., number of bins = multiplier * resolution)
-     * @return The bin index this Stimulation/WaveStats pair belongs to.
+     * @return The bin index this Stimulation belongs to.
      */
     size_t bin(const Stimulation &I, size_t multiplier) const;
     size_t bin(scalar value, size_t multiplier) const; //!< As above, but with a fully processed behavioural value
