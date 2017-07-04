@@ -12,7 +12,7 @@ __device__ void closeBubble(Bubble &best, Bubble &current, int mt)
 {
     if ( current.startCycle >= 0 ) {
         int cycles = mt - current.startCycle;
-        if ( !best.cycles || current.value / cycles > best.value > best.cycles ) {
+        if ( !best.cycles || current.value / cycles > best.value / best.cycles ) {
             best.startCycle = current.startCycle;
             best.cycles = cycles;
             best.value = current.value;
