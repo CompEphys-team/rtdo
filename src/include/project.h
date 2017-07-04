@@ -24,7 +24,7 @@ public:
     inline void setMethod(IntegrationMethod method) { if ( !frozen ) m_method = method; }
     inline void setWgNumGroups(size_t num) { if ( !frozen ) wg_numGroups = num; }
     inline void setExpNumCandidates(size_t num) { if ( !frozen ) exp_numCandidates = num; }
-    inline void setProfNumPairs(size_t num) { if ( !frozen ) prof_numPairs = (num+31)/32; /* ensure numPairs == k*32 */ }
+    inline void setProfNumPairs(size_t num) { if ( !frozen ) prof_numPairs = 32*int((num+31)/32); /* ensure numPairs == k*32 */ }
 
     /// Get compile-time parameters
     inline QString modelfile() const { return p_modelfile; }
