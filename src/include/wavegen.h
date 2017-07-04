@@ -103,13 +103,11 @@ protected:
     void settle();
 
     /**
-     * @brief stimulate runs one full stimulation on every model. In permuted mode, all models receive the same stimulation,
-     * namely the first element of @param stim. In unpermuted mode, each model group receives its corresponding stimulation
-     * from @param stim.
+     * @brief pushStims pushes waveforms to the library, dispersing them as appropriate for the size of @p stim.
      * Changes: waveforms.
-     * @param stim A vector with at least 1 (permuted mode) or MetaModel::numGroups (unpermuted mode) elements.
+     * @param stim A vector with 1, lib.numGroups/searchd.nGroupsPerWave, or lib.numGroups elements.
      */
-    void stimulate(const std::vector<Stimulation> &stim);
+    void pushStims(const std::vector<Stimulation> &stim);
 
     /**
      * @brief mutate returns a mutant offspring of the parent referred to by @p parentIter.
@@ -127,14 +125,14 @@ protected:
     void mutateType(Stimulation&);
 
     /// MAP-Elites helper functions
-    void mape_tournament(const std::vector<Stimulation> &);
+    void mape_tournament(std::vector<Stimulation> &);
     void mape_insert(std::vector<MAPElite> &candidates);
 
     /**
      * @brief mape_bin returns a vector of discretised behavioural measures used as MAPE dimensions.
      * It adheres to the level of precision indicated in mapeStats.precision.
      */
-    std::vector<size_t> mape_bin(const Stimulation &I, const WaveStats &S);
+    std::vector<size_t> mape_bin(const Stimulation &I);
 
     /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam

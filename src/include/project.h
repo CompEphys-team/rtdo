@@ -57,7 +57,7 @@ protected:
     double m_dt = 0.25;
     IntegrationMethod m_method = IntegrationMethod::RungeKutta4;
 
-    size_t wg_numGroups = 10000; //!< Number of model groups (base + each parameter detuned) per lib step
+    size_t wg_numGroups = 8192; //!< Number of model groups (base + each parameter detuned) per lib step
 
     size_t exp_numCandidates = 10000;
 

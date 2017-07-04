@@ -85,8 +85,8 @@ std::istream& operator>>(std::istream& is, IntegrationMethod &m)
 
 bool MAPElite::compete(const MAPElite &rhs)
 {
-    if ( rhs.stats.fitness > stats.fitness ) {
-        stats = rhs.stats;
+    if ( rhs.fitness > fitness ) {
+        fitness = rhs.fitness;
         wave = rhs.wave;
         return true;
     }
@@ -100,26 +100,26 @@ std::ostream &operator<<(std::ostream &os, const WaveStats &S)
      return os;
 }
 
-size_t MAPEDimension::bin(const Stimulation &I, const WaveStats &S, size_t multiplier) const
+size_t MAPEDimension::bin(const Stimulation &I, size_t multiplier) const
 {
     scalar intermediate = 0.0;
     scalar factor = 1.0;
     switch ( func ) {
     case MAPEDimension::Func::BestBubbleDuration:
-        intermediate = S.best.cycles;
+        intermediate = I.tObsEnd - I.tObsBegin;
         break;
     case MAPEDimension::Func::BestBubbleTime:
-        intermediate = S.best.tEnd;
+        intermediate = I.tObsBegin;
         break;
     case MAPEDimension::Func::VoltageDeviation:
         // Piggy-back on integral, divide it by its length to get mean abs deviation
-        if ( S.best.tEnd > 0 )
-            factor = 1.0 / S.best.tEnd;
+        if ( I.tObsEnd > 0 )
+            factor = 1.0 / I.tObsEnd;
         else
             factor = 1.0 / I.duration;
     case MAPEDimension::Func::VoltageIntegral:
     {
-        scalar prevV = I.baseV, prevT = 0., tEnd = S.best.tEnd>0 ? S.best.tEnd : I.duration;
+        scalar prevV = I.baseV, prevT = 0., tEnd = I.tObsEnd>0 ? I.tObsEnd : I.duration;
         intermediate = 0.;
         // Calculate I's voltage integral against I.baseV, from t=0 to t=S.best.tEnd (the fitness-relevant bubble's end).
         // Since the stimulation is piecewise linear, decompose it step by step and cumulate the pieces

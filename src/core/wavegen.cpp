@@ -33,7 +33,7 @@ void Wavegen::sanitiseWavegenData(WavegenData *d)
 {
     if ( d->nGroupsPerWave > (size_t) lib.numGroups )
         d->nGroupsPerWave = lib.numGroups;
-    while ( lib.numGroups % d->nGroupsPerWave )
+    while ( lib.numGroups % d->nGroupsPerWave || !(d->nGroupsPerWave%32==0 || d->nGroupsPerWave==16 || d->nGroupsPerWave==8 || d->nGroupsPerWave==4 || d->nGroupsPerWave==2 || d->nGroupsPerWave==1) )
         --d->nGroupsPerWave;
     int nWavesPerKernel = lib.numGroups / d->nGroupsPerWave;
     d->nWavesPerEpoch = ((d->nWavesPerEpoch + nWavesPerKernel - 1) / nWavesPerKernel) * nWavesPerKernel;
@@ -132,13 +132,12 @@ void Wavegen::settle()
     I.duration = session.runData().settleDuration;
     I.baseV = stimd.baseV;
     I.clear();
-    for ( int group = 0; group < lib.numGroups; group++ )
-        lib.waveforms[group] = I;
-    lib.pushWaveforms();
+    pushStims({I});
     lib.getErr = false;
     lib.settling = true;
     lib.push();
     lib.step();
+    lib.settling = false;
 }
 
 void Wavegen::adjustSigmas()
@@ -168,7 +167,8 @@ void Wavegen::adjustSigmas()
             w = getRandomStim();
 
         // Simulate
-        stimulate(waves);
+        pushStims(waves);
+        lib.step();
 
         // Collect per-parameter error
         lib.pullErr();
@@ -258,20 +258,19 @@ void Wavegen::sigmaAdjust_load(QFile &file)
     }
 }
 
-void Wavegen::stimulate(const std::vector<Stimulation> &stim)
+void Wavegen::pushStims(const std::vector<Stimulation> &stim)
 {
-    lib.settling = false;
-    if ( stim.size() == size_t(lib.numGroups) ) {
-        for ( int group = 0; group < lib.numGroups; group++ ) {
+    if ( stim.size() == size_t(lib.numGroups) )
+        for ( int group = 0; group < lib.numGroups; group++ )
             lib.waveforms[group] = stim[group];
-        }
-    } else if ( stim.size() == lib.numGroups / searchd.nGroupsPerWave ) {
-        for ( int group = 0; group < lib.numGroups; group++ ) {
+    else if ( stim.size() == lib.numGroups / searchd.nGroupsPerWave )
+        for ( int group = 0; group < lib.numGroups; group++ )
             lib.waveforms[group] = stim[group / searchd.nGroupsPerWave];
-        }
-    } else {
+    else if ( stim.size() == 1 )
+        for ( int group = 0; group < lib.numGroups; group++ )
+            lib.waveforms[group] = stim[0];
+    else
         throw std::runtime_error("Invalid number of stimulations.");
-    }
+
     lib.pushWaveforms();
-    lib.step();
 }

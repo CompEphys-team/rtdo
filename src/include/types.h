@@ -228,14 +228,21 @@ struct WaveStats
 };
 std::ostream &operator<<(std::ostream&os, const WaveStats&S);
 
+struct Bubble
+{
+    int startCycle;
+    int cycles;
+    scalar value;
+};
+
 struct MAPElite
 {
     std::vector<size_t> bin;
     Stimulation wave;
-    WaveStats stats;
+    scalar fitness;
 
-    MAPElite() { stats.fitness = 0; }
-    MAPElite(std::vector<size_t> bin, Stimulation wave, WaveStats stats) : bin(bin), wave(wave), stats(stats) {}
+    MAPElite() : fitness(0) {}
+    MAPElite(std::vector<size_t> bin, Stimulation wave, scalar fitness) : bin(bin), wave(wave), fitness(fitness) {}
 
     /**
      * @brief compare performs a lexical comparison on bin.
@@ -244,7 +251,7 @@ struct MAPElite
     inline bool operator<(const MAPElite &rhs) const { return bin < rhs.bin; }
 
     /**
-     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's stats and wave if @p rhs is better.
+     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness and wave if @p rhs is better.
      * @return true, if @p rhs beat and replaced the callee.
      */
     bool compete(const MAPElite &rhs);
@@ -285,12 +292,11 @@ struct MAPEDimension
 
     /**
      * @brief bin classifies the given Stimulation/WaveStats pair along this dimension.
-     * @param I: A Stimulation
-     * @param S: The behavioural stats corresponding to the Stimulation
+     * @param I: A Stimulation with a finalised observation window
      * @param multiplier: Multiplier to the resolution (i.e., number of bins = multiplier * resolution)
      * @return The bin index this Stimulation/WaveStats pair belongs to.
      */
-    size_t bin(const Stimulation &I, const WaveStats &S, size_t multiplier) const;
+    size_t bin(const Stimulation &I, size_t multiplier) const;
     size_t bin(scalar value, size_t multiplier) const; //!< As above, but with a fully processed behavioural value
     scalar bin_inverse(size_t bin, size_t multiplier) const; //!< Inverse function of bin(scalar, size_t), aliased to the lower boundary of the bin.
 };
@@ -305,14 +311,15 @@ struct WavegenData
                                        //!< nearest multiple of the waveform population size.
     size_t nInitialWaves = 1e5; //!< Number of randomly initialised waveforms used to start the search
     size_t nGroupsPerWave = 32; //!< Number of model groups (base + each param detuned) used for each waveform.
-                                 //! The number is rounded down to fit into project.wgNumGroups an integer number of times.
+                                 //! The number must be a power of two or multiple of 32, as well as an integer divisor of project.wgNumGroups.
+                                 //! Values that do not fulfill these conditions are rounded down to the next value that does.
                                  //! Groups are randomised within parameter range; optionally (see useBaseParameters),
                                  //! one group per wave is always the base model.
                                  //! Note that while nGroupsPerWave has a direct impact on runtime, the number of epochs/iterations
                                  //! is independent of it.
     bool useBaseParameters = true; //!< Indicates whether the base parameter set is included among the otherwise randomised parameter
                                    //! sets against which each waveform is evaluated.
-    size_t nWavesPerEpoch = 10000; //!< Number of waveforms that constitute one "epoch" or iteration for the purposes of
+    size_t nWavesPerEpoch = 8192; //!< Number of waveforms that constitute one "epoch" or iteration for the purposes of
                                    //! precisionIncreaseEpochs, maxIterations etc. nWavesPerEpoch is rounded up to the nearest
                                    //! multiple of project.wgNumGroups / round_down(nGroupsPerWave).
     bool rerandomiseParameters = false; //!< Indicates whether model parameters should be randomised at each epoch, rather than only

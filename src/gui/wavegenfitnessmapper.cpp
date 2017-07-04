@@ -205,7 +205,7 @@ void WavegenFitnessMapper::replot()
             colorMap->data()->setCell(
                 idx[x] + selection->ranges.at(x).min,
                 idx[y] + selection->ranges.at(y).min,
-                ok ? it->stats.fitness : 0);
+                ok ? it->fitness : 0);
         }
     }
 

@@ -30,8 +30,9 @@ void Wavegen::search(int param)
     settle();
     lib.targetParam = param+1;
     lib.getErr = true;
-    lib.clearStats();
-    stimulate(waves_ep1);
+    lib.nStim = numWavesPerEpisode;
+    pushStims(waves_ep1);
+    lib.generateBubbles(stimd.duration);
 
     // Prepare the second episode:
     for ( Stimulation &w : waves_ep2 )
@@ -47,9 +48,9 @@ void Wavegen::search(int param)
     mapeStats.histIter = mapeStats.history.begin();
 
     while ( true ) {
-        lib.pullStats(); // Pull stats from the previous episode (returnedWaves' performance) to host memory
-        lib.clearStats(); // Reset device memory stats
-        stimulate(*newWaves); // Initiate next stimulation episode
+        lib.pullBubbles();
+        pushStims(*newWaves);
+        lib.generateBubbles(stimd.duration); // Initiate next stimulation episode
 
         // Calculate fitness & MAPE coordinates of the previous episode's waves, and compete with the elite
         mape_tournament(*returnedWaves);
@@ -71,19 +72,11 @@ void Wavegen::search(int param)
                  mapeStats.iterations == searchd.precisionIncreaseEpochs[mapeStats.precision] ) {
                 mapeStats.precision++;
                 for ( MAPElite &e : mapeArchive )
-                    e.bin = mape_bin(e.wave, e.stats);
+                    e.bin = mape_bin(e.wave);
             }
-
-            if ( searchd.rerandomiseParameters ) {
-                initModels();
-                detune();
-                settle();
-            }
-        }
-
-        if ( aborted )
+        } else if ( aborted ) {
             break;
-
+        }
 
         // Prepare next episode's waves
         if ( initialising ) {
@@ -134,17 +127,17 @@ void Wavegen::search(int param)
                 (*newWaves)[i] = mutate(parents[2*i]->wave, parents[2*i + 1]->wave);
             }
         }
+
+        if ( episodeCounter == 0 && searchd.rerandomiseParameters ) {
+            initModels();
+            detune();
+            settle();
+        }
     }
 
     // Pull and evaluate the last episode
-    lib.pullStats();
+    lib.pullBubbles();
     mape_tournament(*returnedWaves);
-
-    // Correct observation periods
-    for ( MAPElite &e : mapeArchive ) {
-        e.wave.tObsBegin = e.stats.best.tEnd - e.stats.best.cycles*lib.project.dt()/lib.simCycles;
-        e.wave.tObsEnd = e.stats.best.tEnd;
-    }
 
     m_archives.push_back(Archive{std::move(mapeArchive), mapeStats.precision, mapeStats.iterations, param, searchd});
     mapeArchive.clear();
@@ -155,7 +148,7 @@ void Wavegen::search(int param)
     emit done(param);
 }
 
-void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
+void Wavegen::mape_tournament(std::vector<Stimulation> &waves)
 {
     // Advance statistics history and prepare stats page for this iteration
     auto prev = mapeStats.histIter;
@@ -165,26 +158,16 @@ void Wavegen::mape_tournament(const std::vector<Stimulation> &waves)
     mapeStats.historicInsertions -= mapeStats.histIter->insertions;
     *mapeStats.histIter = {};
 
+    // Gather candidates
     std::vector<MAPElite> candidates;
     candidates.reserve(waves.size());
-    WaveStats meanStats;
-    int meanFac = 0;
-    auto stim = waves.begin();
-    for ( int group = 0; group < lib.numGroups; group++ ) {
-        // Accumulate fitness and behaviour
-        if ( !std::isnan(lib.wavestats[group].fitness) ) {
-            meanStats += lib.wavestats[group];
-            ++meanFac;
-        }
-
-        if ( (group+1) % searchd.nGroupsPerWave == 0 ) {
-            // Average across stats for this stim
-            meanStats /= meanFac;
-            candidates.push_back(MAPElite {mape_bin(*stim, meanStats), *stim, meanStats});
-            ++stim;
-            meanFac = 0;
-        }
+    scalar msPerCycle = lib.project.dt() / lib.simCycles;
+    for ( size_t i = 0; i < waves.size(); i++ ) {
+        waves[i].tObsBegin = lib.bubbles[i].startCycle * msPerCycle;
+        waves[i].tObsEnd = (lib.bubbles[i].startCycle + lib.bubbles[i].cycles) * msPerCycle;
+        candidates.emplace_back(mape_bin(waves[i]), waves[i], lib.bubbles[i].value);
     }
+
     // Compare to elite & insert
     mape_insert(candidates);
 
@@ -211,24 +194,24 @@ void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
             mapeStats.insertions += archIter->compete(*candIter);
         }
 
-        if ( mapeStats.bestWave == mapeArchive.end() || archIter->stats.fitness > mapeStats.bestWave->stats.fitness ) {
+        if ( mapeStats.bestWave == mapeArchive.end() || archIter->fitness > mapeStats.bestWave->fitness ) {
             mapeStats.bestWave = archIter;
-            mapeStats.histIter->bestFitness = archIter->stats.fitness;
+            mapeStats.histIter->bestFitness = archIter->fitness;
             mapeStats.histIter->insertions = 1; // Code for "bestFitness has been set", see mape_tournament
             std::cout << "New best wave: " << archIter->wave << ", binned at ";
             for ( const size_t &x : archIter->bin )
                 std::cout << x << ",";
-            std::cout << " for its stats: " << archIter->stats << std::endl;
+            std::cout << " fitness " << archIter->fitness << std::endl;
         }
     }
 }
 
-std::vector<size_t> Wavegen::mape_bin(const Stimulation &I, const WaveStats &S)
+std::vector<size_t> Wavegen::mape_bin(const Stimulation &I)
 {
     size_t mult = mape_multiplier(mapeStats.precision);
     std::vector<size_t> bin(searchd.mapeDimensions.size());
     for ( size_t i = 0; i < searchd.mapeDimensions.size(); i++ ) {
-        bin[i] = searchd.mapeDimensions.at(i).bin(I, S, mult);
+        bin[i] = searchd.mapeDimensions.at(i).bin(I, mult);
     }
 
     return bin;

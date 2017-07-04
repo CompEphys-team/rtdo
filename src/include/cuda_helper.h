@@ -29,4 +29,24 @@
                                  sizeof(*hostvar) * namesp::NPOP, \
                                  cudaMemcpyHostToDevice))
 
+template <typename T>
+void resizeArray(T *&arr, unsigned int &actualSize, unsigned int requestedSize)
+{
+    if ( actualSize < requestedSize ) {
+        CHECK_CUDA_ERRORS(cudaFree(arr));
+        CHECK_CUDA_ERRORS(cudaMalloc(&arr, requestedSize * sizeof(T)));
+        actualSize = requestedSize;
+    }
+}
+
+template <typename T>
+void resizeHostArray(T *&arr, unsigned int &actualSize, unsigned int requestedSize)
+{
+    if ( actualSize < requestedSize ) {
+        CHECK_CUDA_ERRORS(cudaFreeHost(arr));
+        CHECK_CUDA_ERRORS(cudaHostAlloc(&arr, requestedSize * sizeof(T), cudaHostAllocPortable));
+        actualSize = requestedSize;
+    }
+}
+
 #endif // CUDA_HELPER_H

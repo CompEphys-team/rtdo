@@ -136,7 +136,7 @@ std::function<double(int)> SamplingProfilePlotter::valueFunction(int dimension,
     else if ( dimension == 2 )
         fn = [=](int i){ return pprof->gradient[i]; };
     else if ( dimension == 3 )
-        fn = [=](int i){ return pelites->at(i).stats.fitness; };
+        fn = [=](int i){ return pelites->at(i).fitness; };
     else
         fn = [=](int i){
             return pdim->at(dimension-nFixedColumns).bin_inverse(

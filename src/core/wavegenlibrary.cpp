@@ -30,7 +30,7 @@ WavegenLibrary::WavegenLibrary(Project &p, bool compile) :
     getErr(*(pointers.getErr)),
     err(pointers.err),
     waveforms(pointers.waveforms),
-    wavestats(pointers.wavestats)
+    bubbles(pointers.bubbles)
 {
 }
 
@@ -98,8 +98,7 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("targetParam", "", "int"),
         Variable("getErr", "", "bool"),
         Variable("settling", "", "bool"),
-        Variable("findObs", "", "bool"),
-        Variable("findObsValues", "", "scalar*")
+        Variable("nGroupsPerStim", "", "int")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -161,11 +160,10 @@ const int groupID = id % MM_NumGroupsPerBlock;                                  
 const int group = groupID + (id/MM_NumModelsPerBlock) * MM_NumGroupsPerBlock;   // Global group id
 const int paramID = (id % MM_NumModelsPerBlock) / MM_NumGroupsPerBlock;
 const scalar mdt = DT/$(simCycles);
-unsigned int findObs_start = 0;
 scalar gathErr = 0.;
-WaveStats stats {};
-Stimulation stim = dd_waveforms[$(findObs) ? 0 : group];
+const Stimulation stim = dd_waveforms[group];
 Stimulation::Step nextStep;
+Bubble bestBubble = {-1,0,0}, currentBubble = {-1,0,0};
 t = 0.;
 scalar Vcmd = getStep(nextStep, stim, t, mdt);
 for ( unsigned int mt = 0; t < stim.duration; mt++ ) {
@@ -178,7 +176,7 @@ for ( unsigned int mt = 0; t < stim.duration; mt++ ) {
 )EOF";
     ss << model.kernel("    ", true, true) << endl;
     ss <<   R"EOF(
-    if ( $(getErr) || ($(findObs) && t > stim.tObsBegin && t < stim.tObsEnd) ) {
+    if ( $(getErr) ) {
         __shared__ double errShare[MM_NumModelsPerBlock];
         scalar err;
 
@@ -197,28 +195,40 @@ for ( unsigned int mt = 0; t < stim.duration; mt++ ) {
         __syncthreads();
 
         // Collect statistics for target param
-        if ( paramID && paramID == $(targetParam) ) {
-            scalar total = 0.;
+        if ( paramID == $(targetParam) ) {
+            scalar value = 0.;
             for ( int i = 1; i < NPARAM+1; i++ ) {
-                total += errShare[i*MM_NumGroupsPerBlock + groupID];
+                value += errShare[i*MM_NumGroupsPerBlock + groupID];
                 if ( i == paramID )
                     continue;
             }
-            if ( $(findObs) ) {
-                $(findObsValues)[groupID + (mt-findObs_start)*MM_NumGroups] = fitnessPartial(err, total/NPARAM);
-                ++findObs_start;
+            value = fitnessPartial(err, value/NPARAM);
+            if ( $(nGroupsPerStim) == 1 )
+                extendBubble(bestBubble, currentBubble, value, mt);
+            else if ( $(nGroupsPerStim) <= MM_NumGroupsPerBlock ) {
+                value = warpReduceSum(value, $(nGroupsPerStim))/$(nGroupsPerStim);
+                if ( groupID % $(nGroupsPerStim) == 0 )
+                    extendBubble(bestBubble, currentBubble, value, mt);
             } else {
-                processStats(err, total / NPARAM, t, stats);
+                value = warpReduceSum(value, MM_NumGroupsPerBlock);
+                if ( groupID == 0 )
+                    dd_parfitBlock[int(group/MM_NumGroupsPerBlock) + mt * int(MM_NumGroups / MM_NumGroupsPerBlock)] = value;
             }
         }
     }
 } // end for mt
 
-if ( $(getErr) && paramID == $(targetParam) ) {
-    closeBubble(stats, t);
-    dd_wavestats[group] = stats;
-} else if ( $(getErr) && $(targetParam) < 0 ) {
+if ( $(getErr) && $(targetParam) < 0 ) {
     dd_err[id] = gathErr;
+}
+
+if ( paramID == $(targetParam) ) {
+    if ( bestBubble.cycles )
+        bestBubble.value /= bestBubble.cycles;
+    if ( $(nGroupsPerStim) == 1 )
+        dd_bubbles[group] = bestBubble.cycles ? bestBubble : Bubble {0,0,0};
+    else if ( $(nGroupsPerStim) <= MM_NumGroupsPerBlock && groupID % $(nGroupsPerStim) == 0 )
+        dd_bubbles[group/$(nGroupsPerStim)] = bestBubble.cycles ? bestBubble : Bubble {0,0,0};
 }
 
 if ( !$(settling) )
@@ -287,8 +297,7 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "    pointers.pull =& pull" << SUFFIX << "StateFromDevice;" << endl;
     ss << "    pointers.step =& stepTimeGPU;" << endl;
     ss << "    pointers.reset =& initialize;" << endl;
-    ss << "    pointers.findObservationWindow =& findObservationWindow;" << endl;
-    ss << "    *pointers.findObs = false;" << endl;
+    ss << "    pointers.generateBubbles =& generateBubbles;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 
@@ -298,15 +307,10 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     return ss.str();
 }
 
-void WavegenLibrary::findObservationWindow(Stimulation &stim, scalar tLastBegin, scalar tFirstEnd)
+void WavegenLibrary::generateBubbles(scalar duration)
 {
-    scalar cycleDuration = project.dt() / simCycles;
-    unsigned int nSamples = std::ceil((stim.tObsEnd-stim.tObsBegin) / cycleDuration);
-    unsigned int nStart = std::ceil((tLastBegin-stim.tObsBegin) / cycleDuration);
-    unsigned int nEnd = std::ceil((stim.tObsEnd-tFirstEnd) / cycleDuration);
-    *pointers.findObs = true;
-    pointers.findObservationWindow(pointers, stim, nStart, nEnd, nSamples, cycleDuration);
-    *pointers.findObs = false;
+    unsigned int nSamples = duration / (project.dt() / simCycles);
+    pointers.generateBubbles(nSamples, nStim, pointers);
 }
 
 void WavegenLibrary::setRunData(RunData rund)

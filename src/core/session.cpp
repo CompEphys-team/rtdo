@@ -107,12 +107,11 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.targetValues[#]", this, &Session::gafs, &GAFitterSettings::targetValues);
 
     // Defaults
-    scalar maxCycles = 100.0 / project.dt() * rund.simCycles;
     scalar maxDeviation = stimd.maxVoltage-stimd.baseV > stimd.baseV-stimd.minVoltage
             ? stimd.maxVoltage - stimd.baseV
             : stimd.baseV - stimd.minVoltage;
     searchd.mapeDimensions = {
-        {MAPEDimension::Func::BestBubbleDuration,   0, maxCycles,         32},
+        {MAPEDimension::Func::BestBubbleDuration,   0, stimd.duration,   128},
         {MAPEDimension::Func::BestBubbleTime,       0, stimd.duration,    32},
         {MAPEDimension::Func::VoltageDeviation,     0, maxDeviation,      32}
     };

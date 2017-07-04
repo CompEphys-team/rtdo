@@ -193,7 +193,7 @@ void WavegenSelection::finalise()
         std::list<MAPElite>::const_iterator &collapsed = selection.at(collapsed_index);
 
         // Collapse element onto the final selection if it's better
-        if ( element != default_iterator && (collapsed == default_iterator || element->stats.fitness > collapsed->stats.fitness) )
+        if ( element != default_iterator && (collapsed == default_iterator || element->fitness > collapsed->fitness) )
             collapsed = element;
 
         // Advance uncollapsed index, corresponding to next element

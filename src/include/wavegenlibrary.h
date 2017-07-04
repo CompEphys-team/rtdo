@@ -22,28 +22,25 @@ public:
         int *targetParam;
         bool *settling;
         bool *getErr;
-        bool *findObs;
-        scalar **findObsValues;
+        int *nGroupsPerStim;
 
         scalar *err;
 
         Stimulation *waveforms;
         Stimulation *d_waveforms;
-        WaveStats *wavestats;
-        WaveStats *clear_wavestats;
-        WaveStats *d_wavestats;
+
+        Bubble *bubbles, *d_bubbles;
 
         void (*push)(void);
         void (*pull)(void);
         void (*step)(void);
         void (*reset)(void);
-        std::function<void(void)> pullStats;
-        std::function<void(void)> clearStats;
+        std::function<void(unsigned int)> pullBubbles;
         std::function<void(void)> pushWaveforms;
         std::function<void(void)> pullWaveforms;
         std::function<void(void)> pushErr;
         std::function<void(void)> pullErr;
-        void (*findObservationWindow)(Pointers&, Stimulation&, unsigned int, unsigned int, unsigned int, scalar);
+        void (*generateBubbles)(unsigned int, unsigned int, Pointers&);
     };
 
     Project &project;
@@ -65,14 +62,13 @@ public:
     inline void pull() { pointers.pull(); }
     inline void step() { pointers.step(); }
     inline void reset() { pointers.reset(); }
-    inline void clearStats() { pointers.clearStats(); }
-    inline void pullStats() { pointers.pullStats(); }
+    inline void pullBubbles() { pointers.pullBubbles(nStim); }
     inline void pushWaveforms() { pointers.pushWaveforms(); }
     inline void pullWaveforms() { pointers.pullWaveforms(); }
     inline void pushErr() { pointers.pushErr(); }
     inline void pullErr() { pointers.pullErr(); }
 
-    void findObservationWindow(Stimulation &stim, scalar tLastBegin, scalar tFirstEnd);
+    void generateBubbles(scalar duration);
 
 private:
     void *load();
@@ -94,12 +90,14 @@ public:
     bool &settling;
     bool &getErr;
 
+    unsigned int nStim;
+
     // Model vars
     scalar *err;
 
     // Group vars
     Stimulation *waveforms;
-    WaveStats *wavestats;
+    Bubble *&bubbles;
 };
 
 #endif // WAVEGENLIBRARY_H
