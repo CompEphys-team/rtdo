@@ -298,12 +298,6 @@ std::string toString(const MAPEDimension::Func &f);
 std::ostream& operator<<(std::ostream& os, const MAPEDimension::Func &f);
 std::istream& operator>>(std::istream& is, MAPEDimension::Func &f);
 
-struct WavegenLibraryData
-{
-    bool permute = false; //!< If true, parameters will be permuted, and only one waveform will be used per epoch
-    size_t numWavesPerEpoch = 10000; //!< [unpermuted only] Number of waveforms evaluated per epoch
-};
-
 struct WavegenData
 {
     int numSigmaAdjustWaveforms = 1e5; //!< Number of random waveforms used to normalise the perturbation rate.
