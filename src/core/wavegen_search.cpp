@@ -163,9 +163,11 @@ void Wavegen::mape_tournament(std::vector<Stimulation> &waves)
     candidates.reserve(waves.size());
     scalar msPerCycle = lib.project.dt() / lib.simCycles;
     for ( size_t i = 0; i < waves.size(); i++ ) {
-        waves[i].tObsBegin = lib.bubbles[i].startCycle * msPerCycle;
-        waves[i].tObsEnd = (lib.bubbles[i].startCycle + lib.bubbles[i].cycles) * msPerCycle;
-        candidates.emplace_back(mape_bin(waves[i]), waves[i], lib.bubbles[i].value);
+        if ( lib.bubbles[i].cycles > 0 ) {
+            waves[i].tObsBegin = lib.bubbles[i].startCycle * msPerCycle;
+            waves[i].tObsEnd = (lib.bubbles[i].startCycle + lib.bubbles[i].cycles) * msPerCycle;
+            candidates.emplace_back(mape_bin(waves[i]), waves[i], lib.bubbles[i].value);
+        }
     }
 
     // Compare to elite & insert
