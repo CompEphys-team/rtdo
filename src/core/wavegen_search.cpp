@@ -73,6 +73,7 @@ void Wavegen::search(int param)
                 mapeStats.precision++;
                 for ( MAPElite &e : mapeArchive )
                     e.bin = mape_bin(e.wave);
+                mapeArchive.sort();
             }
         } else if ( aborted ) {
             break;
