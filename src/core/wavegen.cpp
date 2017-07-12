@@ -13,7 +13,7 @@ quint32 Wavegen::sigmaAdjust_version = 101;
 
 QString Wavegen::search_action = QString("search");
 quint32 Wavegen::search_magic = 0x8a33c402;
-quint32 Wavegen::search_version = 100;
+quint32 Wavegen::search_version = 101;
 
 Wavegen::Wavegen(Session &session) :
     SessionWorker(session),
@@ -21,7 +21,6 @@ Wavegen::Wavegen(Session &session) :
     stimd(session.stimulationData()),
     lib(session.project.wavegen()),
     RNG(),
-    mapeStats(searchd.historySize, mapeArchive.end()),
     aborted(false)
 {
     connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));

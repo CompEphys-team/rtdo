@@ -224,26 +224,6 @@ struct MAPElite
     bool compete(const MAPElite &rhs);
 };
 
-struct MAPEStats
-{
-    size_t iterations = 0; //!< Total iterations completed
-    size_t insertions = 0; //!< Total number of insertions into archive
-    size_t population = 0; //!< Archive size
-    size_t precision = 0; //!< Resolution level (resolution along any dimension == dim.resolution * 2^precision)
-    size_t historicInsertions = 0; //!< Total insertions within recorded history
-    std::list<MAPElite>::const_iterator bestWave; //!< Iterator to the current highest achieving Stimulation in Wavegen::mapeArchive
-
-    struct History {
-        size_t insertions = 0; //!< Insertions into the archive on this iteration
-        size_t population = 0; //!< Archive size at the end of this iteration
-        double bestFitness = 0.0; //!< Best fitness value (all-time)
-    };
-    std::vector<History> history;
-    std::vector<History>::iterator histIter; //!< Points at the most recent history entry; advances forward on each iteration.
-
-    MAPEStats(size_t sz, std::list<MAPElite>::const_iterator b) : bestWave(b), history(sz) {}
-};
-
 struct MAPEDimension
 {
     enum class Func {

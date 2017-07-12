@@ -23,11 +23,22 @@ public:
 
     struct Archive {
         std::list<MAPElite> elites;
-        size_t precision;
-        size_t iterations;
+        size_t precision = 0;
+        size_t iterations = 0;
         int param;
         WavegenData searchd;
+        QVector<quint32> nCandidates, nInsertions, nReplacements, nElites;
+        QVector<double> meanFitness, maxFitness;
         inline QString prettyName() const { return QString("%1 iterations").arg(iterations); }
+        Archive() {}
+        Archive(int param, WavegenData searchd) : param(param), searchd(searchd)
+        {
+            nCandidates.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
+            nInsertions.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
+            nReplacements.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
+            meanFitness.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
+            maxFitness.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
+        }
     };
 
     inline const std::vector<Archive> &archives() const { return m_archives; }
@@ -110,9 +121,9 @@ protected:
     void pushStims(const std::vector<Stimulation> &stim);
 
     /**
-     * @brief mutate returns a mutant offspring of the parent referred to by @p parentIter.
-     * @param parentIter is an iterator into mapeArchive
-     * @param offset is the position of parentIter within mapeArchive, used for efficient crossover parent lookup.
+     * @brief mutate returns a mutant offspring of the @p parent.
+     * @param parent is the primary parent stimulation of the offspring.
+     * @param xoverParent is the secondary parent stimulation used for crossover mutation.
      */
     Stimulation mutate(const Stimulation &parent, const Stimulation &xoverParent);
 
@@ -130,7 +141,7 @@ protected:
 
     /**
      * @brief mape_bin returns a vector of discretised behavioural measures used as MAPE dimensions.
-     * It adheres to the level of precision indicated in mapeStats.precision.
+     * It adheres to the level of precision indicated in current.precision.
      */
     std::vector<size_t> mape_bin(const Stimulation &I);
 
@@ -150,8 +161,7 @@ protected:
 
     mutable randutils::mt19937_rng RNG;
 
-    std::list<MAPElite> mapeArchive; //!< Elite archive of the current call to search().
-    MAPEStats mapeStats; //!< Statistics of the most recent (or current) call to search().
+    Archive current;
 
     std::vector<Archive> m_archives; //!< All archives
 

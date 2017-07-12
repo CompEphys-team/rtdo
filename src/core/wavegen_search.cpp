@@ -43,9 +43,7 @@ void Wavegen::search(int param)
     // Initialise waves pointer to episode 1, which is currently being stimulated
     std::vector<Stimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
 
-    mapeArchive.clear();
-    mapeStats = MAPEStats(searchd.historySize, mapeArchive.end());
-    mapeStats.histIter = mapeStats.history.begin();
+    current = Archive(param, searchd);
 
     while ( true ) {
         lib.pullBubbles();
@@ -63,17 +61,17 @@ void Wavegen::search(int param)
 
         if ( ++episodeCounter == numEpisodesPerEpoch ) {
             episodeCounter = 0;
-            emit searchTick(++mapeStats.iterations);
+            emit searchTick(++current.iterations);
 
-            if ( mapeStats.iterations == searchd.maxIterations || aborted )
+            if ( current.iterations == searchd.maxIterations || aborted )
                 break;
 
-            if ( mapeStats.precision < searchd.precisionIncreaseEpochs.size() &&
-                 mapeStats.iterations == searchd.precisionIncreaseEpochs[mapeStats.precision] ) {
-                mapeStats.precision++;
-                for ( MAPElite &e : mapeArchive )
+            if ( current.precision < searchd.precisionIncreaseEpochs.size() &&
+                 current.iterations == searchd.precisionIncreaseEpochs[current.precision] ) {
+                current.precision++;
+                for ( MAPElite &e : current.elites )
                     e.bin = mape_bin(e.wave);
-                mapeArchive.sort();
+                current.elites.sort();
             }
         } else if ( aborted ) {
             break;
@@ -91,11 +89,11 @@ void Wavegen::search(int param)
 
             // Sample the archive space with a bunch of random indices
             std::vector<size_t> idx(2 * numWavesPerEpisode);
-            RNG.generate(idx, size_t(0), mapeArchive.size() - 1);
+            RNG.generate(idx, size_t(0), current.elites.size() - 1);
             std::sort(idx.begin(), idx.end());
 
             // Insert the sampling into parents in a single run through
-            auto archIter = mapeArchive.begin();
+            auto archIter = current.elites.begin();
             size_t pos = 0;
             for ( int i = 0; i < 2*numWavesPerEpisode; i++ ) {
                 std::advance(archIter, idx[i] - pos);
@@ -140,8 +138,13 @@ void Wavegen::search(int param)
     lib.pullBubbles();
     mape_tournament(*returnedWaves);
 
-    m_archives.push_back(Archive{std::move(mapeArchive), mapeStats.precision, mapeStats.iterations, param, searchd});
-    mapeArchive.clear();
+    current.nCandidates.squeeze();
+    current.nInsertions.squeeze();
+    current.nReplacements.squeeze();
+    current.nElites.squeeze();
+    current.meanFitness.squeeze();
+    current.maxFitness.squeeze();
+    m_archives.push_back(std::move(current));
 
     QFile file(session.log(this, search_action, QString::number(param)));
     search_save(file);
@@ -151,14 +154,6 @@ void Wavegen::search(int param)
 
 void Wavegen::mape_tournament(std::vector<Stimulation> &waves)
 {
-    // Advance statistics history and prepare stats page for this iteration
-    auto prev = mapeStats.histIter;
-    double prevInsertions = mapeStats.insertions;
-    if ( ++mapeStats.histIter == mapeStats.history.end() )
-        mapeStats.histIter = mapeStats.history.begin();
-    mapeStats.historicInsertions -= mapeStats.histIter->insertions;
-    *mapeStats.histIter = {};
-
     // Gather candidates
     std::vector<MAPElite> candidates;
     candidates.reserve(waves.size());
@@ -173,45 +168,50 @@ void Wavegen::mape_tournament(std::vector<Stimulation> &waves)
 
     // Compare to elite & insert
     mape_insert(candidates);
-
-    // Record statistics
-    if ( !mapeStats.histIter->insertions ) // Set to 1 by mape_insert when a new best is found
-        mapeStats.histIter->bestFitness = prev->bestFitness;
-    mapeStats.histIter->insertions = mapeStats.insertions - prevInsertions;
-    mapeStats.histIter->population = mapeStats.population;
-    mapeStats.historicInsertions += mapeStats.histIter->insertions;
 }
 
 void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
 {
+    int nInserted = 0, nReplaced = 0;
+    double addedFitness = 0, maxFitness = current.iterations ? current.maxFitness.last() : 0;
     std::sort(candidates.begin(), candidates.end()); // Lexical sort by MAPElite::bin
-    auto archIter = mapeArchive.begin();
+    auto archIter = current.elites.begin();
     for ( auto candIter = candidates.begin(); candIter != candidates.end(); candIter++ ) {
-        while ( archIter != mapeArchive.end() && *archIter < *candIter ) // Advance to the first archive element with coords >= candidate
+        while ( archIter != current.elites.end() && *archIter < *candIter ) // Advance to the first archive element with coords >= candidate
             ++archIter;
-        if ( archIter == mapeArchive.end() || *candIter < *archIter ) { // No elite at candidate's coords, insert implicitly
-            ++mapeStats.population;
-            ++mapeStats.insertions;
-            archIter = mapeArchive.insert(archIter, *candIter);
+        if ( archIter == current.elites.end() || *candIter < *archIter ) { // No elite at candidate's coords, insert implicitly
+            archIter = current.elites.insert(archIter, *candIter);
+            ++nInserted;
+            addedFitness += archIter->fitness;
+            if ( archIter->fitness > maxFitness )
+                maxFitness = archIter->fitness;
         } else { // preexisting elite at the candidate's coords, compete
-            mapeStats.insertions += archIter->compete(*candIter);
-        }
-
-        if ( mapeStats.bestWave == mapeArchive.end() || archIter->fitness > mapeStats.bestWave->fitness ) {
-            mapeStats.bestWave = archIter;
-            mapeStats.histIter->bestFitness = archIter->fitness;
-            mapeStats.histIter->insertions = 1; // Code for "bestFitness has been set", see mape_tournament
-            std::cout << "New best wave: " << archIter->wave << ", binned at ";
-            for ( const size_t &x : archIter->bin )
-                std::cout << x << ",";
-            std::cout << " fitness " << archIter->fitness << std::endl;
+            double prevFitness = archIter->fitness;
+            bool replaced = archIter->compete(*candIter);
+            if ( replaced ) {
+                ++nReplaced;
+                addedFitness += archIter->fitness - prevFitness;
+                if ( archIter->fitness > maxFitness )
+                    maxFitness = archIter->fitness;
+            }
         }
     }
+
+    double meanFitness = ((current.iterations ? current.meanFitness.last()*current.nElites.last() : 0) + addedFitness) / current.elites.size();
+    current.nCandidates.push_back(candidates.size());
+    current.nInsertions.push_back(nInserted);
+    current.nReplacements.push_back(nReplaced);
+    current.nElites.push_back(current.elites.size());
+    current.meanFitness.push_back(meanFitness);
+    current.maxFitness.push_back(maxFitness);
+
+    std::cout << "Epoch " << current.iterations << ": " << candidates.size() << " candidates, "
+              << nInserted << " new insertions, " << nReplaced << " replacements" << std::endl;
 }
 
 std::vector<size_t> Wavegen::mape_bin(const Stimulation &I)
 {
-    size_t mult = mape_multiplier(mapeStats.precision);
+    size_t mult = mape_multiplier(current.precision);
     std::vector<size_t> bin(searchd.mapeDimensions.size());
     for ( size_t i = 0; i < searchd.mapeDimensions.size(); i++ ) {
         bin[i] = searchd.mapeDimensions.at(i).bin(I, mult);
@@ -225,25 +225,34 @@ void Wavegen::search_save(QFile &file)
     QDataStream os;
     if ( !openSaveStream(file, os, search_magic, search_version) )
         return;
-    const Archive &arch = m_archives.back();
+    Archive &arch = m_archives.back();
     os << quint32(arch.precision);
     os << quint32(arch.iterations);
     os << quint32(arch.elites.size());
     for ( MAPElite const& e : arch.elites )
         os << e;
+    os << arch.nCandidates << arch.nInsertions << arch.nReplacements << arch.nElites;
+    os << arch.meanFitness << arch.maxFitness;
 }
 
 void Wavegen::search_load(QFile &file, const QString &args)
 {
     QDataStream is;
     quint32 version = openLoadStream(file, is, search_magic);
-    if ( version < 100 || version > 100 )
+    if ( version < 100 || version > search_version )
         throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
 
     quint32 precision, iterations, archSize;
     is >> precision >> iterations >> archSize;
-    m_archives.push_back(Archive{std::list<MAPElite>(archSize), precision, iterations, args.toInt(), searchd});
-    // Note: this->searchd is correctly set up assuming sequential result loading
-    for ( MAPElite &e : m_archives.back().elites )
+    m_archives.push_back(Archive(args.toInt(), searchd)); // Note: this->searchd is correctly set up assuming sequential result loading
+    Archive &arch = m_archives.back();
+    arch.precision = precision;
+    arch.iterations = iterations;
+    arch.elites.resize(archSize);
+    for ( MAPElite &e : arch.elites )
         is >> e;
+    if ( version >= 101 ) {
+        is >> arch.nCandidates >> arch.nInsertions >> arch.nReplacements >> arch.nElites;
+        is >> arch.meanFitness >> arch.maxFitness;
+    }
 }
