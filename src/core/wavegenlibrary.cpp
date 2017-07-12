@@ -222,7 +222,7 @@ if ( $(getErr) && $(targetParam) < 0 ) {
     dd_err[id] = gathErr;
 }
 
-if ( paramID == $(targetParam) ) {
+if ( $(getErr) && paramID == $(targetParam) ) {
     if ( bestBubble.cycles )
         bestBubble.value /= bestBubble.cycles;
     if ( $(nGroupsPerStim) == 1 )
@@ -309,6 +309,7 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
 
 void WavegenLibrary::generateBubbles(scalar duration)
 {
+    getErr = true;
     unsigned int nSamples = duration / (project.dt() / simCycles);
     pointers.generateBubbles(nSamples, nStim, pointers);
 }
