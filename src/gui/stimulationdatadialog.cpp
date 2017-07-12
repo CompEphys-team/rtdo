@@ -10,6 +10,9 @@ StimulationDataDialog::StimulationDataDialog(Session &s, QWidget *parent) :
     connect(&session, SIGNAL(stimulationDataChanged()), this, SLOT(importData()));
     connect(this, SIGNAL(apply(StimulationData)), &session, SLOT(setStimulationData(StimulationData)));
 
+    connect(this, SIGNAL(accepted()), this, SLOT(exportData()));
+    connect(this, SIGNAL(rejected()), this, SLOT(importData()));
+
     importData();
 }
 
