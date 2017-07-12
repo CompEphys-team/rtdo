@@ -1,7 +1,7 @@
 #ifndef RUNDATADIALOG_H
 #define RUNDATADIALOG_H
 
-#include <QWidget>
+#include <QDialog>
 #include "session.h"
 
 namespace Ui {
@@ -9,7 +9,7 @@ class RunDataDialog;
 }
 class QAbstractButton;
 
-class RunDataDialog : public QWidget
+class RunDataDialog : public QDialog
 {
     Q_OBJECT
 

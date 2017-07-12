@@ -7,7 +7,6 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, QWidget *parent) :
     session(s)
 {
     ui->setupUi(this);
-    setWindowFlags(Qt::Window);
 
     connect(&session, &Session::actionLogged, [=](QString actor, QString action, QString, int) {
         if ( actor == "Config" && action == "cfg" )

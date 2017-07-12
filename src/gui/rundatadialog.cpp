@@ -2,7 +2,7 @@
 #include "ui_rundatadialog.h"
 
 RunDataDialog::RunDataDialog(Session &s, QWidget *parent) :
-    QWidget(parent),
+    QDialog(parent),
     ui(new Ui::RunDataDialog),
     session(s)
 {
