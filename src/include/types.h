@@ -274,7 +274,6 @@ struct WavegenData
     std::vector<MAPEDimension> mapeDimensions; //!< List of dimensions along which stimulation behaviour is to be measured
     std::vector<size_t> precisionIncreaseEpochs; //!< Epochs on which MAPE precision/resolution is to double
     size_t maxIterations = 1000; //!< Total number of epochs (cf nWavesPerEpoch)
-    size_t historySize = 20;
 };
 
 struct GAFitterSettings {
