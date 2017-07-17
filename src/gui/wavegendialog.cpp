@@ -42,6 +42,8 @@ WavegenDialog::WavegenDialog(Session &s, QWidget *parent) :
         session.wavegen().abort();
         abort = true;
     });
+
+    ui->progressPlotter->init(session);
 }
 
 WavegenDialog::~WavegenDialog()

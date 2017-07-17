@@ -43,6 +43,10 @@ public:
 
     inline const std::vector<Archive> &archives() const { return m_archives; }
 
+    //! Returns the archive currently being processed.
+    //! Use with caution (i.e. immediately after receiving progress signals), as race conditions apply.
+    inline const Archive &currentArchive() const { return current; }
+
     /**
      * @brief getRandomStim generates a fully randomised stimulation according to the Wavegen's StimulationData
      */

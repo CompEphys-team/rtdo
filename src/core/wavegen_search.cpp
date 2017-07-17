@@ -61,7 +61,7 @@ void Wavegen::search(int param)
 
         if ( ++episodeCounter == numEpisodesPerEpoch ) {
             episodeCounter = 0;
-            emit searchTick(++current.iterations);
+            ++current.iterations;
 
             if ( current.iterations == searchd.maxIterations || aborted )
                 break;
@@ -76,6 +76,7 @@ void Wavegen::search(int param)
         } else if ( aborted ) {
             break;
         }
+        emit searchTick(current.iterations);
 
         // Prepare next episode's waves
         if ( initialising ) {
@@ -173,7 +174,7 @@ void Wavegen::mape_tournament(std::vector<Stimulation> &waves)
 void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
 {
     int nInserted = 0, nReplaced = 0;
-    double addedFitness = 0, maxFitness = current.iterations ? current.maxFitness.last() : 0;
+    double addedFitness = 0, maxFitness = current.maxFitness.size() ? current.maxFitness.last() : 0;
     std::sort(candidates.begin(), candidates.end()); // Lexical sort by MAPElite::bin
     auto archIter = current.elites.begin();
     for ( auto candIter = candidates.begin(); candIter != candidates.end(); candIter++ ) {
@@ -197,16 +198,13 @@ void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
         }
     }
 
-    double meanFitness = ((current.iterations ? current.meanFitness.last()*current.nElites.last() : 0) + addedFitness) / current.elites.size();
+    double meanFitness = ((current.meanFitness.size() ? current.meanFitness.last()*current.nElites.last() : 0) + addedFitness) / current.elites.size();
     current.nCandidates.push_back(candidates.size());
     current.nInsertions.push_back(nInserted);
     current.nReplacements.push_back(nReplaced);
     current.nElites.push_back(current.elites.size());
     current.meanFitness.push_back(meanFitness);
     current.maxFitness.push_back(maxFitness);
-
-    std::cout << "Epoch " << current.iterations << ": " << candidates.size() << " candidates, "
-              << nInserted << " new insertions, " << nReplaced << " replacements" << std::endl;
 }
 
 std::vector<size_t> Wavegen::mape_bin(const Stimulation &I)

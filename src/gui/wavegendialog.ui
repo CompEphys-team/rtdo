@@ -6,86 +6,61 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>419</width>
-    <height>160</height>
+    <width>697</width>
+    <height>431</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Voltage clamp waveform generation</string>
   </property>
-  <widget class="QPushButton" name="btnSigadjust">
-   <property name="geometry">
-    <rect>
-     <x>239</x>
-     <y>37</y>
-     <width>95</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Adjust sigmas</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="btnSearchAll">
-   <property name="geometry">
-    <rect>
-     <x>239</x>
-     <y>65</y>
-     <width>80</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Search (all)</string>
-   </property>
-  </widget>
-  <widget class="QListWidget" name="log">
-   <property name="geometry">
-    <rect>
-     <x>9</x>
-     <y>9</y>
-     <width>224</width>
-     <height>139</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="btnSearchOne">
-   <property name="geometry">
-    <rect>
-     <x>325</x>
-     <y>93</y>
-     <width>80</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Search</string>
-   </property>
-  </widget>
-  <widget class="QComboBox" name="cbSearch">
-   <property name="geometry">
-    <rect>
-     <x>239</x>
-     <y>93</y>
-     <width>72</width>
-     <height>22</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="btnAbort">
-   <property name="geometry">
-    <rect>
-     <x>239</x>
-     <y>123</y>
-     <width>80</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Abort</string>
-   </property>
-  </widget>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0" rowspan="2">
+    <widget class="QListWidget" name="log"/>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="btnSigadjust">
+     <property name="text">
+      <string>Adjust sigmas</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QComboBox" name="cbSearch"/>
+   </item>
+   <item row="0" column="3">
+    <widget class="QPushButton" name="btnSearchOne">
+     <property name="text">
+      <string>Search</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="4">
+    <widget class="QPushButton" name="btnSearchAll">
+     <property name="text">
+      <string>Search (all)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="5">
+    <widget class="QPushButton" name="btnAbort">
+     <property name="text">
+      <string>Abort</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1" colspan="5">
+    <widget class="WavegenProgressPlotter" name="progressPlotter" native="true"/>
+   </item>
+  </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>WavegenProgressPlotter</class>
+   <extends>QWidget</extends>
+   <header>wavegenprogressplotter.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
