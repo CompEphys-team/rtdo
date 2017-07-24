@@ -295,4 +295,7 @@ struct GAFitterSettings {
     std::vector<scalar> targetValues;
 };
 
+
+struct DataPoint { double t; double value; };
+
 #endif // TYPES_H
