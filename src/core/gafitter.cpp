@@ -10,6 +10,9 @@ GAFitter::GAFitter(Session &session, DAQ *daq) :
     SessionWorker(session),
     lib(session.project.experiment()),
     settings(session.gaFitterSettings()),
+    qV(nullptr),
+    qI(nullptr),
+    qO(nullptr),
     simulator(lib.createSimulator()),
     daq(daq ? daq : simulator),
     RNG(),
@@ -58,8 +61,11 @@ void GAFitter::run(WaveSource src)
     if ( src.type != WaveSource::Deck )
         throw std::runtime_error("Wave source for GAFitter must be a deck.");
 
+    emit starting();
+
     QTime wallclock = QTime::currentTime();
     double simtime = 0;
+    qT = 0;
 
     // Prepare
     output = Output(*this);
@@ -271,6 +277,8 @@ void GAFitter::procreate()
 
 void GAFitter::stimulate(const Stimulation &I)
 {
+    double tOffset = qT;
+
     // Set up library
     lib.t = 0.;
     lib.iT = 0;
@@ -285,6 +293,7 @@ void GAFitter::stimulate(const Stimulation &I)
         daq->next();
         lib.Imem = daq->current;
         lib.Vmem = getCommandVoltage(I, lib.t);
+        pushToQ(tOffset, daq->voltage, daq->current, lib.Vmem);
         lib.getErr = (lib.t > I.tObsBegin && lib.t < I.tObsEnd);
         lib.step();
     }
@@ -294,6 +303,8 @@ void GAFitter::stimulate(const Stimulation &I)
 
 void GAFitter::settle(const Stimulation &I)
 {
+    double tOffset = qT;
+
     // Set up library
     lib.t = 0.;
     lib.iT = 0;
@@ -308,8 +319,20 @@ void GAFitter::settle(const Stimulation &I)
     // Stimulate both
     while ( lib.t < I.duration ) {
         daq->next();
+        pushToQ(tOffset, daq->voltage, daq->current, I.baseV);
         lib.step();
     }
 
     daq->reset();
+}
+
+void GAFitter::pushToQ(double tOffset, double V, double I, double O)
+{
+    qT = tOffset + lib.t;
+    if ( qV )
+        qV->push({qT, V});
+    if ( qI )
+        qI->push({qT, I});
+    if ( qO )
+        qO->push({qT, O});
 }

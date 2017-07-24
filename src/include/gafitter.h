@@ -4,6 +4,7 @@
 #include "sessionworker.h"
 #include "experimentlibrary.h"
 #include "wavesubsets.h"
+#include "queue.h"
 
 class GAFitter : public SessionWorker
 {
@@ -19,6 +20,9 @@ public:
     ExperimentLibrary &lib;
 
     const GAFitterSettings &settings;
+
+    RTMaybe::Queue<DataPoint> *qV, *qI, *qO;
+    double qT;
 
     struct Output {
         Output(const GAFitter &fitter);
@@ -39,6 +43,7 @@ public slots:
     void run(WaveSource src);
 
 signals:
+    void starting();
     void didAbort();
     void done();
     void progress(quint32 epoch);
@@ -69,6 +74,7 @@ protected:
     void procreate();
     quint32 findNextStim();
     bool finished();
+    void pushToQ(double tOffset, double V, double I, double O);
 
     struct errTupel {
         size_t idx;

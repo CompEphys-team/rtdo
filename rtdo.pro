@@ -71,7 +71,8 @@ SOURCES += \
     src/gui/projectsettingsdialog.cpp \
     src/gui/wavegendatadialog.cpp \
     src/gui/stimulationdatadialog.cpp \
-    src/gui/wavegenprogressplotter.cpp
+    src/gui/wavegenprogressplotter.cpp \
+    src/gui/responseplotter.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -127,7 +128,8 @@ HEADERS  += \
     src/include/projectsettingsdialog.h \
     src/include/wavegendatadialog.h \
     src/include/stimulationdatadialog.h \
-    src/include/wavegenprogressplotter.h
+    src/include/wavegenprogressplotter.h \
+    src/include/responseplotter.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -147,7 +149,8 @@ FORMS    += \
     src/gui/projectsettingsdialog.ui \
     src/gui/wavegendatadialog.ui \
     src/gui/stimulationdatadialog.ui \
-    src/gui/wavegenprogressplotter.ui
+    src/gui/wavegenprogressplotter.ui \
+    src/gui/responseplotter.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 

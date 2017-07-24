@@ -14,6 +14,11 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     connect(&session.gaFitter(), SIGNAL(done()), this, SLOT(done()));
     connect(&session.gaFitter(), SIGNAL(progress(quint32)), this, SLOT(progress(quint32)));
 
+    connect(&session.gaFitter(), SIGNAL(starting()), ui->response_plotter, SLOT(clear()));
+    session.gaFitter().qV = &ui->response_plotter->qV;
+    session.gaFitter().qI = &ui->response_plotter->qI;
+    session.gaFitter().qO = &ui->response_plotter->qO;
+
     ui->params_plotter->init(&session, true);
 
     updateDecks();

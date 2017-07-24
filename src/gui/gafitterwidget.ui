@@ -7,13 +7,26 @@
     <x>0</x>
     <y>0</y>
     <width>602</width>
-    <height>418</height>
+    <height>610</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>GA fitting</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0">
+    <widget class="QComboBox" name="decks"/>
+   </item>
+   <item row="0" column="1">
+    <widget class="QSpinBox" name="repeats">
+     <property name="suffix">
+      <string> repeats</string>
+     </property>
+     <property name="minimum">
+      <number>1</number>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="2">
     <widget class="QPushButton" name="start">
      <property name="text">
@@ -25,22 +38,6 @@
     <widget class="QPushButton" name="abort">
      <property name="text">
       <string>Abort</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0">
-    <widget class="QComboBox" name="decks"/>
-   </item>
-   <item row="2" column="0" colspan="4">
-    <widget class="ParameterFitPlotter" name="params_plotter" native="true"/>
-   </item>
-   <item row="0" column="1">
-    <widget class="QSpinBox" name="repeats">
-     <property name="suffix">
-      <string> repeats</string>
-     </property>
-     <property name="minimum">
-      <number>1</number>
      </property>
     </widget>
    </item>
@@ -70,6 +67,15 @@
      </property>
     </widget>
    </item>
+   <item row="2" column="0" colspan="4">
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <widget class="ParameterFitPlotter" name="params_plotter" native="true"/>
+     <widget class="ResponsePlotter" name="response_plotter" native="true"/>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
@@ -77,6 +83,12 @@
    <class>ParameterFitPlotter</class>
    <extends>QWidget</extends>
    <header>parameterfitplotter.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ResponsePlotter</class>
+   <extends>QWidget</extends>
+   <header>responseplotter.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
