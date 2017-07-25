@@ -76,16 +76,6 @@ ComediConverter::ComediConverter(const ChnData &chnp, DAQData *devp, bool in) :
     }
 }
 
-ComediConverter::ComediConverter(const inChnData &p, DAQData *c) :
-    ComediConverter(p, c, true)
-{
-}
-
-ComediConverter::ComediConverter(const outChnData &p, DAQData *c) :
-    ComediConverter(p, c, false)
-{
-}
-
 ComediConverter::~ComediConverter()
 {
     delete polynomial;

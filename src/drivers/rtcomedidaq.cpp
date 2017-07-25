@@ -10,9 +10,9 @@ ComediDAQ::ComediDAQ(DAQData *p) :
     ready(), set(), go(), finish(),
     qI(), qV(),
     t(&ComediDAQ::launchStatic, this),
-    conI(p->currentChn, p),
-    conV(p->voltageChn, p),
-    conO(p->stimChn, p)
+    conI(p->currentChn, p, true),
+    conV(p->voltageChn, p, true),
+    conO(p->stimChn, p, false)
 {
 
 }
@@ -80,8 +80,7 @@ void *ComediDAQ::launch()
     int aidev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, 0);
     int aodev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, 0);
     RTIME dt, toffset, reltime;
-    inChnData V, I;
-    outChnData O;
+    ChnData V, I, O;
     lsampl_t vSamp, iSamp, V0, VRamp, VRampDelta;
     struct Step {
         RTIME t;

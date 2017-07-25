@@ -75,16 +75,6 @@ struct ChnData
     double offset;
 };
 
-struct inChnData : public ChnData
-{
-
-};
-
-struct outChnData : public ChnData
-{
-
-};
-
 struct CacheData
 {
     unsigned int numTraces;
@@ -96,9 +86,9 @@ struct DAQData
 {
     double dt;
     std::string devname;
-    inChnData currentChn;
-    inChnData voltageChn;
-    outChnData stimChn;
+    ChnData currentChn;
+    ChnData voltageChn;
+    ChnData stimChn;
     CacheData cache;
 };
 

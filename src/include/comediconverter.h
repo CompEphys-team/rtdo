@@ -8,8 +8,6 @@ class ComediConverter
 {
 public:
     ComediConverter(const ChnData &p, DAQData *c, bool isInChn);
-    ComediConverter(const inChnData &p, DAQData *c);
-    ComediConverter(const outChnData &p, DAQData *c);
     ~ComediConverter();
 
     double toPhys(lsampl_t) const;
