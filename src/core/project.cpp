@@ -41,6 +41,28 @@ void Project::addAPs()
     addAP(ap, "Wavegen.numGroups", this, &Project::wg_numGroups);
     addAP(ap, "Experiment.numCandidates", this, &Project::exp_numCandidates);
     addAP(ap, "Profiler.numPairs", this, &Project::prof_numPairs);
+    addDaqAPs(ap, &daqd);
+}
+
+void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
+{
+    addAP(arg, "DAQ.devname", p, &DAQData::devname);
+    addAP(arg, "DAQ.dt", p, &DAQData::dt);
+
+    QString labels[] = {"DAQ.V", "DAQ.I", "DAQ.Vcmd"};
+    ChnData DAQData::*chans[] = {&DAQData::voltageChn, &DAQData::currentChn, &DAQData::stimChn};
+    for ( int i = 0; i < 3; i++ ) {
+        addAP(arg, labels[i] + ".active", p, chans[i], &ChnData::active);
+        addAP(arg, labels[i] + ".idx", p, chans[i], &ChnData::idx);
+        addAP(arg, labels[i] + ".range", p, chans[i], &ChnData::range);
+        addAP(arg, labels[i] + ".aref", p, chans[i], &ChnData::aref);
+        addAP(arg, labels[i] + ".gain", p, chans[i], &ChnData::gain);
+        addAP(arg, labels[i] + ".offset", p, chans[i], &ChnData::offset);
+    }
+
+    addAP(arg, "DAQ.cache.numTraces", p, &DAQData::cache, &CacheData::numTraces);
+    addAP(arg, "DAQ.cache.useMedian", p, &DAQData::cache, &CacheData::useMedian);
+    addAP(arg, "DAQ.cache.averageWhileCollecting", p, &DAQData::cache, &CacheData::averageWhileCollecting);
 }
 
 void Project::setModel(const QString &modelfile)
@@ -82,6 +104,16 @@ bool Project::compile()
         p->write(proj);
     frozen = true;
     return true;
+}
+
+void Project::setDaqData(DAQData p)
+{
+    daqd = p;
+    if ( frozen ) {
+        std::ofstream proj(p_projectfile.toStdString());
+        for ( auto const& p : ap )
+            p->write(proj);
+    }
 }
 
 

@@ -48,6 +48,13 @@ public:
     ExperimentLibrary &experiment() const { return *explib; }
     ProfilerLibrary &profiler() const { return *proflib; }
 
+    /// Get/Set project default DAQ settings
+    const DAQData &daqData() const { return daqd; }
+    void setDaqData(DAQData);
+
+    /// Populate an AP vector with DAQData APs (convenience/DRY function for Session)
+    static void addDaqAPs(std::vector<std::unique_ptr<AP>> &ap, DAQData *p);
+
 protected:
     void addAPs();
 
@@ -62,6 +69,8 @@ protected:
     size_t exp_numCandidates = 10000;
 
     size_t prof_numPairs = 8192; //!< Number of tuned/detuned model pairs to profile against each other
+
+    DAQData daqd;
 
     bool frozen = false;
 

@@ -17,6 +17,7 @@ Q_DECLARE_METATYPE(RunData)
 Q_DECLARE_METATYPE(WavegenData)
 Q_DECLARE_METATYPE(StimulationData)
 Q_DECLARE_METATYPE(GAFitterSettings)
+Q_DECLARE_METATYPE(DAQData)
 
 class Session : public QObject
 {
@@ -58,6 +59,7 @@ public:
     const WavegenData &wavegenData() const { return searchd; }
     const StimulationData &stimulationData() const { return stimd; }
     const GAFitterSettings &gaFitterSettings() const { return gafs; }
+    const DAQData &daqData() const { return daqd; }
 
     inline QString name() const { return dir.dirName(); }
 
@@ -67,6 +69,7 @@ public slots:
     void setWavegenData(WavegenData d);
     void setStimulationData(StimulationData d);
     void setGAFitterSettings(GAFitterSettings d);
+    void setDAQData(DAQData d);
 
 public:
     Project &project;
@@ -78,9 +81,10 @@ protected:
     WavegenData searchd;
     StimulationData stimd;
     GAFitterSettings gafs;
+    DAQData daqd;
 
-    bool dirtyRund, dirtySearchd, dirtyStimd, dirtyGafs;
-    std::vector<std::unique_ptr<AP>> runAP, searchAP, stimAP, gafAP;
+    bool dirtyRund, dirtySearchd, dirtyStimd, dirtyGafs, dirtyDaqd;
+    std::vector<std::unique_ptr<AP>> runAP, searchAP, stimAP, gafAP, daqAP;
 
     std::unique_ptr<Wavegen> m_wavegen;
     std::unique_ptr<ErrorProfiler> m_profiler;
@@ -109,11 +113,13 @@ signals:
     void redirectWavegenData(WavegenData d, QPrivateSignal);
     void redirectStimulationData(StimulationData d, QPrivateSignal);
     void redirectGAFitterSettings(GAFitterSettings d, QPrivateSignal);
+    void redirectDAQData(DAQData d, QPrivateSignal);
 
     void runDataChanged();
     void wavegenDataChanged();
     void stimulationDataChanged();
     void GAFitterSettingsChanged();
+    void DAQDataChanged();
 };
 
 #endif // SESSION_H

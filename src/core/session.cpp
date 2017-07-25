@@ -7,7 +7,8 @@ Session::Session(Project &p, const QString &sessiondir) :
     dirtyRund(true),
     dirtySearchd(true),
     dirtyStimd(true),
-    dirtyGafs(true)
+    dirtyGafs(true),
+    dirtyDaqd(true)
 {
     static bool registered = false;
     if ( !registered ) {
@@ -15,6 +16,7 @@ Session::Session(Project &p, const QString &sessiondir) :
         qRegisterMetaType<WavegenData>();
         qRegisterMetaType<StimulationData>();
         qRegisterMetaType<GAFitterSettings>();
+        qRegisterMetaType<DAQData>();
 
         qRegisterMetaType<WaveSource>();
 
@@ -28,6 +30,7 @@ Session::Session(Project &p, const QString &sessiondir) :
     connect(this, SIGNAL(redirectWavegenData(WavegenData)), this, SLOT(setWavegenData(WavegenData)), Qt::BlockingQueuedConnection);
     connect(this, SIGNAL(redirectStimulationData(StimulationData)), this, SLOT(setStimulationData(StimulationData)), Qt::BlockingQueuedConnection);
     connect(this, SIGNAL(redirectGAFitterSettings(GAFitterSettings)), this, SLOT(setGAFitterSettings(GAFitterSettings)), Qt::BlockingQueuedConnection);
+    connect(this, SIGNAL(redirectDAQData(DAQData)), this, SLOT(setDAQData(DAQData)), Qt::BlockingQueuedConnection);
 
     if ( sessiondir.isEmpty() ) {
         dir = QDir(project.dir());
@@ -46,6 +49,8 @@ Session::Session(Project &p, const QString &sessiondir) :
 
     moveToThread(&thread);
     thread.start();
+
+    daqd = project.daqData(); // Load project defaults
 
     m_log.setLogFile(dir.filePath("session.log"));
     load(); // Load state from m_log
@@ -105,6 +110,8 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.sigmaHalflife", this, &Session::gafs, &GAFitterSettings::sigmaHalflife);
     addAP(gafAP, "S.GAFitter.targetType", this, &Session::gafs, &GAFitterSettings::targetType);
     addAP(gafAP, "S.GAFitter.targetValues[#]", this, &Session::gafs, &GAFitterSettings::targetValues);
+
+    Project::addDaqAPs(daqAP, &daqd);
 
     // Defaults
     scalar maxDeviation = stimd.maxVoltage-stimd.baseV > stimd.baseV-stimd.minVoltage
@@ -187,7 +194,7 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
     int idx;
     QMutexLocker lock(&log_mutex);
 
-    if ( dirtyRund || dirtySearchd || dirtyStimd || dirtyGafs ) {
+    if ( dirtyRund || dirtySearchd || dirtyStimd || dirtyGafs || dirtyDaqd ) {
         QString actorName = "Config";
         QString cfg = "cfg";
         idx = m_log.put(actorName, cfg, "");
@@ -201,10 +208,13 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
         if ( dirtyStimd )
             for ( auto const& p : stimAP )
                 p->write(os);
-        if ( dirtyGafs)
+        if ( dirtyGafs )
             for ( auto const& p : gafAP )
                 p->write(os);
-        dirtyRund = dirtySearchd = dirtyStimd = dirtyGafs = false;
+        if ( dirtyDaqd )
+            for ( auto const& p : daqAP )
+                p->write(os);
+        dirtyRund = dirtySearchd = dirtyStimd = dirtyGafs = dirtyDaqd = false;
     }
 
     idx = m_log.put(actor->actorName(), action, args);
@@ -247,7 +257,7 @@ void Session::readConfig(const QString &filename)
     std::ifstream is(filename.toStdString());
     QString name;
     AP *it;
-    bool hasRun(false), hasSearch(false), hasStim(false), hasGafs(false);
+    bool hasRun(false), hasSearch(false), hasStim(false), hasGafs(false), hasDaq(false);
     is >> name;
     while ( is.good() ) {
         if ( (it = AP::find(name, &runAP)) ) {
@@ -269,6 +279,11 @@ void Session::readConfig(const QString &filename)
             if ( !hasGafs ) {
                 gafs = GAFitterSettings();
                 hasGafs = true;
+            }
+        } else if ( (it = AP::find(name, &daqAP)) ) {
+            if ( !hasDaq ) {
+                daqd = DAQData();
+                hasDaq = true;
             }
         }
         if ( it )
@@ -293,6 +308,10 @@ void Session::readConfig(const QString &filename)
     if ( hasGafs ) {
         dirtyGafs = false;
         emit GAFitterSettingsChanged();
+    }
+    if ( hasDaq ) {
+        dirtyDaqd = false;
+        emit DAQDataChanged();
     }
 }
 
@@ -348,5 +367,16 @@ void Session::setGAFitterSettings(GAFitterSettings d)
         emit GAFitterSettingsChanged();
     } else {
         redirectGAFitterSettings(d, QPrivateSignal());
+    }
+}
+
+void Session::setDAQData(DAQData d)
+{
+    if ( QThread::currentThread() == &thread ) {
+        daqd = d;
+        dirtyDaqd = true;
+        emit DAQDataChanged();
+    } else {
+        redirectDAQData(d, QPrivateSignal());
     }
 }
