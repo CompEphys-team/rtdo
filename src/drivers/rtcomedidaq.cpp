@@ -4,7 +4,7 @@
 
 namespace RTMaybe {
 
-ComediDAQ::ComediDAQ(ComediData *p) :
+ComediDAQ::ComediDAQ(DAQData *p) :
     DAQ(p),
     live(true),
     ready(), set(), go(), finish(),
@@ -72,7 +72,6 @@ void *ComediDAQ::launchStatic(void *_this)
 
 void *ComediDAQ::launch()
 {
-    ComediData *p = static_cast<ComediData*>(this->p);
     comedi_t *dev = RC_comedi_open(p->devname.c_str());
     if ( !dev )
         throw std::runtime_error(QString("Failed to open device %1 in realtime mode")

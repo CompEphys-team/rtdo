@@ -13,7 +13,7 @@
 class DAQCache : public DAQ
 {
 public:
-    DAQCache(DAQ *daq, CacheData *p);
+    DAQCache(DAQ *daq);
     ~DAQCache();
 
     void run(Stimulation s);
@@ -22,7 +22,6 @@ public:
 
 protected:
     DAQ *daq;
-    CacheData *cp;
 
     struct Cache
     {

@@ -85,14 +85,6 @@ struct outChnData : public ChnData
 
 };
 
-struct DAQData
-{
-    double dt;
-    inChnData currentChn;
-    inChnData voltageChn;
-    outChnData stimChn;
-};
-
 struct CacheData
 {
     unsigned int numTraces;
@@ -100,9 +92,14 @@ struct CacheData
     bool useMedian;
 };
 
-struct ComediData : public DAQData
+struct DAQData
 {
+    double dt;
     std::string devname;
+    inChnData currentChn;
+    inChnData voltageChn;
+    outChnData stimChn;
+    CacheData cache;
 };
 
 struct ThreadData

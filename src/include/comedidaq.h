@@ -14,7 +14,7 @@ namespace RTMaybe {
 class RTMaybe::ComediDAQ : public DAQ
 {
 public:
-    ComediDAQ(ComediData *p);
+    ComediDAQ(DAQData *p);
     ~ComediDAQ();
 
     void run(Stimulation s);

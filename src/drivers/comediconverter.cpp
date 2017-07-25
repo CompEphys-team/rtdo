@@ -7,7 +7,7 @@
 struct mycomedi_polynomial_t : public comedi_polynomial_t {};
 struct mycomedi_range : public comedi_range {};
 
-ComediConverter::ComediConverter(const ChnData &chnp, ComediData *devp, bool in) :
+ComediConverter::ComediConverter(const ChnData &chnp, DAQData *devp, bool in) :
     isInChn(in),
     has_cal(false),
     polynomial(new mycomedi_polynomial_t),
@@ -76,12 +76,12 @@ ComediConverter::ComediConverter(const ChnData &chnp, ComediData *devp, bool in)
     }
 }
 
-ComediConverter::ComediConverter(const inChnData &p, ComediData *c) :
+ComediConverter::ComediConverter(const inChnData &p, DAQData *c) :
     ComediConverter(p, c, true)
 {
 }
 
-ComediConverter::ComediConverter(const outChnData &p, ComediData *c) :
+ComediConverter::ComediConverter(const outChnData &p, DAQData *c) :
     ComediConverter(p, c, false)
 {
 }
