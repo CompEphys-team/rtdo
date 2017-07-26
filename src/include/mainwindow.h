@@ -61,6 +61,8 @@ private slots:
 
     void on_actionStimulationData_triggered();
 
+    void on_actionDAQData_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

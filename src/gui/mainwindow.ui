@@ -69,6 +69,7 @@
     <addaction name="actionWavegenData"/>
     <addaction name="actionStimulationData"/>
     <addaction name="actionRunData"/>
+    <addaction name="actionDAQData"/>
     <addaction name="actionGA_Fitter"/>
    </widget>
    <addaction name="menuFile"/>
@@ -227,6 +228,11 @@
   <action name="actionStimulationData">
    <property name="text">
     <string>StimulationData</string>
+   </property>
+  </action>
+  <action name="actionDAQData">
+   <property name="text">
+    <string>Data acquisition</string>
    </property>
   </action>
  </widget>

@@ -14,6 +14,7 @@
 #include "rundatadialog.h"
 #include "wavegendatadialog.h"
 #include "stimulationdatadialog.h"
+#include "daqdialog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -235,6 +236,13 @@ void MainWindow::on_actionWavegenData_triggered()
 void MainWindow::on_actionStimulationData_triggered()
 {
     StimulationDataDialog *dlg = new StimulationDataDialog(*session);
+    dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
+    dlg->show();
+}
+
+void MainWindow::on_actionDAQData_triggered()
+{
+    DAQDialog *dlg = new DAQDialog(*session);
     dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
     dlg->show();
 }
