@@ -84,7 +84,7 @@ ComediConverter::~ComediConverter()
 
 double ComediConverter::toPhys(lsampl_t sample) const
 {
-    assert(!isInChn);
+    assert(isInChn);
     double raw;
     if ( has_cal )
         raw = comedi_to_physical(sample, polynomial);
@@ -95,7 +95,7 @@ double ComediConverter::toPhys(lsampl_t sample) const
 
 lsampl_t ComediConverter::toSamp(double phys) const
 {
-    assert(isInChn);
+    assert(!isInChn);
     phys = (phys - offset) / gain;
     if ( phys > range->max || phys < range->min ) {
         std::cerr << "Warning: Value out of range: " << phys << " not in ["
