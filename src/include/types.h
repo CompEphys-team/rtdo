@@ -67,25 +67,26 @@ std::ostream &operator<<(std::ostream&, const Stimulation::Step&);
 
 struct ChnData
 {
-    bool active;
-    unsigned int idx;
-    unsigned int range;
-    unsigned int aref;
-    double gain;
-    double offset;
+    bool active = true;
+    unsigned int idx = 0;
+    unsigned int range = 0;
+    unsigned int aref = 0;
+    double gain = 1.0;
+    double offset = 0.0;
 };
 
 struct CacheData
 {
-    unsigned int numTraces;
-    bool averageWhileCollecting;
-    bool useMedian;
+    bool active = false;
+    unsigned int numTraces = 10;
+    bool averageWhileCollecting = true;
+    bool useMedian = false;
 };
 
 struct DAQData
 {
-    double dt;
-    std::string devname;
+    double dt = 0.25;
+    std::string devname = "/dev/comedi0";
     ChnData currentChn;
     ChnData voltageChn;
     ChnData stimChn;
