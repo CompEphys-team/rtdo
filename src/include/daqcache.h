@@ -7,13 +7,12 @@
 
 /**
  * The DAQCache class provides a cached/caching interface to an actually acquiring DAQ object.
- * It takes control of the DAQ object it is given, exposing data either from it (if required)
- * or from cache (if possible).
+ * It hosts a ComediDAQ object, exposing data either from it (if required) or from cache (if possible).
  */
 class DAQCache : public DAQ
 {
 public:
-    DAQCache(DAQ *daq);
+    DAQCache(Session &session);
     ~DAQCache();
 
     void run(Stimulation s);

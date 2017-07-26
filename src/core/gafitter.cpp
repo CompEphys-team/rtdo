@@ -13,7 +13,7 @@ GAFitter::GAFitter(Session &session, DAQ *daq) :
     qV(nullptr),
     qI(nullptr),
     qO(nullptr),
-    simulator(lib.createSimulator()),
+    simulator(lib.createSimulator(session)),
     daq(daq ? daq : simulator),
     RNG(),
     aborted(false),

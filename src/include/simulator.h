@@ -6,7 +6,7 @@
 class Simulator : public DAQ
 {
 public:
-    Simulator() : DAQ(nullptr) {}
+    Simulator(Session &session) : DAQ(session) {}
     ~Simulator() {}
 
     virtual void setAdjustableParam(size_t idx, double value) = 0;

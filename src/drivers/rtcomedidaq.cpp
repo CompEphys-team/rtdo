@@ -4,15 +4,15 @@
 
 namespace RTMaybe {
 
-ComediDAQ::ComediDAQ(DAQData *p) :
-    DAQ(p),
+ComediDAQ::ComediDAQ(Session &session) :
+    DAQ(session),
     live(true),
     ready(), set(), go(), finish(),
     qI(), qV(),
     t(&ComediDAQ::launchStatic, this),
-    conI(p->currentChn, p, true),
-    conV(p->voltageChn, p, true),
-    conO(p->stimChn, p, false)
+    conI(p.currentChn, &p, true),
+    conV(p.voltageChn, &p, true),
+    conO(p.stimChn, &p, false)
 {
 
 }
@@ -27,12 +27,17 @@ void ComediDAQ::run(Stimulation s)
 {
     if ( running )
         return;
+
     currentStim = s;
     qI.flush();
     qV.flush();
-    int qSize = currentStim.duration / p->dt + 1;
+    int qSize = currentStim.duration / p.dt + 1;
     qI.resize(qSize);
     qV.resize(qSize);
+    conI = ComediConverter(p.currentChn, &p, true);
+    conV = ComediConverter(p.voltageChn, &p, true);
+    conO = ComediConverter(p.stimChn, &p, false);
+
     ready.signal();
     set.wait();
     running = true;
@@ -43,11 +48,11 @@ void ComediDAQ::next()
 {
     if ( running ) {
         lsampl_t c,v;
-        if ( p->currentChn.active ) {
+        if ( p.currentChn.active ) {
             qI.pop(c);
             current = conI.toPhys(c);
         }
-        if ( p->voltageChn.active ) {
+        if ( p.voltageChn.active ) {
             qV.pop(v);
             voltage = conV.toPhys(v);
         }
@@ -72,10 +77,10 @@ void *ComediDAQ::launchStatic(void *_this)
 
 void *ComediDAQ::launch()
 {
-    comedi_t *dev = RC_comedi_open(p->devname().c_str());
+    comedi_t *dev = RC_comedi_open(p.devname().c_str());
     if ( !dev )
         throw std::runtime_error(QString("Failed to open device %1 in realtime mode")
-                                 .arg(QString::fromStdString(p->devname()))
+                                 .arg(QString::fromStdString(p.devname()))
                                  .toStdString());
     int aidev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, 0);
     int aodev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, 0);
@@ -92,9 +97,9 @@ void *ComediDAQ::launch()
     while ( live ) {
         ready.wait();
 
-        V = p->voltageChn;
-        I = p->currentChn;
-        O = p->stimChn;
+        V = p.voltageChn;
+        I = p.currentChn;
+        O = p.stimChn;
         if ( (!V.active && !I.active) || !O.active ) {
             // Empty loop:
             set.signal();
@@ -108,7 +113,7 @@ void *ComediDAQ::launch()
         rt_make_soft_real_time();
 
         // AI setup
-        dt = nano2count((RTIME)(1e6 * p->dt));
+        dt = nano2count((RTIME)(1e6 * p.dt));
 
         // AO setup
         steps.reserve(currentStim.size() + 1);

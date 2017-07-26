@@ -6,7 +6,7 @@
 class DAQ
 {
 public:
-    DAQ(DAQData *p);
+    DAQ(Session &session);
     virtual ~DAQ();
 
     /// Run a stimulation/acquisition epoch, starting immediately
@@ -21,7 +21,8 @@ public:
     /// Stop stimulation/acquisition, discarding any acquired inputs
     virtual void reset() = 0;
 
-    DAQData *p;
+    Session &session;
+    const DAQData &p;
 
 protected:
     bool running;

@@ -174,7 +174,7 @@ private:
     size_t currentSample;
 
 public:
-    SimulatorImpl() : Simulator()
+    SimulatorImpl(Session &session) : Simulator(session)
     {
         initialise();
     }
@@ -289,7 +289,7 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
 
     ss << daqCode();
     ss << endl;
-    ss << "inline Simulator *createSim() { return new SimulatorImpl(); }" << endl;
+    ss << "inline Simulator *createSim(Session &session) { return new SimulatorImpl(session); }" << endl;
     ss << "inline void destroySim(Simulator *sim) { delete sim; }" << endl;
     ss << endl;
 

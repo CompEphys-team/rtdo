@@ -1,16 +1,17 @@
 #include "daqcache.h"
+#include "comedidaq.h"
 #include <algorithm>
 
-DAQCache::DAQCache(DAQ *daq) :
-    DAQ(daq->p),
-    daq(daq)
+DAQCache::DAQCache(Session &session) :
+    DAQ(session),
+    daq(new RTMaybe::ComediDAQ(session))
 {
 
 }
 
 DAQCache::~DAQCache()
 {
-
+    delete daq;
 }
 
 void DAQCache::run(Stimulation s)
@@ -23,13 +24,13 @@ void DAQCache::run(Stimulation s)
             break;
     }
     if ( iterC == cache.end() ) {
-        cache.emplace_back(currentStim, p->cache.numTraces, currentStim.duration/p->dt + 1);
+        cache.emplace_back(currentStim, p.cache.numTraces, currentStim.duration/p.dt + 1);
         iterC = --cache.end();
         iterI = iterC->sampI[0].begin();
         iterV = iterC->sampV[0].begin();
         collecting = true;
     } else {
-        if ( ++iterC->trace == p->cache.numTraces ) {
+        if ( ++iterC->trace == p.cache.numTraces ) {
             iterI = iterC->medI.begin();
             iterV = iterC->medV.begin();
             collecting = false;
@@ -54,9 +55,9 @@ void DAQCache::next()
         *iterI = daq->current;
         *iterV = daq->voltage;
 
-        if ( p->cache.averageWhileCollecting ) {
+        if ( p.cache.averageWhileCollecting ) {
             std::size_t offset = iterI - iterC->sampI[iterC->trace].begin();
-            if ( p->cache.useMedian ) { // Terrible idea for performance!
+            if ( p.cache.useMedian ) { // Terrible idea for performance!
                 std::vector<double> curr(iterC->trace + 1), volt(iterC->trace + 1);
                 for ( std::size_t i = 0; i <= iterC->trace; i++ ) {
                     curr[i] = iterC->sampI[i][offset];
