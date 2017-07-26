@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <iostream>
+#include <sstream>
 #include <list>
 #include "util.h"
 
@@ -86,7 +87,8 @@ struct CacheData
 struct DAQData
 {
     double dt = 0.25;
-    std::string devname = "/dev/comedi0";
+    int devNo = 0;
+    inline std::string devname() const { std::stringstream ss; ss << "/dev/comedi" << devNo; return ss.str(); }
     ChnData currentChn;
     ChnData voltageChn;
     ChnData stimChn;

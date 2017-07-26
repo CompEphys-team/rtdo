@@ -46,7 +46,7 @@ void Project::addAPs()
 
 void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
 {
-    addAP(arg, "DAQ.devname", p, &DAQData::devname);
+    addAP(arg, "DAQ.devNo", p, &DAQData::devNo);
     addAP(arg, "DAQ.dt", p, &DAQData::dt);
 
     QString labels[] = {"DAQ.V", "DAQ.I", "DAQ.Vcmd"};

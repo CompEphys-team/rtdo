@@ -72,10 +72,10 @@ void *ComediDAQ::launchStatic(void *_this)
 
 void *ComediDAQ::launch()
 {
-    comedi_t *dev = RC_comedi_open(p->devname.c_str());
+    comedi_t *dev = RC_comedi_open(p->devname().c_str());
     if ( !dev )
         throw std::runtime_error(QString("Failed to open device %1 in realtime mode")
-                                 .arg(QString::fromStdString(p->devname))
+                                 .arg(QString::fromStdString(p->devname()))
                                  .toStdString());
     int aidev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, 0);
     int aodev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, 0);
