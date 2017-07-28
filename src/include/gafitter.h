@@ -10,7 +10,7 @@ class GAFitter : public SessionWorker
 {
     Q_OBJECT
 public:
-    GAFitter(Session &session, DAQ *daq = nullptr);
+    GAFitter(Session &session);
     ~GAFitter();
 
     void stageDeck(WaveSource deck); //!< Enter a deck to be used on next run()
@@ -56,7 +56,6 @@ protected:
     void load(const QString &action, const QString &args, QFile &results);
     inline QString actorName() const { return "GAFitter"; }
 
-    Simulator *simulator;
     DAQ *daq;
 
     randutils::mt19937_rng RNG;

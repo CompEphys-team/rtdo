@@ -1,6 +1,8 @@
 #include "session.h"
 #include <QDateTime>
 #include <QMutexLocker>
+#include "daqcache.h"
+#include "comedidaq.h"
 
 Session::Session(Project &p, const QString &sessiondir) :
     project(p),
@@ -8,7 +10,8 @@ Session::Session(Project &p, const QString &sessiondir) :
     dirtySearchd(true),
     dirtyStimd(true),
     dirtyGafs(true),
-    dirtyDaqd(true)
+    dirtyDaqd(true),
+    m_daq(nullptr, DAQDeleter(*this))
 {
     static bool registered = false;
     if ( !registered ) {
@@ -173,6 +176,31 @@ SamplingProfiler &Session::samplingProfiler()
         m_sprofiler.reset(f);
     }
     return *m_sprofiler;
+}
+
+DAQ *Session::daq()
+{
+    if ( !m_daq ) {
+        DAQ *daq;
+        if ( daqd.simulate ) {
+            daq = project.experiment().createSimulator(*this);
+        } else if ( daqd.cache.active ) {
+            daq = new DAQCache(*this);
+        } else {
+            daq = new RTMaybe::ComediDAQ(*this);
+        }
+        m_daq.reset(daq);
+    }
+    return m_daq.get();
+}
+
+void Session::DAQDeleter::operator()(DAQ *daq)
+{
+    Simulator *sim = dynamic_cast<Simulator*>(daq);
+    if ( sim )
+        s.project.experiment().destroySimulator(sim);
+    else
+        delete daq;
 }
 
 void Session::quit()
@@ -375,6 +403,7 @@ void Session::setDAQData(DAQData d)
     if ( QThread::currentThread() == &thread ) {
         daqd = d;
         dirtyDaqd = true;
+        m_daq.release();
         emit DAQDataChanged();
     } else {
         redirectDAQData(d, QPrivateSignal());

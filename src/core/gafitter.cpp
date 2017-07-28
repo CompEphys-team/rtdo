@@ -6,15 +6,13 @@ const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
 const quint32 GAFitter::version = 101;
 
-GAFitter::GAFitter(Session &session, DAQ *daq) :
+GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
     lib(session.project.experiment()),
     settings(session.gaFitterSettings()),
     qV(nullptr),
     qI(nullptr),
     qO(nullptr),
-    simulator(lib.createSimulator(session)),
-    daq(daq ? daq : simulator),
     RNG(),
     aborted(false),
     deck(session),
@@ -27,7 +25,6 @@ GAFitter::GAFitter(Session &session, DAQ *daq) :
 
 GAFitter::~GAFitter()
 {
-    lib.destroySimulator(simulator);
 }
 
 void GAFitter::abort()
@@ -73,14 +70,19 @@ void GAFitter::run(WaveSource src)
     deck = *output.deck.deck();
     stimIdx = 0;
 
-    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-        const AdjustableParam &p = lib.adjustableParams.at(i);
-        switch ( settings.targetType ) {
-        case 0: output.targets[i] = p.initial; break;
-        case 1: output.targets[i] = settings.targetValues[i]; break;
-        case 2: output.targets[i] = RNG.uniform(p.min, p.max); break;
+    daq = session.daq();
+
+    if ( session.daqData().simulate ) {
+        Simulator *simulator = static_cast<Simulator*>(daq);
+        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+            const AdjustableParam &p = lib.adjustableParams.at(i);
+            switch ( settings.targetType ) {
+            case 0: output.targets[i] = p.initial; break;
+            case 1: output.targets[i] = settings.targetValues[i]; break;
+            case 2: output.targets[i] = RNG.uniform(p.min, p.max); break;
+            }
+            simulator->setAdjustableParam(i, output.targets[i]);
         }
-        simulator->setAdjustableParam(i, output.targets[i]);
     }
 
     Stimulation hold;
