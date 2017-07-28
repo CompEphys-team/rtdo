@@ -31,6 +31,9 @@ protected:
 
     static void *launchStatic(void *);
     void *launch();
+
+    template <typename aisampl_t, typename aosampl_t>
+    void acquisitionLoop(void *dev, int aidev, int aodev);
 };
 
 #endif // COMEDIDAQ_H
