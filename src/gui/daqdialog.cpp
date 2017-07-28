@@ -36,6 +36,8 @@ DAQDialog::~DAQDialog()
 void DAQDialog::importData()
 {
     const DAQData &p = session.daqData();
+
+    ui->analogDAQ->setChecked(!p.simulate);
     ui->deviceNumber->setValue(p.devNo);
     updateChannelCapabilities(-1, false);
 
@@ -57,6 +59,8 @@ void DAQDialog::importData()
 DAQData DAQDialog::exportData()
 {
     DAQData p;
+
+    p.simulate = !ui->analogDAQ->isChecked();
     p.devNo = ui->deviceNumber->value();
 
     ChnData *cp[] = {&p.voltageChn, &p.currentChn, &p.stimChn};
@@ -94,7 +98,7 @@ void DAQDialog::updateChannelCapabilities(int tab, bool checkDevice)
                 updateSingleChannelCapabilities(dev, subdev[i], chanUI[i]);
         else
             updateSingleChannelCapabilities(dev, subdev[tab], chanUI[tab]);
-    } else if ( checkDevice && isVisible() ) {
+    } else if ( checkDevice && isVisible() && ui->analogDAQ->isChecked() ) {
         ui->deviceName->setText("No such device");
         QMessageBox err;
         err.setText(QString("Unable to find or open device \"%1\"\n%2")

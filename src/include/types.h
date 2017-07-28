@@ -86,6 +86,7 @@ struct CacheData
 
 struct DAQData
 {
+    bool simulate;
     double dt = 0.25;
     int devNo = 0;
     inline std::string devname() const { std::stringstream ss; ss << "/dev/comedi" << devNo; return ss.str(); }

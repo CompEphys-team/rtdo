@@ -46,6 +46,7 @@ void Project::addAPs()
 
 void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
 {
+    addAP(arg, "DAQ.simulate", p, &DAQData::simulate);
     addAP(arg, "DAQ.devNo", p, &DAQData::devNo);
     addAP(arg, "DAQ.dt", p, &DAQData::dt);
 
