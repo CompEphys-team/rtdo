@@ -300,7 +300,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
 
         // Acquisition loop
         while ( running && aiDataRemaining > 0 ) {
-            ret = read(comedi_fileno(dev), aiBuffer + readOffset, AIBUFSZ);
+            ret = read(comedi_fileno(dev), aiBuffer + readOffset, AIBUFSZ - readOffset);
             if ( ret < 0 ) {
                 throw std::runtime_error(std::string("Failed read: ") + strerror(errno));
             } else if ( ret > 0 ) {
