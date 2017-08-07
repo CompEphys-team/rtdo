@@ -314,7 +314,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
                     --aiDataRemaining;
                 }
                 if ( i > 0 && readOffset > 0 )
-                    memcpy(aiBuffer, aiBuffer+i, readOffset);
+                    memcpy(aiBuffer, aiBuffer + i*sizeof(aisampl_t), readOffset);
             }
         }
 
