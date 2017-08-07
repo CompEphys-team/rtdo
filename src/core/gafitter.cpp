@@ -279,8 +279,6 @@ void GAFitter::procreate()
 
 void GAFitter::stimulate(const Stimulation &I)
 {
-    double tOffset = qT;
-
     // Set up library
     lib.t = 0.;
     lib.iT = 0;
@@ -295,18 +293,17 @@ void GAFitter::stimulate(const Stimulation &I)
         daq->next();
         lib.Imem = daq->current;
         lib.Vmem = getCommandVoltage(I, lib.t);
-        pushToQ(tOffset, daq->voltage, daq->current, lib.Vmem);
+        pushToQ(qT + lib.t, daq->voltage, daq->current, lib.Vmem);
         lib.getErr = (lib.t > I.tObsBegin && lib.t < I.tObsEnd);
         lib.step();
     }
 
+    qT += I.duration;
     daq->reset();
 }
 
 void GAFitter::settle(const Stimulation &I)
 {
-    double tOffset = qT;
-
     // Set up library
     lib.t = 0.;
     lib.iT = 0;
@@ -321,20 +318,20 @@ void GAFitter::settle(const Stimulation &I)
     // Stimulate both
     while ( lib.t < I.duration ) {
         daq->next();
-        pushToQ(tOffset, daq->voltage, daq->current, I.baseV);
+        pushToQ(qT + lib.t, daq->voltage, daq->current, I.baseV);
         lib.step();
     }
 
+    qT += I.duration;
     daq->reset();
 }
 
-void GAFitter::pushToQ(double tOffset, double V, double I, double O)
+void GAFitter::pushToQ(double t, double V, double I, double O)
 {
-    qT = tOffset + lib.t;
     if ( qV )
-        qV->push({qT, V});
+        qV->push({t,V});
     if ( qI )
-        qI->push({qT, I});
+        qI->push({t,I});
     if ( qO )
-        qO->push({qT, O});
+        qO->push({t,O});
 }

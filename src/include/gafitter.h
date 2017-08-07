@@ -73,7 +73,7 @@ protected:
     void procreate();
     quint32 findNextStim();
     bool finished();
-    void pushToQ(double tOffset, double V, double I, double O);
+    void pushToQ(double t, double V, double I, double O);
 
     struct errTupel {
         size_t idx;
