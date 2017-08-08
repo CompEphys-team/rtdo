@@ -31,7 +31,7 @@ void ComediDAQ::run(Stimulation s)
     currentStim = s;
     qI.flush();
     qV.flush();
-    int qSize = currentStim.duration / p.dt + 1;
+    int qSize = currentStim.duration / samplingDt() + 1;
     qI.resize(qSize);
     qV.resize(qSize);
     conI = ComediConverter(p.currentChn, &p, true);
@@ -113,14 +113,15 @@ void *ComediDAQ::launch()
         rt_make_soft_real_time();
 
         // AI setup
-        dt = nano2count((RTIME)(1e6 * p.dt));
+        dt = nano2count((RTIME)(1e6 * samplingDt()));
 
         // AO setup
         steps.reserve(currentStim.size() + 1);
         // Convert Stimulation::Step t/V to RTIME/lsampl_t
+        double offset = p.filter.active ? 1e6*samplingDt()*int(p.filter.width/2) : 0;
         for ( const Stimulation::Step &s : currentStim ) {
             steps.push_back( Step {
-                dt * (RTIME)(nano2count((RTIME)(1e6 * s.t)) / dt), // Round down
+                dt * (RTIME)(nano2count((RTIME)(1e6 * s.t + offset)) / dt), // Round down
                 conO.toSamp(s.V),
                 s.ramp
             });

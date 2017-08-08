@@ -73,7 +73,8 @@ SOURCES += \
     src/gui/stimulationdatadialog.cpp \
     src/gui/wavegenprogressplotter.cpp \
     src/gui/responseplotter.cpp \
-    src/gui/daqdialog.cpp
+    src/gui/daqdialog.cpp \
+    src/drivers/daqfilter.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -131,7 +132,8 @@ HEADERS  += \
     src/include/stimulationdatadialog.h \
     src/include/wavegenprogressplotter.h \
     src/include/responseplotter.h \
-    src/include/daqdialog.h
+    src/include/daqdialog.h \
+    src/include/daqfilter.h
 
 FORMS    += \
     src/gui/mainwindow.ui \

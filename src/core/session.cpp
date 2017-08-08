@@ -1,8 +1,7 @@
 #include "session.h"
 #include <QDateTime>
 #include <QMutexLocker>
-#include "daqcache.h"
-#include "comedidaq.h"
+#include "daqfilter.h"
 
 Session::Session(Project &p, const QString &sessiondir) :
     project(p),
@@ -184,10 +183,8 @@ DAQ *Session::daq()
         DAQ *daq;
         if ( daqd.simulate ) {
             daq = project.experiment().createSimulator(*this);
-        } else if ( daqd.cache.active ) {
-            daq = new DAQCache(*this);
         } else {
-            daq = new RTMaybe::ComediDAQ(*this);
+            daq = new DAQFilter(*this);
         }
         m_daq.reset(daq);
     }

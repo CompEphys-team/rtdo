@@ -194,3 +194,30 @@ std::istream &operator>>(std::istream &is, MAPEDimension::Func &f)
     else /* Default */ f = MAPEDimension::Func::BestBubbleDuration;
     return is;
 }
+
+std::string toString(const FilterMethod &m)
+{
+    switch ( m ) {
+    case FilterMethod::MovingAverage:   return "MovingAverage";
+    case FilterMethod::SavitzkyGolay23: return "SavitzkyGolay23";
+    case FilterMethod::SavitzkyGolay45: return "SavitzkyGolay45";
+    }
+    return "InvalidMethod";
+}
+
+std::ostream &operator<<(std::ostream &os, const FilterMethod &m)
+{
+    os << toString(m);
+    return os;
+}
+
+std::istream &operator>>(std::istream &is, FilterMethod &m)
+{
+    std::string s;
+    is >> s;
+    if ( s == std::string("MovingAverage") )        m = FilterMethod::MovingAverage;
+    else if ( s == std::string("SavitzkyGolay23") ) m = FilterMethod::SavitzkyGolay23;
+    else if ( s == std::string("SavitzkyGolay45") ) m = FilterMethod::SavitzkyGolay45;
+    else /* Default */ m = FilterMethod::MovingAverage;
+    return is;
+}

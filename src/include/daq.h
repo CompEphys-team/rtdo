@@ -27,6 +27,8 @@ public:
 protected:
     bool running;
     Stimulation currentStim;
+
+    double samplingDt() const;
 };
 
 #endif // DAQ_H

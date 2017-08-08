@@ -3,6 +3,7 @@
 #include <QString>
 #include <unistd.h>
 #include "supportcode.h"
+#include "session.h"
 
 #define AIBUFSZ 2048
 
@@ -40,7 +41,7 @@ void ComediDAQ::run(Stimulation s)
     currentStim = s;
     qI.flush();
     qV.flush();
-    int qSize = currentStim.duration / p.dt + 1;
+    int qSize = currentStim.duration / samplingDt() + 1;
     qI.resize(qSize);
     qV.resize(qSize);
 
@@ -193,20 +194,22 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
             if ( ret != aidev )
                 throw std::runtime_error("Failed to set AI read subdevice");
 
-            aiDt = 1e6 * p.dt;
+            aiDt = 1e6 * samplingDt();
             aiChans[0] = CR_PACK(V.idx, V.range, V.aref);
             aiChans[1] = CR_PACK(I.idx, I.range, I.aref);
             nAIChans = V.active + I.active;
             ret = comedi_get_cmd_generic_timed(dev, aidev, &aicmd, nAIChans, aiDt);
             if ( ret < 0 )
                 throw std::runtime_error(std::string("Failed AI command setup: ") + comedi_strerror(comedi_errno()));
-            if ( aiDt != aicmd.scan_begin_arg )
+            if ( aiDt != aicmd.scan_begin_arg ) {
                 std::cout << "Warning: AI sampling interval is " << aicmd.scan_begin_arg << " ns instead of the requested " << aiDt << " ns." << std::endl;
+                std::cout << "AI time scale is invalid; change (likely reduce) time step or oversampling rate to correct this issue." << std::endl;
+            }
             aicmd.chanlist = aiChans + !V.active;
             aicmd.start_src = TRIG_INT;
             aicmd.start_arg = 0;
             aicmd.stop_src = TRIG_COUNT;
-            aicmd.stop_arg = currentStim.duration * 1e6 / aicmd.scan_begin_arg;
+            aicmd.stop_arg = currentStim.duration * 1e6 / aiDt + (p.filter.active ? p.filter.width : 0);
             aicmd.flags |= TRIG_DITHER;
 
             ret = comedi_command_test(dev, &aicmd);
@@ -229,20 +232,23 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
             if ( ret != aodev )
                 throw std::runtime_error("Failed to set AO write subdevice");
 
-            int scan_ns = currentStim.duration * 1e6 / (aoBufSz-sizeof(aosampl_t)) / sizeof(aosampl_t);
+            int scan_ns = currentStim.duration * 1e6 / ((aoBufSz-sizeof(aosampl_t)) / sizeof(aosampl_t));
             do {
                 ret = comedi_get_cmd_generic_timed(dev, aodev, &aocmd, 1, scan_ns);
                 if ( ret < 0 )
                     throw std::runtime_error(std::string("Failed AO command setup: ") + comedi_strerror(comedi_errno()));
                 scan_ns += 8;
+                aocmd.stop_arg = currentStim.duration*1e6 / aocmd.scan_begin_arg
+                        + 1 /* return to baseV upon completion */
+                        + (p.filter.active ? p.filter.width/2 : 0); /* preload filter to give accurately filtered first sample */
+                        // Note, AO does not need to be running past the stimulation's end even when filtering, as the output is V0 anyway.
             // Ensure the entire stimulation fits into one buffer write (can't read & write simultaneously):
-            } while ( aocmd.scan_begin_arg * aoBufSz/sizeof(aosampl_t) < currentStim.duration * 1e6 );
+            } while ( aocmd.stop_arg > aoBufSz/sizeof(aosampl_t) );
             aoChan = CR_PACK(O.idx, O.range, O.aref);
             aocmd.chanlist =& aoChan;
             aocmd.start_src = TRIG_INT;
             aocmd.start_arg = 0;
             aocmd.stop_src = TRIG_COUNT;
-            aocmd.stop_arg = currentStim.duration*1e6 / aocmd.scan_begin_arg + 1;
             aocmd.flags |= TRIG_DEGLITCH;
 
             ret = comedi_command_test(dev, &aicmd);
@@ -253,8 +259,8 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
                 throw std::runtime_error(std::string("Failed AO command test: ") + comedi_strerror(comedi_errno()));
 
             aoData.resize(aocmd.stop_arg);
-            for ( unsigned int i = 0; i < aocmd.stop_arg-1; i++ )
-                aoData[i] = conO.toSamp(getCommandVoltage(currentStim, 1e-6 * aocmd.scan_begin_arg * i));
+            for ( unsigned int i = 0, offset = (p.filter.active ? p.filter.width/2 : 0); i < aocmd.stop_arg-1; i++ )
+                aoData[i] = conO.toSamp(getCommandVoltage(currentStim, 1e-6 * aocmd.scan_begin_arg * (i - offset)));
             aoData.back() = V0;
         } else {
             aoData.clear();

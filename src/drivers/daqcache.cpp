@@ -24,7 +24,7 @@ void DAQCache::run(Stimulation s)
             break;
     }
     if ( iterC == cache.end() ) {
-        cache.emplace_back(currentStim, p.cache.numTraces, currentStim.duration/p.dt + 1);
+        cache.emplace_back(currentStim, p.cache.numTraces, currentStim.duration/samplingDt() + 1 + (p.filter.active ? p.filter.width : 0));
         iterC = --cache.end();
         iterI = iterC->sampI[0].begin();
         iterV = iterC->sampV[0].begin();

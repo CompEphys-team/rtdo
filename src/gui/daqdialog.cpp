@@ -4,6 +4,8 @@
 #include <QMessageBox>
 #include <QStandardItemModel>
 
+static std::vector<FilterMethod> methods;
+
 DAQDialog::DAQDialog(Session &s, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::DAQDialog),
@@ -11,6 +13,7 @@ DAQDialog::DAQDialog(Session &s, QWidget *parent) :
 {
     ui->setupUi(this);
     ui->buttonBox->addButton("Apply and set as project default", QDialogButtonBox::ApplyRole);
+    ui->samplesPerDt->setSuffix(ui->samplesPerDt->suffix().arg(session.project.dt()));
     chanUI[0] = {ui->channel, ui->range, ui->reference, ui->conversionFactor, ui->offset}; // Voltage in
     chanUI[1] = {ui->channel_2, ui->range_2, ui->reference_2, ui->conversionFactor_2, ui->offset_2}; // Current in
     chanUI[2] = {ui->channel_3, ui->range_3, ui->reference_3, ui->conversionFactor_3, ui->offset_3}; // Voltage cmd
@@ -24,6 +27,12 @@ DAQDialog::DAQDialog(Session &s, QWidget *parent) :
 
     connect(&session, SIGNAL(DAQDataChanged()), this, SLOT(importData()));
     connect(this, SIGNAL(apply(DAQData)), &session, SLOT(setDAQData(DAQData)));
+
+    methods = {FilterMethod::MovingAverage, FilterMethod::SavitzkyGolay23, FilterMethod::SavitzkyGolay45};
+    QStringList labels;
+    for ( FilterMethod m : methods )
+        labels << QString::fromStdString(toString(m));
+    ui->filterMethod->addItems(labels);
 
     importData();
 }
@@ -54,6 +63,11 @@ void DAQDialog::importData()
     ui->numTraces->setValue(p.cache.numTraces);
     ui->average->setChecked(p.cache.averageWhileCollecting);
     ui->useMedian->setChecked(p.cache.useMedian);
+
+    ui->filter->setChecked(p.filter.active);
+    ui->samplesPerDt->setValue(p.filter.samplesPerDt);
+    ui->filterWidth->setValue(p.filter.width);
+    ui->filterMethod->setCurrentText(QString::fromStdString(toString(p.filter.method)));
 }
 
 DAQData DAQDialog::exportData()
@@ -78,6 +92,18 @@ DAQData DAQDialog::exportData()
     p.cache.numTraces = ui->numTraces->value();
     p.cache.averageWhileCollecting = ui->average->isChecked();
     p.cache.useMedian = ui->useMedian->isChecked();
+
+    p.filter.active = ui->filter->isChecked();
+    p.filter.samplesPerDt = ui->samplesPerDt->value();
+    p.filter.width = ui->filterWidth->value();
+    if ( p.filter.width % 2 == 0 )
+        ui->filterWidth->setValue(++p.filter.width);
+    for ( FilterMethod m : methods ) {
+        if ( QString::fromStdString(toString(m)) == ui->filterMethod->currentText() ) {
+            p.filter.method = m;
+            break;
+        }
+    }
 
     emit apply(p);
     return p;

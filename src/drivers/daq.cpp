@@ -14,3 +14,10 @@ DAQ::DAQ(Session &session) :
 DAQ::~DAQ()
 {
 }
+
+double DAQ::samplingDt() const
+{
+    return p.filter.active
+            ? session.project.dt() / p.filter.samplesPerDt
+            : session.project.dt();
+}

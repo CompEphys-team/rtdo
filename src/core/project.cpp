@@ -48,7 +48,6 @@ void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
 {
     addAP(arg, "DAQ.simulate", p, &DAQData::simulate);
     addAP(arg, "DAQ.devNo", p, &DAQData::devNo);
-    addAP(arg, "DAQ.dt", p, &DAQData::dt);
 
     QString labels[] = {"DAQ.V", "DAQ.I", "DAQ.Vcmd"};
     ChnData DAQData::*chans[] = {&DAQData::voltageChn, &DAQData::currentChn, &DAQData::stimChn};
@@ -64,6 +63,11 @@ void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
     addAP(arg, "DAQ.cache.numTraces", p, &DAQData::cache, &CacheData::numTraces);
     addAP(arg, "DAQ.cache.useMedian", p, &DAQData::cache, &CacheData::useMedian);
     addAP(arg, "DAQ.cache.averageWhileCollecting", p, &DAQData::cache, &CacheData::averageWhileCollecting);
+
+    addAP(arg, "DAQ.filter.active", p, &DAQData::filter, &FilterData::active);
+    addAP(arg, "DAQ.filter.samplesPerDt", p, &DAQData::filter, &FilterData::samplesPerDt);
+    addAP(arg, "DAQ.filter.method", p, &DAQData::filter, &FilterData::method);
+    addAP(arg, "DAQ.filter.width", p, &DAQData::filter, &FilterData::width);
 }
 
 void Project::setModel(const QString &modelfile)

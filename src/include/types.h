@@ -84,16 +84,29 @@ struct CacheData
     bool useMedian = false;
 };
 
+enum class FilterMethod { MovingAverage, SavitzkyGolay23, SavitzkyGolay45 };
+std::string toString(const FilterMethod &m);
+std::ostream& operator<<(std::ostream& os, const FilterMethod &m);
+std::istream& operator>>(std::istream& is, FilterMethod &m);
+
+struct FilterData
+{
+    bool active = false;
+    FilterMethod method;
+    int samplesPerDt = 10;
+    int width;
+};
+
 struct DAQData
 {
     bool simulate;
-    double dt = 0.25;
     int devNo = 0;
     inline std::string devname() const { std::stringstream ss; ss << "/dev/comedi" << devNo; return ss.str(); }
     ChnData currentChn;
     ChnData voltageChn;
     ChnData stimChn;
     CacheData cache;
+    FilterData filter;
 };
 
 struct ThreadData
