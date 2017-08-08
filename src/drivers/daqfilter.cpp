@@ -11,6 +11,8 @@ DAQFilter::DAQFilter(Session &s) :
 {
     if ( p.cache.active )
         daq = new DAQCache(session);
+    else if ( p.simulate )
+        daq = s.project.experiment().createSimulator(s, true);
     else
         daq = new RTMaybe::ComediDAQ(session);
 
@@ -56,7 +58,7 @@ DAQFilter::DAQFilter(Session &s) :
 
 DAQFilter::~DAQFilter()
 {
-    delete daq;
+    session.project.experiment().destroySimulator(daq);
 }
 
 void DAQFilter::setAdjustableParam(size_t idx, double value)

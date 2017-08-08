@@ -159,7 +159,11 @@ class SimulatorImpl : public DAQ
 {
 private:
     struct CacheStruct {
-        CacheStruct(Stimulation s) : _stim(s), _voltage(s.duration/DT), _current(s.duration/DT) {}
+        CacheStruct(Stimulation s, double sDt, int extraSamples) :
+            _stim(s),
+            _voltage(s.duration/sDt + extraSamples),
+            _current(s.duration/sDt + extraSamples)
+        {}
         Stimulation _stim;
         std::vector<scalar> _voltage;
         std::vector<scalar> _current;
@@ -172,9 +176,10 @@ private:
     std::list<CacheStruct> cache;
     std::list<CacheStruct>::iterator currentCacheEntry;
     size_t currentSample;
+    bool useRealism;
 
 public:
-    SimulatorImpl(Session &session) : DAQ(session)
+    SimulatorImpl(Session &session, bool useRealism) : DAQ(session), useRealism(useRealism)
     {
         initialise();
     }
@@ -186,6 +191,19 @@ public:
         currentStim = s;
         currentSample = 0;
 
+        double sDt = DT;
+        int extraSamples = 0;
+        scalar tStart = 0, tEnd = s.duration;
+
+        if ( useRealism ) {
+            sDt = samplingDt();
+            if ( p.filter.active ) {
+                extraSamples = p.filter.width;
+                tStart = -int(p.filter.width/2) * sDt;
+                tEnd = s.duration - tStart;
+            }
+        }
+
         // Check if requested stimulation has been used before
         for ( currentCacheEntry = cache.begin(); currentCacheEntry != cache.end(); ++currentCacheEntry ) {
             if ( currentCacheEntry->_stim == s ) {
@@ -193,14 +211,14 @@ public:
                 return;
             }
         }
-        currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(s));
+        currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(s, sDt, extraSamples));
 
-        scalar t = 0;
+        scalar t = tStart;
         unsigned int iT = 0;
         scalar Isyn;
 )EOF";
-    ss << "        const scalar mdt = DT/simCycles" << SUFFIX << ";" << endl;
-    ss << "        while ( t <= s.duration ) {" << endl;
+    ss << "        const scalar mdt = sDt/simCycles" << SUFFIX << ";" << endl;
+    ss << "        while ( t <= tEnd ) {" << endl;
     ss << "            scalar Vcmd = getCommandVoltage(s, t);" << endl;
     ss << "            for ( unsigned int mt = 0; mt < simCycles" << SUFFIX << "; mt++ ) {" << endl;
     ss << "                Isyn = (clampGain" << SUFFIX << "*(Vcmd-V) - V) / accessResistance" << SUFFIX << ";" << endl;
@@ -210,9 +228,9 @@ public:
 
             currentCacheEntry->_voltage[iT] = V;
             currentCacheEntry->_current[iT] = Isyn;
-            t += DT;
+            t += sDt;
             iT++;
-        } // end while t <= s.duration
+        } // end while t <= tEnd
 
         saveState();
     }
@@ -289,7 +307,7 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
 
     ss << daqCode();
     ss << endl;
-    ss << "inline DAQ *createSim(Session &session) { return new SimulatorImpl(session); }" << endl;
+    ss << "inline DAQ *createSim(Session &session, bool useRealism) { return new SimulatorImpl(session, useRealism); }" << endl;
     ss << "inline void destroySim(DAQ *sim) { delete sim; }" << endl;
     ss << endl;
 

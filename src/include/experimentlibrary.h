@@ -13,7 +13,7 @@ public:
 
     void GeNN_modelDefinition(NNmodel &);
 
-    inline DAQ *createSimulator(Session &session) { return pointers.createSim(session); }
+    inline DAQ *createSimulator(Session &session, bool useRealismSettings) { return pointers.createSim(session, useRealismSettings); }
     inline void destroySimulator(DAQ *sim) { pointers.destroySim(sim); }
 
     void setRunData(RunData rund); //!< Sets the RunData variables in the library, affecting all future calls to step().
@@ -38,7 +38,7 @@ public:
         void (*pull)(void);
         void (*step)(void);
         void (*reset)(void);
-        DAQ *(*createSim)(Session&);
+        DAQ *(*createSim)(Session&, bool);
         void (*destroySim)(DAQ *);
         std::function<void(void)> pushErr;
         std::function<void(void)> pullErr;

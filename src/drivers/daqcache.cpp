@@ -1,17 +1,18 @@
 #include "daqcache.h"
 #include "comedidaq.h"
 #include <algorithm>
+#include "session.h"
 
 DAQCache::DAQCache(Session &session) :
     DAQ(session),
-    daq(new RTMaybe::ComediDAQ(session))
+    daq(p.simulate ? (DAQ*)(session.project.experiment().createSimulator(session, true)) : (DAQ*)(new RTMaybe::ComediDAQ(session)))
 {
 
 }
 
 DAQCache::~DAQCache()
 {
-    delete daq;
+    session.project.experiment().destroySimulator(daq);
 }
 
 void DAQCache::setAdjustableParam(size_t idx, double value)

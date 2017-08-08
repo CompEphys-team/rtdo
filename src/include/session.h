@@ -99,14 +99,7 @@ protected:
     std::unique_ptr<GAFitter> m_gafitter;
     std::unique_ptr<SamplingProfiler> m_sprofiler;
 
-    class DAQDeleter
-    {
-    public:
-        DAQDeleter(Session& s) : s(s) {}
-        void operator()(DAQ* daq);
-        Session &s;
-    };
-    std::unique_ptr<DAQ, DAQDeleter> m_daq;
+    std::unique_ptr<DAQ> m_daq;
 
     QDir dir;
 

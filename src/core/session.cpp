@@ -10,7 +10,7 @@ Session::Session(Project &p, const QString &sessiondir) :
     dirtyStimd(true),
     dirtyGafs(true),
     dirtyDaqd(true),
-    m_daq(nullptr, DAQDeleter(*this))
+    m_daq(nullptr)
 {
     static bool registered = false;
     if ( !registered ) {
@@ -180,20 +180,9 @@ SamplingProfiler &Session::samplingProfiler()
 DAQ *Session::daq()
 {
     if ( !m_daq ) {
-        DAQ *daq;
-        if ( daqd.simulate ) {
-            daq = project.experiment().createSimulator(*this);
-        } else {
-            daq = new DAQFilter(*this);
-        }
-        m_daq.reset(daq);
+        m_daq.reset(new DAQFilter(*this));
     }
     return m_daq.get();
-}
-
-void Session::DAQDeleter::operator()(DAQ *daq)
-{
-    s.project.experiment().destroySimulator(daq);
 }
 
 void Session::quit()

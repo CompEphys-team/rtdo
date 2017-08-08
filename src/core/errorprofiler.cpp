@@ -11,7 +11,7 @@ const quint32 ErrorProfiler::version = 103;
 ErrorProfiler::ErrorProfiler(Session &session) :
     SessionWorker(session),
     lib(session.project.experiment()),
-    daq(lib.createSimulator(session)),
+    daq(lib.createSimulator(session, false)),
     aborted(false)
 {
     connect(this, SIGNAL(doAbort()), this, SLOT(clearAbort()));
