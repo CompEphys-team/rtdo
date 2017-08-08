@@ -68,13 +68,13 @@ __host__ __device__ scalar getCommandVoltage(const Stimulation &I, scalar t)
     if ( I.empty() )
         return I.baseV;
     const Stimulation::Step *s = I.begin();
-    if ( t < s->t ) {
+    if ( t < 0 || t >= I.duration ) {
+        Vcmd = I.baseV;
+    } else if ( t < s->t ) {
         if ( s->ramp )
             Vcmd = I.baseV + (s->V - I.baseV) * t/s->t;
         else
             Vcmd = I.baseV;
-    } else if ( t >= I.duration ) {
-        Vcmd = I.baseV;
     } else {
         while ( s != I.end() && s->t <= t )
             s++;
