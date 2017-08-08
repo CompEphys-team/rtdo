@@ -14,6 +14,11 @@ DAQCache::~DAQCache()
     delete daq;
 }
 
+void DAQCache::setAdjustableParam(size_t idx, double value)
+{
+    daq->setAdjustableParam(idx, value);
+}
+
 void DAQCache::run(Stimulation s)
 {
     if ( running )

@@ -15,6 +15,7 @@ public:
     DAQCache(Session &session);
     ~DAQCache();
 
+    void setAdjustableParam(size_t idx, double value);
     void run(Stimulation s);
     void next();
     void reset();

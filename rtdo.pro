@@ -117,7 +117,6 @@ HEADERS  += \
     src/include/gafitterwidget.h \
     src/include/parameterfitplotter.h \
     src/include/stimulationplotter.h \
-    src/include/simulator.h \
     src/include/stimulationgraph.h \
     src/include/stimulationcreator.h \
     src/include/gafittersettingsdialog.h \

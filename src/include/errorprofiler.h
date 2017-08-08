@@ -64,7 +64,7 @@ protected:
 
 private:
     ExperimentLibrary &lib;
-    Simulator *daq;
+    DAQ *daq;
 
     bool aborted;
 

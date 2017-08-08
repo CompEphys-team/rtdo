@@ -2,7 +2,6 @@
 #define PROFILERLIBRARY_H
 
 #include "metamodel.h"
-#include "simulator.h"
 #include <functional>
 
 class ProfilerLibrary

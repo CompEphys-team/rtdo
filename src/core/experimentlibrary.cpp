@@ -155,7 +155,7 @@ std::string ExperimentLibrary::daqCode()
 {
     std::stringstream ss;
     ss << R"EOF(
-class SimulatorImpl : public Simulator
+class SimulatorImpl : public DAQ
 {
 private:
     struct CacheStruct {
@@ -174,7 +174,7 @@ private:
     size_t currentSample;
 
 public:
-    SimulatorImpl(Session &session) : Simulator(session)
+    SimulatorImpl(Session &session) : DAQ(session)
     {
         initialise();
     }
@@ -289,8 +289,8 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
 
     ss << daqCode();
     ss << endl;
-    ss << "inline Simulator *createSim(Session &session) { return new SimulatorImpl(session); }" << endl;
-    ss << "inline void destroySim(Simulator *sim) { delete sim; }" << endl;
+    ss << "inline DAQ *createSim(Session &session) { return new SimulatorImpl(session); }" << endl;
+    ss << "inline void destroySim(DAQ *sim) { delete sim; }" << endl;
     ss << endl;
 
     ss << "extern \"C\" ExperimentLibrary::Pointers populate(std::vector<StateVariable> &state, "

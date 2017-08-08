@@ -17,6 +17,7 @@ public:
     ComediDAQ(Session &session);
     ~ComediDAQ();
 
+    inline void setAdjustableParam(size_t, double) {}
     void run(Stimulation s);
     void next();
     void reset();

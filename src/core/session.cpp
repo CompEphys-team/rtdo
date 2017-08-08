@@ -193,11 +193,7 @@ DAQ *Session::daq()
 
 void Session::DAQDeleter::operator()(DAQ *daq)
 {
-    Simulator *sim = dynamic_cast<Simulator*>(daq);
-    if ( sim )
-        s.project.experiment().destroySimulator(sim);
-    else
-        delete daq;
+    s.project.experiment().destroySimulator(daq);
 }
 
 void Session::quit()

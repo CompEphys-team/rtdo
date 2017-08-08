@@ -2,7 +2,7 @@
 #define EXPERIMENTCONSTRUCTOR_H
 
 #include "metamodel.h"
-#include "simulator.h"
+#include "daq.h"
 #include <functional>
 
 class ExperimentLibrary
@@ -13,8 +13,8 @@ public:
 
     void GeNN_modelDefinition(NNmodel &);
 
-    inline Simulator *createSimulator(Session &session) { return pointers.createSim(session); }
-    inline void destroySimulator(Simulator *sim) { pointers.destroySim(sim); }
+    inline DAQ *createSimulator(Session &session) { return pointers.createSim(session); }
+    inline void destroySimulator(DAQ *sim) { pointers.destroySim(sim); }
 
     void setRunData(RunData rund); //!< Sets the RunData variables in the library, affecting all future calls to step().
 
@@ -38,8 +38,8 @@ public:
         void (*pull)(void);
         void (*step)(void);
         void (*reset)(void);
-        Simulator *(*createSim)(Session&);
-        void (*destroySim)(Simulator *);
+        DAQ *(*createSim)(Session&);
+        void (*destroySim)(DAQ *);
         std::function<void(void)> pushErr;
         std::function<void(void)> pullErr;
     };

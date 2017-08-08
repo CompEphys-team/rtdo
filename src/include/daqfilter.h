@@ -9,6 +9,7 @@ public:
     DAQFilter(Session &s);
     ~DAQFilter();
 
+    void setAdjustableParam(size_t idx, double value);
     void run(Stimulation s);
     void next();
     void reset();
