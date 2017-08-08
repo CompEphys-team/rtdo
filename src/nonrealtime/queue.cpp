@@ -17,7 +17,7 @@ public:
 
     ~Impl()
     {
-        delete _data;
+        delete[] _data;
     }
 
     bool push(T message)
@@ -85,7 +85,7 @@ public:
     void resize(int newSize)
     {
         if ( SIZE < newSize ) {
-            delete _data;
+            delete[] _data;
             _data = new T[newSize];
             SIZE = newSize;
         }
