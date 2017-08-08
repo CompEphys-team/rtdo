@@ -36,11 +36,12 @@ void DAQCache::run(Stimulation s)
         iterV = iterC->sampV[0].begin();
         collecting = true;
     } else {
-        if ( ++iterC->trace == p.cache.numTraces ) {
+        if ( iterC->trace == p.cache.numTraces-1 ) {
             iterI = iterC->medI.begin();
             iterV = iterC->medV.begin();
             collecting = false;
         } else {
+            ++iterC->trace;
             iterI = iterC->sampI[iterC->trace].begin();
             iterV = iterC->sampV[iterC->trace].begin();
             collecting = true;
@@ -80,13 +81,15 @@ void DAQCache::next()
             iterC->medI[offset] = current;
             iterC->medV[offset] = voltage;
         } else {
-            current = *(iterI++);
-            voltage = *(iterV++);
+            current = *iterI;
+            voltage = *iterV;
         }
     } else {
-        current = *(iterI++);
-        voltage = *(iterV++);
+        current = *iterI;
+        voltage = *iterV;
     }
+    ++iterI;
+    ++iterV;
 }
 
 void DAQCache::reset()
