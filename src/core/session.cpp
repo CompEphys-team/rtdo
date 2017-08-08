@@ -1,7 +1,6 @@
 #include "session.h"
 #include <QDateTime>
 #include <QMutexLocker>
-#include "daqfilter.h"
 
 Session::Session(Project &p, const QString &sessiondir) :
     project(p),
@@ -9,8 +8,7 @@ Session::Session(Project &p, const QString &sessiondir) :
     dirtySearchd(true),
     dirtyStimd(true),
     dirtyGafs(true),
-    dirtyDaqd(true),
-    m_daq(nullptr)
+    dirtyDaqd(true)
 {
     static bool registered = false;
     if ( !registered ) {
@@ -175,14 +173,6 @@ SamplingProfiler &Session::samplingProfiler()
         m_sprofiler.reset(f);
     }
     return *m_sprofiler;
-}
-
-DAQ *Session::daq()
-{
-    if ( !m_daq ) {
-        m_daq.reset(new DAQFilter(*this));
-    }
-    return m_daq.get();
 }
 
 void Session::quit()
@@ -385,7 +375,6 @@ void Session::setDAQData(DAQData d)
     if ( QThread::currentThread() == &thread ) {
         daqd = d;
         dirtyDaqd = true;
-        m_daq.release();
         emit DAQDataChanged();
     } else {
         redirectDAQData(d, QPrivateSignal());

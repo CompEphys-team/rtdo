@@ -39,13 +39,6 @@ public:
     GAFitter &gaFitter();
     SamplingProfiler &samplingProfiler();
 
-    /**
-     * Note, DAQ instances are not SessionWorkers.
-     * Caution: The DAQ object is deleted whenever a DAQData change becomes effective, and must therefore be reacquired
-     * for every new task.
-     */
-    DAQ *daq();
-
     void quit();
 
     /**
@@ -98,8 +91,6 @@ protected:
     std::unique_ptr<WavesetCreator> m_wavesets;
     std::unique_ptr<GAFitter> m_gafitter;
     std::unique_ptr<SamplingProfiler> m_sprofiler;
-
-    std::unique_ptr<DAQ> m_daq;
 
     QDir dir;
 

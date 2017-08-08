@@ -1,6 +1,7 @@
 #include "gafitter.h"
 #include "session.h"
 #include "supportcode.h"
+#include "daqfilter.h"
 
 const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
@@ -70,7 +71,7 @@ void GAFitter::run(WaveSource src)
     deck = *output.deck.deck();
     stimIdx = 0;
 
-    daq = session.daq();
+    daq = new DAQFilter(session);
 
     if ( session.daqData().simulate ) {
         for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
@@ -134,6 +135,9 @@ void GAFitter::run(WaveSource src)
         for ( const scalar &t : out.targets )
             os << t;
     }
+
+    delete daq;
+    daq = nullptr;
 }
 
 void GAFitter::load(const QString &act, const QString &, QFile &results)
