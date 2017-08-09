@@ -243,7 +243,7 @@ void GAFitter::procreate()
         stimIdx = findNextStim();
         // In cached use, searching for an available stim makes sense...
         // In uncached use, this would just cause a busy loop and waste time that could be used to mutate/reinit
-        if ( session.daqData().cache.active )
+        if ( !session.daqData().cache.active )
             break;
     } while ( daq->throttledFor(stims.at(stimIdx)) > 0 );
 
@@ -288,7 +288,7 @@ void GAFitter::procreate()
         }
     }
 
-    if ( session.daqData().cache.active )
+    if ( !session.daqData().cache.active )
         QThread::msleep(daq->throttledFor(stims.at(stimIdx)));
 }
 
