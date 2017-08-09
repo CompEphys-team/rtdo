@@ -4,6 +4,7 @@
 #include "daq.h"
 #include <vector>
 #include <list>
+#include <QTime>
 
 /**
  * The DAQCache class provides a cached/caching interface to an actually acquiring DAQ object.
@@ -28,9 +29,10 @@ protected:
     {
         Cache(Stimulation stim, std::size_t numTraces, std::size_t traceLen);
         Stimulation stim;
-        std::size_t trace;
+        std::size_t trace, nCollected;
         std::vector<std::vector<double>> sampI, sampV;
         std::vector<double> medI, medV;
+        std::vector<QTime> time;
     };
 
     std::list<Cache> cache;

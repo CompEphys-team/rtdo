@@ -446,10 +446,27 @@
       <item row="0" column="1">
        <widget class="QSpinBox" name="numTraces"/>
       </item>
-      <item row="1" column="0" colspan="2">
+      <item row="2" column="0" colspan="2">
        <widget class="QCheckBox" name="useMedian">
         <property name="text">
          <string>Use median instead of mean</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="timeout">
+        <property name="suffix">
+         <string> s</string>
+        </property>
+        <property name="maximum">
+         <number>600</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_22">
+        <property name="text">
+         <string>Approx. cache timeout</string>
         </property>
        </widget>
       </item>

@@ -81,6 +81,7 @@ struct CacheData
     bool active = false;
     unsigned int numTraces = 10;
     bool useMedian = false;
+    int timeout = 0;
 };
 
 enum class FilterMethod { MovingAverage, SavitzkyGolay23, SavitzkyGolay45 };

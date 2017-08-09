@@ -34,6 +34,8 @@ DAQDialog::DAQDialog(Session &s, QWidget *parent) :
         labels << QString::fromStdString(toString(m));
     ui->filterMethod->addItems(labels);
 
+    ui->timeout->setSpecialValueText("No timeout");
+
     importData();
 }
 
@@ -64,6 +66,7 @@ void DAQDialog::importData()
     ui->cache->setChecked(p.cache.active);
     ui->numTraces->setValue(p.cache.numTraces);
     ui->useMedian->setChecked(p.cache.useMedian);
+    ui->timeout->setValue(p.cache.timeout * 1e-3); // ms -> s
 
     ui->filter->setChecked(p.filter.active);
     ui->samplesPerDt->setValue(p.filter.samplesPerDt);
@@ -93,6 +96,7 @@ DAQData DAQDialog::exportData()
     p.cache.active = ui->cache->isChecked();
     p.cache.numTraces = ui->numTraces->value();
     p.cache.useMedian = ui->useMedian->isChecked();
+    p.cache.timeout = ui->timeout->value() * 1e3; // s -> ms
 
     p.filter.active = ui->filter->isChecked();
     p.filter.samplesPerDt = ui->samplesPerDt->value();
