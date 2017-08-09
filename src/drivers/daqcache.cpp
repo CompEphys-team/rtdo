@@ -51,13 +51,8 @@ void DAQCache::run(Stimulation s)
             iterV = iterC->medV.begin();
             collecting = false;
         } else if ( daq->throttledFor(s) > 0 ) {
-            if ( p.cache.averageWhileCollecting ) {
-                iterI = iterC->medI.begin();
-                iterV = iterC->medV.begin();
-            } else {
-                iterI = iterC->sampI[iterC->trace].begin();
-                iterV = iterC->sampV[iterC->trace].begin();
-            }
+            iterI = iterC->medI.begin();
+            iterV = iterC->medV.begin();
             collecting = false;
         } else {
             ++iterC->trace;
@@ -83,28 +78,23 @@ void DAQCache::next()
         *iterI = daq->current;
         *iterV = daq->voltage;
 
-        if ( p.cache.averageWhileCollecting ) {
-            std::size_t offset = iterI - iterC->sampI[iterC->trace].begin();
-            if ( p.cache.useMedian ) { // Terrible idea for performance!
-                std::vector<double> curr(iterC->trace + 1), volt(iterC->trace + 1);
-                for ( std::size_t i = 0; i <= iterC->trace; i++ ) {
-                    curr[i] = iterC->sampI[i][offset];
-                    volt[i] = iterC->sampV[i][offset];
-                }
-                std::sort(curr.begin(), curr.end());
-                std::sort(volt.begin(), volt.end());
-                current = curr[iterC->trace / 2];
-                voltage = volt[iterC->trace / 2];
-            } else {
-                current = (iterC->medI[offset] * iterC->trace + *iterI) / (iterC->trace+1);
-                voltage = (iterC->medV[offset] * iterC->trace + *iterV) / (iterC->trace+1);
+        std::size_t offset = iterI - iterC->sampI[iterC->trace].begin();
+        if ( p.cache.useMedian ) {
+            std::vector<double> curr(iterC->trace + 1), volt(iterC->trace + 1);
+            for ( std::size_t i = 0; i <= iterC->trace; i++ ) {
+                curr[i] = iterC->sampI[i][offset];
+                volt[i] = iterC->sampV[i][offset];
             }
-            iterC->medI[offset] = current;
-            iterC->medV[offset] = voltage;
+            std::sort(curr.begin(), curr.end());
+            std::sort(volt.begin(), volt.end());
+            current = curr[iterC->trace / 2];
+            voltage = volt[iterC->trace / 2];
         } else {
-            current = *iterI;
-            voltage = *iterV;
+            current = (iterC->medI[offset] * iterC->trace + *iterI) / (iterC->trace+1);
+            voltage = (iterC->medV[offset] * iterC->trace + *iterV) / (iterC->trace+1);
         }
+        iterC->medI[offset] = current;
+        iterC->medV[offset] = voltage;
     } else {
         current = *iterI;
         voltage = *iterV;

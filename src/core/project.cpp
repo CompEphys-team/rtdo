@@ -64,7 +64,6 @@ void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
     addAP(arg, "DAQ.cache.active", p, &DAQData::cache, &CacheData::active);
     addAP(arg, "DAQ.cache.numTraces", p, &DAQData::cache, &CacheData::numTraces);
     addAP(arg, "DAQ.cache.useMedian", p, &DAQData::cache, &CacheData::useMedian);
-    addAP(arg, "DAQ.cache.averageWhileCollecting", p, &DAQData::cache, &CacheData::averageWhileCollecting);
 
     addAP(arg, "DAQ.filter.active", p, &DAQData::filter, &FilterData::active);
     addAP(arg, "DAQ.filter.samplesPerDt", p, &DAQData::filter, &FilterData::samplesPerDt);

@@ -63,7 +63,6 @@ void DAQDialog::importData()
 
     ui->cache->setChecked(p.cache.active);
     ui->numTraces->setValue(p.cache.numTraces);
-    ui->average->setChecked(p.cache.averageWhileCollecting);
     ui->useMedian->setChecked(p.cache.useMedian);
 
     ui->filter->setChecked(p.filter.active);
@@ -93,7 +92,6 @@ DAQData DAQDialog::exportData()
 
     p.cache.active = ui->cache->isChecked();
     p.cache.numTraces = ui->numTraces->value();
-    p.cache.averageWhileCollecting = ui->average->isChecked();
     p.cache.useMedian = ui->useMedian->isChecked();
 
     p.filter.active = ui->filter->isChecked();

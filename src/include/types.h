@@ -80,7 +80,6 @@ struct CacheData
 {
     bool active = false;
     unsigned int numTraces = 10;
-    bool averageWhileCollecting = true;
     bool useMedian = false;
 };
 
