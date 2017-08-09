@@ -101,11 +101,22 @@ void DAQCache::next()
             }
             std::sort(curr.begin(), curr.end());
             std::sort(volt.begin(), volt.end());
-            current = curr[iterC->nCollected/2];
-            voltage = volt[iterC->nCollected/2];
+            if ( iterC->nCollected % 2 == 0 ) {
+                current = (curr[iterC->nCollected/2] + curr[iterC->nCollected/2 - 1]) / 2;
+                voltage = (volt[iterC->nCollected/2] + volt[iterC->nCollected/2 - 1]) / 2;
+            } else {
+                current = curr[iterC->nCollected/2];
+                voltage = volt[iterC->nCollected/2];
+            }
         } else {
-            current = (iterC->medI[offset] * (iterC->nCollected-1) + *iterI) / iterC->nCollected;
-            voltage = (iterC->medV[offset] * (iterC->nCollected-1) + *iterV) / iterC->nCollected;
+            current = 0;
+            voltage = 0;
+            for ( std::size_t i = 0; i < iterC->nCollected; i++ ) {
+                current += iterC->sampI[i][offset];
+                voltage += iterC->sampV[i][offset];
+            }
+            current /= iterC->nCollected;
+            voltage /= iterC->nCollected;
         }
         iterC->medI[offset] = current;
         iterC->medV[offset] = voltage;
