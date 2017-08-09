@@ -9,7 +9,8 @@ public:
     DAQFilter(Session &s);
     ~DAQFilter();
 
-    void setAdjustableParam(size_t idx, double value);
+    inline void setAdjustableParam(size_t idx, double value) { daq->setAdjustableParam(idx, value); }
+    inline int throttledFor(const Stimulation &s) { return daq->throttledFor(s); }
     void run(Stimulation s);
     void next();
     void reset();

@@ -20,6 +20,16 @@ void DAQCache::setAdjustableParam(size_t idx, double value)
     daq->setAdjustableParam(idx, value);
 }
 
+int DAQCache::throttledFor(const Stimulation &s)
+{
+    int diff = daq->throttledFor(s);
+    if ( diff > 0 )
+        for ( const Cache &c : cache )
+            if ( c.stim == s )
+                return 0;
+    return diff;
+}
+
 void DAQCache::run(Stimulation s)
 {
     if ( running )
@@ -40,6 +50,15 @@ void DAQCache::run(Stimulation s)
             iterI = iterC->medI.begin();
             iterV = iterC->medV.begin();
             collecting = false;
+        } else if ( daq->throttledFor(s) > 0 ) {
+            if ( p.cache.averageWhileCollecting ) {
+                iterI = iterC->medI.begin();
+                iterV = iterC->medV.begin();
+            } else {
+                iterI = iterC->sampI[iterC->trace].begin();
+                iterV = iterC->sampV[iterC->trace].begin();
+            }
+            collecting = false;
         } else {
             ++iterC->trace;
             iterI = iterC->sampI[iterC->trace].begin();
@@ -47,8 +66,10 @@ void DAQCache::run(Stimulation s)
             collecting = true;
         }
     }
+
     if ( collecting )
         daq->run(s);
+
     running = true;
 }
 

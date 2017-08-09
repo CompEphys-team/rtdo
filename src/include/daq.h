@@ -12,6 +12,9 @@ public:
     /// For simulator instances only: Change the model parameters. For analog DAQs, this should be a no-op.
     virtual void setAdjustableParam(size_t idx, double value) = 0;
 
+    /// For throttled instances: Returns the number of ms remaining until responses to @s can start to be provided
+    virtual int throttledFor(const Stimulation &s) = 0;
+
     /// Run a stimulation/acquisition epoch, starting immediately
     virtual void run(Stimulation s) = 0;
 

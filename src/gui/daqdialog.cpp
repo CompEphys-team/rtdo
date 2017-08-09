@@ -48,6 +48,8 @@ void DAQDialog::importData()
 
     ui->analogDAQ->setChecked(!p.simulate);
     ui->deviceNumber->setValue(p.devNo);
+    ui->throttle->setValue(p.throttle);
+
     updateChannelCapabilities(-1, false);
 
     const ChnData *cp[] = {&p.voltageChn, &p.currentChn, &p.stimChn};
@@ -76,6 +78,7 @@ DAQData DAQDialog::exportData()
 
     p.simulate = !ui->analogDAQ->isChecked();
     p.devNo = ui->deviceNumber->value();
+    p.throttle = ui->throttle->value();
 
     ChnData *cp[] = {&p.voltageChn, &p.currentChn, &p.stimChn};
     for ( int i = 0; i < 3; i++ ) {

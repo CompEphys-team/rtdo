@@ -239,7 +239,13 @@ void GAFitter::procreate()
         output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
     }
 
-    stimIdx = findNextStim();
+    do {
+        stimIdx = findNextStim();
+        // In cached use, searching for an available stim makes sense...
+        // In uncached use, this would just cause a busy loop and waste time that could be used to mutate/reinit
+        if ( session.daqData().cache.active )
+            break;
+    } while ( daq->throttledFor(stims.at(stimIdx)) > 0 );
 
     scalar sigma = lib.adjustableParams[stimIdx].adjustedSigma;
     if ( settings.decaySigma )
@@ -281,6 +287,9 @@ void GAFitter::procreate()
                 p[p_err[i].idx] = p[p_err[source].idx];
         }
     }
+
+    if ( session.daqData().cache.active )
+        QThread::msleep(daq->throttledFor(stims.at(stimIdx)));
 }
 
 void GAFitter::stimulate(const Stimulation &I)

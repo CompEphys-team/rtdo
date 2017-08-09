@@ -33,6 +33,15 @@ ComediDAQ::~ComediDAQ()
     reset();
 }
 
+int ComediDAQ::throttledFor(const Stimulation &)
+{
+    int diff = p.throttle - wallclock.elapsed();
+    if ( wallclock.isNull() || diff <= 0 )
+        return 0;
+    else
+        return diff;
+}
+
 void ComediDAQ::run(Stimulation s)
 {
     if ( running )
@@ -49,6 +58,8 @@ void ComediDAQ::run(Stimulation s)
     set.wait();
     running = true;
     go.signal();
+
+    wallclock.restart();
 }
 
 void ComediDAQ::next()

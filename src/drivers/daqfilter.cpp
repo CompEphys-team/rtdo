@@ -61,11 +61,6 @@ DAQFilter::~DAQFilter()
     session.project.experiment().destroySimulator(daq);
 }
 
-void DAQFilter::setAdjustableParam(size_t idx, double value)
-{
-    daq->setAdjustableParam(idx, value);
-}
-
 void DAQFilter::run(Stimulation s)
 {
     daq->run(s);

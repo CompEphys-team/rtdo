@@ -186,6 +186,8 @@ public:
 
     ~SimulatorImpl() {}
 
+    int throttledFor(const Stimulation &) { return 0; }
+
     void run(Stimulation s)
     {
         currentStim = s;

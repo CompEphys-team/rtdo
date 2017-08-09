@@ -6,6 +6,7 @@
 #include "conditionvariable.h"
 #include "queue.h"
 #include "comediconverter.h"
+#include <QTime>
 
 namespace RTMaybe {
     class ComediDAQ;
@@ -18,6 +19,7 @@ public:
     ~ComediDAQ();
 
     inline void setAdjustableParam(size_t, double) {}
+    int throttledFor(const Stimulation &s);
     void run(Stimulation s);
     void next();
     void reset();
@@ -29,6 +31,8 @@ protected:
     RTMaybe::Thread t;
 
     ComediConverter conI, conV, conO;
+
+    QTime wallclock;
 
     static void *launchStatic(void *);
     void *launch();
