@@ -13,6 +13,8 @@ StimulationDataDialog::StimulationDataDialog(Session &s, QWidget *parent) :
     connect(this, SIGNAL(accepted()), this, SLOT(exportData()));
     connect(this, SIGNAL(rejected()), this, SLOT(importData()));
 
+    ui->maxSteps->setMaximum(Stimulation::maxSteps - 1);
+
     importData();
 }
 

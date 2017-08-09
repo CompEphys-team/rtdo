@@ -119,7 +119,7 @@ void StimulationCreator::setNStims(int n)
 void StimulationCreator::setLimits()
 {
     double minV = session.stimulationData().minVoltage, maxV = session.stimulationData().maxVoltage;
-    ui->nSteps->setMaximum(Stimulation::maxSteps);
+    ui->nSteps->setMaximum(Stimulation::maxSteps - 1);
     ui->baseV->setRange(minV, maxV);
     ui->tObsBegin->setMaximum(ui->duration->value());
     ui->tObsEnd->setMaximum(ui->duration->value());

@@ -16,7 +16,6 @@ GAFitter::GAFitter(Session &session) :
     qO(nullptr),
     RNG(),
     aborted(false),
-    deck(session),
     bias(lib.adjustableParams.size(), 0),
     p_err(lib.project.expNumCandidates()),
     output(*this)
@@ -68,7 +67,19 @@ void GAFitter::run(WaveSource src)
     // Prepare
     output = Output(*this);
     output.deck = std::move(src);
-    deck = *output.deck.deck();
+    stims = output.deck.stimulations();
+    // Integrate settling into all stimulations
+    double settleDuration = session.runData().settleDuration;
+    for ( Stimulation &stim : stims ) {
+        stim.duration += settleDuration;
+        stim.tObsBegin += settleDuration;
+        stim.tObsEnd += settleDuration;
+        for ( Stimulation::Step &step : stim ) {
+            step.t += settleDuration;
+        }
+        if ( stim.begin()->ramp )
+            stim.insert(stim.begin(), Stimulation::Step {(scalar)settleDuration, stim.baseV, false});
+    }
     stimIdx = 0;
 
     daq = new DAQFilter(session);
@@ -85,22 +96,14 @@ void GAFitter::run(WaveSource src)
         }
     }
 
-    Stimulation hold;
-    hold.duration = session.runData().settleDuration;
-    hold.clear();
-
     // Fit
     populate();
     for ( epoch = 0; !aborted && !finished(); epoch++ ) {
-        const Stimulation &stim = deck.stimulations().at(stimIdx);
-
-        // Settle
-        hold.baseV = stim.baseV;
-        settle(hold);
+        const Stimulation &stim = stims.at(stimIdx);
 
         // Stimulate
         stimulate(stim);
-        simtime += stim.duration + hold.duration;
+        simtime += stim.duration;
 
         // Advance
         lib.pullErr();
@@ -195,7 +198,7 @@ quint32 GAFitter::findNextStim()
         if ( epoch + 1 < bias.size() ) { // Initial round: Sequential order
             nextStimIdx = stimIdx + 1;
         } else if ( int(epoch) < settings.orderBiasStartEpoch ) { // Further unbiased rounds: Random order
-            nextStimIdx = RNG.uniform<quint32>(0, deck.stimulations().size()-1);
+            nextStimIdx = RNG.uniform<quint32>(0, stims.size()-1);
         } else { // Biased rounds
             double sumBias = 0;
             for ( double b : bias )
@@ -210,9 +213,9 @@ quint32 GAFitter::findNextStim()
             }
         }
     } else if ( settings.randomOrder == 1 )
-        nextStimIdx = RNG.uniform<quint32>(0, deck.stimulations().size()-1);
+        nextStimIdx = RNG.uniform<quint32>(0, stims.size()-1);
     else
-        nextStimIdx = (stimIdx + 1) % deck.stimulations().size();
+        nextStimIdx = (stimIdx + 1) % stims.size();
     return nextStimIdx;
 }
 
@@ -298,30 +301,6 @@ void GAFitter::stimulate(const Stimulation &I)
         lib.Vmem = getCommandVoltage(I, lib.t);
         pushToQ(qT + lib.t, daq->voltage, daq->current, lib.Vmem);
         lib.getErr = (lib.t > I.tObsBegin && lib.t < I.tObsEnd);
-        lib.step();
-    }
-
-    qT += I.duration;
-    daq->reset();
-}
-
-void GAFitter::settle(const Stimulation &I)
-{
-    // Set up library
-    lib.t = 0.;
-    lib.iT = 0;
-    lib.getErr = false;
-    lib.VC = true;
-    lib.Vmem = I.baseV;
-
-    // Set up DAQ
-    daq->reset();
-    daq->run(I);
-
-    // Stimulate both
-    while ( lib.t < I.duration ) {
-        daq->next();
-        pushToQ(qT + lib.t, daq->voltage, daq->current, I.baseV);
         lib.step();
     }
 

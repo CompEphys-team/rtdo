@@ -13,8 +13,6 @@ public:
     GAFitter(Session &session);
     ~GAFitter();
 
-    void stageDeck(WaveSource deck); //!< Enter a deck to be used on next run()
-
     void abort();
 
     ExperimentLibrary &lib;
@@ -62,14 +60,13 @@ protected:
 
     bool aborted;
 
-    WaveDeck deck;
+    std::vector<Stimulation> stims;
     quint32 stimIdx;
     quint32 epoch;
     std::vector<double> bias;
 
     void populate();
     void stimulate(const Stimulation &I);
-    void settle(const Stimulation &I);
     void procreate();
     quint32 findNextStim();
     bool finished();
