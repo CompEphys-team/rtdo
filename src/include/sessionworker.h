@@ -9,7 +9,7 @@ class SessionWorker : public QObject
 {
     Q_OBJECT
 public:
-    SessionWorker(Session &session) : session(session) {}
+    SessionWorker(Session &session);
 
     virtual inline void abort() {}
 

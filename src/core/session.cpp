@@ -128,9 +128,7 @@ void Session::addAPs()
 Wavegen &Session::wavegen()
 {
     if ( !m_wavegen ) {
-        Wavegen *w = new Wavegen(*this);
-        w->moveToThread(&thread);
-        m_wavegen.reset(w);
+        m_wavegen.reset(new Wavegen(*this));
     }
     return *m_wavegen;
 }
@@ -138,9 +136,7 @@ Wavegen &Session::wavegen()
 ErrorProfiler &Session::profiler()
 {
     if ( !m_profiler ) {
-        ErrorProfiler *p = new ErrorProfiler(*this);
-        p->moveToThread(&thread);
-        m_profiler.reset(p);
+        m_profiler.reset(new ErrorProfiler(*this));
     }
     return *m_profiler;
 }
@@ -148,9 +144,7 @@ ErrorProfiler &Session::profiler()
 WavesetCreator &Session::wavesets()
 {
     if ( !m_wavesets ) {
-        WavesetCreator *s = new WavesetCreator(*this);
-        s->moveToThread(&thread);
-        m_wavesets.reset(s);
+        m_wavesets.reset(new WavesetCreator(*this));
     }
     return *m_wavesets;
 }
@@ -158,9 +152,7 @@ WavesetCreator &Session::wavesets()
 GAFitter &Session::gaFitter()
 {
     if ( !m_gafitter ) {
-        GAFitter *f = new GAFitter(*this);
-        f->moveToThread(&thread);
-        m_gafitter.reset(f);
+        m_gafitter.reset(new GAFitter(*this));
     }
     return *m_gafitter;
 }
@@ -168,9 +160,7 @@ GAFitter &Session::gaFitter()
 SamplingProfiler &Session::samplingProfiler()
 {
     if ( !m_sprofiler) {
-        SamplingProfiler *f = new SamplingProfiler(*this);
-        f->moveToThread(&thread);
-        m_sprofiler.reset(f);
+        m_sprofiler.reset(new SamplingProfiler(*this));
     }
     return *m_sprofiler;
 }
@@ -220,6 +210,11 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
     idx = m_log.put(actor->actorName(), action, args);
     emit actionLogged(actor->actorName(), action, args, idx);
     return dir.filePath(results(idx, actor->actorName(), action));
+}
+
+void Session::appropriate(SessionWorker *worker)
+{
+    worker->moveToThread(&thread);
 }
 
 void Session::load()

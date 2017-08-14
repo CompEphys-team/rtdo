@@ -1,5 +1,12 @@
 #include "sessionworker.h"
 #include <QDataStream>
+#include "session.h"
+
+SessionWorker::SessionWorker(Session &session) :
+    session(session)
+{
+    session.appropriate(this);
+}
 
 bool SessionWorker::openSaveStream(QFile &file, QDataStream &os, quint32 format_magic, quint32 version)
 {

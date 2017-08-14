@@ -63,6 +63,8 @@ public:
 
     inline QString name() const { return dir.dirName(); }
 
+    void appropriate(SessionWorker *worker); //!< Moves @a worker to the session's worker thread
+
 public slots:
     /// Set runtime data
     void setRunData(RunData d);
