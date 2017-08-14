@@ -24,6 +24,8 @@ public:
     void next();
     void reset();
 
+    inline int nSamples() const { return currentStim.duration / samplingDt() + (p.filter.active ? p.filter.width : 0); }
+
 protected:
     bool live;
     RTMaybe::ConditionVariable ready, set, go, finish;

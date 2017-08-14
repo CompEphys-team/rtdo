@@ -40,7 +40,7 @@ void ComediDAQ::run(Stimulation s)
     currentStim = s;
     qI.flush();
     qV.flush();
-    int qSize = currentStim.duration / samplingDt() + 1;
+    int qSize = nSamples() + 1;
     qI.resize(qSize);
     qV.resize(qSize);
     conI = ComediConverter(p.currentChn, &p, true);

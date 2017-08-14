@@ -50,7 +50,7 @@ void ComediDAQ::run(Stimulation s)
     currentStim = s;
     qI.flush();
     qV.flush();
-    int qSize = currentStim.duration / samplingDt() + 1;
+    int qSize = nSamples() + 1;
     qI.resize(qSize);
     qV.resize(qSize);
 
@@ -220,7 +220,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
             aicmd.start_src = TRIG_INT;
             aicmd.start_arg = 0;
             aicmd.stop_src = TRIG_COUNT;
-            aicmd.stop_arg = currentStim.duration * 1e6 / aiDt + (p.filter.active ? p.filter.width : 0);
+            aicmd.stop_arg = nSamples();
             aicmd.flags |= TRIG_DITHER;
 
             ret = comedi_command_test(dev, &aicmd);
