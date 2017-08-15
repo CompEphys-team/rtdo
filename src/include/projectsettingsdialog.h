@@ -31,6 +31,8 @@ private slots:
 
     void keyPressEvent( QKeyEvent *e );
 
+    void on_copy_clicked();
+
 private:
     Ui::ProjectSettingsDialog *ui;
     Project *p;

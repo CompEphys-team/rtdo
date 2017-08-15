@@ -13,9 +13,23 @@ Project::Project(const QString &projectfile) :
     loadExisting(true)
 {
     addAPs();
+    loadSettings(projectfile);
+
+    // Load libraries from existing files
+    wglib.reset(new WavegenLibrary(*this, false));
+    explib.reset(new ExperimentLibrary(*this, false));
+    proflib.reset(new ProfilerLibrary(*this, false));
+
+    frozen = true;
+}
+
+void Project::loadSettings(const QString &projectfile)
+{
+    if ( frozen )
+        return;
 
     // Load config from file
-    std::ifstream proj(p_projectfile.toStdString());
+    std::ifstream proj(projectfile.toStdString());
     QString name;
     AP *it;
     proj >> name;
@@ -25,13 +39,9 @@ Project::Project(const QString &projectfile) :
         proj >> name;
     }
 
-    // Load model and libraries from existing files
+    // Set paths
+    setLocation(projectfile);
     setModel(dir() + "/model.xml");
-    wglib.reset(new WavegenLibrary(*this, false));
-    explib.reset(new ExperimentLibrary(*this, false));
-    proflib.reset(new ProfilerLibrary(*this, false));
-
-    frozen = true;
 }
 
 void Project::addAPs()
@@ -99,10 +109,12 @@ bool Project::compile()
     if ( frozen || !m_model || p_modelfile.isEmpty() || p_projectfile.isEmpty() )
         return false;
     QString dest = dir() + "/model.xml";
-    QFile destFile(dest);
-    if ( destFile.exists() )
-        destFile.remove();
-    QFile::copy(p_modelfile, dest);
+    if ( dest != p_modelfile ) {
+        QFile destFile(dest);
+        if ( destFile.exists() )
+            destFile.remove();
+        QFile::copy(p_modelfile, dest);
+    }
     wglib.reset(new WavegenLibrary(*this, true));
     explib.reset(new ExperimentLibrary(*this, true));
     proflib.reset(new ProfilerLibrary(*this, true));

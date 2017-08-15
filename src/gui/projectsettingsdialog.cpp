@@ -79,3 +79,12 @@ void ProjectSettingsDialog::keyPressEvent(QKeyEvent *e)
         close();
     QWidget::keyPressEvent(e);
 }
+
+void ProjectSettingsDialog::on_copy_clicked()
+{
+    QString file = QFileDialog::getOpenFileName(this, "Select project file", "", "Project files (*.dop)");
+    if ( !file.isEmpty() ) {
+        p->loadSettings(file);
+        setProject(p);
+    }
+}
