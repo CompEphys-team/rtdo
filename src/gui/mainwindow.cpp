@@ -246,3 +246,11 @@ void MainWindow::on_actionDAQData_triggered()
     dlg->setWindowTitle(dlg->windowTitle() + " : " + title);
     dlg->show();
 }
+
+void MainWindow::on_actionCrossload_from_other_session_triggered()
+{
+    QString loc = QFileDialog::getExistingDirectory(this, "Select session directory");
+    if ( loc.isEmpty() )
+        return;
+    session->crossloadConfig(loc);
+}

@@ -60,6 +60,33 @@ Session::Session(Project &p, const QString &sessiondir) :
     project.profiler().setRunData(rund);
 }
 
+void Session::crossloadConfig(const QString &crossSessionDir)
+{
+    SessionLog crosslog;
+    QDir crossdir;
+    if ( QDir::isRelativePath(crossSessionDir) ) {
+        crossdir = QDir(project.dir());
+        crossdir.cd(crossSessionDir);
+    } else {
+        crossdir = QDir(crossSessionDir);
+    }
+    crosslog.setLogFile(crossdir.filePath("session.log"));
+
+    for ( int row = 0; row < crosslog.rowCount(); row++ ) {
+        SessionLog::Entry entry = crosslog.entry(row);
+        QString filename = results(row, entry.actor, entry.action);
+        QFile file(crossdir.filePath(filename));
+        try {
+            if ( entry.actor == "Config" )
+                readConfig(file.fileName(), true);
+        } catch (std::runtime_error err) {
+            std::cerr << "An action could not be loaded (" << crosslog.data(crosslog.index(row, 0), Qt::UserRole).toString()
+                      << ", " << filename << ") : "
+                      << err.what() << std::endl;
+        }
+    }
+}
+
 void Session::addAPs()
 {
     addAP(runAP, "S.Run.accessResistance", this, &Session::rund, &RunData::accessResistance);
@@ -247,7 +274,7 @@ void Session::load()
     }
 }
 
-void Session::readConfig(const QString &filename)
+void Session::readConfig(const QString &filename, bool raiseDirtyFlags)
 {
     std::ifstream is(filename.toStdString());
     QString name;
@@ -286,26 +313,26 @@ void Session::readConfig(const QString &filename)
         is >> name;
     }
     if ( hasRun ) {
-        dirtyRund = false;
+        dirtyRund = raiseDirtyFlags;
         project.wavegen().setRunData(rund);
         project.experiment().setRunData(rund);
         project.profiler().setRunData(rund);
         emit runDataChanged();
     }
     if ( hasSearch ) {
-        dirtySearchd = false;
+        dirtySearchd = raiseDirtyFlags;
         emit wavegenDataChanged();
     }
     if ( hasStim ) {
-        dirtyStimd = false;
+        dirtyStimd = raiseDirtyFlags;
         emit stimulationDataChanged();
     }
     if ( hasGafs ) {
-        dirtyGafs = false;
+        dirtyGafs = raiseDirtyFlags;
         emit GAFitterSettingsChanged();
     }
     if ( hasDaq ) {
-        dirtyDaqd = false;
+        dirtyDaqd = raiseDirtyFlags;
         emit DAQDataChanged();
     }
 }

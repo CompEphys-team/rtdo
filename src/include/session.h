@@ -65,6 +65,8 @@ public:
 
     void appropriate(SessionWorker *worker); //!< Moves @a worker to the session's worker thread
 
+    void crossloadConfig(const QString &crossSessionDir);
+
 public slots:
     /// Set runtime data
     void setRunData(RunData d);
@@ -102,7 +104,7 @@ protected:
 
     void addAPs();
     void load();
-    void readConfig(const QString &filename);
+    void readConfig(const QString &filename, bool raiseDirtyFlags = false);
 
     static QString results(int idx, const QString &actor, const QString &action);
 

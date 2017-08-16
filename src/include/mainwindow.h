@@ -63,6 +63,8 @@ private slots:
 
     void on_actionDAQData_triggered();
 
+    void on_actionCrossload_from_other_session_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

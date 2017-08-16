@@ -71,6 +71,8 @@
     <addaction name="actionRunData"/>
     <addaction name="actionDAQData"/>
     <addaction name="actionGA_Fitter"/>
+    <addaction name="separator"/>
+    <addaction name="actionCrossload_from_other_session"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuFigures"/>
@@ -233,6 +235,11 @@
   <action name="actionDAQData">
    <property name="text">
     <string>Data acquisition</string>
+   </property>
+  </action>
+  <action name="actionCrossload_from_other_session">
+   <property name="text">
+    <string>Crossload from other session...</string>
    </property>
   </action>
  </widget>
