@@ -43,9 +43,6 @@ void ComediDAQ::run(Stimulation s)
     int qSize = nSamples() + 1;
     qI.resize(qSize);
     qV.resize(qSize);
-    conI = ComediConverter(p.currentChn, &p, true);
-    conV = ComediConverter(p.voltageChn, &p, true);
-    conVC = ComediConverter(p.vclampChan, &p, false);
 
     ready.signal();
     set.wait();
