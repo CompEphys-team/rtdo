@@ -32,7 +32,7 @@ protected:
     RTMaybe::Queue<lsampl_t> qI, qV;
     RTMaybe::Thread t;
 
-    ComediConverter conI, conV, conVC;
+    ComediConverter conI, conV, conVC, conCC;
 
     QTime wallclock;
 

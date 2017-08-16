@@ -106,6 +106,7 @@ struct DAQData
     ChnData currentChn;
     ChnData voltageChn;
     ChnData vclampChan;
+    ChnData cclampChan;
     CacheData cache;
     FilterData filter;
 };
