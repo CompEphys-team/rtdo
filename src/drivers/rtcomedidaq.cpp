@@ -12,7 +12,7 @@ ComediDAQ::ComediDAQ(Session &session) :
     t(&ComediDAQ::launchStatic, this),
     conI(p.currentChn, &p, true),
     conV(p.voltageChn, &p, true),
-    conO(p.stimChn, &p, false)
+    conVC(p.vclampChan, &p, false)
 {
 
 }
@@ -45,7 +45,7 @@ void ComediDAQ::run(Stimulation s)
     qV.resize(qSize);
     conI = ComediConverter(p.currentChn, &p, true);
     conV = ComediConverter(p.voltageChn, &p, true);
-    conO = ComediConverter(p.stimChn, &p, false);
+    conVC = ComediConverter(p.vclampChan, &p, false);
 
     ready.signal();
     set.wait();
@@ -96,7 +96,7 @@ void *ComediDAQ::launch()
     int aidev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, 0);
     int aodev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, 0);
     RTIME dt, toffset, reltime;
-    ChnData V, I, O;
+    ChnData V, I, Vout;
     lsampl_t vSamp, iSamp, V0, VRamp, VRampDelta;
     struct Step {
         RTIME t;
@@ -110,8 +110,8 @@ void *ComediDAQ::launch()
 
         V = p.voltageChn;
         I = p.currentChn;
-        O = p.stimChn;
-        if ( (!V.active && !I.active) || !O.active ) {
+        Vout = p.vclampChan;
+        if ( (!V.active && !I.active) || !Vout.active ) {
             // Empty loop:
             set.signal();
             go.wait();
@@ -119,8 +119,8 @@ void *ComediDAQ::launch()
             finish.signal();
             continue;
         }
-        V0 = conO.toSamp(currentStim.baseV);
-        RC_comedi_data_write(dev, aodev, O.idx, O.range, O.aref, V0);
+        V0 = conVC.toSamp(currentStim.baseV);
+        RC_comedi_data_write(dev, aodev, Vout.idx, Vout.range, Vout.aref, V0);
         rt_make_soft_real_time();
 
         // AI setup
@@ -133,14 +133,14 @@ void *ComediDAQ::launch()
         for ( const Stimulation::Step &s : currentStim ) {
             steps.push_back( Step {
                 dt * (RTIME)(nano2count((RTIME)(1e6 * s.t + offset)) / dt), // Round down
-                conO.toSamp(s.V),
+                conVC.toSamp(s.V),
                 s.ramp
             });
         }
         // Add an additional non-ramp step to return to base voltage:
         steps.push_back( Step {
             nano2count((RTIME)(1e6 * currentStim.duration)),
-            conO.toSamp(currentStim.baseV),
+            conVC.toSamp(currentStim.baseV),
             false
         });
         stepIter = steps.begin();
@@ -171,19 +171,19 @@ void *ComediDAQ::launch()
             }
 
             // AO
-            if ( O.active ) {
+            if ( Vout.active ) {
                 if ( stepIter->t == reltime ) {
-                    RC_comedi_data_write(dev, aodev, O.idx, O.range, O.aref, stepIter->V);
+                    RC_comedi_data_write(dev, aodev, Vout.idx, Vout.range, Vout.aref, stepIter->V);
                     ++stepIter;
                     if ( stepIter == steps.end() ) {
-                        O.active = false;
+                        Vout.active = false;
                     } else if ( stepIter->ramp ) {
                         VRamp = (stepIter-1)->V;
                         VRampDelta = (stepIter->V - VRamp) / ((stepIter->t - reltime) / dt);
                     }
                 } else if ( stepIter->ramp ) {
                     VRamp += VRampDelta;
-                    RC_comedi_data_write(dev, aodev, O.idx, O.range, O.aref, VRamp);
+                    RC_comedi_data_write(dev, aodev, Vout.idx, Vout.range, Vout.aref, VRamp);
                 }
             }
 
@@ -193,7 +193,7 @@ void *ComediDAQ::launch()
                 rt_sleep_until(reltime + toffset);
         }
 
-        RC_comedi_data_write(dev, aodev, O.idx, O.range, O.aref, V0);
+        RC_comedi_data_write(dev, aodev, Vout.idx, Vout.range, Vout.aref, V0);
         finish.signal();
     }
 

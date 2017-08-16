@@ -54,7 +54,7 @@ void DAQDialog::importData()
 
     updateChannelCapabilities(-1, false);
 
-    const ChnData *cp[] = {&p.voltageChn, &p.currentChn, &p.stimChn};
+    const ChnData *cp[] = {&p.voltageChn, &p.currentChn, &p.vclampChan};
     for ( int i = 0; i < 3; i++ ) {
         chanUI[i].channel->setCurrentIndex(cp[i]->idx);
         chanUI[i].range->setCurrentIndex(cp[i]->range);
@@ -82,7 +82,7 @@ DAQData DAQDialog::exportData()
     p.devNo = ui->deviceNumber->value();
     p.throttle = ui->throttle->value();
 
-    ChnData *cp[] = {&p.voltageChn, &p.currentChn, &p.stimChn};
+    ChnData *cp[] = {&p.voltageChn, &p.currentChn, &p.vclampChan};
     for ( int i = 0; i < 3; i++ ) {
         int idx = chanUI[i].channel->currentIndex();
         cp[i]->idx = idx < 0 ? 0 : idx;

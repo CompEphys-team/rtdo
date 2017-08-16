@@ -17,7 +17,7 @@ ComediDAQ::ComediDAQ(Session &session) :
     t(&ComediDAQ::launchStatic, this),
     conI(p.currentChn, &p, true),
     conV(p.voltageChn, &p, true),
-    conO(p.stimChn, &p, false)
+    conVC(p.vclampChan, &p, false)
 {
 
 }
@@ -155,7 +155,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
 {
     comedi_t *dev = (comedi_t*)vdev;
     comedi_cmd aicmd, aocmd;
-    ChnData V, I, O;
+    ChnData V, I, Vout;
     lsampl_t V0;
     unsigned int aiDt;
     unsigned int aiChans[2], nAIChans, readOffset;
@@ -188,12 +188,12 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
 
         V = p.voltageChn;
         I = p.currentChn;
-        O = p.stimChn;
+        Vout = p.vclampChan;
 
         // Set AO to baseV immediately
-        V0 = conO.toSamp(currentStim.baseV);
-        if ( O.active ) {
-            ret = comedi_data_write(dev, aodev, O.idx, O.range, O.aref, V0);
+        V0 = conVC.toSamp(currentStim.baseV);
+        if ( Vout.active ) {
+            ret = comedi_data_write(dev, aodev, Vout.idx, Vout.range, Vout.aref, V0);
             if ( ret < 0 )
                 throw std::runtime_error(std::string("Failed synchronous write to AO: ") + comedi_strerror(comedi_errno()));
         }
@@ -237,7 +237,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
         }
 
         // AO setup
-        if ( O.active ) {
+        if ( Vout.active ) {
             comedi_set_write_subdevice(dev, aodev);
             ret = comedi_get_write_subdevice(dev);
             if ( ret != aodev )
@@ -255,7 +255,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
                         // Note, AO does not need to be running past the stimulation's end even when filtering, as the output is V0 anyway.
             // Ensure the entire stimulation fits into one buffer write (can't read & write simultaneously):
             } while ( aocmd.stop_arg > aoBufSz/sizeof(aosampl_t) );
-            aoChan = CR_PACK(O.idx, O.range, O.aref);
+            aoChan = CR_PACK(Vout.idx, Vout.range, Vout.aref);
             aocmd.chanlist =& aoChan;
             aocmd.start_src = TRIG_INT;
             aocmd.start_arg = 0;
@@ -271,7 +271,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
 
             aoData.resize(aocmd.stop_arg);
             for ( unsigned int i = 0, offset = (p.filter.active ? p.filter.width/2 : 0); i < aocmd.stop_arg-1; i++ )
-                aoData[i] = conO.toSamp(getCommandVoltage(currentStim, 1e-6 * aocmd.scan_begin_arg * (i - offset)));
+                aoData[i] = conVC.toSamp(getCommandVoltage(currentStim, 1e-6 * aocmd.scan_begin_arg * (i - offset)));
             aoData.back() = V0;
         } else {
             aoData.clear();
@@ -313,7 +313,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
             break;
 
         // Trigger start
-        doTrigger(dev, aiDataRemaining ? aidev : -1, O.active ? aodev : -1);
+        doTrigger(dev, aiDataRemaining ? aidev : -1, Vout.active ? aodev : -1);
 
         // Acquisition loop
         while ( running && aiDataRemaining > 0 ) {

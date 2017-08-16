@@ -105,7 +105,7 @@ struct DAQData
     int throttle = 0;
     ChnData currentChn;
     ChnData voltageChn;
-    ChnData stimChn;
+    ChnData vclampChan;
     CacheData cache;
     FilterData filter;
 };
