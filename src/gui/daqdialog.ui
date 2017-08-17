@@ -33,34 +33,13 @@
           <string>Voltage in</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_2">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_2">
-            <property name="text">
-             <string>Channel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
+          <item row="0" column="2">
            <widget class="QComboBox" name="channel"/>
           </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_5">
-            <property name="text">
-             <string>Range</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
+          <item row="1" column="2">
            <widget class="QComboBox" name="range"/>
           </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>Reference</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
+          <item row="2" column="2">
            <widget class="QComboBox" name="reference">
             <item>
              <property name="text">
@@ -84,14 +63,7 @@
             </item>
            </widget>
           </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_3">
-            <property name="text">
-             <string>Scale factor</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
+          <item row="3" column="2">
            <widget class="QDoubleSpinBox" name="conversionFactor">
             <property name="suffix">
              <string> mV/V</string>
@@ -114,7 +86,7 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
+          <item row="4" column="2">
            <widget class="QDoubleSpinBox" name="offset">
             <property name="suffix">
              <string> mV</string>
@@ -127,6 +99,44 @@
             </property>
            </widget>
           </item>
+          <item row="4" column="1">
+           <widget class="QPushButton" name="calibrate">
+            <property name="toolTip">
+             <string>Ensure both electrodes are in saline and stable, the amplifier is in current clamp mode, and its input offset is adjusted and locked.</string>
+            </property>
+            <property name="text">
+             <string>Calibrate</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Scale factor</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Reference</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Range</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Channel</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
         <widget class="QWidget" name="tab_2">
@@ -134,41 +144,13 @@
           <string>Current in</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_3">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_8">
-            <property name="text">
-             <string>Channel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
+          <item row="0" column="2">
            <widget class="QComboBox" name="channel_2"/>
           </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_10">
-            <property name="text">
-             <string>Range</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
+          <item row="1" column="2">
            <widget class="QComboBox" name="range_2"/>
           </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_11">
-            <property name="text">
-             <string>Reference</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_12">
-            <property name="text">
-             <string>Scale factor</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
+          <item row="3" column="2">
            <widget class="QDoubleSpinBox" name="conversionFactor_2">
             <property name="suffix">
              <string> nA/V</string>
@@ -191,7 +173,7 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
+          <item row="4" column="2">
            <widget class="QDoubleSpinBox" name="offset_2">
             <property name="suffix">
              <string> nA</string>
@@ -204,7 +186,7 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="1">
+          <item row="2" column="2">
            <widget class="QComboBox" name="reference_2">
             <item>
              <property name="text">
@@ -228,6 +210,44 @@
             </item>
            </widget>
           </item>
+          <item row="4" column="1">
+           <widget class="QPushButton" name="calibrate_2">
+            <property name="toolTip">
+             <string>Ensure both electrodes are in saline and stable, the amplifier is in current clamp mode, and all current commands are turned off.</string>
+            </property>
+            <property name="text">
+             <string>Calibrate</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="label_12">
+            <property name="text">
+             <string>Scale factor</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <widget class="QLabel" name="label_11">
+            <property name="text">
+             <string>Reference</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QLabel" name="label_10">
+            <property name="text">
+             <string>Range</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QLabel" name="label_8">
+            <property name="text">
+             <string>Channel</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
         <widget class="QWidget" name="tab_5">
@@ -235,34 +255,13 @@
           <string>V2</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_9">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_32">
-            <property name="text">
-             <string>Channel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QComboBox" name="channel_5"/>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_31">
-            <property name="text">
-             <string>Range</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
+          <item row="1" column="2">
            <widget class="QComboBox" name="range_5"/>
           </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_28">
-            <property name="text">
-             <string>Reference</string>
-            </property>
-           </widget>
+          <item row="0" column="2">
+           <widget class="QComboBox" name="channel_5"/>
           </item>
-          <item row="2" column="1">
+          <item row="2" column="2">
            <widget class="QComboBox" name="reference_5">
             <item>
              <property name="text">
@@ -286,14 +285,7 @@
             </item>
            </widget>
           </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_30">
-            <property name="text">
-             <string>Scale factor</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
+          <item row="3" column="2">
            <widget class="QDoubleSpinBox" name="conversionFactor_5">
             <property name="suffix">
              <string> mV/V</string>
@@ -316,7 +308,7 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
+          <item row="4" column="2">
            <widget class="QDoubleSpinBox" name="offset_5">
             <property name="suffix">
              <string> mV</string>
@@ -329,6 +321,44 @@
             </property>
            </widget>
           </item>
+          <item row="4" column="1">
+           <widget class="QPushButton" name="calibrate_5">
+            <property name="toolTip">
+             <string>Ensure both electrodes are in saline and stable, the amplifier is in current clamp mode, and its output offset is adjusted and locked.</string>
+            </property>
+            <property name="text">
+             <string>Calibrate</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="label_30">
+            <property name="text">
+             <string>Scale factor</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <widget class="QLabel" name="label_28">
+            <property name="text">
+             <string>Reference</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QLabel" name="label_31">
+            <property name="text">
+             <string>Range</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QLabel" name="label_32">
+            <property name="text">
+             <string>Channel</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
         <widget class="QWidget" name="tab_3">
@@ -336,34 +366,13 @@
           <string>Voltage out</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout_4">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_13">
-            <property name="text">
-             <string>Channel</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
+          <item row="0" column="2">
            <widget class="QComboBox" name="channel_3"/>
           </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_15">
-            <property name="text">
-             <string>Range</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
+          <item row="1" column="2">
            <widget class="QComboBox" name="range_3"/>
           </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_16">
-            <property name="text">
-             <string>Reference</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
+          <item row="2" column="2">
            <widget class="QComboBox" name="reference_3">
             <item>
              <property name="text">
@@ -387,14 +396,7 @@
             </item>
            </widget>
           </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_17">
-            <property name="text">
-             <string>Scale factor</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
+          <item row="3" column="2">
            <widget class="QDoubleSpinBox" name="conversionFactor_3">
             <property name="suffix">
              <string> mV/V</string>
@@ -417,7 +419,7 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="1">
+          <item row="4" column="2">
            <widget class="QDoubleSpinBox" name="offset_3">
             <property name="suffix">
              <string> mV</string>
@@ -427,6 +429,44 @@
             </property>
             <property name="maximum">
              <double>1000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QPushButton" name="calibrate_3">
+            <property name="toolTip">
+             <string>Ensure voltage clamp is stable, and holding potential is close to the stimulations' base voltage and locked.</string>
+            </property>
+            <property name="text">
+             <string>Calibrate</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="label_17">
+            <property name="text">
+             <string>Scale factor</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <widget class="QLabel" name="label_16">
+            <property name="text">
+             <string>Reference</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QLabel" name="label_15">
+            <property name="text">
+             <string>Range</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QLabel" name="label_13">
+            <property name="text">
+             <string>Channel</string>
             </property>
            </widget>
           </item>

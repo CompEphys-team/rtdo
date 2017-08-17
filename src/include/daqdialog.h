@@ -3,6 +3,7 @@
 
 #include <QDialog>
 #include "session.h"
+#include "calibrator.h"
 
 namespace Ui {
 class DAQDialog;
@@ -34,8 +35,11 @@ public slots:
 
 signals:
     void apply(DAQData);
+    void zeroV1(DAQData);
+    void zeroVout(DAQData);
 
 protected slots:
+    DAQData getFormData();
     void updateChannelCapabilities(int tab = -1, bool checkDevice = true);
     void updateSingleChannelCapabilities(void *vdev, int subdev, ChannelUI &cui);
 
@@ -45,6 +49,7 @@ private slots:
 private:
     Ui::DAQDialog *ui;
     Session &session;
+    Calibrator calibrator;
 
     ChannelUI chanUI[5];
 };

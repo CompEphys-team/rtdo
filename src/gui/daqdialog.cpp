@@ -9,7 +9,8 @@ static std::vector<FilterMethod> methods;
 DAQDialog::DAQDialog(Session &s, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::DAQDialog),
-    session(s)
+    session(s),
+    calibrator(s)
 {
     ui->setupUi(this);
     ui->buttonBox->addButton("Apply and set as project default", QDialogButtonBox::ApplyRole);
@@ -19,6 +20,19 @@ DAQDialog::DAQDialog(Session &s, QWidget *parent) :
     chanUI[2] = {ui->channel_5, ui->range_5, ui->reference_5, ui->conversionFactor_5, ui->offset_5}; // V2
     chanUI[3] = {ui->channel_3, ui->range_3, ui->reference_3, ui->conversionFactor_3, ui->offset_3}; // Voltage cmd
     chanUI[4] = {ui->channel_4, ui->range_4, ui->reference_4, ui->conversionFactor_4, ui->offset_4}; // Current cmd
+
+    connect(ui->calibrate, &QPushButton::clicked, [=](bool){ emit zeroV1(getFormData()); });
+    connect(this, SIGNAL(zeroV1(DAQData)), &calibrator, SLOT(zeroV1(DAQData)));
+    connect(&calibrator, &Calibrator::zeroingV1, this, [=](bool done){
+        if ( done ) ui->offset->setPrefix("");
+        else        ui->offset->setPrefix("... ");
+    });
+    connect(ui->calibrate_3, &QPushButton::clicked, [=](bool){ emit zeroVout(getFormData()); });
+    connect(this, SIGNAL(zeroVout(DAQData)), &calibrator, SLOT(zeroVout(DAQData)));
+    connect(&calibrator, &Calibrator::zeroingVout, this, [=](bool done){
+        if ( done ) ui->offset_3->setPrefix("");
+        else        ui->offset_3->setPrefix("... ");
+    });
 
     connect(ui->deviceNumber, SIGNAL(valueChanged(QString)), this, SLOT(updateChannelCapabilities()));
     for ( int i = 0; i < 5; i++ ) {
@@ -76,7 +90,7 @@ void DAQDialog::importData()
     ui->filterMethod->setCurrentText(QString::fromStdString(toString(p.filter.method)));
 }
 
-DAQData DAQDialog::exportData()
+DAQData DAQDialog::getFormData()
 {
     DAQData p;
 
@@ -112,6 +126,12 @@ DAQData DAQDialog::exportData()
         }
     }
 
+    return p;
+}
+
+DAQData DAQDialog::exportData()
+{
+    DAQData p = getFormData();
     emit apply(p);
     return p;
 }
