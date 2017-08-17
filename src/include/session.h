@@ -63,7 +63,7 @@ public:
 
     inline QString name() const { return dir.dirName(); }
 
-    void appropriate(SessionWorker *worker); //!< Moves @a worker to the session's worker thread
+    void appropriate(QObject *worker); //!< Moves @a worker to the session's worker thread
 
     void crossloadConfig(const QString &crossSessionDir);
 

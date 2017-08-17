@@ -239,7 +239,7 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
     return dir.filePath(results(idx, actor->actorName(), action));
 }
 
-void Session::appropriate(SessionWorker *worker)
+void Session::appropriate(QObject *worker)
 {
     worker->moveToThread(&thread);
 }
