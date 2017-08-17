@@ -74,7 +74,8 @@ SOURCES += \
     src/gui/wavegenprogressplotter.cpp \
     src/gui/responseplotter.cpp \
     src/gui/daqdialog.cpp \
-    src/drivers/daqfilter.cpp
+    src/drivers/daqfilter.cpp \
+    src/core/calibrator.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -132,7 +133,8 @@ HEADERS  += \
     src/include/wavegenprogressplotter.h \
     src/include/responseplotter.h \
     src/include/daqdialog.h \
-    src/include/daqfilter.h
+    src/include/daqfilter.h \
+    src/include/calibrator.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
