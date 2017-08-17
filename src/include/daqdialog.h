@@ -46,7 +46,7 @@ private:
     Ui::DAQDialog *ui;
     Session &session;
 
-    ChannelUI chanUI[4];
+    ChannelUI chanUI[5];
 };
 
 #endif // DAQDIALOG_H
