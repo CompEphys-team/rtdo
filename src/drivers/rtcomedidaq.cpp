@@ -40,6 +40,7 @@ void ComediDAQ::run(Stimulation s)
         return;
 
     currentStim = s;
+    samplesRemaining = nSamples();
     qI.flush();
     qV.flush();
     int qSize = nSamples() + 1;
@@ -66,6 +67,7 @@ void ComediDAQ::next()
             qV.pop(v);
             voltage = conV.toPhys(v);
         }
+        --samplesRemaining;
     }
 }
 

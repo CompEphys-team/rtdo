@@ -74,9 +74,11 @@ void DAQCache::run(Stimulation s)
         iterI = iterC->sampI[iterC->trace].begin();
         iterV = iterC->sampV[iterC->trace].begin();
         daq->run(s);
+        samplesRemaining = daq->samplesRemaining;
     } else {
         iterI = iterC->medI.begin();
         iterV = iterC->medV.begin();
+        samplesRemaining = iterC->medI.size();
     }
 
     running = true;
@@ -126,6 +128,7 @@ void DAQCache::next()
     }
     ++iterI;
     ++iterV;
+    --samplesRemaining;
 }
 
 void DAQCache::reset()

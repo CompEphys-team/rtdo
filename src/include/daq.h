@@ -23,6 +23,7 @@ public:
 
     double current;
     double voltage;
+    int samplesRemaining;
 
     /// Stop stimulation/acquisition, discarding any acquired inputs
     virtual void reset() = 0;

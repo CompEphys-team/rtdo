@@ -206,6 +206,8 @@ public:
             }
         }
 
+        samplesRemaining = s.duration/sDt + extraSamples;
+
         // Check if requested stimulation has been used before
         for ( currentCacheEntry = cache.begin(); currentCacheEntry != cache.end(); ++currentCacheEntry ) {
             if ( currentCacheEntry->_stim == s ) {
@@ -242,6 +244,7 @@ public:
         current = currentCacheEntry->_current[currentSample];
         voltage = currentCacheEntry->_voltage[currentSample];
         ++currentSample;
+        --samplesRemaining;
     }
 
     void reset()
