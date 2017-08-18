@@ -59,16 +59,14 @@ void WavegenFitnessMapper::initPlot()
 
 void WavegenFitnessMapper::updateCombo()
 {
-    int currentIdx = ui->combo->currentIndex();
-    WaveSource currentData = ui->combo->currentData().value<WaveSource>();
-    ui->combo->clear();
-    for ( size_t i = 0; i < session.wavegen().archives().size(); i++ ) {
-        WaveSource src(session, WaveSource::Archive, i);
-        ui->combo->addItem(src.prettyName(), QVariant::fromValue(src));
-    }
-    for ( size_t i = 0; i < session.wavesets().selections().size(); i++ ) {
-        WaveSource src(session, WaveSource::Selection, i);
-        ui->combo->addItem(src.prettyName(), QVariant::fromValue(src));
+    int nArchives = session.wavegen().archives().size();
+    int nSelections = session.wavesets().selections().size();
+    for ( int i = 0; i < nArchives + nSelections; i++ ) {
+        WaveSource src(session,
+                       i < nArchives ? WaveSource::Archive : WaveSource::Selection,
+                       i < nArchives ? i : (i - nArchives));
+        if ( i == ui->combo->count() || !(ui->combo->itemData(i).value<WaveSource>() == src) )
+            ui->combo->insertItem(i, src.prettyName(), QVariant::fromValue(src));
     }
 
     if ( savedSelection ) {
@@ -76,11 +74,6 @@ void WavegenFitnessMapper::updateCombo()
         ui->combo->setCurrentIndex(ui->combo->count() - 1);
         return;
     }
-
-    if ( currentIdx < 0 )
-        return;
-
-    ui->combo->setCurrentIndex(currentData.index());
 }
 
 void WavegenFitnessMapper::updateDimensions()
