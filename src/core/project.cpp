@@ -71,6 +71,10 @@ void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
         addAP(arg, labels[i] + ".offset", p, chans[i], &ChnData::offset);
     }
 
+    addAP(arg, "DAQ.simd.noise", p, &DAQData::simd, &SimulatorData::noise);
+    addAP(arg, "DAQ.simd.noiseStd", p, &DAQData::simd, &SimulatorData::noiseStd);
+    addAP(arg, "DAQ.simd.noiseTau", p, &DAQData::simd, &SimulatorData::noiseTau);
+
     addAP(arg, "DAQ.cache.active", p, &DAQData::cache, &CacheData::active);
     addAP(arg, "DAQ.cache.numTraces", p, &DAQData::cache, &CacheData::numTraces);
     addAP(arg, "DAQ.cache.useMedian", p, &DAQData::cache, &CacheData::useMedian);

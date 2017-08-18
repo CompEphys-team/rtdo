@@ -97,6 +97,13 @@ struct FilterData
     int width;
 };
 
+struct SimulatorData
+{
+    bool noise = false;
+    double noiseTau = 0.01;
+    double noiseStd = 2;
+};
+
 struct DAQData
 {
     bool simulate;
@@ -110,6 +117,7 @@ struct DAQData
     ChnData cclampChan;
     CacheData cache;
     FilterData filter;
+    SimulatorData simd;
 };
 
 struct ThreadData

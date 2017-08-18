@@ -196,6 +196,8 @@ public:
         double sDt = DT;
         int extraSamples = 0;
         scalar tStart = 0, tEnd = s.duration;
+        bool noise = false;
+        scalar noiseI = 0, noiseD = 0, noiseExp = 0, noiseA = 0;
 
         if ( useRealism ) {
             sDt = samplingDt();
@@ -203,6 +205,13 @@ public:
                 extraSamples = p.filter.width;
                 tStart = -int(p.filter.width/2) * sDt;
                 tEnd = s.duration - tStart;
+            }
+            if ( (noise = p.simd.noise) ) {
+                noiseI = p.simd.noiseStd * RNG.variate<scalar>(0,1);
+                noiseD = 2 * p.simd.noiseStd * p.simd.noiseStd / p.simd.noiseTau; // nA^2/ms
+                noiseExp = std::exp(-sDt/rund.simCycles/p.simd.noiseTau);
+                noiseA = std::sqrt(noiseD * p.simd.noiseTau / 2 * (1 - noiseExp*noiseExp));
+                cache.clear(); // No caching of non-deterministic samples
             }
         }
 
@@ -225,6 +234,10 @@ public:
             scalar Vcmd = getCommandVoltage(s, t);
             for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
                 Isyn = (rund.clampGain*(Vcmd-V) - V) / rund.accessResistance;
+                if ( noise ) {
+                    noiseI = noiseI * noiseExp + noiseA * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-dt/tau) + A*X(0,1), I0 = 0
+                    Isyn += noiseI;
+                }
 )EOF";
     ss << model.kernel("                ", false, false);
     ss << R"EOF(

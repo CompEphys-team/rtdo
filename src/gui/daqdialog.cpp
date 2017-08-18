@@ -52,6 +52,9 @@ DAQDialog::DAQDialog(Session &s, QWidget *parent) :
 
     ui->timeout->setSpecialValueText("No timeout");
 
+    connect(ui->analogDAQ, &QGroupBox::toggled, [=](bool on){ ui->simulate->setChecked(!on); });
+    connect(ui->simulate, &QGroupBox::toggled, [=](bool on){ ui->analogDAQ->setChecked(!on); });
+
     importData();
 }
 
@@ -78,6 +81,11 @@ void DAQDialog::importData()
         chanUI[i].factor->setValue(cp[i]->gain);
         chanUI[i].offset->setValue(cp[i]->offset);
     }
+
+    ui->simulate->setChecked(p.simulate);
+    ui->noise->setChecked(p.simd.noise);
+    ui->noiseStd->setValue(p.simd.noiseStd);
+    ui->noiseTau->setValue(p.simd.noiseTau);
 
     ui->cache->setChecked(p.cache.active);
     ui->numTraces->setValue(p.cache.numTraces);
@@ -108,6 +116,10 @@ DAQData DAQDialog::getFormData()
         cp[i]->gain = chanUI[i].factor->value();
         cp[i]->offset = chanUI[i].offset->value();
     }
+
+    p.simd.noise = ui->noise->isChecked();
+    p.simd.noiseStd = ui->noiseStd->value();
+    p.simd.noiseTau = ui->noiseTau->value();
 
     p.cache.active = ui->cache->isChecked();
     p.cache.numTraces = ui->numTraces->value();
