@@ -220,12 +220,12 @@ public:
         scalar t = tStart;
         unsigned int iT = 0;
         scalar Isyn;
+        const scalar mdt = sDt/rund.simCycles;
+        for ( t = tStart; t <= tEnd; ++iT, t = tStart + iT*sDt ) {
+            scalar Vcmd = getCommandVoltage(s, t);
+            for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
+                Isyn = (rund.clampGain*(Vcmd-V) - V) / rund.accessResistance;
 )EOF";
-    ss << "        const scalar mdt = sDt/simCycles" << SUFFIX << ";" << endl;
-    ss << "        for ( t = tStart; t <= tEnd; ++iT, t = tStart + iT*sDt ) {" << endl;
-    ss << "            scalar Vcmd = getCommandVoltage(s, t);" << endl;
-    ss << "            for ( unsigned int mt = 0; mt < simCycles" << SUFFIX << "; mt++ ) {" << endl;
-    ss << "                Isyn = (clampGain" << SUFFIX << "*(Vcmd-V) - V) / accessResistance" << SUFFIX << ";" << endl;
     ss << model.kernel("                ", false, false);
     ss << R"EOF(
             } // end for mt

@@ -6,6 +6,8 @@ DAQ::DAQ(Session &session) :
     voltage(0.0),
     session(session),
     p(session.daqData()),
+    rund(session.runData()),
+    RNG(session.RNG),
     running(false)
 {
 

@@ -2,6 +2,7 @@
 #define DAQ_H
 
 #include "types.h"
+#include "randutils.hpp"
 
 class DAQ
 {
@@ -30,6 +31,10 @@ public:
 
     Session &session;
     const DAQData &p;
+
+    /// For Simulator use:
+    const RunData &rund;
+    randutils::mt19937_rng &RNG;
 
 protected:
     bool running;
