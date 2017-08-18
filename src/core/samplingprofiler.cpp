@@ -92,7 +92,6 @@ void SamplingProfiler::generate(SamplingProfiler::Profile prof)
         // Stimulate
         lib.profile(stims[i], prof.target, prof.accuracy[i], prof.gradient[i]);
         prof.gradient[i] /= prof.sigma;
-        std::cout << prof.gradient[i] << "\t" << prof.accuracy[i] << std::endl;
         emit progress(i, total);
     }
 
