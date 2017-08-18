@@ -3,7 +3,6 @@
 
 #include "sessionworker.h"
 #include <QVector>
-#include "randutils.hpp"
 #include "wavegenlibrary.h"
 
 class Wavegen : public SessionWorker
@@ -162,8 +161,6 @@ protected:
         return group % lib.numGroupsPerBlock                 // Group index within the block
                 + (group/lib.numGroupsPerBlock) * lib.numModelsPerBlock; // Modelspace offset of the block this group belongs to
     }
-
-    mutable randutils::mt19937_rng RNG;
 
     Archive current;
 

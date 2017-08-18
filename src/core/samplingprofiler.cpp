@@ -50,8 +50,8 @@ void SamplingProfiler::generate(SamplingProfiler::Profile prof)
     // Populate
     for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
         AdjustableParam &p = lib.adjustableParams[param];
-        std::function<scalar(void)> uniform = [=](){ return RNG.uniform<scalar>(prof.value1[param], prof.value2[param]); };
-        std::function<scalar(void)> gaussian = [=](){ return RNG.variate<scalar, std::normal_distribution>(prof.value1[param], prof.value2[param]); };
+        std::function<scalar(void)> uniform = [=](){ return session.RNG.uniform<scalar>(prof.value1[param], prof.value2[param]); };
+        std::function<scalar(void)> gaussian = [=](){ return session.RNG.variate<scalar, std::normal_distribution>(prof.value1[param], prof.value2[param]); };
         auto gen = prof.uniform[param] ? uniform : gaussian;
         if ( param == prof.target ) {
             for ( size_t pair = 0; pair < lib.project.profNumPairs(); pair++ ) {

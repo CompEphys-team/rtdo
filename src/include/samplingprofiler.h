@@ -3,7 +3,6 @@
 
 #include "sessionworker.h"
 #include "profilerlibrary.h"
-#include "randutils.hpp"
 #include "wavesource.h"
 
 class SamplingProfiler : public SessionWorker
@@ -60,8 +59,6 @@ private:
 
     const static QString action;
     const static quint32 magic, version;
-
-    randutils::mt19937_rng RNG;
 };
 
 Q_DECLARE_METATYPE(SamplingProfiler::Profile)

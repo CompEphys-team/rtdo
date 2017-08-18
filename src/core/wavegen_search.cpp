@@ -90,7 +90,7 @@ void Wavegen::search(int param)
 
             // Sample the archive space with a bunch of random indices
             std::vector<size_t> idx(2 * numWavesPerEpisode);
-            RNG.generate(idx, size_t(0), current.elites.size() - 1);
+            session.RNG.generate(idx, size_t(0), current.elites.size() - 1);
             std::sort(idx.begin(), idx.end());
 
             // Insert the sampling into parents in a single run through
@@ -106,12 +106,12 @@ void Wavegen::search(int param)
             bool wellShuffled;
             int shuffleFailures = 0;
             do {
-                RNG.shuffle(parents);
+                session.RNG.shuffle(parents);
                 wellShuffled = true;
                 for ( int i = 0; i < numWavesPerEpisode; i++ ) {
                     if ( parents[2*i] == parents[2*i + 1] ) {
                         if ( i < numWavesPerEpisode - 1 ) {
-                            RNG.shuffle(parents.begin() + 2*i, parents.end());
+                            session.RNG.shuffle(parents.begin() + 2*i, parents.end());
                             --i;
                         } else {
                             wellShuffled = false;

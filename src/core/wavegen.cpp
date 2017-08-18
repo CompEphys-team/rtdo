@@ -20,7 +20,6 @@ Wavegen::Wavegen(Session &session) :
     searchd(session.wavegenData()),
     stimd(session.stimulationData()),
     lib(session.project.wavegen()),
-    RNG(),
     aborted(false)
 {
     connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
@@ -92,7 +91,7 @@ void Wavegen::initModels(bool withBase)
                 if ( withBase && (lib.numGroupsPerBlock*block + group) % searchd.nGroupsPerWave == 0 )
                     value = p.initial;
                 else
-                    value = RNG.uniform<scalar>(p.min, p.max);
+                    value = session.RNG.uniform<scalar>(p.min, p.max);
                 for ( size_t model = 0; model < lib.adjustableParams.size()+1; model++ ) {
                     p[group + lib.numGroupsPerBlock*model + lib.numModelsPerBlock*block] = value;
                 }

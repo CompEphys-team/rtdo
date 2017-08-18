@@ -56,8 +56,6 @@ protected:
 
     DAQ *daq;
 
-    randutils::mt19937_rng RNG;
-
     bool aborted;
 
     std::vector<Stimulation> stims;

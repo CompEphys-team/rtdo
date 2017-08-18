@@ -12,6 +12,7 @@
 #include "wavesetcreator.h"
 #include "gafitter.h"
 #include "samplingprofiler.h"
+#include "randutils.hpp"
 
 Q_DECLARE_METATYPE(RunData)
 Q_DECLARE_METATYPE(WavegenData)
@@ -66,6 +67,8 @@ public:
     void appropriate(QObject *worker); //!< Moves @a worker to the session's worker thread
 
     void crossloadConfig(const QString &crossSessionDir);
+
+    randutils::mt19937_rng RNG;
 
 public slots:
     /// Set runtime data

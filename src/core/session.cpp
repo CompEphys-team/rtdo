@@ -3,6 +3,7 @@
 #include <QMutexLocker>
 
 Session::Session(Project &p, const QString &sessiondir) :
+    RNG(),
     project(p),
     dirtyRund(true),
     dirtySearchd(true),

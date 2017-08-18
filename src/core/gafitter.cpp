@@ -14,7 +14,6 @@ GAFitter::GAFitter(Session &session) :
     qV(nullptr),
     qI(nullptr),
     qO(nullptr),
-    RNG(),
     aborted(false),
     bias(lib.adjustableParams.size(), 0),
     p_err(lib.project.expNumCandidates()),
@@ -90,7 +89,7 @@ void GAFitter::run(WaveSource src)
             switch ( settings.targetType ) {
             case 0: output.targets[i] = p.initial; break;
             case 1: output.targets[i] = settings.targetValues[i]; break;
-            case 2: output.targets[i] = RNG.uniform(p.min, p.max); break;
+            case 2: output.targets[i] = session.RNG.uniform(p.min, p.max); break;
             }
             daq->setAdjustableParam(i, output.targets[i]);
         }
@@ -177,7 +176,7 @@ void GAFitter::populate()
 {
     for ( AdjustableParam &p : lib.adjustableParams ) {
         for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
-            p[i] = RNG.uniform<scalar>(p.min, p.max);
+            p[i] = session.RNG.uniform<scalar>(p.min, p.max);
         }
     }
     for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
@@ -198,12 +197,12 @@ quint32 GAFitter::findNextStim()
         if ( epoch + 1 < bias.size() ) { // Initial round: Sequential order
             nextStimIdx = stimIdx + 1;
         } else if ( int(epoch) < settings.orderBiasStartEpoch ) { // Further unbiased rounds: Random order
-            nextStimIdx = RNG.uniform<quint32>(0, stims.size()-1);
+            nextStimIdx = session.RNG.uniform<quint32>(0, stims.size()-1);
         } else { // Biased rounds
             double sumBias = 0;
             for ( double b : bias )
                 sumBias += b;
-            double choice = RNG.uniform(0.0, sumBias);
+            double choice = session.RNG.uniform(0.0, sumBias);
             for ( size_t i = 0; i < bias.size(); i++ ) {
                 choice -= bias[i];
                 if ( choice < 0 ) {
@@ -213,7 +212,7 @@ quint32 GAFitter::findNextStim()
             }
         }
     } else if ( settings.randomOrder == 1 )
-        nextStimIdx = RNG.uniform<quint32>(0, stims.size()-1);
+        nextStimIdx = session.RNG.uniform<quint32>(0, stims.size()-1);
     else
         nextStimIdx = (stimIdx + 1) % stims.size();
     return nextStimIdx;
@@ -254,17 +253,17 @@ void GAFitter::procreate()
     // Mutate
     for ( size_t i = p_err.size()-settings.nReinit-1; i >= settings.nElite; i-- ) {
         // Bias reproductions towards the elite in roughly linear fashion by restricting the choice range
-        size_t targetSource = RNG.uniform<size_t>(0, i-settings.nElite);
+        size_t targetSource = session.RNG.uniform<size_t>(0, i-settings.nElite);
         size_t otherSource = targetSource;
-        if ( settings.crossover > 0 && RNG.uniform<double>(0,1) < settings.crossover )
-            otherSource = RNG.uniform<size_t>(0, i-settings.nElite);
+        if ( settings.crossover > 0 && session.RNG.uniform<double>(0,1) < settings.crossover )
+            otherSource = session.RNG.uniform<size_t>(0, i-settings.nElite);
         for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
             AdjustableParam &p = lib.adjustableParams[iParam];
             if ( iParam == stimIdx ) {
                 // Mutate target param
                 p[p_err[i].idx] = p.multiplicative ?
-                            (p[p_err[targetSource].idx] * RNG.variate<scalar, std::lognormal_distribution>(0, sigma)) :
-                            RNG.variate<scalar, std::normal_distribution>(p[p_err[targetSource].idx], sigma);
+                            (p[p_err[targetSource].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(0, sigma)) :
+                            session.RNG.variate<scalar, std::normal_distribution>(p[p_err[targetSource].idx], sigma);
                 if ( p[p_err[i].idx] < p.min )
                     p[p_err[i].idx] = p.min;
                 if ( p[p_err[i].idx] > p.max )
@@ -282,7 +281,7 @@ void GAFitter::procreate()
         for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
             AdjustableParam &p = lib.adjustableParams[iParam];
             if ( iParam == stimIdx )
-                p[p_err[i].idx] = RNG.uniform(p.min, p.max);
+                p[p_err[i].idx] = session.RNG.uniform(p.min, p.max);
             else
                 p[p_err[i].idx] = p[p_err[source].idx];
         }
