@@ -222,7 +222,7 @@ public:
         scalar Isyn;
 )EOF";
     ss << "        const scalar mdt = sDt/simCycles" << SUFFIX << ";" << endl;
-    ss << "        while ( t <= tEnd ) {" << endl;
+    ss << "        for ( t = tStart; t <= tEnd; ++iT, t = tStart + iT*sDt ) {" << endl;
     ss << "            scalar Vcmd = getCommandVoltage(s, t);" << endl;
     ss << "            for ( unsigned int mt = 0; mt < simCycles" << SUFFIX << "; mt++ ) {" << endl;
     ss << "                Isyn = (clampGain" << SUFFIX << "*(Vcmd-V) - V) / accessResistance" << SUFFIX << ";" << endl;
@@ -232,9 +232,7 @@ public:
 
             currentCacheEntry->_voltage[iT] = V;
             currentCacheEntry->_current[iT] = Isyn;
-            t += sDt;
-            iT++;
-        } // end while t <= tEnd
+        } // end for t
 
         saveState();
     }
