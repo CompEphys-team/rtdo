@@ -4,6 +4,7 @@
 DAQ::DAQ(Session &session) :
     current(0.0),
     voltage(0.0),
+    voltage_2(0.0),
     session(session),
     p(session.daqData()),
     rund(session.runData()),

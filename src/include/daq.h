@@ -24,6 +24,7 @@ public:
 
     double current;
     double voltage;
+    double voltage_2;
     int samplesRemaining;
 
     /// Stop stimulation/acquisition, discarding any acquired inputs

@@ -7,7 +7,8 @@ DAQFilter::DAQFilter(Session &s) :
     DAQ(s),
     kernel(p.filter.width),
     currentBuffer(p.filter.width),
-    voltageBuffer(p.filter.width)
+    voltageBuffer(p.filter.width),
+    V2Buffer(p.filter.width)
 {
     if ( p.cache.active )
         daq = new DAQCache(session);
@@ -78,6 +79,7 @@ void DAQFilter::next()
         daq->next();
         current = daq->current;
         voltage = daq->voltage;
+        voltage_2 = daq->voltage_2;
         return;
     }
 
@@ -88,6 +90,7 @@ void DAQFilter::next()
             daq->next();
             currentBuffer[i] = daq->current;
             voltageBuffer[i] = daq->voltage;
+            V2Buffer[i] = daq->voltage_2;
         }
         bufferIndex = 0;
         initial = false;
@@ -97,17 +100,19 @@ void DAQFilter::next()
             daq->next();
             currentBuffer[bufferIndex] = daq->current;
             voltageBuffer[bufferIndex] = daq->voltage;
+            V2Buffer[bufferIndex] = daq->voltage_2;
             if ( ++bufferIndex == p.filter.width )
                 bufferIndex = 0;
         }
     }
 
-    current = voltage = 0;
+    current = voltage = voltage_2 = 0;
     // Convolve buffer (whose oldest sample is at [bufferIndex]) with the kernel.
     // Notice how bufferIndex returns to its original position, wrapping around the buffer.
     for ( int i = 0; i < p.filter.width; i++ ) {
         current += currentBuffer[bufferIndex] * kernel[i];
         voltage += voltageBuffer[bufferIndex] * kernel[i];
+        voltage_2 += V2Buffer[bufferIndex] * kernel[i];
         if ( ++bufferIndex == p.filter.width )
             bufferIndex = 0;
     }

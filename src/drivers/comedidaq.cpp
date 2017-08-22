@@ -13,7 +13,7 @@ ComediDAQ::ComediDAQ(Session &session) :
     DAQ(session),
     live(true),
     ready(), set(), go(), finish(),
-    qI(), qV(),
+    qI(), qV(), qV2(),
     t(&ComediDAQ::launchStatic, this),
     conI(p.currentChn, &p, true),
     conV(p.voltageChn, &p, true),
@@ -53,9 +53,11 @@ void ComediDAQ::run(Stimulation s)
     samplesRemaining = nSamples();
     qI.flush();
     qV.flush();
+    qV2.flush();
     int qSize = nSamples() + 1;
     qI.resize(qSize);
     qV.resize(qSize);
+    qV2.resize(qSize);
 
     ready.signal();
     set.wait();
@@ -77,6 +79,10 @@ void ComediDAQ::next()
             qV.pop(v);
             voltage = conV.toPhys(v);
         }
+        if ( p.V2Chan.active ) {
+            qV2.pop(v);
+            voltage_2 = conV2.toPhys(v);
+        }
         --samplesRemaining;
     }
 }
@@ -89,6 +95,7 @@ void ComediDAQ::reset()
     finish.wait();
     qI.flush();
     qV.flush();
+    qV2.flush();
     voltage = current = 0.0;
 }
 
@@ -159,11 +166,13 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
 {
     comedi_t *dev = (comedi_t*)vdev;
     comedi_cmd aicmd, aocmd;
-    ChnData V, I, O;
+    ChnData V, V2, I, O;
+    struct ChanPointer { ChnData *chan; RTMaybe::Queue<lsampl_t> *q; };
+    ChanPointer aiChanPointers[3], allAiChans[] = {ChanPointer{&V, &qV}, ChanPointer{&V2, &qV2}, ChanPointer{&I, &qI}};
     ComediConverter *conO;
     lsampl_t V0;
     unsigned int aiDt;
-    unsigned int aiChans[2], nAIChans, readOffset;
+    unsigned int aiChans[3], nAIChans, readOffset;
     unsigned int aoChan;
     int aiDataRemaining;
     std::vector<aosampl_t> aoData;
@@ -192,6 +201,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
             break;
 
         V = p.voltageChn;
+        V2 = p.V2Chan;
         I = p.currentChn;
         O = VC ? p.vclampChan : p.cclampChan;
         conO =& (VC ? conVC : conCC);
@@ -205,16 +215,20 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
         }
 
         // AI setup
-        if ( V.active || I.active ) {
+        if ( V.active || V2.active || I.active ) {
             comedi_set_read_subdevice(dev, aidev);
             ret = comedi_get_read_subdevice(dev);
             if ( ret != aidev )
                 throw std::runtime_error("Failed to set AI read subdevice");
 
             aiDt = 1e6 * samplingDt();
-            aiChans[0] = CR_PACK(V.idx, V.range, V.aref);
-            aiChans[1] = CR_PACK(I.idx, I.range, I.aref);
-            nAIChans = V.active + I.active;
+            nAIChans = 0;
+            for ( ChanPointer &ptr : allAiChans ) {
+                if ( ptr.chan->active ) {
+                    aiChanPointers[nAIChans] = ptr;
+                    aiChans[nAIChans++] = CR_PACK(ptr.chan->idx, ptr.chan->range, ptr.chan->aref);
+                }
+            }
             ret = comedi_get_cmd_generic_timed(dev, aidev, &aicmd, nAIChans, aiDt);
             if ( ret < 0 )
                 throw std::runtime_error(std::string("Failed AI command setup: ") + comedi_strerror(comedi_errno()));
@@ -222,7 +236,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
                 std::cout << "Warning: AI sampling interval is " << aicmd.scan_begin_arg << " ns instead of the requested " << aiDt << " ns." << std::endl;
                 std::cout << "AI time scale is invalid; change (likely reduce) time step or oversampling rate to correct this issue." << std::endl;
             }
-            aicmd.chanlist = aiChans + !V.active;
+            aicmd.chanlist = aiChans;
             aicmd.start_src = TRIG_INT;
             aicmd.start_arg = 0;
             aicmd.stop_src = TRIG_COUNT;
@@ -330,10 +344,8 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
                 readOffset += ret;
                 int i;
                 for ( i = 0; readOffset >= nAIChans * sizeof(aisampl_t); readOffset -= nAIChans * sizeof(aisampl_t), i+= nAIChans ) {
-                    if ( V.active )
-                        qV.push(((aisampl_t *)aiBuffer)[i]);
-                    if ( I.active )
-                        qI.push(((aisampl_t *)aiBuffer)[i + V.active]);
+                    for ( int j = 0; j < nAIChans; j++ )
+                        aiChanPointers[j].q->push(((aisampl_t *)aiBuffer)[i+j]);
                     --aiDataRemaining;
                 }
                 if ( i > 0 && readOffset > 0 )

@@ -29,7 +29,7 @@ public:
 protected:
     bool live;
     RTMaybe::ConditionVariable ready, set, go, finish;
-    RTMaybe::Queue<lsampl_t> qI, qV;
+    RTMaybe::Queue<lsampl_t> qI, qV, qV2;
     RTMaybe::Thread t;
 
     ComediConverter conI, conV, conV2, conVC, conCC;

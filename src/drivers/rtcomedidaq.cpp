@@ -8,7 +8,7 @@ ComediDAQ::ComediDAQ(Session &session) :
     DAQ(session),
     live(true),
     ready(), set(), go(), finish(),
-    qI(), qV(),
+    qI(), qV(), qV2(),
     t(&ComediDAQ::launchStatic, this),
     conI(p.currentChn, &p, true),
     conV(p.voltageChn, &p, true),
@@ -43,9 +43,11 @@ void ComediDAQ::run(Stimulation s)
     samplesRemaining = nSamples();
     qI.flush();
     qV.flush();
+    qV2.flush();
     int qSize = nSamples() + 1;
     qI.resize(qSize);
     qV.resize(qSize);
+    qV2.resize(qSize);
 
     ready.signal();
     set.wait();
@@ -67,6 +69,10 @@ void ComediDAQ::next()
             qV.pop(v);
             voltage = conV.toPhys(v);
         }
+        if ( p.V2Chan.active ) {
+            qV2.pop(v);
+            voltage_2 = conV2.toPhys(v);
+        }
         --samplesRemaining;
     }
 }
@@ -79,6 +85,7 @@ void ComediDAQ::reset()
     finish.wait();
     qI.flush();
     qV.flush();
+    qV2.flush();
     voltage = current = 0.0;
 }
 
@@ -97,7 +104,7 @@ void *ComediDAQ::launch()
     int aidev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AI, 0);
     int aodev = RC_comedi_find_subdevice_by_type(dev, COMEDI_SUBD_AO, 0);
     RTIME dt, toffset, reltime;
-    ChnData V, I, O;
+    ChnData V, V2, I, O;
     ComediConverter *conO;
     lsampl_t vSamp, iSamp, V0, VRamp, VRampDelta;
     struct Step {
@@ -111,10 +118,11 @@ void *ComediDAQ::launch()
         ready.wait();
 
         V = p.voltageChn;
+        V2 = p.V2Chan;
         I = p.currentChn;
         O = VC ? p.vclampChan : p.cclampChan;
         conO =& (VC ? conVC : conCC);
-        if ( (!V.active && !I.active) || !O.active ) {
+        if ( (!V.active && !V2.active && !I.active) || !O.active ) {
             // Empty loop:
             set.signal();
             go.wait();
@@ -161,16 +169,22 @@ void *ComediDAQ::launch()
         while ( running ) {
             // AI
             if ( I.active ) {
-                if ( V.active )
+                if ( V.active || V2.active )
                     RC_comedi_data_read_hint(dev, aidev, I.idx, I.range, I.aref);
                 RC_comedi_data_read(dev, aidev, I.idx, I.range, I.aref, &iSamp);
                 qI.push(iSamp);
             }
             if ( V.active ) {
-                if ( I.active )
+                if ( I.active || V2.active )
                     RC_comedi_data_read_hint(dev, aidev, V.idx, V.range, V.aref);
                 RC_comedi_data_read(dev, aidev, V.idx, V.range, V.aref, &vSamp);
                 qV.push(vSamp);
+            }
+            if ( V2.active ) {
+                if ( V.active || I.active )
+                    RC_comedi_data_read_hint(dev, aidev, V2.idx, V2.range, V2.aref);
+                RC_comedi_data_read(dev, aidev, V2.idx, V2.range, V2.aref, &vSamp);
+                qV2.push(vSamp);
             }
 
             // AO

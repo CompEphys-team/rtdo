@@ -44,6 +44,7 @@ void DAQCache::run(Stimulation s)
         iterC = --cache.end();
         iterI = iterC->sampI[0].begin();
         iterV = iterC->sampV[0].begin();
+        iterV2 = iterC->sampV2[0].begin();
         iterC->nCollected = 1;
         collecting = true;
     } else {
@@ -73,12 +74,14 @@ void DAQCache::run(Stimulation s)
         iterC->time[iterC->trace] = QTime::currentTime();
         iterI = iterC->sampI[iterC->trace].begin();
         iterV = iterC->sampV[iterC->trace].begin();
+        iterV2 = iterC->sampV2[iterC->trace].begin();
         daq->VC = VC;
         daq->run(s);
         samplesRemaining = daq->samplesRemaining;
     } else {
         iterI = iterC->medI.begin();
         iterV = iterC->medV.begin();
+        iterV2 = iterC->medV2.begin();
         samplesRemaining = iterC->medI.size();
     }
 
@@ -94,41 +97,52 @@ void DAQCache::next()
         daq->next();
         *iterI = daq->current;
         *iterV = daq->voltage;
+        *iterV2 = daq->voltage_2;
 
         std::size_t offset = iterI - iterC->sampI[iterC->trace].begin();
         if ( p.cache.useMedian ) {
-            std::vector<double> curr(iterC->nCollected), volt(iterC->nCollected);
+            std::vector<double> curr(iterC->nCollected), volt(iterC->nCollected), volt2(iterC->nCollected);
             for ( std::size_t i = 0; i < iterC->nCollected; i++ ) {
                 curr[i] = iterC->sampI[i][offset];
                 volt[i] = iterC->sampV[i][offset];
+                volt2[i] = iterC->sampV2[i][offset];
             }
             std::sort(curr.begin(), curr.end());
             std::sort(volt.begin(), volt.end());
+            std::sort(volt2.begin(), volt2.end());
             if ( iterC->nCollected % 2 == 0 ) {
                 current = (curr[iterC->nCollected/2] + curr[iterC->nCollected/2 - 1]) / 2;
                 voltage = (volt[iterC->nCollected/2] + volt[iterC->nCollected/2 - 1]) / 2;
+                voltage_2 = (volt2[iterC->nCollected/2] + volt2[iterC->nCollected/2 - 1]) / 2;
             } else {
                 current = curr[iterC->nCollected/2];
                 voltage = volt[iterC->nCollected/2];
+                voltage_2 = volt2[iterC->nCollected/2];
             }
         } else {
             current = 0;
             voltage = 0;
+            voltage_2 = 0;
             for ( std::size_t i = 0; i < iterC->nCollected; i++ ) {
                 current += iterC->sampI[i][offset];
                 voltage += iterC->sampV[i][offset];
+                voltage_2 += iterC->sampV2[i][offset];
             }
             current /= iterC->nCollected;
             voltage /= iterC->nCollected;
+            voltage_2 /= iterC->nCollected;
         }
         iterC->medI[offset] = current;
         iterC->medV[offset] = voltage;
+        iterC->medV2[offset] = voltage_2;
     } else {
         current = *iterI;
         voltage = *iterV;
+        voltage_2 = *iterV2;
     }
     ++iterI;
     ++iterV;
+    ++iterV2;
     --samplesRemaining;
 }
 
@@ -148,8 +162,10 @@ DAQCache::Cache::Cache(Stimulation stim, bool VC, std::size_t numTraces, std::si
     nCollected(0),
     sampI(numTraces, std::vector<double>(traceLen)),
     sampV(numTraces, std::vector<double>(traceLen)),
+    sampV2(numTraces, std::vector<double>(traceLen)),
     medI(traceLen, 0.0),
     medV(traceLen, 0.0),
+    medV2(traceLen, 0.0),
     time(numTraces)
 {
 

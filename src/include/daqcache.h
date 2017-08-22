@@ -31,14 +31,14 @@ protected:
         Stimulation stim;
         bool VC;
         std::size_t trace, nCollected;
-        std::vector<std::vector<double>> sampI, sampV;
-        std::vector<double> medI, medV;
+        std::vector<std::vector<double>> sampI, sampV, sampV2;
+        std::vector<double> medI, medV, medV2;
         std::vector<QTime> time;
     };
 
     std::list<Cache> cache;
     std::list<Cache>::iterator iterC;
-    std::vector<double>::iterator iterI, iterV;
+    std::vector<double>::iterator iterI, iterV, iterV2;
     bool collecting, average;
 };
 

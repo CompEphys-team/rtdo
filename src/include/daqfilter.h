@@ -18,7 +18,7 @@ public:
 protected:
     DAQ *daq;
     bool initial;
-    std::vector<double> kernel, currentBuffer, voltageBuffer;
+    std::vector<double> kernel, currentBuffer, voltageBuffer, V2Buffer;
     int bufferIndex;
 };
 
