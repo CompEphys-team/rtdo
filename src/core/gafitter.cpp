@@ -299,6 +299,7 @@ void GAFitter::stimulate(const Stimulation &I)
     lib.VC = true;
 
     // Set up DAQ
+    daq->VC = true;
     daq->reset();
     daq->run(I);
 

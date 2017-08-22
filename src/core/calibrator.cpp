@@ -50,6 +50,7 @@ void Calibrator::zeroVout(DAQData p)
 
     // Initialise
     DAQFilter daq(session);
+    daq.VC = true;
     Stimulation stim;
     stim.duration = 1000;
     stim.baseV = 0;

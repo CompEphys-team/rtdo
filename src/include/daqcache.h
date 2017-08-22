@@ -27,8 +27,9 @@ protected:
 
     struct Cache
     {
-        Cache(Stimulation stim, std::size_t numTraces, std::size_t traceLen);
+        Cache(Stimulation stim, bool VC, std::size_t numTraces, std::size_t traceLen);
         Stimulation stim;
+        bool VC;
         std::size_t trace, nCollected;
         std::vector<std::vector<double>> sampI, sampV;
         std::vector<double> medI, medV;

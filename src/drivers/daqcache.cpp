@@ -36,11 +36,11 @@ void DAQCache::run(Stimulation s)
         return;
     currentStim = s;
     for ( iterC = cache.begin(); iterC != cache.end(); ++iterC ) {
-        if ( iterC->stim == currentStim )
+        if ( iterC->stim == currentStim && iterC->VC == VC )
             break;
     }
     if ( iterC == cache.end() ) {
-        cache.emplace_back(currentStim, p.cache.numTraces, currentStim.duration/samplingDt() + 1 + (p.filter.active ? p.filter.width : 0));
+        cache.emplace_back(currentStim, VC, p.cache.numTraces, currentStim.duration/samplingDt() + 1 + (p.filter.active ? p.filter.width : 0));
         iterC = --cache.end();
         iterI = iterC->sampI[0].begin();
         iterV = iterC->sampV[0].begin();
@@ -73,6 +73,7 @@ void DAQCache::run(Stimulation s)
         iterC->time[iterC->trace] = QTime::currentTime();
         iterI = iterC->sampI[iterC->trace].begin();
         iterV = iterC->sampV[iterC->trace].begin();
+        daq->VC = VC;
         daq->run(s);
         samplesRemaining = daq->samplesRemaining;
     } else {
@@ -140,8 +141,9 @@ void DAQCache::reset()
     running = false;
 }
 
-DAQCache::Cache::Cache(Stimulation stim, std::size_t numTraces, std::size_t traceLen) :
+DAQCache::Cache::Cache(Stimulation stim, bool VC, std::size_t numTraces, std::size_t traceLen) :
     stim(stim),
+    VC(VC),
     trace(0),
     nCollected(0),
     sampI(numTraces, std::vector<double>(traceLen)),

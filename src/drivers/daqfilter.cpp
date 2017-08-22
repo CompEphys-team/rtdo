@@ -63,6 +63,7 @@ DAQFilter::~DAQFilter()
 
 void DAQFilter::run(Stimulation s)
 {
+    daq->VC = VC;
     daq->run(s);
     currentStim = s;
     samplesRemaining = p.filter.active ? ((daq->samplesRemaining - p.filter.width) / p.filter.samplesPerDt) : (daq->samplesRemaining);

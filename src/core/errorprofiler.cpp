@@ -108,6 +108,7 @@ void ErrorProfiler::settle(scalar baseV, scalar settleDuration)
     lib.Vmem = I.baseV;
 
     // Set up DAQ
+    daq->VC = true;
     daq->reset();
     daq->run(I);
 
@@ -128,6 +129,7 @@ void ErrorProfiler::stimulate(const Stimulation &stim)
     lib.VC = true;
 
     // Set up DAQ
+    daq->VC = true;
     daq->reset();
     daq->run(stim);
 

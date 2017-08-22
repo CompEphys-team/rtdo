@@ -159,12 +159,14 @@ class SimulatorImpl : public DAQ
 {
 private:
     struct CacheStruct {
-        CacheStruct(Stimulation s, double sDt, int extraSamples) :
+        CacheStruct(Stimulation s, bool VC, double sDt, int extraSamples) :
             _stim(s),
+            _VC(VC),
             _voltage(s.duration/sDt + extraSamples),
             _current(s.duration/sDt + extraSamples)
         {}
         Stimulation _stim;
+        bool _VC;
         std::vector<scalar> _voltage;
         std::vector<scalar> _current;
 )EOF";
@@ -219,12 +221,12 @@ public:
 
         // Check if requested stimulation has been used before
         for ( currentCacheEntry = cache.begin(); currentCacheEntry != cache.end(); ++currentCacheEntry ) {
-            if ( currentCacheEntry->_stim == s ) {
+            if ( currentCacheEntry->_stim == s && currentCacheEntry->_VC == VC ) {
                 restoreState();
                 return;
             }
         }
-        currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(s, sDt, extraSamples));
+        currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(s, VC, sDt, extraSamples));
 
         scalar t = tStart;
         unsigned int iT = 0;
@@ -233,7 +235,7 @@ public:
         for ( t = tStart; t <= tEnd; ++iT, t = tStart + iT*sDt ) {
             scalar Vcmd = getCommandVoltage(s, t);
             for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
-                Isyn = (rund.clampGain*(Vcmd-V) - V) / rund.accessResistance;
+                Isyn = VC ? ((rund.clampGain*(Vcmd-V) - V) / rund.accessResistance) : Vcmd;
                 if ( noise ) {
                     noiseI = noiseI * noiseExp + noiseA * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-dt/tau) + A*X(0,1), I0 = 0
                     Isyn += noiseI;
