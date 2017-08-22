@@ -47,6 +47,9 @@ void SamplingProfiler::clearAbort()
 
 void SamplingProfiler::generate(SamplingProfiler::Profile prof)
 {
+    if ( aborted )
+        return;
+
     // Populate
     for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
         AdjustableParam &p = lib.adjustableParams[param];
