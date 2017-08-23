@@ -78,6 +78,8 @@ public slots:
     void setGAFitterSettings(GAFitterSettings d);
     void setDAQData(DAQData d);
 
+    inline void ping(int value, int *target) { *target = value; }
+
 public:
     Project &project;
 

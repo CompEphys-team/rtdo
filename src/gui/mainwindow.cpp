@@ -93,8 +93,17 @@ void MainWindow::on_actionGAFitter_triggered()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    if ( session )
+    if ( session ) {
+        int value = session->RNG.uniform<int>(0, __INT_MAX__);
+        emit ping(value, &pingTarget);
+        QThread::msleep(50);
+        if ( pingTarget != value &&
+             QMessageBox::Yes != QMessageBox::question(this, "Application busy", "The application is busy. Are you sure you want to quit?")) {
+            event->ignore();
+            return;
+        }
         session->quit();
+    }
     if ( wavegenDlg )
         wavegenDlg->close();
     if ( profileDlg )
@@ -138,11 +147,7 @@ void MainWindow::on_actionNew_session_triggered()
         return;
 
     session = new Session(*project);
-    ui->menuSession->setEnabled(false);
-    ui->mainToolBar->setEnabled(true);
-    ui->menuFigures->setEnabled(true);
-    ui->menuSettings->setEnabled(true);
-    setTitle();
+    sessionOpened();
 }
 
 void MainWindow::on_actionOpen_session_triggered()
@@ -154,11 +159,17 @@ void MainWindow::on_actionOpen_session_triggered()
     if ( loc.isEmpty() )
         return;
     session = new Session(*project, loc);
+    sessionOpened();
+}
+
+void MainWindow::sessionOpened()
+{
     ui->menuSession->setEnabled(false);
     ui->mainToolBar->setEnabled(true);
     ui->menuFigures->setEnabled(true);
     ui->menuSettings->setEnabled(true);
     setTitle();
+    connect(this, SIGNAL(ping(int, int*)), session, SLOT(ping(int,int*)));
 }
 
 void MainWindow::setTitle()
