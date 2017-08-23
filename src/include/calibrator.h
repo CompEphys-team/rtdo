@@ -15,12 +15,14 @@ public slots:
     void zeroV2(DAQData p);
     void zeroIin(DAQData p);
     void zeroVout(DAQData p);
+    void findAccessResistance();
 
 signals:
     void zeroingV1(bool done);
     void zeroingV2(bool done);
     void zeroingIin(bool done);
     void zeroingVout(bool done);
+    void findingAccessResistance(bool done);
 
 protected:
     Session &session;

@@ -145,3 +145,48 @@ void Calibrator::zeroVout(DAQData p)
 
     emit zeroingVout(true);
 }
+
+void Calibrator::findAccessResistance()
+{
+    emit findingAccessResistance(false);
+
+    DAQFilter daq(session);
+    daq.VC = false;
+    Stimulation stim;
+    stim.duration = 2000;
+    stim.baseV = 0;
+    stim.clear();
+    int j = 0;
+    for ( int i : {1, 0, -1, 0, 1, 0, -1} )
+        stim.insert(stim.end(), Stimulation::Step {250 * (++j), i, false});
+
+    double base = 0, step = 0;
+    daq.run(stim);
+    int samplesPerStep = daq.samplesRemaining / 8;
+    int margin = samplesPerStep/10;
+    int stepNo = 0;
+    while ( daq.samplesRemaining > 0 ) {
+        daq.next();
+        int sampleNo = daq.samplesRemaining % samplesPerStep;
+        if ( sampleNo == 0 )
+            ++stepNo;
+        if ( sampleNo > margin && sampleNo < samplesPerStep-margin ) {
+            if ( stepNo % 2 == 0 ) // out: 0
+                base += daq.voltage_2;
+            else if ( stepNo % 4 == 1 ) // out: 1
+                step += daq.voltage_2;
+            else // out: -1
+                step -= daq.voltage_2;
+        }
+    }
+
+    base /= 4 * (samplesPerStep - 2*margin);
+    step /= 4 * (samplesPerStep - 2*margin);
+
+    RunData rd = session.runData();
+    rd.accessResistance = step - base;
+    // Note, R [MOhm] = V [mV] / I [nA], with I = 1 nA
+    session.setRunData(rd);
+
+    emit findingAccessResistance(true);
+}

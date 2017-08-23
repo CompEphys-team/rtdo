@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>322</width>
+    <width>369</width>
     <height>202</height>
    </rect>
   </property>
@@ -14,14 +14,7 @@
    <string>RunData</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>Cycles per dt</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
+   <item row="0" column="2">
     <widget class="QSpinBox" name="simCycles">
      <property name="minimum">
       <number>1</number>
@@ -31,10 +24,47 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_2">
+   <item row="3" column="2">
+    <widget class="QDoubleSpinBox" name="settleDuration">
+     <property name="suffix">
+      <string> ms</string>
+     </property>
+     <property name="maximum">
+      <double>10000.000000000000000</double>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QSpinBox" name="clampGain">
+     <property name="maximum">
+      <number>1000000</number>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1" colspan="2">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="2">
+    <widget class="QDoubleSpinBox" name="accessResistance">
+     <property name="suffix">
+      <string> MOhm</string>
+     </property>
+     <property name="maximum">
+      <double>999.990000000000009</double>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="measureResistance">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ensure current-passing electrode is in saline and stable, and bridge balance is disabled.&lt;/p&gt;&lt;p&gt;Important note: Headstage resistance must be added to the measured value manually!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="text">
-      <string>Voltage clamp gain</string>
+      <string>Measure</string>
      </property>
     </widget>
    </item>
@@ -45,44 +75,25 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
-    <widget class="QDoubleSpinBox" name="accessResistance">
-     <property name="suffix">
-      <string> MOhm</string>
-     </property>
-     <property name="maximum">
-      <double>999.990000000000009</double>
+   <item row="1" column="0" colspan="2">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Voltage clamp gain</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="0">
+   <item row="0" column="0" colspan="2">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Cycles per dt
+(oversampling in simulations)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="2">
     <widget class="QLabel" name="label_4">
      <property name="text">
       <string>Settling duration</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="1">
-    <widget class="QDoubleSpinBox" name="settleDuration">
-     <property name="suffix">
-      <string> ms</string>
-     </property>
-     <property name="maximum">
-      <double>999.990000000000009</double>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0" colspan="2">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="QSpinBox" name="clampGain">
-     <property name="maximum">
-      <number>1000000</number>
      </property>
     </widget>
    </item>

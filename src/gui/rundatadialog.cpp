@@ -4,7 +4,8 @@
 RunDataDialog::RunDataDialog(Session &s, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::RunDataDialog),
-    session(s)
+    session(s),
+    calibrator(s)
 {
     ui->setupUi(this);
 
@@ -13,6 +14,13 @@ RunDataDialog::RunDataDialog(Session &s, QWidget *parent) :
             importData();
     });
     connect(this, SIGNAL(apply(RunData)), &session, SLOT(setRunData(RunData)));
+    connect(&session, SIGNAL(runDataChanged()), this, SLOT(importData()));
+
+    connect(ui->measureResistance, &QPushButton::clicked, &calibrator, &Calibrator::findAccessResistance);
+    connect(&calibrator, &Calibrator::findingAccessResistance, this, [=](bool done){
+        if ( done ) ui->accessResistance->setPrefix("");
+        else        ui->accessResistance->setPrefix("... ");
+    });
 
     importData();
 }

@@ -3,6 +3,7 @@
 
 #include <QDialog>
 #include "session.h"
+#include "calibrator.h"
 
 namespace Ui {
 class RunDataDialog;
@@ -17,6 +18,7 @@ public:
     explicit RunDataDialog(Session &s, QWidget *parent = 0);
     ~RunDataDialog();
 
+public slots:
     void importData();
     void exportData();
 
@@ -27,6 +29,7 @@ private slots:
 private:
     Ui::RunDataDialog *ui;
     Session &session;
+    Calibrator calibrator;
 
 signals:
     void apply(RunData);
