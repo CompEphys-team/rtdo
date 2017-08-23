@@ -27,11 +27,23 @@ DAQDialog::DAQDialog(Session &s, QWidget *parent) :
         if ( done ) ui->offset->setPrefix("");
         else        ui->offset->setPrefix("... ");
     });
+    connect(ui->calibrate_2, &QPushButton::clicked, [=](bool){ emit zeroIin(getFormData()); });
+    connect(this, SIGNAL(zeroIin(DAQData)), &calibrator, SLOT(zeroIin(DAQData)));
+    connect(&calibrator, &Calibrator::zeroingIin, this, [=](bool done){
+        if ( done ) ui->offset_2->setPrefix("");
+        else        ui->offset_2->setPrefix("... ");
+    });
     connect(ui->calibrate_3, &QPushButton::clicked, [=](bool){ emit zeroVout(getFormData()); });
     connect(this, SIGNAL(zeroVout(DAQData)), &calibrator, SLOT(zeroVout(DAQData)));
     connect(&calibrator, &Calibrator::zeroingVout, this, [=](bool done){
         if ( done ) ui->offset_3->setPrefix("");
         else        ui->offset_3->setPrefix("... ");
+    });
+    connect(ui->calibrate_5, &QPushButton::clicked, [=](bool){ emit zeroV2(getFormData()); });
+    connect(this, SIGNAL(zeroV2(DAQData)), &calibrator, SLOT(zeroV2(DAQData)));
+    connect(&calibrator, &Calibrator::zeroingV2, this, [=](bool done){
+        if ( done ) ui->offset_5->setPrefix("");
+        else        ui->offset_5->setPrefix("... ");
     });
 
     connect(ui->deviceNumber, SIGNAL(valueChanged(QString)), this, SLOT(updateChannelCapabilities()));

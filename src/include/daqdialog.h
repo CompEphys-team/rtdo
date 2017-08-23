@@ -36,6 +36,8 @@ public slots:
 signals:
     void apply(DAQData);
     void zeroV1(DAQData);
+    void zeroV2(DAQData);
+    void zeroIin(DAQData);
     void zeroVout(DAQData);
 
 protected slots:
