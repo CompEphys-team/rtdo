@@ -14,8 +14,38 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
+   <item row="0" column="1">
+    <widget class="QCheckBox" name="Vresponse">
+     <property name="text">
+      <string>Voltage response</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="3">
     <widget class="QCustomPlot" name="plot" native="true"/>
+   </item>
+   <item row="0" column="0">
+    <widget class="QCheckBox" name="Vcmd">
+     <property name="text">
+      <string>Voltage command</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QCheckBox" name="Iresponse">
+     <property name="text">
+      <string>Current response</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

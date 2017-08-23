@@ -28,6 +28,16 @@ ResponsePlotter::ResponsePlotter(QWidget *parent) :
     ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
     ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
 
+    connect(ui->Vcmd, &QCheckBox::toggled, [=](bool on){
+        ui->plot->graph(0)->setVisible(on);
+    });
+    connect(ui->Vresponse, &QCheckBox::toggled, [=](bool on){
+        ui->plot->graph(1)->setVisible(on);
+    });
+    connect(ui->Iresponse, &QCheckBox::toggled, [=](bool on){
+        ui->plot->graph(2)->setVisible(on);
+    });
+
     clear();
 
     connect(&dataTimer, SIGNAL(timeout()), this, SLOT(replot()));
@@ -42,9 +52,19 @@ ResponsePlotter::~ResponsePlotter()
 void ResponsePlotter::clear()
 {
     ui->plot->clearGraphs();
-    ui->plot->addGraph()->setPen(QPen(Qt::blue));
-    ui->plot->addGraph()->setPen(QPen(Qt::red));
-    ui->plot->addGraph(0, ui->plot->yAxis2)->setPen(QPen(Qt::darkGreen));
+
+    QCPGraph *g = ui->plot->addGraph();
+    g->setPen(QPen(Qt::blue));
+    g->setVisible(ui->Vcmd->isChecked());
+
+    g = ui->plot->addGraph();
+    g->setPen(QPen(Qt::red));
+    g->setVisible(ui->Vresponse->isChecked());
+
+    g = ui->plot->addGraph(0, ui->plot->yAxis2);
+    g->setPen(QPen(Qt::darkGreen));
+    g->setVisible(ui->Iresponse->isChecked());
+
     ui->plot->xAxis->moveRange(-ui->plot->xAxis->range().lower);
 }
 
