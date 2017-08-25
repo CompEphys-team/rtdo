@@ -27,6 +27,30 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     connect(ui->actionQuit, SIGNAL(triggered(bool)), this, SLOT(close()));
+
+    connect(ui->menuSession, &QMenu::aboutToShow, [=](){
+        static bool sessionsLoaded = false;
+        if ( !sessionsLoaded && project && project->isFrozen() ) {
+            sessionsLoaded = true;
+            QDir sdir(project->dir() + "/sessions/");
+            sdir.setFilter(QDir::Dirs | QDir::NoDotAndDotDot);
+            sdir.setSorting(QDir::Name | QDir::Reversed); // Reverse to have the latest on top
+            QStringList entries = sdir.entryList();
+            if ( !entries.empty() ) {
+                ui->menuSession->addSeparator();
+                for ( QString sess :entries )
+                    ui->menuSession->addAction(sess);
+            }
+        }
+    });
+    for ( QObject *item : ui->menuSession->children() )
+        qobject_cast<QAction*>(item)->setData(QVariant::fromValue(1)); // For static entries set a valid data value
+    connect(ui->menuSession, &QMenu::triggered, [=](QAction *action){
+        if ( !action->data().isValid() && !action->isSeparator() ) { // For dynamically added entries, no data is set
+            session = new Session(*project, project->dir() + "/sessions/" + action->text());
+            sessionOpened();
+        }
+    });
 }
 
 MainWindow::~MainWindow()
