@@ -190,7 +190,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         plot->yAxis->setTicks(ui->param->isChecked());
         plot->yAxis->setTickLabels(ui->param->isChecked());
 
-        plot->yAxis2->setLabel("Error");
+        plot->yAxis2->setLabel("RMS Error (nA)");
         plot->yAxis2->setVisible(ui->error->isChecked());
         connect(plot->yAxis2, SIGNAL(rangeChanged(QCPRange)), this, SLOT(errorRangeChanged(QCPRange)));
 

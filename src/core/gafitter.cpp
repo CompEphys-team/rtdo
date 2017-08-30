@@ -232,7 +232,7 @@ void GAFitter::procreate()
         return x.err < y.err;
     });
 
-    output.error[epoch] = p_err[0].err;
+    output.error[epoch] = std::sqrt(p_err[0].err / std::ceil((stims.at(stimIdx).tObsEnd-stims.at(stimIdx).tObsBegin)/session.project.dt())); // RMSE
     output.stimIdx[epoch] = stimIdx;
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
