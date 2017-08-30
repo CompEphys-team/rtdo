@@ -24,6 +24,7 @@ public:
         scalar *clampGain;
         scalar *accessResistance;
         scalar *Vmem;
+        scalar *Vprev;
         scalar *Imem;
         bool *VC;
         bool *getErr;
@@ -79,6 +80,7 @@ public:
     scalar &clampGain;
     scalar &accessResistance;
     scalar &Vmem;
+    scalar &Vprev;
     scalar &Imem;
     bool &VC;
     bool &getErr;

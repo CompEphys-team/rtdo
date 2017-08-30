@@ -27,6 +27,7 @@ ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
     clampGain(*(pointers.clampGain)),
     accessResistance(*(pointers.accessResistance)),
     Vmem(*(pointers.Vmem)),
+    Vprev(*(pointers.Vprev)),
     Imem(*(pointers.Imem)),
     VC(*(pointers.VC)),
     getErr(*(pointers.getErr)),
@@ -97,6 +98,7 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("clampGain"),
         Variable("accessResistance"),
         Variable("Vmem"),
+        Variable("Vprev"),
         Variable("Imem"),
         Variable("VC", "", "bool"),
         Variable("getErr", "", "bool")
@@ -131,22 +133,19 @@ std::string ExperimentLibrary::simCode()
     return R"EOF(
 scalar mdt = DT/$(simCycles);
 for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
-   if ( $(VC) ) {
+   if ( $(VC) ) { // Voltage clamp to $(Vmem)
        Isyn = ($(clampGain)*($(Vmem)-$(V)) - $(V)) / $(accessResistance);
-   } else {
-       Isyn = $(Imem);
+   } else { // Pattern clamp: Inject current $(Imem) and clamp to voltage $(Vprev) to $(Vmem), linearly interpolated
+       scalar Vcmd = (($(simCycles)-mt) * $(Vprev) + mt * $(Vmem)) / $(simCycles);
+       Isyn = $(clampGain)*(Vcmd-$(V)) / $(accessResistance) + $(Imem); // Perfect clamp
    }
 )EOF"
-// + std::string("#ifndef _") + model.name(ModuleType::Experiment) + "_neuronFnct_cc\nif(id==1400){ printf(\"Device %2.2f + %2d: %f\t%.1f\t%f\t%f\\n\", t, mt, $(V), $(Vmem), Isyn, $(Imem)); }\n#endif\n"
    + model.kernel("    ", true, false)
    + R"EOF(
 }
 
 if ( $(getErr) ) {
-   if ( $(VC) )
-       $(err) += fabs(Isyn - $(Imem));
-   else
-       $(err) += fabs($(V) - $(Vmem));
+   $(err) += fabs(Isyn - $(Imem));
 }
 )EOF";
 }
