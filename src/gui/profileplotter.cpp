@@ -189,7 +189,7 @@ void ProfilePlotter::clearProfiles()
     newPlot->axisRect()->setRangeZoomAxes(newPlot->axisRect()->axes());
     newPlot->axisRect()->setRangeDragAxes(newPlot->axisRect()->axes());
     newPlot->xAxis->setLabel("Candidate model's target parameter value");
-    newPlot->yAxis->setLabel("Error");
+    newPlot->yAxis->setLabel("RMS Error (nA)");
 
     delete ui->tab_profile->layout()->replaceWidget(ui->plot, newPlot);
     newPlot->xAxis->setRange(ui->plot->xAxis->range());
