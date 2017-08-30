@@ -198,7 +198,7 @@ public:
         int extraSamples = 0;
         scalar tStart = 0, tEnd = s.duration;
         bool noise = false;
-        scalar noiseI = 0, noiseD = 0, noiseExp = 0, noiseA = 0;
+        scalar noiseI = 0, noiseExp = 0, noiseA = 0;
 
         if ( useRealism ) {
             sDt = samplingDt();
@@ -209,9 +209,14 @@ public:
             }
             if ( (noise = p.simd.noise) ) {
                 noiseI = p.simd.noiseStd * RNG.variate<scalar>(0,1);
-                noiseD = 2 * p.simd.noiseStd * p.simd.noiseStd / p.simd.noiseTau; // nA^2/ms
-                noiseExp = std::exp(-sDt/rund.simCycles/p.simd.noiseTau);
-                noiseA = std::sqrt(noiseD * p.simd.noiseTau / 2 * (1 - noiseExp*noiseExp));
+                if ( p.simd.noiseTau > 0 ) { // Brown noise
+                    scalar noiseD = 2 * p.simd.noiseStd * p.simd.noiseStd / p.simd.noiseTau; // nA^2/ms
+                    noiseExp = std::exp(-sDt/rund.simCycles/p.simd.noiseTau);
+                    noiseA = std::sqrt(noiseD * p.simd.noiseTau / 2 * (1 - noiseExp*noiseExp));
+                } else { // White noise
+                    noiseExp = 0;
+                    noiseA = p.simd.noiseStd;
+                }
                 cache.clear(); // No caching of non-deterministic samples
             }
         }
