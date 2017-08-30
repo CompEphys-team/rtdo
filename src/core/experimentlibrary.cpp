@@ -145,7 +145,8 @@ for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
 }
 
 if ( $(getErr) ) {
-   $(err) += fabs(Isyn - $(Imem));
+   scalar tmp = Isyn - $(Imem);
+   $(err) += tmp*tmp;
 }
 )EOF";
 }
