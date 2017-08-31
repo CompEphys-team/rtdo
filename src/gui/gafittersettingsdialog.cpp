@@ -43,6 +43,7 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, QWidget *parent) :
         QDoubleSpinBox *box = new QDoubleSpinBox();
         box->setDecimals(6);
         box->setRange(session.project.model().adjustableParams.at(i).min, session.project.model().adjustableParams.at(i).max);
+        box->setValue(session.project.model().adjustableParams.at(i).initial);
         ui->targetValues->setCellWidget(i, 0, box);
     }
     ui->targetValues->setVerticalHeaderLabels(labels);
@@ -71,7 +72,7 @@ void GAFitterSettingsDialog::importData()
     ui->sigmaHalflife->setValue(p.sigmaHalflife);
     ui->sigmaInitial->setValue(p.sigmaInitial);
     ui->targetType->setCurrentIndex(p.targetType);
-    if ( p.targetType == 1 ) {
+    if ( int(p.targetValues.size()) == ui->targetValues->rowCount() ) {
         for ( int row = 0; row < ui->targetValues->rowCount(); row++ ) {
             qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(row, 0))->setValue(p.targetValues.at(row));
         }
