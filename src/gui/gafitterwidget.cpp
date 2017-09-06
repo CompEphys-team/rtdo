@@ -22,6 +22,8 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     ui->params_plotter->init(&session, true);
 
     updateDecks();
+
+    connect(ui->finish, SIGNAL(clicked(bool)), &session.gaFitter(), SLOT(finish()), Qt::DirectConnection);
 }
 
 GAFitterWidget::~GAFitterWidget()

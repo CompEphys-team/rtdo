@@ -43,6 +43,7 @@ public:
 
 public slots:
     void run(WaveSource src);
+    void finish();
 
 signals:
     void starting();
@@ -61,6 +62,7 @@ protected:
     DAQ *daq;
 
     bool aborted;
+    bool doFinish;
 
     std::vector<Stimulation> stims;
     quint32 stimIdx;

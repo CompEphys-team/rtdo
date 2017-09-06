@@ -83,6 +83,7 @@ void GAFitter::run(WaveSource src)
             stim.insert(stim.begin(), Stimulation::Step {(scalar)settleDuration, stim.baseV, false});
     }
     stimIdx = 0;
+    doFinish = false;
 
     daq = new DAQFilter(session);
 
@@ -152,6 +153,11 @@ void GAFitter::run(WaveSource src)
     daq = nullptr;
 }
 
+void GAFitter::finish()
+{
+    doFinish = true;
+}
+
 void GAFitter::load(const QString &act, const QString &, QFile &results)
 {
     if ( act != action )
@@ -186,7 +192,7 @@ void GAFitter::load(const QString &act, const QString &, QFile &results)
 
 bool GAFitter::finished()
 {
-    return epoch >= settings.maxEpochs;
+    return doFinish || epoch >= settings.maxEpochs;
 }
 
 void GAFitter::populate()
