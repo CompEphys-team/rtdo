@@ -32,6 +32,10 @@ public:
         quint32 epochs;
         WaveSource deck;
         GAFitterSettings settings;
+
+        bool final;
+        std::vector<scalar> finalParams; //!< Final best-performing model across all stimulations
+        std::vector<scalar> finalError; //!< Error of the final model on each stimulation
     };
 
     inline const std::vector<Output> &results() const { return m_results; }
@@ -66,6 +70,7 @@ protected:
     void populate();
     void stimulate(const Stimulation &I);
     void procreate();
+    void finalise();
     quint32 findNextStim();
     bool finished();
     void pushToQ(double t, double V, double I, double O);
@@ -74,6 +79,7 @@ protected:
         size_t idx;
         scalar err;
     };
+    static bool errTupelSort(const errTupel &x, const errTupel &y);
     std::vector<errTupel> p_err; //!< Sortable errTupels used in procreate()
 
     std::vector<Output> m_results;

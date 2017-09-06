@@ -5,7 +5,7 @@
 
 const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 101;
+const quint32 GAFitter::version = 102;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -43,7 +43,10 @@ GAFitter::Output::Output(const GAFitter &f) :
     stimIdx(f.settings.maxEpochs),
     targets(f.lib.adjustableParams.size()),
     epochs(0),
-    settings(f.settings)
+    settings(f.settings),
+    final(false),
+    finalParams(f.lib.adjustableParams.size()),
+    finalError(f.lib.adjustableParams.size())
 {
     deck.session =& f.session;
     for ( size_t i = 0; i < targets.size(); i++ ) // Initialise for back compat
@@ -117,6 +120,8 @@ void GAFitter::run(WaveSource src)
     std::cout << "ms simulated: " << simtime << std::endl;
     std::cout << "Ratio: " << (simtime/wallclockms) << std::endl;
 
+    // Finalise ranking and select winning parameter set
+    finalise();
 
     // Finish
     output.epochs = epoch;
@@ -136,6 +141,11 @@ void GAFitter::run(WaveSource src)
         }
         for ( const scalar &t : out.targets )
             os << t;
+        os << out.final;
+        for ( const scalar &p : out.finalParams )
+            os << p;
+        for ( const scalar &e : out.finalError )
+            os << e;
     }
 
     delete daq;
@@ -164,6 +174,13 @@ void GAFitter::load(const QString &act, const QString &, QFile &results)
     if ( ver >= 101 )
         for ( scalar &t : out.targets )
             is >> t;
+    if ( ver >= 102 ) {
+        is >> out.final;
+        for ( scalar &p : out.finalParams )
+            is >> p;
+        for ( scalar &e : out.finalError )
+            is >> e;
+    }
     m_results.push_back(std::move(out));
 }
 
@@ -218,6 +235,14 @@ quint32 GAFitter::findNextStim()
     return nextStimIdx;
 }
 
+bool GAFitter::errTupelSort(const errTupel &x, const errTupel &y)
+{
+    // make sure NaN is largest
+    if ( std::isnan(x.err) ) return false;
+    if ( std::isnan(y.err) ) return true;
+    return x.err < y.err;
+}
+
 void GAFitter::procreate()
 {
     for ( size_t i = 0; i < p_err.size(); i++ ) {
@@ -225,12 +250,7 @@ void GAFitter::procreate()
         p_err[i].err = lib.err[i];
         lib.err[i] = 0;
     }
-    std::sort(p_err.begin(), p_err.end(), [](const errTupel &x, const errTupel &y) -> bool {
-        // make sure NaN is largest
-        if ( std::isnan(x.err) ) return false;
-        if ( std::isnan(y.err) ) return true;
-        return x.err < y.err;
-    });
+    std::sort(p_err.begin(), p_err.end(), &errTupelSort);
 
     output.error[epoch] = std::sqrt(p_err[0].err / std::ceil((stims.at(stimIdx).tObsEnd-stims.at(stimIdx).tObsBegin)/session.project.dt())); // RMSE
     output.stimIdx[epoch] = stimIdx;
@@ -289,6 +309,62 @@ void GAFitter::procreate()
 
     if ( !session.daqData().cache.active )
         QThread::msleep(daq->throttledFor(stims.at(stimIdx)));
+}
+
+void GAFitter::finalise()
+{
+    if ( aborted )
+        return;
+
+    std::vector<std::vector<errTupel>> f_err(stims.size(), std::vector<errTupel>(lib.project.expNumCandidates()));
+
+    // Evaluate existing population on all stims
+    for ( stimIdx = 0; !aborted && stimIdx < stims.size(); stimIdx++ ) {
+        // Stimulate
+        stimulate(stims.at(stimIdx));
+
+        // Gather and reset error
+        lib.pullErr();
+        for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
+            f_err[stimIdx][i].idx = i;
+            f_err[stimIdx][i].err = lib.err[i];
+            lib.err[i] = 0;
+        }
+        lib.pushErr();
+
+        // Sort
+        std::sort(f_err[stimIdx].begin(), f_err[stimIdx].end(), &errTupelSort);
+    }
+
+    if ( aborted )
+        return;
+
+    // Select final
+    std::vector<errTupel> sumRank(lib.project.expNumCandidates());
+    // Abusing errTupel (idx, err) as (idx, sumRank).
+    for ( size_t i = 0; i < sumRank.size(); i++ ) {
+        sumRank[i].idx = i;
+        sumRank[i].err = 0;
+    }
+    // For each parameter set, add up the ranking across all stims
+    for ( const std::vector<errTupel> &ranked : f_err ) {
+        for ( size_t i = 0; i < sumRank.size(); i++ ) {
+            sumRank[ranked[i].idx].err += i;
+        }
+    }
+    // Sort by sumRank, ascending
+    std::sort(sumRank.begin(), sumRank.end(), &errTupelSort);
+
+    for ( size_t i = 0; i < stims.size(); i++ ) {
+        output.finalParams[i] = lib.adjustableParams[i][sumRank[0].idx];
+        for ( size_t j = 0; j < sumRank.size(); j++ ) {
+            if ( f_err[i][j].idx == sumRank[0].idx ) {
+                output.finalError[i] = f_err[i][j].err;
+                break;
+            }
+        }
+    }
+    output.final = true;
 }
 
 void GAFitter::stimulate(const Stimulation &I)
