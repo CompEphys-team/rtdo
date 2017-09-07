@@ -41,6 +41,7 @@ private slots:
 
     void replot();
     void progress(quint32);
+    void addFinal(const GAFitter::Output &);
     void xRangeChanged(QCPRange range);
     void errorRangeChanged(QCPRange range);
     void percentileRangeChanged(QCPRange range);

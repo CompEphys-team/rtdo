@@ -207,13 +207,28 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
     if ( enslave ) {
         ui->sidebar->setVisible(false);
         connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
+        connect(&session->gaFitter(), &GAFitter::done, this, [=](){
+            const GAFitter::Output &o = session->gaFitter().results().back();
+            if ( o.final )
+                addFinal(o);
+        });
         clear();
     } else {
-        for ( const AdjustableParam &p : session->project.model().adjustableParams ) {
+        for ( int i = 0; i < 2; i++ ) {
             int c = ui->fits->columnCount();
-            ui->fits->insertColumn(c);
-            ui->fits->setHorizontalHeaderItem(c, new QTableWidgetItem(QString::fromStdString(p.name)));
-            ui->fits->setColumnWidth(c, 70);
+            for ( const AdjustableParam &p : session->project.model().adjustableParams ) {
+                ui->fits->insertColumn(c);
+                QTableWidgetItem *item = new QTableWidgetItem(QString::fromStdString(p.name));
+                item->setToolTip(i ? "Final value" : "Target value");
+                ui->fits->setHorizontalHeaderItem(c, item);
+                ui->fits->setColumnWidth(c, 70);
+                ++c;
+            }
+            if ( !i ) {
+                ui->fits->insertColumn(c);
+                ui->fits->setHorizontalHeaderItem(c, new QTableWidgetItem(""));
+                ui->fits->setColumnWidth(c, 10);
+            }
         }
         ui->fits->setColumnWidth(0, 15);
         ui->fits->setColumnWidth(1, 15);
@@ -277,6 +292,9 @@ void ParameterFitPlotter::updateFits()
         ui->fits->setItem(i, 7, new QTableWidgetItem(QString::number(fit.settings.targetType)));
         for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
             ui->fits->setItem(i, 8+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
+        if ( fit.final )
+            for ( size_t j = 0, np = session->project.model().adjustableParams.size(); j < np; j++ )
+                ui->fits->setItem(i, 8+np+1+j, new QTableWidgetItem(QString::number(fit.finalParams[j], 'g', 3)));
     }
 }
 
@@ -348,6 +366,9 @@ void ParameterFitPlotter::replot()
                     plots[i]->yAxis2->setRangeUpper(range.upper);
             }
         }
+
+        if ( fit.final )
+            addFinal(fit);
     }
 
     for ( QCustomPlot *p : plots )
@@ -420,6 +441,27 @@ void ParameterFitPlotter::progress(quint32 epoch)
 
     for ( QCustomPlot *p : plots )
         p->replot(QCustomPlot::rpQueuedReplot);
+}
+
+void ParameterFitPlotter::addFinal(const GAFitter::Output &fit)
+{
+    for ( size_t i = 0; i < plots.size(); i++ ) {
+        const QCPGraph *gParam = plots[i]->graph(plots[i]->graphCount()-2), *gErr = plots[i]->graph();
+
+        QCPGraph *g = plots[i]->addGraph(gParam->keyAxis(), gParam->valueAxis());
+        g->setVisible(gParam->visible());
+        g->setPen(gParam->pen());
+        g->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssPlusCircle));
+        g->addData(fit.epochs, fit.finalParams[i]);
+
+        g = plots[i]->addGraph(gErr->keyAxis(), gErr->valueAxis());
+        g->setVisible(gErr->visible());
+        g->setPen(gErr->pen());
+        g->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssPlusCircle));
+        g->addData(fit.epochs, fit.finalError[i]);
+
+        plots[i]->replot(QCustomPlot::rpQueuedReplot);
+    }
 }
 
 void ParameterFitPlotter::xRangeChanged(QCPRange range)
