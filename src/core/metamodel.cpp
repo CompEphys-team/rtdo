@@ -13,11 +13,14 @@ void (*MetaModel::modelDef)(NNmodel&);
 
 size_t MetaModel::numLibs = 0;
 
-MetaModel::MetaModel(const Project &p) :
+MetaModel::MetaModel(const Project &p, std::string file) :
     project(p)
 {
+    if ( file.empty() )
+        file = project.modelfile().toStdString();
+
     tinyxml2::XMLDocument doc;
-    if ( doc.LoadFile(project.modelfile().toStdString().c_str()) ) {
+    if ( doc.LoadFile(file.c_str()) ) {
         doc.PrintError();
         throw std::runtime_error("Load XML failed with error " + doc.ErrorID() );
     }

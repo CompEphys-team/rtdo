@@ -13,7 +13,7 @@ DAQFilter::DAQFilter(Session &s) :
     if ( p.cache.active )
         daq = new DAQCache(session);
     else if ( p.simulate )
-        daq = s.project.experiment().createSimulator(s, true);
+        daq = s.project.experiment().createSimulator(p.simulate, s, true);
     else
         daq = new RTMaybe::ComediDAQ(session);
 

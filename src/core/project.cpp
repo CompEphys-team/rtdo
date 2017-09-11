@@ -14,6 +14,7 @@ Project::Project(const QString &projectfile) :
 {
     addAPs();
     loadSettings(projectfile);
+    loadExtraModels();
 
     // Load libraries from existing files
     wglib.reset(new WavegenLibrary(*this, false));
@@ -52,6 +53,7 @@ void Project::addAPs()
     addAP(ap, "Experiment.numCandidates", this, &Project::exp_numCandidates);
     addAP(ap, "Profiler.numPairs", this, &Project::prof_numPairs);
     addDaqAPs(ap, &daqd);
+    addAP(ap, "sim.extraModels[#]", this, &Project::m_extraModelFiles);
 }
 
 void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
@@ -94,6 +96,22 @@ void Project::setModel(const QString &modelfile)
     m_model.reset(new MetaModel(*this));
 }
 
+void Project::setExtraModels(std::vector<QString> modelfiles)
+{
+    if ( frozen )
+        return;
+    m_extraModelFiles = std::move(modelfiles);
+    loadExtraModels();
+}
+
+void Project::loadExtraModels()
+{
+    m_extraModels.clear();
+    m_extraModels.reserve(m_extraModelFiles.size());
+    for ( const QString &m : m_extraModelFiles )
+        m_extraModels.emplace_back(*this, m.toStdString());
+}
+
 void Project::setLocation(const QString &projectfile)
 {
     if ( frozen )
@@ -108,6 +126,27 @@ QString Project::dir() const {
         return QFileInfo(p_projectfile).absoluteDir().absolutePath();
 }
 
+std::string Project::simulatorCode() const
+{
+    if ( !m_model )
+        return "";
+    std::stringstream ss;
+    using std::endl;
+    ss << m_model->daqCode(1);
+    ss << endl;
+    for ( size_t i = 0; i < m_extraModels.size(); i++ )
+        ss << m_extraModels.at(i).daqCode(i+2) << endl;
+    ss << "inline DAQ *createSim(int simNo, Session &session, bool useRealism) {" << endl;
+    ss << "    switch ( simNo ) {" << endl;
+    ss << "    default:" << endl;
+    for ( size_t i = 0; i < m_extraModels.size()+1; i++ )
+        ss << "    case " << (i+1) << " : return new Simulator_" << (i+1) << "(session, useRealism);" << endl;
+    ss << "    }" << endl;
+    ss << "}" << endl;
+    ss << "inline void destroySim(DAQ *sim) { delete sim; }" << endl << endl;
+    return ss.str();
+}
+
 bool Project::compile()
 {
     if ( frozen || !m_model || p_modelfile.isEmpty() || p_projectfile.isEmpty() )
@@ -119,6 +158,18 @@ bool Project::compile()
             destFile.remove();
         QFile::copy(p_modelfile, dest);
     }
+    for ( size_t i = 0; i < m_extraModelFiles.size(); i++ ) {
+        QFileInfo info(m_extraModelFiles[i]);
+        dest = dir() + "/" + info.baseName() + "." + QString::number(i) + ".xml";
+        if ( dest != info.absoluteFilePath() ) {
+            QFile destFile(dest);
+            if ( destFile.exists() )
+                destFile.remove();
+            QFile::copy(m_extraModelFiles[i], dest);
+            m_extraModelFiles[i] = dest;
+        }
+    }
+    loadExtraModels();
     wglib.reset(new WavegenLibrary(*this, true));
     explib.reset(new ExperimentLibrary(*this, true));
     proflib.reset(new ProfilerLibrary(*this, true));
@@ -138,5 +189,3 @@ void Project::setDaqData(DAQData p)
             p->write(proj);
     }
 }
-
-

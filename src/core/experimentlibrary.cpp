@@ -165,11 +165,7 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
     ss << "#include \"experimentlibrary.cu\"" << endl;
     ss << endl;
 
-    ss << model.daqCode(0);
-    ss << endl;
-    ss << "inline DAQ *createSim(Session &session, bool useRealism) { return new Simulator_0(session, useRealism); }" << endl;
-    ss << "inline void destroySim(DAQ *sim) { delete sim; }" << endl;
-    ss << endl;
+    ss << project.simulatorCode();
 
     ss << "extern \"C\" ExperimentLibrary::Pointers populate(std::vector<StateVariable> &state, "
                                                          << "std::vector<AdjustableParam> &param) {" << endl;

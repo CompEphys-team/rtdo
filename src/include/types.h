@@ -106,7 +106,7 @@ struct SimulatorData
 
 struct DAQData
 {
-    bool simulate;
+    int simulate;
     int devNo = 0;
     inline std::string devname() const { std::stringstream ss; ss << "/dev/comedi" << devNo; return ss.str(); }
     int throttle = 0;

@@ -5,7 +5,7 @@
 
 DAQCache::DAQCache(Session &session) :
     DAQ(session),
-    daq(p.simulate ? (DAQ*)(session.project.experiment().createSimulator(session, true)) : (DAQ*)(new RTMaybe::ComediDAQ(session)))
+    daq(p.simulate ? (DAQ*)(session.project.experiment().createSimulator(p.simulate, session, true)) : (DAQ*)(new RTMaybe::ComediDAQ(session)))
 {
 
 }

@@ -21,6 +21,7 @@ public:
 
     /// Set compile-time parameters - before compilation only
     void setModel(QString const& modelfile); ///!< Loads the model immediately. At compile time, the model file is copied to the project directory.
+    void setExtraModels(std::vector<QString> modelfiles); ///!< Load additional models for use as simulated targets
     void setLocation(QString const& projectfile); //!< Sets the project file. The project directory is set to the project file's path.
     inline void setDt(double dt) { if ( !frozen ) m_dt = dt; }
     inline void setMethod(IntegrationMethod method) { if ( !frozen ) m_method = method; }
@@ -30,6 +31,7 @@ public:
 
     /// Get compile-time parameters
     inline QString modelfile() const { return p_modelfile; }
+    inline const std::vector<QString> &extraModelFiles() const { return m_extraModelFiles; }
     inline double dt() const { return m_dt; }
     inline IntegrationMethod method() const { return m_method; }
     inline size_t wgNumGroups() const { return wg_numGroups; }
@@ -37,6 +39,8 @@ public:
     inline size_t profNumPairs() const { return prof_numPairs; }
 
     QString dir() const; //!< @brief dir() returns the absolute path to the project directory
+
+    std::string simulatorCode() const; //!< Returns simulator code for all models for use in support code sections
 
     /// Check if compilation has already happened
     inline bool isFrozen() const { return frozen; }
@@ -60,6 +64,8 @@ public:
 protected:
     void addAPs();
 
+    void loadExtraModels();
+
     QString p_modelfile;
     QString p_projectfile;
 
@@ -82,6 +88,9 @@ protected:
     std::unique_ptr<WavegenLibrary> wglib;
     std::unique_ptr<ExperimentLibrary> explib;
     std::unique_ptr<ProfilerLibrary> proflib;
+
+    std::vector<QString> m_extraModelFiles;
+    std::vector<MetaModel> m_extraModels;
 
     std::vector<std::unique_ptr<AP>> ap;
 };
