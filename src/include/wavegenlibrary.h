@@ -45,7 +45,7 @@ public:
 
     Project &project;
 
-    MetaModel &model;
+    const MetaModel &model;
 
     std::vector<StateVariable> stateVariables;
     std::vector<AdjustableParam> adjustableParams;

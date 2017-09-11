@@ -49,7 +49,8 @@ public:
     bool compile();
 
     /// Get the project objects
-    MetaModel &model() const { return *m_model; }
+    const MetaModel &model(int simNo = 0) const { return simNo==0 ? *m_model : m_extraModels.at(simNo-1); }
+    const std::vector<MetaModel> &extraModels() const { return m_extraModels; }
     WavegenLibrary &wavegen() const { return *wglib; }
     ExperimentLibrary &experiment() const { return *explib; }
     ProfilerLibrary &profiler() const { return *proflib; }

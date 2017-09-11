@@ -125,7 +125,7 @@ MetaModel::MetaModel(const Project &p, std::string file) :
     }
 }
 
-neuronModel MetaModel::generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni)
+neuronModel MetaModel::generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni) const
 {
     if ( !GeNNReady )
         initGeNN();

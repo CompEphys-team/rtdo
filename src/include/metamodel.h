@@ -13,7 +13,7 @@ class MetaModel
 public:
     MetaModel(Project const& p, std::string file = "");
 
-    neuronModel generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni);
+    neuronModel generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni) const;
 
     std::string kernel(const std::string &tab, bool wrapVariables, bool defineCurrents) const;
     std::string daqCode(int ordinal) const;
