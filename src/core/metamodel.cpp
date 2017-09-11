@@ -330,3 +330,168 @@ bool MetaModel::isCurrent(const Variable &tmp) const
     }
     return false;
 }
+
+string MetaModel::daqCode(int ordinal) const
+{
+    std::stringstream ss;
+    ss << endl << "#define Simulator_numbered Simulator_" << ordinal;
+    ss << R"EOF(
+class Simulator_numbered : public DAQ
+{
+private:
+    struct CacheStruct {
+        CacheStruct(Stimulation s, bool VC, double sDt, int extraSamples) :
+            _stim(s),
+            _VC(VC),
+            _voltage(s.duration/sDt + extraSamples),
+            _current(s.duration/sDt + extraSamples)
+        {}
+        Stimulation _stim;
+        bool _VC;
+        std::vector<scalar> _voltage;
+        std::vector<scalar> _current;
+)EOF";
+    for ( const StateVariable &v : stateVariables )
+        ss << "        " << v.type << " " << v.name << ";" << endl;
+    ss << R"EOF(
+    };
+
+    std::list<CacheStruct> cache;
+    std::list<CacheStruct>::iterator currentCacheEntry;
+    size_t currentSample;
+    bool useRealism;
+
+public:
+    Simulator_numbered(Session &session, bool useRealism) : DAQ(session), useRealism(useRealism)
+    {
+        initialise();
+    }
+
+    ~Simulator_numbered() {}
+
+    int throttledFor(const Stimulation &) { return 0; }
+
+    void run(Stimulation s)
+    {
+        currentStim = s;
+        currentSample = 0;
+
+        double sDt = DT;
+        int extraSamples = 0;
+        scalar tStart = 0, tEnd = s.duration;
+        bool noise = false;
+        scalar noiseI = 0, noiseExp = 0, noiseA = 0;
+
+        if ( useRealism ) {
+            sDt = samplingDt();
+            if ( p.filter.active ) {
+                extraSamples = p.filter.width;
+                tStart = -int(p.filter.width/2) * sDt;
+                tEnd = s.duration - tStart;
+            }
+            if ( (noise = p.simd.noise) ) {
+                noiseI = p.simd.noiseStd * RNG.variate<scalar>(0,1);
+                if ( p.simd.noiseTau > 0 ) { // Brown noise
+                    scalar noiseD = 2 * p.simd.noiseStd * p.simd.noiseStd / p.simd.noiseTau; // nA^2/ms
+                    noiseExp = std::exp(-sDt/rund.simCycles/p.simd.noiseTau);
+                    noiseA = std::sqrt(noiseD * p.simd.noiseTau / 2 * (1 - noiseExp*noiseExp));
+                } else { // White noise
+                    noiseExp = 0;
+                    noiseA = p.simd.noiseStd;
+                }
+                cache.clear(); // No caching of non-deterministic samples
+            }
+        }
+
+        samplesRemaining = s.duration/sDt + extraSamples;
+
+        // Check if requested stimulation has been used before
+        for ( currentCacheEntry = cache.begin(); currentCacheEntry != cache.end(); ++currentCacheEntry ) {
+            if ( currentCacheEntry->_stim == s && currentCacheEntry->_VC == VC ) {
+                restoreState();
+                return;
+            }
+        }
+        currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(s, VC, sDt, extraSamples));
+
+        scalar t = tStart;
+        unsigned int iT = 0;
+        scalar Isyn;
+        const scalar mdt = sDt/rund.simCycles;
+        for ( t = tStart; t <= tEnd; ++iT, t = tStart + iT*sDt ) {
+            scalar Vcmd = getCommandVoltage(s, t);
+            for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
+                Isyn = VC ? ((rund.clampGain*(Vcmd-V) - V) / rund.accessResistance) : Vcmd;
+                if ( noise ) {
+                    noiseI = noiseI * noiseExp + noiseA * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-dt/tau) + A*X(0,1), I0 = 0
+                    Isyn += noiseI;
+                }
+)EOF";
+    ss << kernel("                ", false, false);
+    ss << R"EOF(
+            } // end for mt
+
+            currentCacheEntry->_voltage[iT] = V;
+            currentCacheEntry->_current[iT] = Isyn;
+        } // end for t
+
+        saveState();
+    }
+
+    void next()
+    {
+        current = currentCacheEntry->_current[currentSample];
+        voltage = currentCacheEntry->_voltage[currentSample];
+        ++currentSample;
+        --samplesRemaining;
+    }
+
+    void reset()
+    {
+        currentSample = 0;
+        voltage = current = 0.0;
+    }
+
+    void saveState()
+    {
+)EOF";
+    for ( const StateVariable &v : stateVariables )
+        ss << "        currentCacheEntry->" << v.name << " = " << v.name << ";" << endl;
+    ss << "    }" << endl;
+    ss << endl;
+
+    ss << "    void restoreState()" << endl;
+    ss << "    {" << endl;
+    for ( const StateVariable &v : stateVariables )
+        ss << "        " << v.name << " = currentCacheEntry->" << v.name << ";" << endl;
+    ss << "    }" << endl;
+    ss << endl;
+
+    ss << "    void initialise()" << endl;
+    ss << "    {" << endl;
+    for ( const StateVariable &v : stateVariables )
+        ss << "        " << v.name << " = " << v.initial << ";" << endl;
+    ss << "    }" << endl << endl;
+
+    ss << "    void setAdjustableParam(size_t idx, double value)" << endl;
+    ss << "    {" << endl;
+    ss << "        switch ( idx ) {" << endl;
+    for ( size_t i = 0; i < adjustableParams.size(); i++ )
+        ss << "        case " << i << ": " << adjustableParams[i].name << " = value; break;" << endl;
+    ss << "        }" << endl;
+    ss << "    cache.clear();" << endl;
+    ss << "    initialise();" << endl;
+    ss << "    }" << endl << endl;
+
+    // Declarations
+    for ( const StateVariable &v : stateVariables )
+        ss << "    " << v.type << " " << v.name << ";" << endl;
+
+    ss << endl;
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "    " << p.type << " " << p.name << " = " << p.initial << ";" << endl;
+
+    ss << "};" << endl;
+    ss << "#undef Simulator_numbered" << endl;
+    return ss.str();
+}

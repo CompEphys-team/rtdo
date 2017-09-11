@@ -16,6 +16,7 @@ public:
     neuronModel generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni);
 
     std::string kernel(const std::string &tab, bool wrapVariables, bool defineCurrents) const;
+    std::string daqCode(int ordinal) const;
 
     std::string name() const; //!< Model name, no suffix
     std::string name(ModuleType) const; //!< Model name with type suffix

@@ -64,7 +64,6 @@ private:
     void *compile_and_load();
     std::string simCode();
     std::string supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars);
-    std::string daqCode();
 
     void *lib;
 
