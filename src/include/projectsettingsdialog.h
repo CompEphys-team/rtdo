@@ -33,6 +33,10 @@ private slots:
 
     void on_copy_clicked();
 
+    void on_extraAdd_clicked();
+
+    void on_extraRemove_clicked();
+
 private:
     Ui::ProjectSettingsDialog *ui;
     Project *p;
