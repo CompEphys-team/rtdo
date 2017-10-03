@@ -208,6 +208,13 @@ std::string MetaModel::kernel(const std::string &tab, bool wrapVariables, bool d
     };
 
     std::stringstream ss;
+    ss.setf(std::ios_base::scientific, std::ios_base::floatfield);
+    ss.precision(10);
+
+    if ( !wrapVariables )
+        for ( const Variable &p : _params )
+            ss << tab << "constexpr " << p.type << " " << p.name << " = " << p.initial << ";" << endl;
+
     switch ( project.method() ) {
     case IntegrationMethod::ForwardEuler:
         // Locally declare currents
