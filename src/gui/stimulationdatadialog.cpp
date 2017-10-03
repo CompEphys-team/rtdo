@@ -9,6 +9,7 @@ StimulationDataDialog::StimulationDataDialog(Session &s, QWidget *parent) :
     ui->setupUi(this);
     connect(&session, SIGNAL(stimulationDataChanged()), this, SLOT(importData()));
     connect(this, SIGNAL(apply(StimulationData)), &session, SLOT(setStimulationData(StimulationData)));
+    connect(this, SIGNAL(updateWavegenData(WavegenData)), &session, SLOT(setWavegenData(WavegenData)));
 
     connect(this, SIGNAL(accepted()), this, SLOT(exportData()));
     connect(this, SIGNAL(rejected()), this, SLOT(importData()));
@@ -67,5 +68,22 @@ void StimulationDataDialog::exportData()
     p.muta.lNumber = ui->mutaNumber->value();
     p.muta.lSwap = ui->mutaSwap->value();
     p.muta.lType = ui->mutaType->value();
+
+    WavegenData wd = session.wavegenData();
+    bool wdChanged = false;
+    for ( MAPEDimension &m : wd.mapeDimensions ) {
+        scalar min = m.min, max = m.max;
+        m.setDefaultMinMax(session.stimulationData());
+        if ( m.min == min && m.max == max ) {
+            m.setDefaultMinMax(p);
+            wdChanged |= (m.min != min || m.max != max);
+        } else { // Keep non-default values unchanged
+            m.min = min;
+            m.max = max;
+        }
+    }
+
     emit apply(p);
+    if ( wdChanged )
+        emit updateWavegenData(wd);
 }

@@ -22,6 +22,7 @@ public slots:
 
 signals:
     void apply(StimulationData);
+    void updateWavegenData(WavegenData);
 
 private:
     Ui::StimulationDataDialog *ui;

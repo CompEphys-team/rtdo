@@ -142,14 +142,13 @@ void Session::addAPs()
     Project::addDaqAPs(daqAP, &daqd);
 
     // Defaults
-    scalar maxDeviation = stimd.maxVoltage-stimd.baseV > stimd.baseV-stimd.minVoltage
-            ? stimd.maxVoltage - stimd.baseV
-            : stimd.baseV - stimd.minVoltage;
     searchd.mapeDimensions = {
-        {MAPEDimension::Func::BestBubbleDuration,   0, stimd.duration,   128},
-        {MAPEDimension::Func::BestBubbleTime,       0, stimd.duration,    32},
-        {MAPEDimension::Func::VoltageDeviation,     0, maxDeviation,      32}
+        {MAPEDimension::Func::BestBubbleDuration,   0, 0, 128},
+        {MAPEDimension::Func::BestBubbleTime,       0, 0,  32},
+        {MAPEDimension::Func::VoltageDeviation,     0, 0,  32}
     };
+    for ( MAPEDimension &m : searchd.mapeDimensions )
+        m.setDefaultMinMax(stimd);
     searchd.precisionIncreaseEpochs = { 100 };
 }
 

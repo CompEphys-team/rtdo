@@ -166,6 +166,19 @@ scalar MAPEDimension::bin_inverse(size_t bin, size_t multiplier) const
     return min + bin * (max - min)/(multiplier * resolution);
 }
 
+void MAPEDimension::setDefaultMinMax(StimulationData d)
+{
+    scalar maxDeviation = d.maxVoltage-d.baseV > d.baseV-d.minVoltage
+            ? d.maxVoltage - d.baseV
+            : d.baseV - d.minVoltage;
+    switch ( func ) {
+    case Func::BestBubbleDuration: min = 0; max = d.duration; return;
+    case Func::BestBubbleTime:     min = 0; max = d.duration; return;
+    case Func::VoltageDeviation:   min = 0; max = maxDeviation; return;
+    case Func::VoltageIntegral:    min = 0; max = maxDeviation * d.duration; return;
+    }
+}
+
 std::string toString(const MAPEDimension::Func &f)
 {
     switch ( f ) {
