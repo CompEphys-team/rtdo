@@ -59,6 +59,9 @@ public:
     void finalise();
 
     QString prettyName() const;
+
+protected:
+    size_t nFinal;
 };
 
 #endif // WAVEGENSELECTOR_H

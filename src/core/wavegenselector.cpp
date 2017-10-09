@@ -145,6 +145,7 @@ void WavegenSelection::finalise()
     }
     std::vector<std::list<MAPElite>::const_iterator> uncollapsed(uncollapsed_size, default_iterator);
     std::list<MAPElite>::const_iterator archIter = archive().elites.begin();
+    nFinal = 0;
 
     // Populate `uncollapsed` with iterators to the archive by walking the area covered by the selection
     // Cells that are unavailable in the archive remain unchanged in uncollapsed.
@@ -162,8 +163,10 @@ void WavegenSelection::finalise()
             break;
 
         // Insert archive iterator into uncollapsed
-        if ( archIter->bin == true_index && archIter->fitness >= minFitness )
+        if ( archIter->bin == true_index && archIter->fitness >= minFitness ) {
             element = archIter;
+            ++nFinal;
+        }
 
         // Advance index
         for ( int i = dimensions-1; i >= 0; i-- ) {
@@ -182,6 +185,7 @@ void WavegenSelection::finalise()
     }
 
     selection = std::vector<std::list<MAPElite>::const_iterator>(collapsed_size, default_iterator);
+    nFinal = 0;
 
     // Reset uncollapsed index
     for ( size_t &o : offset_index )
@@ -193,8 +197,11 @@ void WavegenSelection::finalise()
         std::list<MAPElite>::const_iterator &collapsed = selection.at(collapsed_index);
 
         // Collapse element onto the final selection if it's better
-        if ( element != default_iterator && (collapsed == default_iterator || element->fitness > collapsed->fitness) )
+        if ( element != default_iterator && (collapsed == default_iterator || element->fitness > collapsed->fitness) ) {
+            if ( collapsed == default_iterator )
+                ++nFinal;
             collapsed = element;
+        }
 
         // Advance uncollapsed index, corresponding to next element
         for ( int i = dimensions-1; i >= 0; i-- ) {
@@ -219,7 +226,7 @@ void WavegenSelection::finalise()
 
 QString WavegenSelection::prettyName() const
 {
-    return QString("%1 bins from archive %2")
-            .arg(size())
+    return QString("%1 waves from archive %2")
+            .arg(nFinal)
             .arg(archive_idx);
 }
