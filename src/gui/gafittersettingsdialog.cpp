@@ -13,41 +13,6 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, QWidget *parent) :
             importData();
     });
 
-    connect(ui->targetType, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int idx){
-        ui->targetValues->setEnabled(idx==1);
-        ui->fits->setEnabled(idx==1);
-    });
-
-    auto append = [=](int i){
-        const GAFitter::Output &fit = session.gaFitter().results().at(i);
-        ui->fits->addItem(QString("Fit %1 (%2 epochs, %3)").arg(i).arg(fit.epochs).arg(fit.deck.prettyName()));
-    };
-    ui->fits->addItem("Copy values from...");
-    for ( size_t i = 0; i < session.gaFitter().results().size(); i++ ) {
-        append(i);
-    }
-    connect(&session.gaFitter(), &GAFitter::done, [=](){
-        append(session.gaFitter().results().size()-1);
-    });
-    connect(ui->fits, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int idx){
-        const GAFitter::Output &fit = session.gaFitter().results().at(idx-1);
-        for ( int i = 0; i < ui->targetValues->rowCount(); i++ ) {
-            qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->setValue(fit.targets.at(i));
-        }
-    });
-
-    ui->targetValues->setRowCount(session.project.model().adjustableParams.size());
-    QStringList labels;
-    for ( int i = 0; i < ui->targetValues->rowCount(); i++ ) {
-        labels << QString::fromStdString(session.project.model().adjustableParams.at(i).name);
-        QDoubleSpinBox *box = new QDoubleSpinBox();
-        box->setDecimals(6);
-        box->setRange(session.project.model().adjustableParams.at(i).min, session.project.model().adjustableParams.at(i).max);
-        box->setValue(session.project.model().adjustableParams.at(i).initial);
-        ui->targetValues->setCellWidget(i, 0, box);
-    }
-    ui->targetValues->setVerticalHeaderLabels(labels);
-
     importData();
 
     connect(this, SIGNAL(apply(GAFitterSettings)), &session, SLOT(setGAFitterSettings(GAFitterSettings)));
@@ -71,12 +36,6 @@ void GAFitterSettingsDialog::importData()
     ui->decaySigma->setChecked(p.decaySigma);
     ui->sigmaHalflife->setValue(p.sigmaHalflife);
     ui->sigmaInitial->setValue(p.sigmaInitial);
-    ui->targetType->setCurrentIndex(p.targetType);
-    if ( int(p.targetValues.size()) == ui->targetValues->rowCount() ) {
-        for ( int row = 0; row < ui->targetValues->rowCount(); row++ ) {
-            qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(row, 0))->setValue(p.targetValues.at(row));
-        }
-    }
 }
 
 void GAFitterSettingsDialog::exportData()
@@ -92,13 +51,6 @@ void GAFitterSettingsDialog::exportData()
     p.decaySigma = ui->decaySigma->isChecked();
     p.sigmaHalflife = ui->sigmaHalflife->value();
     p.sigmaInitial = ui->sigmaInitial->value();
-    p.targetType = ui->targetType->currentIndex();
-    if ( p.targetType == 1 ) {
-        p.targetValues.resize(ui->targetValues->rowCount());
-        for ( int row = 0; row < ui->targetValues->rowCount(); row++ ) {
-            p.targetValues[row] = qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(row, 0))->value();
-        }
-    }
     emit apply(p);
 }
 

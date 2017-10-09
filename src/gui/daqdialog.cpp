@@ -64,8 +64,30 @@ DAQDialog::DAQDialog(Session &s, QWidget *parent) :
 
     ui->timeout->setSpecialValueText("No timeout");
 
-    connect(ui->analogDAQ, &QGroupBox::toggled, [=](bool on){ ui->simulate->setChecked(!on); });
-    connect(ui->simulate, &QGroupBox::toggled, [=](bool on){ ui->analogDAQ->setChecked(!on); });
+    connect(ui->source, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int idx){
+        ui->sourceStack->setCurrentIndex(idx ? 1 : 0);
+        if ( idx ) {
+            const MetaModel &model = session.project.model(idx-1);
+            ui->targetValues->clear();
+            ui->targetValues->setRowCount(model.adjustableParams.size());
+            QStringList labels;
+            for ( int i = 0; i < ui->targetValues->rowCount(); i++ ) {
+                labels << QString::fromStdString(model.adjustableParams.at(i).name);
+                QDoubleSpinBox *box = new QDoubleSpinBox();
+                box->setDecimals(6);
+                box->setRange(model.adjustableParams.at(i).min, model.adjustableParams.at(i).max);
+                box->setValue(model.adjustableParams.at(i).initial);
+                ui->targetValues->setCellWidget(i, 0, box);
+            }
+            ui->targetValues->setVerticalHeaderLabels(labels);
+        }
+    });
+    connect(ui->targetType, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int idx){
+        ui->targetValues->setEnabled(idx == 2); // Enable manual value entry on fixed values only
+    });
+
+    for ( const MetaModel &model : session.project.extraModels() )
+        ui->source->addItem(QString::fromStdString(model.name()));
 
     importData();
 }
@@ -79,7 +101,7 @@ void DAQDialog::importData()
 {
     const DAQData &p = session.daqData();
 
-    ui->analogDAQ->setChecked(!p.simulate);
+    ui->source->setCurrentIndex(p.simulate);
     ui->deviceNumber->setValue(p.devNo);
     ui->throttle->setValue(p.throttle);
 
@@ -94,7 +116,6 @@ void DAQDialog::importData()
         chanUI[i].offset->setValue(cp[i]->offset);
     }
 
-    ui->simulate->setChecked(p.simulate);
     ui->noise->setChecked(p.simd.noise);
     ui->noiseStd->setValue(p.simd.noiseStd);
     ui->noiseTau->setValue(p.simd.noiseTau);
@@ -114,7 +135,7 @@ DAQData DAQDialog::getFormData()
 {
     DAQData p;
 
-    p.simulate = !ui->analogDAQ->isChecked();
+    p.simulate = ui->source->currentIndex();
     p.devNo = ui->deviceNumber->value();
     p.throttle = ui->throttle->value();
 
@@ -132,6 +153,14 @@ DAQData DAQDialog::getFormData()
     p.simd.noise = ui->noise->isChecked();
     p.simd.noiseStd = ui->noiseStd->value();
     p.simd.noiseTau = ui->noiseTau->value();
+    p.simd.paramSet = ui->targetType->currentIndex();
+    if ( p.simd.paramSet == 2 ) {
+        p.simd.paramValues.resize(ui->targetValues->rowCount());
+        for ( size_t i = 0; i < p.simd.paramValues.size(); i++ )
+            p.simd.paramValues[i] = qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->value();
+    } else {
+        p.simd.paramValues.clear();
+    }
 
     p.cache.active = ui->cache->isChecked();
     p.cache.numTraces = ui->numTraces->value();
@@ -175,7 +204,7 @@ void DAQDialog::updateChannelCapabilities(int tab, bool checkDevice)
                 updateSingleChannelCapabilities(dev, subdev[i], chanUI[i]);
         else
             updateSingleChannelCapabilities(dev, subdev[tab], chanUI[tab]);
-    } else if ( checkDevice && isVisible() && ui->analogDAQ->isChecked() ) {
+    } else if ( checkDevice && isVisible() && ui->targetType->currentIndex() == 0 ) {
         ui->deviceName->setText("No such device");
         QMessageBox err;
         err.setText(QString("Unable to find or open device \"%1\"\n%2")
