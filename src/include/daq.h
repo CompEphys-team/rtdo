@@ -10,7 +10,8 @@ public:
     DAQ(Session &session);
     virtual ~DAQ();
 
-    /// For simulator instances only: Change the model parameters. For analog DAQs, this should be a no-op.
+    /// For simulator instances only: Get/set the model parameters. For analog DAQs, this should be a return 0 / no-op.
+    virtual double getAdjustableParam(size_t idx) = 0;
     virtual void setAdjustableParam(size_t idx, double value) = 0;
 
     /// For throttled instances: Returns the number of ms remaining until responses to @s can start to be provided

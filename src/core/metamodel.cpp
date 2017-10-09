@@ -486,6 +486,15 @@ public:
     ss << "    initialise();" << endl;
     ss << "    }" << endl << endl;
 
+    ss << "    double getAdjustableParam(size_t idx)" << endl;
+    ss << "    {" << endl;
+    ss << "        switch ( idx ) {" << endl;
+    for ( size_t i = 0; i < adjustableParams.size(); i++ )
+        ss << "        case " << i << ": return " << adjustableParams[i].name << ";" << endl;
+    ss << "        }" << endl;
+    ss << "        return 0;" << endl;
+    ss << "    }" << endl << endl;
+
     // Declarations
     for ( const StateVariable &v : stateVariables )
         ss << "    " << v.type << " " << v.name << ";" << endl;

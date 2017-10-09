@@ -16,6 +16,7 @@ public:
     DAQCache(Session &session);
     ~DAQCache();
 
+    double getAdjustableParam(size_t idx);
     void setAdjustableParam(size_t idx, double value);
     int throttledFor(const Stimulation &s);
     void run(Stimulation s);

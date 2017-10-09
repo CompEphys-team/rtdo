@@ -15,6 +15,11 @@ DAQCache::~DAQCache()
     session.project.experiment().destroySimulator(daq);
 }
 
+double DAQCache::getAdjustableParam(size_t idx)
+{
+    return getAdjustableParam(idx);
+}
+
 void DAQCache::setAdjustableParam(size_t idx, double value)
 {
     daq->setAdjustableParam(idx, value);
