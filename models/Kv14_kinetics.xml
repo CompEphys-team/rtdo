@@ -1,0 +1,101 @@
+<model name="Kv14_kinetics">
+	<variable name="V" value="-60">
+		<tmp current="1" name="I_A">$(nA)*$(nA)*$(nA)*$(nA)*$(hA)*$(gA) * ($(V)-$(EK))</tmp>
+		<tmp current="1" name="I_l">$(gl) * ($(V)-$(El))</tmp>
+		<dYdt>(Isyn - I_A - I_l)/$(C)</dYdt>
+		<range min="-150" max="100" />
+	</variable>
+	<variable name="nA" value="0.02">
+		<tmp name="_inf">1.0/(1.0 + exp(($(nA_mid)-$(V))/$(nA_slope)))</tmp>
+		<tmp name="tau_">$(taunA_min) + $(taunA_max)/(exp(($(taunA_off)+$(V))/$(taunA_slope1))+exp(($(taunA_off)+$(V))/$(taunA_slope2)))</tmp>
+		<dYdt>((_inf-$(nA))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="hA" value="0.99">
+		<tmp name="_inf">$(hA_0) + (1.0-$(hA_0))/(1.0 + exp(($(hA_mid)-$(V))/$(hA_slope)))</tmp>
+		<tmp name="tau_">$(tauhA_min) + $(tauhA_max)/(1.0 + exp(($(tauhA_mid)+$(V))/$(tauhA_slope)))</tmp>
+		<dYdt>((_inf-$(hA))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+
+	<adjustableParam name="gA" value="60">
+		<range min="10" max="200"/>
+		<perturbation type="*" rate="0.05"/>
+	</adjustableParam>
+	<adjustableParam name="EK" value="-80">
+		<range min="-100" max="-50"/>
+		<perturbation type="+" rate="1"/>
+	</adjustableParam>
+
+	<adjustableParam name="gl" value="0.1">
+		<range min="0.0001" max="10"/>
+		<perturbation type="*" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="El" value="-10">
+		<range min="-30" max="10"/>
+		<perturbation type="+" rate="1"/>
+	</adjustableParam>
+
+	<adjustableParam name="C" value="150">
+		<range min="50" max="200"/>
+		<perturbation type="*" rate="0.01"/>
+	</adjustableParam>
+
+	<adjustableParam name="nA_mid" value="-55">
+		<range min="-70" max="-35"/>
+		<perturbation type="+" rate="1"/>
+	</adjustableParam>
+	<adjustableParam name="nA_slope" value="20">
+		<range min="11" max="25"/>
+		<perturbation type="*" rate="0.5"/>
+	</adjustableParam>
+		
+	<adjustableParam name="taunA_min" value="2">
+		<range min="0.5" max="4"/>
+		<perturbation type="+" rate="0.05"/>
+	</adjustableParam>
+	<adjustableParam name="taunA_max" value="102">
+		<range min="50" max="150"/>
+		<perturbation type="+" rate="2"/>
+	</adjustableParam>
+	<adjustableParam name="taunA_off" value="45">
+		<range min="35" max="55"/>
+		<perturbation type="+" rate="0.5"/>
+	</adjustableParam>
+	<adjustableParam name="taunA_slope1" value="6">
+		<range min="3" max="12"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="taunA_slope2" value="-40">
+		<range min="-60" max="-25"/>
+		<perturbation type="*" rate="1"/>
+	</adjustableParam>
+	<adjustableParam name="hA_0" value="0.05">
+		<range min="0" max="0.1"/>
+		<perturbation type="+" rate="0.002"/>
+	</adjustableParam>
+	<adjustableParam name="hA_mid" value="-48">
+		<range min="-65" max="-35"/>
+		<perturbation type="+" rate="1"/>
+	</adjustableParam>
+	<adjustableParam name="hA_slope" value="5">
+		<range min="3" max="6"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tauhA_min" value="35">
+		<range min="25" max="40"/>
+		<perturbation type="+" rate="0.5"/>
+	</adjustableParam>
+	<adjustableParam name="tauhA_max" value="10000">
+		<range min="8000" max="12000"/>
+		<perturbation type="+" rate="100"/>
+	</adjustableParam>
+	<adjustableParam name="tauhA_mid" value="72">
+		<range min="65" max="80"/>
+		<perturbation type="+" rate="0.5"/>
+	</adjustableParam>
+	<adjustableParam name="tauhA_slope" value="7">
+		<range min="5" max="10"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+</model>
