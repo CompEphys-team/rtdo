@@ -142,6 +142,8 @@ void WavegenFitnessMapper::updateDimensions()
     }
     ui->dimensions->setVerticalHeaderLabels(labels);
 
+    ui->minFitness->setValue(src.selection() ? src.selection()->minFitness : 0);
+
     replot();
 }
 
@@ -160,6 +162,7 @@ bool WavegenFitnessMapper::select(bool flattenToPlot)
             flatten |= !(groupx->checkedId() == i || groupy->checkedId() == i);
         selection->limit(i, mins[i]->value(), maxes[i]->value(), flatten);
     }
+    selection->minFitness = ui->minFitness->value();
     selection->finalise();
     return true;
 }
@@ -204,6 +207,8 @@ void WavegenFitnessMapper::replot()
 
     // rescale the data dimension (color) such that all data points lie in the span visualized by the color gradient:
     colorMap->rescaleDataRange();
+    if ( selection->minFitness > 0 )
+        colorMap->setDataRange(QCPRange(selection->minFitness, colorMap->dataRange().upper));
 
     // rescale the key (x) and value (y) axes so the whole color map is visible:
     ui->plot->rescaleAxes();
@@ -216,4 +221,9 @@ void WavegenFitnessMapper::on_btnAdd_clicked()
         return;
     savedSelection = true;
     session.wavesets().makeSelection(*selection);
+}
+
+void WavegenFitnessMapper::on_readMinFitness_clicked()
+{
+    ui->minFitness->setValue(colorMap->dataRange().lower);
 }

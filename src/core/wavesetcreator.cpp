@@ -3,7 +3,7 @@
 
 const QString WavesetCreator::actionSelect = QString("select");
 const quint32 WavesetCreator::magicSelect = 0xa54f3955;
-const quint32 WavesetCreator::versionSelect = 100;
+const quint32 WavesetCreator::versionSelect = 101;
 
 const QString WavesetCreator::actionSubset = QString("subset");
 const quint32 WavesetCreator::magicSubset = 0x12be3df0;
@@ -45,6 +45,7 @@ void WavesetCreator::makeSelection(const WavegenSelection &selection)
     os << quint32(sel.ranges.size());
     for ( WavegenSelection::Range const& r : sel.ranges )
         os << quint32(r.min) << quint32(r.max) << r.collapse;
+    os << sel.minFitness;
 }
 
 void WavesetCreator::makeSubset(WaveSource src, std::vector<size_t> indices)
@@ -144,6 +145,7 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
             r.min = min;
             r.max = max;
         }
+        is >> sel.minFitness;
         sel.finalise();
         m_selections.push_back(std::move(sel));
     } else if ( action == actionSubset ) {

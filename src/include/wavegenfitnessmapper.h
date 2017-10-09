@@ -28,6 +28,8 @@ private slots:
 
     void on_btnAdd_clicked();
 
+    void on_readMinFitness_clicked();
+
 private:
     Ui::WavegenFitnessMapper *ui;
     Session &session;

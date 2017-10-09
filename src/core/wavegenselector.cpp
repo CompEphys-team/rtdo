@@ -162,7 +162,7 @@ void WavegenSelection::finalise()
             break;
 
         // Insert archive iterator into uncollapsed
-        if ( archIter->bin == true_index )
+        if ( archIter->bin == true_index && archIter->fitness >= minFitness )
             element = archIter;
 
         // Advance index

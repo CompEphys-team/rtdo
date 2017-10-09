@@ -17,6 +17,7 @@ public:
         bool collapse;
     };
     std::vector<Range> ranges;
+    double minFitness = 0;
     std::vector<std::list<MAPElite>::const_iterator> selection;
 
     const Wavegen::Archive &archive() const;
