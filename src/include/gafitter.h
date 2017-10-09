@@ -32,6 +32,7 @@ public:
         quint32 epochs;
         WaveSource deck;
         GAFitterSettings settings;
+        DAQData daqSettings;
 
         bool final;
         std::vector<scalar> finalParams; //!< Final best-performing model across all stimulations

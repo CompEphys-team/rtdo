@@ -368,6 +368,17 @@ public:
     Simulator_numbered(Session &session, bool useRealism) : DAQ(session), useRealism(useRealism)
     {
         initialise();
+        if ( p.simd.paramSet == 1 ) {
+)EOF";
+    for ( const AdjustableParam &p : adjustableParams ) {
+        ss << "            " << p.name << " = RNG.uniform<" << p.type << ">(" << p.min << ", " << p.max << ");" << endl;
+    }
+    ss << "        } else if ( p.simd.paramSet == 2 ) {" << endl;
+    for ( size_t i = 0; i < adjustableParams.size(); i++ ) {
+        ss << "            " << adjustableParams[i].name << " = p.simd.paramValues[" << i << "];" << endl;
+    }
+    ss << R"EOF(
+        }
     }
 
     ~Simulator_numbered() {}

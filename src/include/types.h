@@ -102,6 +102,8 @@ struct SimulatorData
     bool noise = false;
     double noiseTau = 0.01;
     double noiseStd = 2;
+    int paramSet = 0; //!< 0: Initial values from model. 1: Random values, uniform in range. 2: Fixed values
+    std::vector<scalar> paramValues;
 };
 
 struct DAQData

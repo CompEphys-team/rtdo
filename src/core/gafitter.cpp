@@ -44,6 +44,7 @@ GAFitter::Output::Output(const GAFitter &f) :
     targets(f.lib.adjustableParams.size()),
     epochs(0),
     settings(f.settings),
+    daqSettings(f.session.daqData()),
     final(false),
     finalParams(f.lib.adjustableParams.size()),
     finalError(f.lib.adjustableParams.size())
@@ -89,13 +90,7 @@ void GAFitter::run(WaveSource src)
 
     if ( session.daqData().simulate ) {
         for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-            const AdjustableParam &p = lib.adjustableParams.at(i);
-            switch ( settings.targetType ) {
-            case 0: output.targets[i] = p.initial; break;
-            case 1: output.targets[i] = settings.targetValues[i]; break;
-            case 2: output.targets[i] = session.RNG.uniform(p.min, p.max); break;
-            }
-            daq->setAdjustableParam(i, output.targets[i]);
+            output.targets[i] = daq->getAdjustableParam(i);
         }
     }
 

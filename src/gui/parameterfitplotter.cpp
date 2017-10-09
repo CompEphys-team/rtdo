@@ -289,7 +289,7 @@ void ParameterFitPlotter::updateFits()
         ui->fits->setItem(i, 4, new QTableWidgetItem(QString::number(fit.settings.randomOrder)));
         ui->fits->setItem(i, 5, new QTableWidgetItem(QString::number(fit.settings.crossover, 'g', 2)));
         ui->fits->setItem(i, 6, new QTableWidgetItem(fit.settings.decaySigma ? "Y" : "N"));
-        ui->fits->setItem(i, 7, new QTableWidgetItem(QString::number(fit.settings.targetType)));
+        ui->fits->setItem(i, 7, new QTableWidgetItem(QString("%1-%2").arg(fit.daqSettings.simulate).arg(fit.daqSettings.simd.paramSet)));
         for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
             ui->fits->setItem(i, 8+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
         if ( fit.final )
