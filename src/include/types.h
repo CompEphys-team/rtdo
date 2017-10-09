@@ -309,9 +309,6 @@ struct GAFitterSettings {
     bool decaySigma = true;
     double sigmaInitial = 5;
     double sigmaHalflife = 700;
-
-    int targetType = 0; //!< Parameter set used for simulated fitting; 0: initial, 1: targetValues, 2: randomised
-    std::vector<scalar> targetValues;
 };
 
 

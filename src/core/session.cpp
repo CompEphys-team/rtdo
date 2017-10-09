@@ -136,8 +136,6 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.decaySigma", this, &Session::gafs, &GAFitterSettings::decaySigma);
     addAP(gafAP, "S.GAFitter.sigmaInitial", this, &Session::gafs, &GAFitterSettings::sigmaInitial);
     addAP(gafAP, "S.GAFitter.sigmaHalflife", this, &Session::gafs, &GAFitterSettings::sigmaHalflife);
-    addAP(gafAP, "S.GAFitter.targetType", this, &Session::gafs, &GAFitterSettings::targetType);
-    addAP(gafAP, "S.GAFitter.targetValues[#]", this, &Session::gafs, &GAFitterSettings::targetValues);
 
     Project::addDaqAPs(daqAP, &daqd);
 
