@@ -39,7 +39,7 @@ protected:
 protected slots:
     void updateProfiles();
     void setProfile(int);
-    void replot(bool discardSelection = false);
+    void replot(bool discardSelection = false, bool showAll = false);
     void hideUnselected();
     void showAll();
 

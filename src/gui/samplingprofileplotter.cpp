@@ -171,7 +171,7 @@ SamplingProfilePlotter::ScoreStruct SamplingProfilePlotter::getScoreStruct(
     return ret;
 }
 
-void SamplingProfilePlotter::replot(bool discardSelection)
+void SamplingProfilePlotter::replot(bool discardSelection, bool showAll)
 {
     if ( updating || ui->profile->currentIndex() < 0 || ui->x->currentIndex() < 0 || ui->y->currentIndex() < 0 )
         return;
@@ -199,6 +199,11 @@ void SamplingProfilePlotter::replot(bool discardSelection)
         for ( const QCPDataRange &r : ui->plot->graph()->selection().dataRanges() )
             for ( int i = r.begin(); i < r.end(); i++ )
                 points[shownPoints[i]].selected = true;
+
+    // If requested, clear hidden flag
+    if ( showAll )
+        for ( DataPoint &p : points )
+            p.hidden = false;
 
     // Sort data points by new key
     std::sort(points.begin(), points.end(), [](const DataPoint &lhs, const DataPoint &rhs){ return lhs.key < rhs.key; });
@@ -271,10 +276,8 @@ void SamplingProfilePlotter::hideUnselected()
 
 void SamplingProfilePlotter::showAll()
 {
-    for ( DataPoint &p : points )
-        p.hidden = false;
+    replot(false, true);
     updateTable();
-    replot();
 }
 
 void SamplingProfilePlotter::updateTable()
