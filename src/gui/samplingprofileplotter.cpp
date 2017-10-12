@@ -296,17 +296,18 @@ void SamplingProfilePlotter::updateTable()
 
     // Update table contents
     ui->table->setSortingEnabled(false);
-    size_t i = 0;
-    for ( const DataPoint &p : points ) {
-        if ( p.hidden )
+    size_t row = 0;
+    for ( size_t i = 0; i < points.size(); i++ ) {
+        if ( points[i].hidden )
             continue;
         for ( size_t j = 0; j < dim.size() + nFixedColumns; j++ ) {
             QTableWidgetItem *item = new QTableWidgetItem();
             item->setFlags(Qt::ItemIsEnabled);
-            item->setData(Qt::DisplayRole, value(i, j, prof, elites, dim, sstr));
-            ui->table->setItem(i, j, item);
+            item->setData(Qt::DisplayRole, value(points[i].idx, j, prof, elites, dim, sstr));
+            ui->table->setItem(row, j, item);
         }
-        ++i;
+        ++row;
     }
     ui->table->setSortingEnabled(true);
+    ui->table->scrollToTop();
 }
