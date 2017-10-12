@@ -290,8 +290,9 @@ void ParameterFitPlotter::updateFits()
         ui->fits->setItem(i, 5, new QTableWidgetItem(QString::number(fit.settings.crossover, 'g', 2)));
         ui->fits->setItem(i, 6, new QTableWidgetItem(fit.settings.decaySigma ? "Y" : "N"));
         ui->fits->setItem(i, 7, new QTableWidgetItem(QString("%1-%2").arg(fit.daqSettings.simulate).arg(fit.daqSettings.simd.paramSet)));
-        for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
-            ui->fits->setItem(i, 8+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
+        if ( fit.daqSettings.simulate == 1 )
+            for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
+                ui->fits->setItem(i, 8+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
         if ( fit.final )
             for ( size_t j = 0, np = session->project.model().adjustableParams.size(); j < np; j++ )
                 ui->fits->setItem(i, 8+np+1+j, new QTableWidgetItem(QString::number(fit.finalParams[j], 'g', 3)));
@@ -320,11 +321,13 @@ void ParameterFitPlotter::replot()
         for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ )
             keys[epoch] = epoch;
         for ( size_t i = 0; i < plots.size(); i++ ) {
-            QCPItemStraightLine *line = new QCPItemStraightLine(plots[i]);
-            line->setLayer("target");
-            line->setPen(QPen(getGraphColorBtn(row)->color));
-            line->point1->setCoords(0, fit.targets[i]);
-            line->point2->setCoords(1, fit.targets[i]);
+            if ( fit.daqSettings.simulate == 1 ) {
+                QCPItemStraightLine *line = new QCPItemStraightLine(plots[i]);
+                line->setLayer("target");
+                line->setPen(QPen(getGraphColorBtn(row)->color));
+                line->point1->setCoords(0, fit.targets[i]);
+                line->point2->setCoords(1, fit.targets[i]);
+            }
 
             QVector<double> values(fit.epochs), errors, errKey;
             errors.reserve(fit.epochs);
@@ -417,7 +420,7 @@ ColorButton *ParameterFitPlotter::getGroupColorBtn(int row)
 void ParameterFitPlotter::progress(quint32 epoch)
 {
     GAFitter::Output fit = session->gaFitter().currentResults();
-    if ( epoch == 0 ) {
+    if ( epoch == 0 && fit.daqSettings.simulate == 1 ) {
         for ( size_t i = 0; i < plots.size(); i++ ) {
             QCPItemStraightLine *line = new QCPItemStraightLine(plots[i]);
             line->setLayer("target");
@@ -552,10 +555,18 @@ void ParameterFitPlotter::plotSummary()
     }
     summarising = true;
 
+    // Fits against secondary models or live cells can't compare against fit target parameters directly; use base model params instead
+    std::vector<scalar> targets(session->project.model().adjustableParams.size());
+    for ( size_t i = 0; i < targets.size(); i++ )
+        targets[i] = session->project.model().adjustableParams[i].initial;
+
     for ( int row : rows ) {
         quint32 epochs = 0;
-        for ( int fit : groups[row] )
+        bool hasTarget = true;
+        for ( int fit : groups[row] ) {
             epochs = std::max(session->gaFitter().results().at(fit).epochs, epochs);
+            hasTarget &= (session->gaFitter().results().at(fit).daqSettings.simulate==1);
+        }
         QVector<double> keys(epochs);
         for ( size_t i = 0; i < epochs; i++ )
             keys[i] = i;
@@ -565,11 +576,13 @@ void ParameterFitPlotter::plotSummary()
             const AdjustableParam &p = session->project.model().adjustableParams[i];
             if ( p.multiplicative ) {
                 getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
-                    return 100 * std::fabs(1 - fit.params[ep][i] / fit.targets[i]); // Parameter error relative to target (%)
+                    // Parameter error relative to target (%) :
+                    return 100 * std::fabs(1 - fit.params[ep][i] / (hasTarget ? fit.targets[i] : targets[i]));
                 }, mean, sem, median, max);
             } else {
                 getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
-                    return 100 * std::fabs((fit.params[ep][i] - fit.targets[i]) / (p.max - p.min)); // Parameter error relative to range (%)
+                    // Parameter error relative to range (%) :
+                    return 100 * std::fabs((fit.params[ep][i] - (hasTarget ? fit.targets[i] : targets[i])) / (p.max - p.min));
                 }, mean, sem, median, max);
             }
             getSummary(groups[row], [=](const GAFitter::Output &fit, int ep) -> double {
