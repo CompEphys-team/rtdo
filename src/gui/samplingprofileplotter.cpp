@@ -97,53 +97,78 @@ void SamplingProfilePlotter::setProfile(int idx)
     ui->x->setCurrentIndex(x);
     ui->y->setCurrentIndex(y);
 
-    std::vector<MAPElite> elites = prof.src.elites();
-    std::vector<std::function<double(int)>> funcs;
-    for ( size_t i = 0; i < nFixedColumns + dim.size(); i++ )
-        funcs.push_back(valueFunction(i, prof, elites, dim));
+    // Update data points
+    points.clear();
+    points.resize(prof.gradient.size(), DataPoint{0,0,0,false,false});
+    for ( size_t i = 0; i < points.size(); i++ )
+        points[i].idx = i;
 
-    // Update table contents
-    ui->table->setRowCount(0);
-    ui->table->setSortingEnabled(false);
-    ui->table->setRowCount(elites.size());
-    for ( size_t i = 0; i < elites.size(); i++ ) {
-        for ( size_t j = 0; j < funcs.size(); j++ ) {
-            QTableWidgetItem *item = new QTableWidgetItem();
-            item->setFlags(Qt::ItemIsEnabled);
-            item->setData(Qt::DisplayRole, funcs[j](i));
-            ui->table->setItem(i, j, item);
-        }
-    }
-    ui->table->setSortingEnabled(true);
+    // Update table
+    updateTable();
 
     updating = false;
     replot(true);
 }
 
-std::function<double(int)> SamplingProfilePlotter::valueFunction(int dimension,
-                                                                 const SamplingProfiler::Profile &prof,
-                                                                 const std::vector<MAPElite> &elites,
-                                                                 const std::vector<MAPEDimension> &dim)
+double SamplingProfilePlotter::value(int i,
+                                     int dimension,
+                                     const SamplingProfiler::Profile &prof,
+                                     const std::vector<MAPElite> &elites,
+                                     const std::vector<MAPEDimension> &dim,
+                                     const ScoreStruct &sstr)
 {
-    const auto pprof = &prof;
-    const auto pelites = &elites;
-    const auto pdim = &dim;
-    std::function<double(int)> fn;
     if ( dimension == 0 )
-        fn = [](int i){ return i; };
+        return i;
     else if ( dimension == 1 )
-        fn = [=](int i){ return pprof->accuracy[i]; };
+        return prof.accuracy[i];
     else if ( dimension == 2 )
-        fn = [=](int i){ return pprof->gradient[i]; };
+        return prof.gradient[i];
     else if ( dimension == 3 )
-        fn = [=](int i){ return pelites->at(i).fitness; };
+        return elites.at(i).fitness;
+    else if ( dimension == 4 )
+        return ( (sstr.weightF * (elites.at(i).fitness-sstr.minF)/sstr.maxF)
+               + (sstr.weightG * (prof.gradient[i]-sstr.minG)/sstr.maxG)
+               + (sstr.weightA * (prof.accuracy[i]-sstr.minA)/sstr.maxA)
+               ) / (sstr.weightF + sstr.weightG + sstr.weightA);
+    else if ( dimension == 5 )
+        return ( (sstr.sweightF * (elites.at(i).fitness-sstr.sminF)/sstr.smaxF)
+               + (sstr.sweightG * (prof.gradient[i]-sstr.sminG)/sstr.smaxG)
+               + (sstr.sweightA * (prof.accuracy[i]-sstr.sminA)/sstr.smaxA)
+               ) / (sstr.sweightF + sstr.sweightG + sstr.sweightA);
     else
-        fn = [=](int i){
-            return pdim->at(dimension-nFixedColumns).bin_inverse(
-                    pelites->at(i).bin[dimension-nFixedColumns],
-                    Wavegen::mape_multiplier(pprof->src.archive()->precision));
-        };
-    return fn;
+        return dim.at(dimension-nFixedColumns).bin_inverse(
+                elites.at(i).bin[dimension-nFixedColumns],
+                Wavegen::mape_multiplier(prof.src.archive()->precision));
+}
+
+SamplingProfilePlotter::ScoreStruct SamplingProfilePlotter::getScoreStruct(
+        const SamplingProfiler::Profile &prof,
+        const std::vector<MAPElite> &elites)
+{
+    ScoreStruct ret;
+    for ( size_t i = 0; i < elites.size(); i++ ) {
+        if ( elites.at(i).fitness < ret.minF )  ret.minF = elites.at(i).fitness;
+        if ( elites.at(i).fitness > ret.maxF )  ret.maxF = elites.at(i).fitness;
+        if ( prof.accuracy[i] < ret.minA )      ret.minA = prof.accuracy[i];
+        if ( prof.accuracy[i] > ret.maxA )      ret.maxA = prof.accuracy[i];
+        if ( prof.gradient[i] < ret.minG )      ret.minG = prof.gradient[i];
+        if ( prof.gradient[i] > ret.maxG )      ret.maxG = prof.gradient[i];
+        if ( points[i].hidden )
+            continue;
+        if ( elites.at(i).fitness < ret.sminF )  ret.sminF = elites.at(i).fitness;
+        if ( elites.at(i).fitness > ret.smaxF )  ret.smaxF = elites.at(i).fitness;
+        if ( prof.accuracy[i] < ret.sminA )      ret.sminA = prof.accuracy[i];
+        if ( prof.accuracy[i] > ret.smaxA )      ret.smaxA = prof.accuracy[i];
+        if ( prof.gradient[i] < ret.sminG )      ret.sminG = prof.gradient[i];
+        if ( prof.gradient[i] > ret.smaxG )      ret.smaxG = prof.gradient[i];
+    }
+    ret.weightF = (ret.maxF-ret.minF)/(ret.maxF+ret.minF);
+    ret.weightG = (ret.maxG-ret.minG)/(ret.maxG+ret.minG);
+    ret.weightA = (ret.maxA-ret.minA)/(ret.maxA+ret.minA);
+    ret.sweightF = (ret.smaxF-ret.sminF)/(ret.smaxF+ret.sminF);
+    ret.sweightG = (ret.smaxG-ret.sminG)/(ret.smaxG+ret.sminG);
+    ret.sweightA = (ret.smaxA-ret.sminA)/(ret.smaxA+ret.sminA);
+    return ret;
 }
 
 void SamplingProfilePlotter::replot(bool discardSelection)
@@ -156,85 +181,129 @@ void SamplingProfilePlotter::replot(bool discardSelection)
     std::vector<MAPEDimension> dim;
     if ( prof.src.archive() )
         dim = prof.src.archive()->searchd.mapeDimensions;
+    ScoreStruct sstr = getScoreStruct(prof, elites);
 
-    // Populate points vector from unsorted table
-    std::vector<DataPoint> points;
-    points.reserve(elites.size());
-    std::vector<size_t> translate(elites.size());
-    std::function<double(int)> xfunc = valueFunction(ui->x->currentIndex(), prof, elites, dim);
-    std::function<double(int)> yfunc = valueFunction(ui->y->currentIndex(), prof, elites, dim);
-    ui->table->setSortingEnabled(false);
-    for ( size_t i = 0, j = 0; i < elites.size(); i++ ) {
-        if ( !ui->table->isRowHidden(i) ) {
-            points.push_back({xfunc(i), yfunc(i), i, false});
-            translate[i] = j++;
-        }
+    // Populate data points
+    std::vector<size_t> shownPoints;
+    shownPoints.reserve(points.size());
+    for ( size_t i = 0; i < points.size(); i++ ) {
+        points[i].key = value(points[i].idx, ui->x->currentIndex(), prof, elites, dim, sstr);
+        points[i].value = value(points[i].idx, ui->y->currentIndex(), prof, elites, dim, sstr);
+        points[i].selected = false;
+        if ( !points[i].hidden )
+            shownPoints.push_back(i);
     }
-    ui->table->setSortingEnabled(true);
 
     // Maintain selection: Use currently plotted points to set "selected" flag on the new points
     if ( !discardSelection )
         for ( const QCPDataRange &r : ui->plot->graph()->selection().dataRanges() )
             for ( int i = r.begin(); i < r.end(); i++ )
-                points[translate[plottedPoints[i].idx]].selected = true;
+                points[shownPoints[i]].selected = true;
 
-    // Sort points by key
+    // Sort data points by new key
     std::sort(points.begin(), points.end(), [](const DataPoint &lhs, const DataPoint &rhs){ return lhs.key < rhs.key; });
-    QVector<double> keys(points.size()), values(points.size());
-    for ( size_t i = 0; i < points.size(); i++ ) {
-        keys[i] = points[i].key;
-        values[i] = points[i].value;
+
+    // Translate to plottable format
+    QVector<double> keys, values;
+    keys.reserve(points.size()), values.reserve(points.size());
+    for ( DataPoint &p : points ) {
+        if ( !p.hidden ) {
+            keys.push_back(p.key);
+            values.push_back(p.value);
+        }
     }
 
-    // Plot scatter
+    // Plot points
     ui->plot->clearGraphs();
     QCPGraph *g = ui->plot->addGraph();
     g->setData(keys, values, true);
-    g->setLineStyle(QCPGraph::lsNone);
-    g->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross, 5));
-    g->setSelectable(QCP::stMultipleDataRanges);
-    ui->plot->rescaleAxes();
 
-    // Maintain selection: Use flag set above to reconstitute the equivalent selection in the new points
+    // Maintain selection: Use "selected" flag set above to reconstitute the equivalent selection in the new points
     if ( !discardSelection ) {
         QCPDataSelection selection;
-        for ( size_t i = 0; i < points.size(); i++ )
-            if ( points[i].selected )
-                selection.addDataRange(QCPDataRange(i, i+1), false);
+        size_t i = 0;
+        for ( DataPoint &p : points ) {
+            if ( !p.hidden ) {
+                if ( p.selected )
+                    selection.addDataRange(QCPDataRange(i, i+1), false);
+                ++i;
+            }
+        }
         selection.simplify();
         g->setSelection(selection);
     }
 
-    plottedPoints = std::move(points);
-
+    // Apply style
+    g->setLineStyle(QCPGraph::lsNone);
+    g->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross, 5));
+    g->setSelectable(QCP::stMultipleDataRanges);
+    QCPSelectionDecorator *deco = new QCPSelectionDecorator();
+    QCPScatterStyle sstyle(QCPScatterStyle::ssCross, Qt::red, 6);
+    sstyle.setPen(QPen(Qt::red, 2));
+    deco->setScatterStyle(sstyle, QCPScatterStyle::spAll);
+    g->setSelectionDecorator(deco);
+    ui->plot->rescaleAxes();
     ui->plot->replot();
 }
 
 void SamplingProfilePlotter::hideUnselected()
 {
-    replot(false); // Update plottedPoints
+    // Hide everything
+    std::vector<size_t> shownPoints;
+    shownPoints.reserve(points.size());
+    for ( size_t i = 0; i < points.size(); i++ ) {
+        if ( !points[i].hidden ) {
+            shownPoints.push_back(i);
+            points[i].hidden = true;
+        }
+    }
 
-    ui->table->setSortingEnabled(false);
-    std::vector<size_t> previouslySelected;
-    previouslySelected.reserve(ui->table->rowCount());
-    for ( int i = 0; i < ui->table->rowCount(); i++ ) {
-        if ( !ui->table->isRowHidden(i) ) {
-            ui->table->setRowHidden(i, true);
-            previouslySelected.push_back(i);
-        }
-    }
-    for ( const DataPoint &p : plottedPoints ) {
-        if ( p.selected ) {
-            ui->table->setRowHidden(p.idx, false);
-        }
-    }
-    ui->table->setSortingEnabled(true);
+    // Show selected
+    for ( const QCPDataRange &r : ui->plot->graph()->selection().dataRanges() )
+        for ( int i = r.begin(); i < r.end(); i++ )
+            points[shownPoints[i]].hidden = false;
+
+    updateTable();
+
+    // Replot, selecting nothing
     replot(true);
 }
 
 void SamplingProfilePlotter::showAll()
 {
-    for ( int i = 0; i < ui->table->rowCount(); i++ )
-        ui->table->setRowHidden(i, false);
+    for ( DataPoint &p : points )
+        p.hidden = false;
+    updateTable();
     replot();
+}
+
+void SamplingProfilePlotter::updateTable()
+{
+    int count = 0;
+    for ( const DataPoint &p : points )
+        count += !p.hidden;
+    ui->table->setRowCount(count);
+
+    const SamplingProfiler::Profile &prof = session.samplingProfiler().profiles().at(ui->profile->currentIndex());
+    std::vector<MAPElite> elites = prof.src.elites();
+    std::vector<MAPEDimension> dim;
+    if ( prof.src.archive() )
+        dim = prof.src.archive()->searchd.mapeDimensions;
+    ScoreStruct sstr = getScoreStruct(prof, elites);
+
+    // Update table contents
+    ui->table->setSortingEnabled(false);
+    size_t i = 0;
+    for ( const DataPoint &p : points ) {
+        if ( p.hidden )
+            continue;
+        for ( size_t j = 0; j < dim.size() + nFixedColumns; j++ ) {
+            QTableWidgetItem *item = new QTableWidgetItem();
+            item->setFlags(Qt::ItemIsEnabled);
+            item->setData(Qt::DisplayRole, value(i, j, prof, elites, dim, sstr));
+            ui->table->setItem(i, j, item);
+        }
+        ++i;
+    }
+    ui->table->setSortingEnabled(true);
 }
