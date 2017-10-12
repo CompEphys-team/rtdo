@@ -18,7 +18,7 @@ public:
     };
     std::vector<Range> ranges;
     double minFitness = 0;
-    std::vector<std::list<MAPElite>::const_iterator> selection;
+    std::vector<const MAPElite*> selection;
 
     const Wavegen::Archive &archive() const;
     size_t width(size_t i) const; //!< size of the selected hypercube along the indicated dimension
@@ -33,8 +33,8 @@ public:
      * @param ok is an optional flag that is set to false iff no archive entry exists at the indicated position.
      * @return an iterator into the archive, or to the archive's end() if ok turns false.
      */
-    std::list<MAPElite>::const_iterator data_relative(std::vector<size_t> idx, bool *ok = nullptr) const;
-    std::list<MAPElite>::const_iterator data_relative(std::vector<double> idx, bool *ok = nullptr) const; //!< Same as above, but behavioural coordinates
+    const MAPElite* data_relative(std::vector<size_t> idx, bool *ok = nullptr) const;
+    const MAPElite* data_relative(std::vector<double> idx, bool *ok = nullptr) const; //!< Same as above, but behavioural coordinates
 
     /**
      * @brief data_absolute returns the MAPElite at absolute bin coordinates (i.e. relative to the full bin range of the archive).
@@ -43,8 +43,8 @@ public:
      *  or idx points at a position outside of the selected area.
      * @return an iterator into the archive, or to the archive's end() if ok turns false.
      */
-    std::list<MAPElite>::const_iterator data_absolute(std::vector<size_t> idx, bool *ok = nullptr) const;
-    std::list<MAPElite>::const_iterator data_absolute(std::vector<double> idx, bool *ok = nullptr) const; //!< Same as above, but behavioural coordinates
+    const MAPElite* data_absolute(std::vector<size_t> idx, bool *ok = nullptr) const;
+    const MAPElite* data_absolute(std::vector<double> idx, bool *ok = nullptr) const; //!< Same as above, but behavioural coordinates
 
     /**
      * @brief limit are short-hand functions to modify ranges. Inputs are forced into the given dimension's maximum range.

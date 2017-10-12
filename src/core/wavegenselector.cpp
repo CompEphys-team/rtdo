@@ -41,25 +41,25 @@ double WavegenSelection::rmax(size_t i) const
     return archive().searchd.mapeDimensions.at(i).bin_inverse(ranges.at(i).max, multiplier);
 }
 
-std::list<MAPElite>::const_iterator WavegenSelection::data_relative(std::vector<size_t> idx, bool *ok) const
+const MAPElite* WavegenSelection::data_relative(std::vector<size_t> idx, bool *ok) const
 {
     size_t index = 0, multiplier = 1;
     for ( int i = ranges.size()-1; i >= 0; i-- ) {
         if ( !ranges[i].collapse && idx[i] >= width(i) ) {
             if ( ok )
                 *ok = false;
-            return archive().elites.end();
+            return nullptr;
         }
         index += idx[i]*multiplier;
         multiplier *= width(i);
     }
     auto ret = selection.at(index);
     if ( ok )
-        *ok = (ret != archive().elites.end());
+        *ok = (ret != nullptr);
     return ret;
 }
 
-std::list<MAPElite>::const_iterator WavegenSelection::data_relative(std::vector<double> idx, bool *ok) const
+const MAPElite* WavegenSelection::data_relative(std::vector<double> idx, bool *ok) const
 {
     std::vector<size_t> bin(ranges.size());
     size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
@@ -73,7 +73,7 @@ std::list<MAPElite>::const_iterator WavegenSelection::data_relative(std::vector<
     return data_absolute(bin, ok); // Let data_absolute deal with out of range issues
 }
 
-std::list<MAPElite>::const_iterator WavegenSelection::data_absolute(std::vector<size_t> idx, bool *ok) const
+const MAPElite* WavegenSelection::data_absolute(std::vector<size_t> idx, bool *ok) const
 {
     for ( size_t i = 0; i < ranges.size(); i++ ) {
         if ( ranges[i].collapse ) {
@@ -83,7 +83,7 @@ std::list<MAPElite>::const_iterator WavegenSelection::data_absolute(std::vector<
             // idx out of selected range, fail
             if ( ok )
                 *ok = false;
-            return archive().elites.end();
+            return nullptr;
         } else {
             // Offset index to range-relative
             idx[i] -= ranges[i].min;
@@ -92,7 +92,7 @@ std::list<MAPElite>::const_iterator WavegenSelection::data_absolute(std::vector<
     return data_relative(idx, ok);
 }
 
-std::list<MAPElite>::const_iterator WavegenSelection::data_absolute(std::vector<double> idx, bool *ok) const
+const MAPElite* WavegenSelection::data_absolute(std::vector<double> idx, bool *ok) const
 {
     std::vector<size_t> bin(ranges.size());
     size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
@@ -143,13 +143,13 @@ void WavegenSelection::finalise()
         offsets.push_back(r.min);
         sizes.push_back(s);
     }
-    std::vector<std::list<MAPElite>::const_iterator> uncollapsed(uncollapsed_size, default_iterator);
+    std::vector<const MAPElite*> uncollapsed(uncollapsed_size, nullptr);
     std::list<MAPElite>::const_iterator archIter = archive().elites.begin();
     nFinal = 0;
 
     // Populate `uncollapsed` with iterators to the archive by walking the area covered by the selection
     // Cells that are unavailable in the archive remain unchanged in uncollapsed.
-    for ( std::list<MAPElite>::const_iterator &element : uncollapsed ) {
+    for ( const MAPElite* &element : uncollapsed ) {
         // Update comparator index
         for ( size_t i = 0; i < dimensions; i++ )
             true_index[i] = offsets[i] + offset_index[i];
@@ -164,7 +164,7 @@ void WavegenSelection::finalise()
 
         // Insert archive iterator into uncollapsed
         if ( archIter->bin == true_index && archIter->fitness >= minFitness ) {
-            element = archIter;
+            element = &*archIter;
             ++nFinal;
         }
 
@@ -184,7 +184,7 @@ void WavegenSelection::finalise()
         return;
     }
 
-    selection = std::vector<std::list<MAPElite>::const_iterator>(collapsed_size, default_iterator);
+    selection = std::vector<const MAPElite*>(collapsed_size, nullptr);
     nFinal = 0;
 
     // Reset uncollapsed index
@@ -192,13 +192,13 @@ void WavegenSelection::finalise()
         o = 0;
 
     size_t collapsed_index = 0;
-    for ( std::list<MAPElite>::const_iterator &element : uncollapsed ) {
+    for ( const MAPElite* element : uncollapsed ) {
         // Take the final selection that we're collapsing to
-        std::list<MAPElite>::const_iterator &collapsed = selection.at(collapsed_index);
+        const MAPElite* &collapsed = selection.at(collapsed_index);
 
         // Collapse element onto the final selection if it's better
-        if ( element != default_iterator && (collapsed == default_iterator || element->fitness > collapsed->fitness) ) {
-            if ( collapsed == default_iterator )
+        if ( element != nullptr && (collapsed == nullptr || element->fitness > collapsed->fitness) ) {
+            if ( collapsed == nullptr )
                 ++nFinal;
             collapsed = element;
         }

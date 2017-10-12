@@ -103,7 +103,7 @@ std::vector<MAPElite> WaveSource::elites() const
         const WavegenSelection &sel = *selection();
         ret.reserve(sel.size());
         for ( auto const &it : sel.selection )
-            if ( it != sel.archive().elites.end() )
+            if ( it != nullptr )
                 ret.push_back(*it);
         break;
     }
