@@ -146,21 +146,21 @@ SamplingProfilePlotter::ScoreStruct SamplingProfilePlotter::getScoreStruct(
         const std::vector<MAPElite> &elites)
 {
     ScoreStruct ret;
-    for ( size_t i = 0; i < elites.size(); i++ ) {
-        if ( elites.at(i).fitness < ret.minF )  ret.minF = elites.at(i).fitness;
-        if ( elites.at(i).fitness > ret.maxF )  ret.maxF = elites.at(i).fitness;
-        if ( prof.accuracy[i] < ret.minA )      ret.minA = prof.accuracy[i];
-        if ( prof.accuracy[i] > ret.maxA )      ret.maxA = prof.accuracy[i];
-        if ( prof.gradient[i] < ret.minG )      ret.minG = prof.gradient[i];
-        if ( prof.gradient[i] > ret.maxG )      ret.maxG = prof.gradient[i];
+    for ( size_t i = 0; i < points.size(); i++ ) {
+        if ( elites.at(points[i].idx).fitness < ret.minF )  ret.minF = elites.at(points[i].idx).fitness;
+        if ( elites.at(points[i].idx).fitness > ret.maxF )  ret.maxF = elites.at(points[i].idx).fitness;
+        if ( prof.accuracy[points[i].idx] < ret.minA )      ret.minA = prof.accuracy[points[i].idx];
+        if ( prof.accuracy[points[i].idx] > ret.maxA )      ret.maxA = prof.accuracy[points[i].idx];
+        if ( prof.gradient[points[i].idx] < ret.minG )      ret.minG = prof.gradient[points[i].idx];
+        if ( prof.gradient[points[i].idx] > ret.maxG )      ret.maxG = prof.gradient[points[i].idx];
         if ( points[i].hidden )
             continue;
-        if ( elites.at(i).fitness < ret.sminF )  ret.sminF = elites.at(i).fitness;
-        if ( elites.at(i).fitness > ret.smaxF )  ret.smaxF = elites.at(i).fitness;
-        if ( prof.accuracy[i] < ret.sminA )      ret.sminA = prof.accuracy[i];
-        if ( prof.accuracy[i] > ret.smaxA )      ret.smaxA = prof.accuracy[i];
-        if ( prof.gradient[i] < ret.sminG )      ret.sminG = prof.gradient[i];
-        if ( prof.gradient[i] > ret.smaxG )      ret.smaxG = prof.gradient[i];
+        if ( elites.at(points[i].idx).fitness < ret.sminF )  ret.sminF = elites.at(points[i].idx).fitness;
+        if ( elites.at(points[i].idx).fitness > ret.smaxF )  ret.smaxF = elites.at(points[i].idx).fitness;
+        if ( prof.accuracy[points[i].idx] < ret.sminA )      ret.sminA = prof.accuracy[points[i].idx];
+        if ( prof.accuracy[points[i].idx] > ret.smaxA )      ret.smaxA = prof.accuracy[points[i].idx];
+        if ( prof.gradient[points[i].idx] < ret.sminG )      ret.sminG = prof.gradient[points[i].idx];
+        if ( prof.gradient[points[i].idx] > ret.smaxG )      ret.smaxG = prof.gradient[points[i].idx];
     }
     ret.weightF = (ret.maxF-ret.minF)/(ret.maxF+ret.minF);
     ret.weightG = (ret.maxG-ret.minG)/(ret.maxG+ret.minG);
