@@ -19,6 +19,7 @@ class SamplingProfilePlotter : public QWidget
         double sminF = __DBL_MAX__, smaxF = 0, sweightF;
         double sminG = __DBL_MAX__, smaxG = 0, sweightG;
         double sminA = __DBL_MAX__, smaxA = 0, sweightA;
+        double norm, snorm;
     };
 
 public:

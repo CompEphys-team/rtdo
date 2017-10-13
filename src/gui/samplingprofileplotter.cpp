@@ -126,15 +126,15 @@ double SamplingProfilePlotter::value(int i,
     else if ( dimension == 3 )
         return elites.at(i).fitness;
     else if ( dimension == 4 )
-        return ( (sstr.weightF * (elites.at(i).fitness-sstr.minF)/sstr.maxF)
-               + (sstr.weightG * (prof.gradient[i]-sstr.minG)/sstr.maxG)
-               + (sstr.weightA * (prof.accuracy[i]-sstr.minA)/sstr.maxA)
-               ) / (sstr.weightF + sstr.weightG + sstr.weightA);
+        return ( (sstr.weightF * (elites.at(i).fitness-sstr.minF))
+               + (sstr.weightG * (prof.gradient[i]-sstr.minG))
+               + (sstr.weightA * (prof.accuracy[i]-sstr.minA))
+               ) / sstr.norm;
     else if ( dimension == 5 )
-        return ( (sstr.sweightF * (elites.at(i).fitness-sstr.sminF)/sstr.smaxF)
-               + (sstr.sweightG * (prof.gradient[i]-sstr.sminG)/sstr.smaxG)
-               + (sstr.sweightA * (prof.accuracy[i]-sstr.sminA)/sstr.smaxA)
-               ) / (sstr.sweightF + sstr.sweightG + sstr.sweightA);
+        return ( (sstr.sweightF * (elites.at(i).fitness-sstr.sminF))
+               + (sstr.sweightG * (prof.gradient[i]-sstr.sminG))
+               + (sstr.sweightA * (prof.accuracy[i]-sstr.sminA))
+               ) / sstr.snorm;
     else
         return dim.at(dimension-nFixedColumns).bin_inverse(
                 elites.at(i).bin[dimension-nFixedColumns],
@@ -162,12 +162,15 @@ SamplingProfilePlotter::ScoreStruct SamplingProfilePlotter::getScoreStruct(
         if ( prof.gradient[points[i].idx] < ret.sminG )      ret.sminG = prof.gradient[points[i].idx];
         if ( prof.gradient[points[i].idx] > ret.smaxG )      ret.smaxG = prof.gradient[points[i].idx];
     }
-    ret.weightF = (ret.maxF-ret.minF)/(ret.maxF+ret.minF);
-    ret.weightG = (ret.maxG-ret.minG)/(ret.maxG+ret.minG);
-    ret.weightA = (ret.maxA-ret.minA)/(ret.maxA+ret.minA);
-    ret.sweightF = (ret.smaxF-ret.sminF)/(ret.smaxF+ret.sminF);
-    ret.sweightG = (ret.smaxG-ret.sminG)/(ret.smaxG+ret.sminG);
-    ret.sweightA = (ret.smaxA-ret.sminA)/(ret.smaxA+ret.sminA);
+    // score = sum(weight * (value-min)/(max-min)) / sum(weights) | weight = (max-min)/(max+min)
+    ret.weightF = 1.0/(ret.maxF+ret.minF);
+    ret.weightG = 1.0/(ret.maxG+ret.minG);
+    ret.weightA = 1.0/(ret.maxA+ret.minA);
+    ret.norm = (ret.maxF-ret.minF)*ret.weightF + (ret.maxG-ret.minG)*ret.weightG + (ret.maxA-ret.minA)*ret.weightA;
+    ret.sweightF = 1.0/(ret.smaxF+ret.sminF);
+    ret.sweightG = 1.0/(ret.smaxG+ret.sminG);
+    ret.sweightA = 1.0/(ret.smaxA+ret.sminA);
+    ret.snorm = (ret.smaxF-ret.sminF)*ret.sweightF + (ret.smaxG-ret.sminG)*ret.sweightG + (ret.smaxA-ret.sminA)*ret.sweightA;
     return ret;
 }
 
