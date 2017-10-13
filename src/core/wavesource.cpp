@@ -54,6 +54,7 @@ const WaveDeck *WaveSource::deck() const
 std::vector<Stimulation> WaveSource::stimulations() const
 {
     std::vector<Stimulation> ret;
+    bool shrunk = false;
     switch ( type ) {
     case Archive :
     {
@@ -65,6 +66,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
     case Selection :
     {
         std::vector<MAPElite> el = elites();
+        shrunk = true;
         ret.reserve(el.size());
         for ( const MAPElite &e : el )
             ret.push_back(e.wave);
@@ -81,7 +83,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
         break;
     }
 
-    if ( waveno >= 0 )
+    if ( !shrunk && waveno >= 0 )
         return {ret[waveno]};
     else
         return ret;

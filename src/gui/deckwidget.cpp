@@ -73,10 +73,10 @@ void DeckWidget::showExisting()
 
 void DeckWidget::updateDecks()
 {
+    updateSets();
     for ( size_t i = ui->decks->count(); i < session.wavesets().decks().size(); i++ ) {
         ui->decks->addItem(WaveSource(session, WaveSource::Deck, i).prettyName());
     }
-    updateSets();
     ui->decks->setCurrentIndex(ui->decks->count()-1);
 }
 

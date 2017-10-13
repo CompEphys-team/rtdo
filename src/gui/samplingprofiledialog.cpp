@@ -54,7 +54,9 @@ SamplingProfileDialog::SamplingProfileDialog(Session &s, QWidget *parent) :
     ui->table->setColumnWidth(0, 50);
 
     ui->target->addItems(labels);
-    connect(ui->cbSelection, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int){
+    connect(ui->cbSelection, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int i){
+        if ( i < 0 )
+            return;
         WaveSource src = ui->cbSelection->currentData().value<WaveSource>();
         if ( src.archive() )
             ui->target->setCurrentIndex(src.archive()->param);
