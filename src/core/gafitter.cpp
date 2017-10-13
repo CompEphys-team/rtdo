@@ -75,7 +75,8 @@ void GAFitter::run(WaveSource src)
     double settleDuration = session.runData().settleDuration;
     for ( Stimulation &stim : stims ) {
         stim.duration += settleDuration;
-        stim.tObsBegin += settleDuration;
+        // Expand observation window to complete time steps (for tObsEnd this happens for free)
+        stim.tObsBegin = floor((stim.tObsBegin+settleDuration) / session.project.dt()) * session.project.dt();
         stim.tObsEnd += settleDuration;
         for ( Stimulation::Step &step : stim ) {
             step.t += settleDuration;
@@ -386,7 +387,7 @@ void GAFitter::stimulate(const Stimulation &I)
         lib.Imem = daq->current;
         lib.Vmem = getCommandVoltage(I, lib.t);
         pushToQ(qT + lib.t, daq->voltage, daq->current, lib.Vmem);
-        lib.getErr = (lib.t > I.tObsBegin && lib.t < I.tObsEnd);
+        lib.getErr = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd);
         lib.step();
     }
 
