@@ -276,23 +276,36 @@ void GAFitter::procreate()
     for ( size_t i = p_err.size()-settings.nReinit-1; i >= settings.nElite; i-- ) {
         // Bias reproductions towards the elite in roughly linear fashion by restricting the choice range
         size_t targetSource = session.RNG.uniform<size_t>(0, i-settings.nElite);
+        size_t source = targetSource;
+
         size_t otherSource = targetSource;
+        unsigned int sourceSelect = 0;
         if ( settings.crossover > 0 && session.RNG.uniform<double>(0,1) < settings.crossover )
             otherSource = session.RNG.uniform<size_t>(0, i-settings.nElite);
+
         for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
+
+            // Parameter-wise crossover, implemented with minimal RNG use
+            if ( targetSource != otherSource ) {
+                if ( iParam % (8*sizeof sourceSelect) == 0 )
+                    sourceSelect = session.RNG.uniform<unsigned int>(0, ~0);
+                source = (sourceSelect & 0x1) ? otherSource : targetSource;
+                sourceSelect = sourceSelect >> 1;
+            }
+
             AdjustableParam &p = lib.adjustableParams[iParam];
             if ( iParam == stimIdx ) {
                 // Mutate target param
                 p[p_err[i].idx] = p.multiplicative ?
-                            (p[p_err[targetSource].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(0, sigma)) :
-                            session.RNG.variate<scalar, std::normal_distribution>(p[p_err[targetSource].idx], sigma);
+                            (p[p_err[source].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(0, sigma)) :
+                            session.RNG.variate<scalar, std::normal_distribution>(p[p_err[source].idx], sigma);
                 if ( p[p_err[i].idx] < p.min )
                     p[p_err[i].idx] = p.min;
                 if ( p[p_err[i].idx] > p.max )
                     p[p_err[i].idx] = p.max;
             } else {
                 // Copy non-target params
-                p[p_err[i].idx] = p[p_err[otherSource].idx];
+                p[p_err[i].idx] = p[p_err[source].idx];
             }
         }
     }
