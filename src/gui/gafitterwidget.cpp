@@ -9,6 +9,8 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
 {
     ui->setupUi(this);
 
+    ui->params_plotter->init(&session, true);
+
     connect(&session.wavesets(), SIGNAL(addedDeck()), this, SLOT(updateDecks()));
     connect(this, SIGNAL(startFitting(WaveSource)), &session.gaFitter(), SLOT(run(WaveSource)));
     connect(&session.gaFitter(), SIGNAL(done()), this, SLOT(done()));
@@ -18,8 +20,6 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     session.gaFitter().qV = &ui->response_plotter->qV;
     session.gaFitter().qI = &ui->response_plotter->qI;
     session.gaFitter().qO = &ui->response_plotter->qO;
-
-    ui->params_plotter->init(&session, true);
 
     updateDecks();
 
