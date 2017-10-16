@@ -85,7 +85,7 @@ void SamplingProfilePlotter::setProfile(int idx)
     // Update dynamic dimensions
     std::vector<MAPEDimension> dim;
     if ( prof.src.archive() ) {
-        dim = prof.src.archive()->searchd.mapeDimensions;
+        dim = session.wavegenData(prof.src.archive()->resultIndex).mapeDimensions;
         ui->table->setColumnCount(nFixedColumns + dim.size());
         for ( size_t j = 0; j < dim.size(); j++ ) {
             QString str = QString::fromStdString(toString(dim[j].func));
@@ -183,7 +183,7 @@ void SamplingProfilePlotter::replot(bool discardSelection, bool showAll)
     std::vector<MAPElite> elites = prof.src.elites();
     std::vector<MAPEDimension> dim;
     if ( prof.src.archive() )
-        dim = prof.src.archive()->searchd.mapeDimensions;
+        dim = session.wavegenData(prof.src.archive()->resultIndex).mapeDimensions;
     ScoreStruct sstr = getScoreStruct(prof, elites);
 
     // Populate data points
@@ -294,7 +294,7 @@ void SamplingProfilePlotter::updateTable()
     std::vector<MAPElite> elites = prof.src.elites();
     std::vector<MAPEDimension> dim;
     if ( prof.src.archive() )
-        dim = prof.src.archive()->searchd.mapeDimensions;
+        dim = session.wavegenData(prof.src.archive()->resultIndex).mapeDimensions;
     ScoreStruct sstr = getScoreStruct(prof, elites);
 
     // Update table contents

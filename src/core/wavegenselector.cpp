@@ -5,7 +5,7 @@ WavegenSelection::WavegenSelection(Session &session, size_t archive_idx, Result 
     Result(r),
     session(session),
     archive_idx(archive_idx),
-    ranges(archive().searchd.mapeDimensions.size())
+    ranges(session.wavegenData(archive().resultIndex).mapeDimensions.size())
 {
 }
 
@@ -33,13 +33,13 @@ size_t WavegenSelection::size() const
 double WavegenSelection::rmin(size_t i) const
 {
     size_t multiplier = Wavegen::mape_multiplier(archive().precision);
-    return archive().searchd.mapeDimensions.at(i).bin_inverse(ranges.at(i).min, multiplier);
+    return session.wavegenData(archive().resultIndex).mapeDimensions.at(i).bin_inverse(ranges.at(i).min, multiplier);
 }
 
 double WavegenSelection::rmax(size_t i) const
 {
     size_t multiplier = Wavegen::mape_multiplier(archive().precision);
-    return archive().searchd.mapeDimensions.at(i).bin_inverse(ranges.at(i).max, multiplier);
+    return session.wavegenData(archive().resultIndex).mapeDimensions.at(i).bin_inverse(ranges.at(i).max, multiplier);
 }
 
 const MAPElite* WavegenSelection::data_relative(std::vector<size_t> idx, bool *ok) const
@@ -67,9 +67,9 @@ const MAPElite* WavegenSelection::data_relative(std::vector<double> idx, bool *o
     for ( size_t i = 0; i < ranges.size(); i++ ) {
         if ( ranges[i].collapse )
             continue;
-        scalar min = archive().searchd.mapeDimensions[i].bin_inverse( ranges[i].min, multiplier ); // Behaviour-value offset of the selected area
+        scalar min = session.wavegenData(archive().resultIndex).mapeDimensions[i].bin_inverse( ranges[i].min, multiplier ); // Behaviour-value offset of the selected area
         scalar shifted = min + idx[i]; // Absolute behavioural value
-        bin[i] = archive().searchd.mapeDimensions[i].bin(shifted, multiplier); // guaranteed valid bin for whole archive, but not for selection
+        bin[i] = session.wavegenData(archive().resultIndex).mapeDimensions[i].bin(shifted, multiplier); // guaranteed valid bin for whole archive, but not for selection
     }
     return data_absolute(bin, ok); // Let data_absolute deal with out of range issues
 }
@@ -98,14 +98,14 @@ const MAPElite* WavegenSelection::data_absolute(std::vector<double> idx, bool *o
     std::vector<size_t> bin(ranges.size());
     size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
     for ( size_t i = 0; i < ranges.size(); i++ ) {
-        bin[i] = archive().searchd.mapeDimensions[i].bin(idx[i], multiplier);
+        bin[i] = session.wavegenData(archive().resultIndex).mapeDimensions[i].bin(idx[i], multiplier);
     }
     return data_absolute(bin, ok);
 }
 
 void WavegenSelection::limit(size_t dimension, double min, double max, bool collapse)
 {
-    const MAPEDimension &dim = archive().searchd.mapeDimensions.at(dimension);
+    MAPEDimension dim = session.wavegenData(archive().resultIndex).mapeDimensions.at(dimension);
     size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
     limit(dimension, Range{dim.bin(min, multiplier), dim.bin(max, multiplier), collapse});
 }
@@ -117,7 +117,7 @@ void WavegenSelection::limit(size_t dimension, size_t min, size_t max, bool coll
 
 void WavegenSelection::limit(size_t dimension, Range range)
 {
-    const MAPEDimension &dim = archive().searchd.mapeDimensions.at(dimension);
+    MAPEDimension dim = session.wavegenData(archive().resultIndex).mapeDimensions.at(dimension);
     size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
     size_t rmax = multiplier * dim.resolution - 1;
     if ( range.max < range.min )

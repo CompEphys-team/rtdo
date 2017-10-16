@@ -82,7 +82,7 @@ void WavegenFitnessMapper::updateDimensions()
         return;
 
     WaveSource src = ui->combo->currentData().value<WaveSource>();
-    int i = 0, n = src.archive()->searchd.mapeDimensions.size();
+    int i = 0, n = session.wavegenData(src.archive()->resultIndex).mapeDimensions.size();
     size_t multiplier = Wavegen::mape_multiplier(src.archive()->precision);
     groupx = new QButtonGroup(this);
     groupy = new QButtonGroup(this);
@@ -91,7 +91,7 @@ void WavegenFitnessMapper::updateDimensions()
     collapse.resize(n);
     ui->dimensions->setRowCount(n);
     QStringList labels;
-    for ( MAPEDimension const& d : src.archive()->searchd.mapeDimensions ) {
+    for ( MAPEDimension d : session.wavegenData(src.archive()->resultIndex).mapeDimensions ) {
         labels << QString::fromStdString(toString(d.func));
 
         QRadioButton *x = new QRadioButton();
@@ -176,8 +176,8 @@ void WavegenFitnessMapper::replot()
     if ( !select(true) )
         return;
 
-    MAPEDimension const& dimx = selection->archive().searchd.mapeDimensions[x];
-    MAPEDimension const& dimy = selection->archive().searchd.mapeDimensions[y];
+    MAPEDimension dimx = session.wavegenData(selection->archive().resultIndex).mapeDimensions[x];
+    MAPEDimension dimy = session.wavegenData(selection->archive().resultIndex).mapeDimensions[y];
     size_t multiplier = Wavegen::mape_multiplier(selection->archive().precision);
 
     // Set up axes
@@ -194,7 +194,7 @@ void WavegenFitnessMapper::replot()
     colorMap->data()->setRange(QCPRange(dimx.min, dimx.max), QCPRange(dimy.min, dimy.max));
     // now we assign some data, by accessing the QCPColorMapData instance of the color map:
     // Note, plot area spans the full dimensional range, but only selection is assigned
-    for ( std::vector<size_t> idx(selection->archive().searchd.mapeDimensions.size()); idx[x] < selection->width(x); ++idx[x] ) {
+    for ( std::vector<size_t> idx(session.wavegenData(selection->archive().resultIndex).mapeDimensions.size()); idx[x] < selection->width(x); ++idx[x] ) {
         for ( idx[y] = 0; idx[y] < selection->width(y); ++idx[y] ) {
             bool ok;
             auto it = selection->data_relative(idx, &ok);
