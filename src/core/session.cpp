@@ -214,21 +214,31 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
         QString cfg = "cfg";
         idx = m_log.put(actorName, cfg, "");
         std::ofstream os(dir.filePath(results(idx, actorName, cfg)).toStdString());
-        if ( dirtyRund )
+        if ( dirtyRund ) {
             for ( auto const& p : runAP )
                 p->write(os);
-        if ( dirtySearchd )
+            hist_rund.push_back(std::make_pair(idx, rund));
+        }
+        if ( dirtySearchd ) {
             for ( auto const& p : searchAP )
                 p->write(os);
-        if ( dirtyStimd )
+            hist_searchd.push_back(std::make_pair(idx, searchd));
+        }
+        if ( dirtyStimd ) {
             for ( auto const& p : stimAP )
                 p->write(os);
-        if ( dirtyGafs )
+            hist_stimd.push_back(std::make_pair(idx, stimd));
+        }
+        if ( dirtyGafs ) {
             for ( auto const& p : gafAP )
                 p->write(os);
-        if ( dirtyDaqd )
+            hist_gafs.push_back(std::make_pair(idx, gafs));
+        }
+        if ( dirtyDaqd ) {
             for ( auto const& p : daqAP )
                 p->write(os);
+            hist_daqd.push_back(std::make_pair(idx, daqd));
+        }
         dirtyRund = dirtySearchd = dirtyStimd = dirtyGafs = dirtyDaqd = false;
     }
 
@@ -236,6 +246,20 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
     emit actionLogged(actor->actorName(), action, args, idx);
     return dir.filePath(results(idx, actor->actorName(), action));
 }
+
+template <typename data>
+data getHistoricData(int index, std::vector<std::pair<int, data>> history)
+{
+    auto it = history.begin() + 1;
+    while ( it != history.end() && it->first < index )
+        ++it;
+    return (it-1)->second;
+}
+RunData Session::runData(int i) const { return i < 0 ? rund : getHistoricData(i, hist_rund); }
+WavegenData Session::wavegenData(int i) const { return i < 0 ? searchd : getHistoricData(i, hist_searchd); }
+StimulationData Session::stimulationData(int i) const { return i < 0 ? stimd : getHistoricData(i, hist_stimd); }
+GAFitterSettings Session::gaFitterSettings(int i) const { return i < 0 ? gafs : getHistoricData(i, hist_gafs); }
+DAQData Session::daqData(int i) const { return i < 0 ? daqd : getHistoricData(i, hist_daqd); }
 
 void Session::appropriate(QObject *worker)
 {

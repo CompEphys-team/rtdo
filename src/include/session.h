@@ -62,6 +62,12 @@ public:
     const GAFitterSettings &gaFitterSettings() const { return gafs; }
     const DAQData &daqData() const { return daqd; }
 
+    RunData runData(int resultIndex) const;
+    WavegenData wavegenData(int resultIndex) const;
+    StimulationData stimulationData(int resultIndex) const;
+    GAFitterSettings gaFitterSettings(int resultIndex) const;
+    DAQData daqData(int resultIndex) const;
+
     inline QString name() const { return dir.dirName(); }
 
     void appropriate(QObject *worker); //!< Moves @a worker to the session's worker thread
@@ -94,6 +100,12 @@ protected:
 
     bool dirtyRund, dirtySearchd, dirtyStimd, dirtyGafs, dirtyDaqd;
     std::vector<std::unique_ptr<AP>> runAP, searchAP, stimAP, gafAP, daqAP;
+
+    std::vector<std::pair<int, RunData>> hist_rund;
+    std::vector<std::pair<int, WavegenData>> hist_searchd;
+    std::vector<std::pair<int, StimulationData>> hist_stimd;
+    std::vector<std::pair<int, GAFitterSettings>> hist_gafs;
+    std::vector<std::pair<int, DAQData>> hist_daqd;
 
     std::unique_ptr<Wavegen> m_wavegen;
     std::unique_ptr<ErrorProfiler> m_profiler;
