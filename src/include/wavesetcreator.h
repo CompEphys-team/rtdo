@@ -19,7 +19,7 @@ public:
     inline const std::vector<WavegenSelection> &selections() const { return m_selections; }
     inline const std::vector<WaveSubset> &subsets() const { return m_subsets; }
     inline const std::vector<WaveDeck> &decks() const { return m_decks; }
-    inline const std::vector<std::vector<Stimulation>> &manuals() const { return m_manual; }
+    inline const std::vector<ManualWaveset> &manuals() const { return m_manual; }
     std::vector<WaveSource> sources() const; //!< Collects all extant Wavegen::Archives, Selections, Subsets, Decks, manual stimulations into a single vector of Sources.
 
 signals:
@@ -41,7 +41,7 @@ protected:
     std::vector<WavegenSelection> m_selections;
     std::vector<WaveSubset> m_subsets;
     std::vector<WaveDeck> m_decks;
-    std::vector<std::vector<Stimulation>> m_manual;
+    std::vector<ManualWaveset> m_manual;
 };
 
 #endif // WAVESETCREATOR_H

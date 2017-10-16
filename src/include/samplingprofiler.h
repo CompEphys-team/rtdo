@@ -12,7 +12,7 @@ public:
     SamplingProfiler(Session &session);
     ~SamplingProfiler() {}
 
-    struct Profile
+    struct Profile : public Result
     {
         Profile() {}
         Profile(WaveSource src); //!< Populates sensible defaults for target and sigma, and sizes the vectors.

@@ -91,7 +91,7 @@ bool WavesetCreator::makeDeck(const std::vector<WaveSource> &src)
 
 void WavesetCreator::makeManual(std::vector<Stimulation> stim)
 {
-    m_manual.push_back(stim);
+    m_manual.push_back(ManualWaveset(stim));
     emit addedManual();
 
     QFile file(session.log(this, actionManual));

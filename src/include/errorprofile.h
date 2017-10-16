@@ -6,7 +6,7 @@
 #include "experimentlibrary.h"
 #include "profilestats.h"
 
-class ErrorProfile
+class ErrorProfile : public Result
 {
 public:
     class Profile;

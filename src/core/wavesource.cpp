@@ -51,6 +51,18 @@ const WaveDeck *WaveSource::deck() const
     }
 }
 
+int WaveSource::resultIndex() const
+{
+    switch ( type ) {
+    default:
+    case Archive:   return archive()->resultIndex;
+    case Selection: return selection()->resultIndex;
+    case Subset:    return subset()->resultIndex;
+    case Deck:      return deck()->resultIndex;
+    case Manual:    return session->wavesets().manuals().at(idx).resultIndex;
+    }
+}
+
 std::vector<Stimulation> WaveSource::stimulations() const
 {
     std::vector<Stimulation> ret;
@@ -79,7 +91,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
         ret = deck()->stimulations();
         break;
     case Manual:
-        ret = session->wavesets().manuals().at(idx);
+        ret = session->wavesets().manuals().at(idx).stims;
         break;
     }
 

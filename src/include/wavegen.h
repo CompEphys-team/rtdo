@@ -20,7 +20,8 @@ public:
 
     static inline size_t mape_multiplier(size_t precision) { return size_t(1) << precision; }
 
-    struct Archive {
+    struct Archive : public Result
+    {
         std::list<MAPElite> elites;
         size_t precision = 0;
         size_t iterations = 0;

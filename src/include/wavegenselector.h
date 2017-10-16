@@ -3,7 +3,7 @@
 
 #include "wavegen.h"
 
-class WavegenSelection
+class WavegenSelection : public Result
 {
 public:
     WavegenSelection(Session &session, size_t archive_idx);

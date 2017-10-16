@@ -30,6 +30,8 @@ public:
     const WaveSubset *subset() const; //!< returns the nearest ancestor Subset, if any
     const WaveDeck *deck() const; //!< returns the deck, if type is Deck
 
+    int resultIndex() const;
+
     std::vector<Stimulation> stimulations() const;
     std::vector<MAPElite> elites() const;
 

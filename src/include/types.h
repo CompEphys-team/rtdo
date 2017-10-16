@@ -314,4 +314,6 @@ struct GAFitterSettings {
 
 struct DataPoint { double t; double value; };
 
+struct Result { int resultIndex = -1; };
+
 #endif // TYPES_H

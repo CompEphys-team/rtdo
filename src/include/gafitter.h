@@ -22,7 +22,8 @@ public:
     RTMaybe::Queue<DataPoint> *qV, *qI, *qO;
     double qT;
 
-    struct Output {
+    struct Output : public Result
+    {
         Output(const GAFitter &fitter);
 
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]

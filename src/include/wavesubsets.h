@@ -3,7 +3,7 @@
 
 #include "wavesource.h"
 
-class WaveSubset
+class WaveSubset : public Result
 {
 public:
     WaveSubset(WaveSource src, std::vector<size_t> indices) : src(std::move(src)), indices(std::move(indices)) {}
@@ -15,7 +15,7 @@ public:
     std::vector<size_t> indices;
 };
 
-class WaveDeck
+class WaveDeck : public Result
 {
 public:
     WaveDeck(Session &session);
@@ -27,6 +27,13 @@ public:
 private:
     std::vector<WaveSource> src;
     std::vector<Stimulation> m_stimulations;
+};
+
+class ManualWaveset : public Result
+{
+public:
+    ManualWaveset(std::vector<Stimulation> stims) : stims(stims) {}
+    std::vector<Stimulation> stims;
 };
 
 #endif // WAVESUBSETS_H
