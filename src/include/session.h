@@ -121,7 +121,7 @@ protected:
 
     void addAPs();
     void load();
-    void readConfig(const QString &filename, bool raiseDirtyFlags = false);
+    void readConfig(const QString &filename, int resultIndex, bool raiseDirtyFlags = false);
 
     static QString results(int idx, const QString &actor, const QString &action);
 

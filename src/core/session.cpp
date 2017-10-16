@@ -79,7 +79,7 @@ void Session::crossloadConfig(const QString &crossSessionDir)
         QFile file(crossdir.filePath(filename));
         try {
             if ( entry.actor == "Config" )
-                readConfig(file.fileName(), true);
+                readConfig(file.fileName(), -1, true);
         } catch (std::runtime_error err) {
             std::cerr << "An action could not be loaded (" << crosslog.data(crosslog.index(row, 0), Qt::UserRole).toString()
                       << ", " << filename << ") : "
@@ -296,7 +296,7 @@ void Session::load()
     }
 }
 
-void Session::readConfig(const QString &filename, bool raiseDirtyFlags)
+void Session::readConfig(const QString &filename, int resultIndex, bool raiseDirtyFlags)
 {
     std::ifstream is(filename.toStdString());
     QString name;
@@ -339,22 +339,32 @@ void Session::readConfig(const QString &filename, bool raiseDirtyFlags)
         project.wavegen().setRunData(rund);
         project.experiment().setRunData(rund);
         project.profiler().setRunData(rund);
+        if ( resultIndex >= 0 )
+            hist_rund.push_back(std::make_pair(resultIndex, rund));
         emit runDataChanged();
     }
     if ( hasSearch ) {
         dirtySearchd = raiseDirtyFlags;
+        if ( resultIndex >= 0 )
+            hist_searchd.push_back(std::make_pair(resultIndex, searchd));
         emit wavegenDataChanged();
     }
     if ( hasStim ) {
         dirtyStimd = raiseDirtyFlags;
+        if ( resultIndex >= 0 )
+            hist_stimd.push_back(std::make_pair(resultIndex, stimd));
         emit stimulationDataChanged();
     }
     if ( hasGafs ) {
         dirtyGafs = raiseDirtyFlags;
+        if ( resultIndex >= 0 )
+            hist_gafs.push_back(std::make_pair(resultIndex, gafs));
         emit GAFitterSettingsChanged();
     }
     if ( hasDaq ) {
         dirtyDaqd = raiseDirtyFlags;
+        if ( resultIndex >= 0 )
+            hist_daqd.push_back(std::make_pair(resultIndex, daqd));
         emit DAQDataChanged();
     }
 }
