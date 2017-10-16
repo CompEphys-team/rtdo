@@ -37,12 +37,12 @@ void Wavegen::sanitiseWavegenData(WavegenData *d)
     d->nWavesPerEpoch = ((d->nWavesPerEpoch + nWavesPerKernel - 1) / nWavesPerKernel) * nWavesPerKernel;
 }
 
-void Wavegen::load(const QString &action, const QString &args, QFile &results)
+void Wavegen::load(const QString &action, const QString &args, QFile &results, Result r)
 {
     if ( action == sigmaAdjust_action )
-        sigmaAdjust_load(results);
+        sigmaAdjust_load(results, r);
     else if ( action == search_action )
-        search_load(results, args);
+        search_load(results, args, r);
     else
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
 }
@@ -240,7 +240,7 @@ void Wavegen::sigmaAdjust_save(QFile &file)
         os << p.adjustedSigma;
 }
 
-void Wavegen::sigmaAdjust_load(QFile &file)
+void Wavegen::sigmaAdjust_load(QFile &file, Result)
 {
     QDataStream is;
     quint32 version = openLoadStream(file, is, sigmaAdjust_magic);

@@ -233,7 +233,7 @@ void Wavegen::search_save(QFile &file)
     os << arch.meanFitness << arch.maxFitness;
 }
 
-void Wavegen::search_load(QFile &file, const QString &args)
+void Wavegen::search_load(QFile &file, const QString &args, Result r)
 {
     QDataStream is;
     quint32 version = openLoadStream(file, is, search_magic);
@@ -242,7 +242,7 @@ void Wavegen::search_load(QFile &file, const QString &args)
 
     quint32 precision, iterations, archSize;
     is >> precision >> iterations >> archSize;
-    m_archives.push_back(Archive(args.toInt(), searchd)); // Note: this->searchd is correctly set up assuming sequential result loading
+    m_archives.push_back(Archive(args.toInt(), searchd, r)); // Note: this->searchd is correctly set up assuming sequential result loading
     Archive &arch = m_archives.back();
     arch.precision = precision;
     arch.iterations = iterations;

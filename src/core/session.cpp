@@ -269,23 +269,25 @@ void Session::appropriate(QObject *worker)
 
 void Session::load()
 {
+    Result result;
     for ( int row = 0; row < m_log.rowCount(); row++ ) {
         SessionLog::Entry entry = m_log.entry(row);
         QString filename = results(row, entry.actor, entry.action);
         QFile file(dir.filePath(filename));
+        result.resultIndex = row;
         try {
             if ( entry.actor == wavegen().actorName() )
-                wavegen().load(entry.action, entry.args, file);
+                wavegen().load(entry.action, entry.args, file, result);
             else if ( entry.actor == profiler().actorName() )
-                profiler().load(entry.action, entry.args, file);
+                profiler().load(entry.action, entry.args, file, result);
             else if ( entry.actor == "Config" ) {
-                readConfig(file.fileName());
+                readConfig(file.fileName(), row);
             } else if ( entry.actor == wavesets().actorName() ) {
-                wavesets().load(entry.action, entry.args, file);
+                wavesets().load(entry.action, entry.args, file, result);
             } else if ( entry.actor == gaFitter().actorName() ) {
-                gaFitter().load(entry.action, entry.args, file);
+                gaFitter().load(entry.action, entry.args, file, result);
             } else if ( entry.actor == samplingProfiler().actorName() ) {
-                samplingProfiler().load(entry.action, entry.args, file);
+                samplingProfiler().load(entry.action, entry.args, file, result);
             } else {
                 throw std::runtime_error(std::string("Unknown actor: ") + entry.actor.toStdString());
             }

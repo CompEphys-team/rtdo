@@ -22,7 +22,7 @@ ErrorProfiler::~ErrorProfiler()
     session.project.experiment().destroySimulator(daq);
 }
 
-void ErrorProfiler::load(const QString &act, const QString &, QFile &results)
+void ErrorProfiler::load(const QString &act, const QString &, QFile &results, Result r)
 {
     if ( act != action )
         throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
@@ -31,7 +31,7 @@ void ErrorProfiler::load(const QString &act, const QString &, QFile &results)
     if ( ver < 100 || ver > version )
         throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
-    m_profiles.push_back(ErrorProfile(session));
+    m_profiles.push_back(ErrorProfile(session, r));
     m_profiles.back().version = ver;
     is >> m_profiles.back();
 }

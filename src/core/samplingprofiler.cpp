@@ -17,7 +17,7 @@ SamplingProfiler::SamplingProfiler(Session &session) :
     connect(this, SIGNAL(doAbort()), this, SLOT(clearAbort()));
 }
 
-void SamplingProfiler::load(const QString &act, const QString &, QFile &results)
+void SamplingProfiler::load(const QString &act, const QString &, QFile &results, Result r)
 {
     if ( act == action ) {
         QDataStream is;
@@ -25,7 +25,7 @@ void SamplingProfiler::load(const QString &act, const QString &, QFile &results)
         if ( ver < 100 || ver > version )
             throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
-        m_profiles.push_back(Profile());
+        m_profiles.push_back(Profile(r));
         m_profiles.back().src.session = &session;
         is >> m_profiles.back();
     } else {

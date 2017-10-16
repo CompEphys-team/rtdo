@@ -17,7 +17,7 @@ public:
 
 protected:
     friend class Session;
-    virtual void load(const QString &action, const QString &args, QFile &results) = 0;
+    virtual void load(const QString &action, const QString &args, QFile &results, Result r) = 0;
     virtual QString actorName() const = 0;
 
 

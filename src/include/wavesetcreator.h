@@ -31,7 +31,7 @@ signals:
 
 protected:
     friend class Session;
-    void load(const QString &action, const QString &args, QFile &results);
+    void load(const QString &action, const QString &args, QFile &results, Result r);
     inline QString actorName() const { return "WavesetCreator"; }
 
     const static QString actionSelect, actionSubset, actionDeck, actionManual;

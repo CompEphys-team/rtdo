@@ -85,15 +85,15 @@ protected slots:
 
 protected:
     friend class Session;
-    void load(const QString &action, const QString &args, QFile &results);
+    void load(const QString &action, const QString &args, QFile &results, Result r);
     inline QString actorName() const { return "Wavegen"; }
 
     /// Helper functions
     void sigmaAdjust_save(QFile &file);
-    void sigmaAdjust_load(QFile &file);
+    void sigmaAdjust_load(QFile &file, Result r);
 
     void search_save(QFile &file);
-    void search_load(QFile &file, const QString &args);
+    void search_load(QFile &file, const QString &args, Result r);
 
     /**
      * @brief initModels initialises model parameters with random values. Typically, every WavegenData::nGroupsPerWave groups, there

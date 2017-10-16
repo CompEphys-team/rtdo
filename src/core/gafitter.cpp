@@ -155,7 +155,7 @@ void GAFitter::finish()
     doFinish = true;
 }
 
-void GAFitter::load(const QString &act, const QString &, QFile &results)
+void GAFitter::load(const QString &act, const QString &, QFile &results, Result r)
 {
     if ( act != action )
         throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
@@ -164,7 +164,7 @@ void GAFitter::load(const QString &act, const QString &, QFile &results)
     if ( ver < 100 || ver > version )
         throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
-    Output out(*this);
+    Output out(*this, r);
     is >> out.deck >> out.epochs;
     out.stimIdx.resize(out.epochs);
     out.params.resize(out.epochs);

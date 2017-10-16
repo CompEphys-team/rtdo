@@ -127,7 +127,7 @@ std::vector<WaveSource> WavesetCreator::sources() const
     return src;
 }
 
-void WavesetCreator::load(const QString &action, const QString &, QFile &results)
+void WavesetCreator::load(const QString &action, const QString &, QFile &results, Result r)
 {
     QDataStream is;
     quint32 version;
@@ -138,7 +138,7 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
 
         quint32 idx, nranges, min, max;
         is >> idx >> nranges;
-        WavegenSelection sel(session, session.wavegen().archives().size() - idx);
+        WavegenSelection sel(session, session.wavegen().archives().size() - idx, r);
         sel.ranges.resize(nranges);
         for ( WavegenSelection::Range &r : sel.ranges ) {
             is >> min >> max >> r.collapse;
@@ -154,7 +154,7 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
             throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
         quint32 size, idx;
-        m_subsets.push_back(WaveSubset(WaveSource(), {}));
+        m_subsets.push_back(WaveSubset(WaveSource(), {}, r));
         WaveSubset &subset = m_subsets.back();
         subset.src.session =& session;
         is >> subset.src >> size;
@@ -170,7 +170,7 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
 
         WaveSource src;
         src.session =& session;
-        WaveDeck deck(session);
+        WaveDeck deck(session, r);
         for ( size_t i = 0, end = session.project.model().adjustableParams.size(); i < end; i++ ) {
             is >> src;
             deck.setSource(i, src);
@@ -186,7 +186,7 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
         std::vector<Stimulation> stim(size);
         for ( Stimulation &s : stim )
             is >> s;
-        m_manual.push_back(std::move(stim));
+        m_manual.push_back(ManualWaveset(std::move(stim), r));
     } else {
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     }

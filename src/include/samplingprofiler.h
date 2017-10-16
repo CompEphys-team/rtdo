@@ -47,7 +47,7 @@ protected slots:
 
 protected:
     friend class Session;
-    void load(const QString &action, const QString &args, QFile &results);
+    void load(const QString &action, const QString &args, QFile &results, Result r);
     inline QString actorName() const { return "SamplingProfiler"; }
 
 private:
