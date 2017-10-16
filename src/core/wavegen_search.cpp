@@ -147,7 +147,7 @@ void Wavegen::search(int param)
     current.maxFitness.squeeze();
     m_archives.push_back(std::move(current));
 
-    QFile file(session.log(this, search_action, QString::number(param)));
+    QFile file(session.log(this, search_action, m_archives.back(), QString::number(param)));
     search_save(file);
 
     emit done(param);

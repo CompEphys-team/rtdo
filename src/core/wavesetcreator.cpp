@@ -35,7 +35,7 @@ void WavesetCreator::makeSelection(const WavegenSelection &selection)
 
     emit addedSelection();
 
-    QFile file(session.log(this, actionSelect));
+    QFile file(session.log(this, actionSelect, sel));
     QDataStream os;
     if ( !openSaveStream(file, os, magicSelect, versionSelect) )
         return;
@@ -55,7 +55,7 @@ void WavesetCreator::makeSubset(WaveSource src, std::vector<size_t> indices)
 
     emit addedSubset();
 
-    QFile file(session.log(this, actionSubset));
+    QFile file(session.log(this, actionSubset, set));
     QDataStream os;
     if ( !openSaveStream(file, os, magicSubset, versionSubset) )
         return;
@@ -79,7 +79,7 @@ bool WavesetCreator::makeDeck(const std::vector<WaveSource> &src)
 
     emit addedDeck();
 
-    QFile file(session.log(this, actionDeck));
+    QFile file(session.log(this, actionDeck, m_decks.back()));
     QDataStream os;
     if ( !openSaveStream(file, os, magicDeck, versionDeck) )
         return true;
@@ -94,7 +94,7 @@ void WavesetCreator::makeManual(std::vector<Stimulation> stim)
     m_manual.push_back(ManualWaveset(stim));
     emit addedManual();
 
-    QFile file(session.log(this, actionManual));
+    QFile file(session.log(this, actionManual, m_manual.back()));
     QDataStream os;
     if ( !openSaveStream(file, os, magicManual, versionManual) )
         return;

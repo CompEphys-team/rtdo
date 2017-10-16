@@ -48,11 +48,12 @@ public:
      * @param actor is a pointer to the object that completed the action (usually <caller>.this)
      * @param action is a single-word string describing the action, e.g. "search". action must not be
      * empty and will be read back to the actor on session load.
+     * @param result is the result produced by this action and will be furnished with a session-unique identifier.
      * @param args is an arbitrary string providing closer specification to the action, e.g. arguments
      * the action received on its execution. Must not contain any newline characters.
      * @return a string indicating the default result file path, e.g. "/path/to/session/0000.Wavegen.search"
      */
-    QString log(const SessionWorker *actor, const QString &action, const QString &args = QString());
+    QString log(const SessionWorker *actor, const QString &action, Result &result, const QString &args = QString());
 
     inline SessionLog *getLog() { return &m_log; }
 

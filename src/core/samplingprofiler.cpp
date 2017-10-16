@@ -102,7 +102,7 @@ void SamplingProfiler::generate(SamplingProfiler::Profile prof)
     emit done();
 
     // Save
-    QFile file(session.log(this, action, "Descriptive metadata goes here..."));
+    QFile file(session.log(this, action, m_profiles.back(), "Descriptive metadata goes here..."));
     QDataStream os;
     if ( openSaveStream(file, os, magic, version) )
         os << m_profiles.back();

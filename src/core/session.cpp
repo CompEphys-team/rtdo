@@ -204,7 +204,7 @@ void Session::quit()
     thread.wait();
 }
 
-QString Session::log(const SessionWorker *actor, const QString &action, const QString &args)
+QString Session::log(const SessionWorker *actor, const QString &action, Result &result, const QString &args)
 {
     int idx;
     QMutexLocker lock(&log_mutex);
@@ -243,6 +243,7 @@ QString Session::log(const SessionWorker *actor, const QString &action, const QS
     }
 
     idx = m_log.put(actor->actorName(), action, args);
+    result.resultIndex = idx;
     emit actionLogged(actor->actorName(), action, args, idx);
     return dir.filePath(results(idx, actor->actorName(), action));
 }

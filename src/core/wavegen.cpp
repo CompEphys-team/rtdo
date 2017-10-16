@@ -224,7 +224,8 @@ void Wavegen::adjustSigmas()
                   << sigmaAdjust[i] << '\t' << lib.adjustableParams[i].adjustedSigma << std::endl;
     std::cout << "These adjustments are applied to all future actions." << std::endl;
 
-    QFile file(session.log(this, sigmaAdjust_action));
+    Result dummy;
+    QFile file(session.log(this, sigmaAdjust_action, dummy));
     sigmaAdjust_save(file);
 
     emit done();

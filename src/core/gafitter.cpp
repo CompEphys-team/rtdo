@@ -127,7 +127,7 @@ void GAFitter::run(WaveSource src)
     emit done();
 
     // Save
-    QFile file(session.log(this, action));
+    QFile file(session.log(this, action, m_results.back()));
     QDataStream os;
     if ( openSaveStream(file, os, magic, version) ) {
         const Output &out = m_results.back();
