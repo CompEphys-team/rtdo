@@ -2,7 +2,8 @@
 #include "session.h"
 #include <cassert>
 
-ErrorProfile::ErrorProfile(Session &session) :
+ErrorProfile::ErrorProfile(Session &session, Result r) :
+    Result(r),
     lib(session.project.experiment()),
     m_permutations(lib.adjustableParams.size()),
     m_stats(lib.adjustableParams.size(), ProfileStats(session)),

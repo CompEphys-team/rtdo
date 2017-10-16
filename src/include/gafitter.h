@@ -24,7 +24,7 @@ public:
 
     struct Output : public Result
     {
-        Output(const GAFitter &fitter);
+        Output(const GAFitter &fitter, Result r = Result());
 
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]
         std::vector<scalar> error; //!< Best performing model's error in each epoch

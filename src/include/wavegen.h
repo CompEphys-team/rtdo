@@ -30,8 +30,8 @@ public:
         QVector<quint32> nCandidates, nInsertions, nReplacements, nElites;
         QVector<double> meanFitness, maxFitness;
         inline QString prettyName() const { return QString("%1 iterations").arg(iterations); }
-        Archive() {}
-        Archive(int param, WavegenData searchd) : param(param), searchd(searchd)
+        Archive(Result r = Result()) : Result(r) {}
+        Archive(int param, WavegenData searchd, Result r = Result()) : Result(r), param(param), searchd(searchd)
         {
             nCandidates.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
             nInsertions.reserve(searchd.maxIterations * searchd.nGroupsPerWave);

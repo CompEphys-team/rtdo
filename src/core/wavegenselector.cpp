@@ -1,7 +1,8 @@
 #include "wavegenselector.h"
 #include "session.h"
 
-WavegenSelection::WavegenSelection(Session &session, size_t archive_idx) :
+WavegenSelection::WavegenSelection(Session &session, size_t archive_idx, Result r) :
+    Result(r),
     session(session),
     archive_idx(archive_idx),
     ranges(archive().searchd.mapeDimensions.size())

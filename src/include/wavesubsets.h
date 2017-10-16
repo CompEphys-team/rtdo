@@ -6,7 +6,7 @@
 class WaveSubset : public Result
 {
 public:
-    WaveSubset(WaveSource src, std::vector<size_t> indices) : src(std::move(src)), indices(std::move(indices)) {}
+    WaveSubset(WaveSource src, std::vector<size_t> indices, Result r = Result()) : Result(r), src(std::move(src)), indices(std::move(indices)) {}
     std::vector<Stimulation> stimulations() const;
     inline size_t size() const { return indices.size(); }
     QString prettyName() const;
@@ -18,7 +18,7 @@ public:
 class WaveDeck : public Result
 {
 public:
-    WaveDeck(Session &session);
+    WaveDeck(Session &session, Result r = Result());
 
     bool setSource(size_t targetParam, WaveSource source); //!< Sets the stimulation for the given parameter. source must refer to a single stimulation.
     const std::vector<WaveSource> &sources() const { return src; }
@@ -32,7 +32,7 @@ private:
 class ManualWaveset : public Result
 {
 public:
-    ManualWaveset(std::vector<Stimulation> stims) : stims(stims) {}
+    ManualWaveset(std::vector<Stimulation> stims, Result r = Result()) : Result(r), stims(stims) {}
     std::vector<Stimulation> stims;
 };
 

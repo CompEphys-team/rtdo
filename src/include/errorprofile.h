@@ -12,7 +12,7 @@ public:
     class Profile;
     class Iterator;
 
-    ErrorProfile(Session &session);
+    ErrorProfile(Session &session, Result r = Result());
 
     /**
      * @brief The Permutation struct is ErrorProfile's governing data type.

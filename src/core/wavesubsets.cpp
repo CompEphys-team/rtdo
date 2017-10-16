@@ -17,7 +17,8 @@ QString WaveSubset::prettyName() const
 
 
 
-WaveDeck::WaveDeck(Session &session) :
+WaveDeck::WaveDeck(Session &session, Result r) :
+    Result(r),
     src(session.project.model().adjustableParams.size()),
     m_stimulations(session.project.model().adjustableParams.size())
 {

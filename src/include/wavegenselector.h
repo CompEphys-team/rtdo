@@ -6,7 +6,7 @@
 class WavegenSelection : public Result
 {
 public:
-    WavegenSelection(Session &session, size_t archive_idx);
+    WavegenSelection(Session &session, size_t archive_idx, Result r = Result());
 
     Session &session;
     size_t archive_idx;

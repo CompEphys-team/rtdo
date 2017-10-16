@@ -37,7 +37,8 @@ void GAFitter::clearAbort()
     aborted = false;
 }
 
-GAFitter::Output::Output(const GAFitter &f) :
+GAFitter::Output::Output(const GAFitter &f, Result r) :
+    Result(r),
     params(f.settings.maxEpochs, std::vector<scalar>(f.lib.adjustableParams.size())),
     error(f.settings.maxEpochs),
     stimIdx(f.settings.maxEpochs),

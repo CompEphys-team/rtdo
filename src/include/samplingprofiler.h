@@ -14,8 +14,8 @@ public:
 
     struct Profile : public Result
     {
-        Profile() {}
-        Profile(WaveSource src); //!< Populates sensible defaults for target and sigma, and sizes the vectors.
+        Profile(Result r = Result()) : Result(r) {}
+        Profile(WaveSource src, Result r = Result()); //!< Populates sensible defaults for target and sigma, and sizes the vectors.
         WaveSource src; //!< Stimulations to profile.
         size_t target; //!< Parameter to profile.
         double sigma; //!< Detuning coefficient
