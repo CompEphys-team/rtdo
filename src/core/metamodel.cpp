@@ -361,8 +361,11 @@ private:
 
     std::list<CacheStruct> cache;
     std::list<CacheStruct>::iterator currentCacheEntry;
-    size_t currentSample;
+    size_t iT;
     bool useRealism;
+
+    scalar tStart, sDt, mdt, noiseI, noiseExp, noiseA;
+    bool caching = false, generating = false;
 
 public:
     Simulator_numbered(Session &session, bool useRealism) : DAQ(session), useRealism(useRealism)
@@ -388,22 +391,18 @@ public:
     void run(Stimulation s)
     {
         currentStim = s;
-        currentSample = 0;
-
-        double sDt = DT;
+        iT = 0;
+        tStart = 0;
+        sDt = DT;
         int extraSamples = 0;
-        scalar tStart = 0, tEnd = s.duration;
-        bool noise = false;
-        scalar noiseI = 0, noiseExp = 0, noiseA = 0;
 
         if ( useRealism ) {
             sDt = samplingDt();
             if ( p.filter.active ) {
                 extraSamples = p.filter.width;
                 tStart = -int(p.filter.width/2) * sDt;
-                tEnd = s.duration - tStart;
             }
-            if ( (noise = p.simd.noise) ) {
+            if ( p.simd.noise ) {
                 noiseI = p.simd.noiseStd * RNG.variate<scalar>(0,1);
                 if ( p.simd.noiseTau > 0 ) { // Brown noise
                     scalar noiseD = 2 * p.simd.noiseStd * p.simd.noiseStd / p.simd.noiseTau; // nA^2/ms
@@ -413,57 +412,69 @@ public:
                     noiseExp = 0;
                     noiseA = p.simd.noiseStd;
                 }
-                cache.clear(); // No caching of non-deterministic samples
             }
         }
 
         samplesRemaining = s.duration/sDt + extraSamples;
+        mdt = sDt/rund.simCycles;
 
-        // Check if requested stimulation has been used before
-        for ( currentCacheEntry = cache.begin(); currentCacheEntry != cache.end(); ++currentCacheEntry ) {
-            if ( currentCacheEntry->_stim == s && currentCacheEntry->_VC == VC ) {
+        if ( useRealism && p.simd.noise ) {
+            caching = false;
+            generating = true;
+        } else {
+            caching = true;
+            // Check if requested stimulation has been used before
+            for ( currentCacheEntry = cache.begin(); currentCacheEntry != cache.end(); ++currentCacheEntry )
+                if ( currentCacheEntry->_stim == s && currentCacheEntry->_VC == VC )
+                    break;
+            if ( currentCacheEntry == cache.end() ) {
+                generating = true;
+                currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(s, VC, sDt, extraSamples));
+            } else {
+                generating = false;
                 restoreState();
-                return;
             }
         }
-        currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(s, VC, sDt, extraSamples));
-
-        scalar t = tStart;
-        unsigned int iT = 0;
-        scalar Isyn;
-        const scalar mdt = sDt/rund.simCycles;
-        for ( t = tStart; t <= tEnd; ++iT, t = tStart + iT*sDt ) {
-            scalar Vcmd = getCommandVoltage(s, t);
-            for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
-                Isyn = VC ? ((rund.clampGain*(Vcmd-V) - V) / rund.accessResistance) : Vcmd;
-                if ( noise ) {
-                    noiseI = noiseI * noiseExp + noiseA * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-dt/tau) + A*X(0,1), I0 = 0
-                    Isyn += noiseI;
-                }
-)EOF";
-    ss << kernel("                ", false, false);
-    ss << R"EOF(
-            } // end for mt
-
-            currentCacheEntry->_voltage[iT] = V;
-            currentCacheEntry->_current[iT] = Isyn;
-        } // end for t
-
-        saveState();
     }
 
     void next()
     {
-        current = currentCacheEntry->_current[currentSample];
-        voltage = currentCacheEntry->_voltage[currentSample];
-        ++currentSample;
+        if ( generating ) {
+            scalar Isyn;
+            scalar t = tStart + iT*sDt;
+            scalar Vcmd = getCommandVoltage(currentStim, t);
+            for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
+                Isyn = VC ? ((rund.clampGain*(Vcmd-V) - V) / rund.accessResistance) : Vcmd;
+                if ( p.simd.noise ) {
+                    noiseI = noiseI * noiseExp + noiseA * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-dt/tau) + A*X(0,1), I0 = 0
+                    Isyn += noiseI;
+                }
+)EOF";
+ss << kernel("                ", false, false);
+ss << R"EOF(
+            } // end for mt
+
+            if ( caching ) {
+                currentCacheEntry->_voltage[iT] = V;
+                currentCacheEntry->_current[iT] = Isyn;
+            }
+            current = Isyn;
+            voltage = V;
+        } else {
+            current = currentCacheEntry->_current[iT];
+            voltage = currentCacheEntry->_voltage[iT];
+        }
+        ++iT;
         --samplesRemaining;
     }
 
     void reset()
     {
-        currentSample = 0;
+        iT = 0;
         voltage = current = 0.0;
+        if ( caching && generating )
+            saveState();
+        caching = generating = false;
     }
 
     void saveState()
@@ -493,8 +504,8 @@ public:
     for ( size_t i = 0; i < adjustableParams.size(); i++ )
         ss << "        case " << i << ": " << adjustableParams[i].name << " = value; break;" << endl;
     ss << "        }" << endl;
-    ss << "    cache.clear();" << endl;
-    ss << "    initialise();" << endl;
+    ss << "        cache.clear();" << endl;
+    ss << "        initialise();" << endl;
     ss << "    }" << endl << endl;
 
     ss << "    double getAdjustableParam(size_t idx)" << endl;
