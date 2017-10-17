@@ -8,6 +8,7 @@ StimulationDataDialog::StimulationDataDialog(Session &s, int historicIndex, QWid
     historicIndex(historicIndex)
 {
     ui->setupUi(this);
+    setAttribute(Qt::WA_DeleteOnClose);
 
     if ( historicIndex < 0 ) {
         connect(&session, SIGNAL(stimulationDataChanged()), this, SLOT(importData()));

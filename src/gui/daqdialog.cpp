@@ -14,6 +14,8 @@ DAQDialog::DAQDialog(Session &s, int historicIndex, QWidget *parent) :
     historicIndex(historicIndex)
 {
     ui->setupUi(this);
+    setAttribute(Qt::WA_DeleteOnClose);
+
     ui->samplesPerDt->setSuffix(ui->samplesPerDt->suffix().arg(session.project.dt()));
     chanUI[0] = {ui->channel, ui->range, ui->reference, ui->conversionFactor, ui->offset}; // Voltage in
     chanUI[1] = {ui->channel_2, ui->range_2, ui->reference_2, ui->conversionFactor_2, ui->offset_2}; // Current in

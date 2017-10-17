@@ -8,6 +8,7 @@ WavegenDataDialog::WavegenDataDialog(Session &s, int historicIndex, QWidget *par
     historicIndex(historicIndex)
 {
     ui->setupUi(this);
+    setAttribute(Qt::WA_DeleteOnClose);
 
     if ( historicIndex < 0 ) {
         connect(&session, SIGNAL(wavegenDataChanged()), this, SLOT(importData()));

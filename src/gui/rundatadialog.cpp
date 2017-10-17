@@ -9,6 +9,7 @@ RunDataDialog::RunDataDialog(Session &s, int historicIndex, QWidget *parent) :
     historicIndex(historicIndex)
 {
     ui->setupUi(this);
+    setAttribute(Qt::WA_DeleteOnClose);
 
     if ( historicIndex < 0 ) {
         connect(&session, &Session::actionLogged, [=](QString actor, QString action, QString, int) {
