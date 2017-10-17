@@ -1,6 +1,9 @@
 #include "parameterfitplotter.h"
 #include "ui_parameterfitplotter.h"
 #include "colorbutton.h"
+#include "rundatadialog.h"
+#include "daqdialog.h"
+#include "gafittersettingsdialog.h"
 
 ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     QWidget(parent),
@@ -118,6 +121,36 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
 
     connect(ui->addGroup, SIGNAL(clicked(bool)), this, SLOT(addGroup()));
     connect(ui->delGroup, SIGNAL(clicked(bool)), this, SLOT(removeGroup()));
+
+    connect(ui->fits, &QTableWidget::itemSelectionChanged, [=]() {
+        QList<QTableWidgetSelectionRange> rlist = ui->fits->selectedRanges();
+        ui->settingsButtons->setEnabled(rlist.size() == 1 && rlist.first().rowCount() == 1);
+    });
+
+    connect(ui->rundata, &QPushButton::clicked, [=](bool){
+        std::vector<int> rows = getSelectedRows(ui->fits);
+        if ( rows.size() != 1 )
+            return;
+        RunDataDialog *dlg = new RunDataDialog(*session, session->gaFitter().results().at(rows[0]).resultIndex);
+        dlg->setWindowTitle(QString("%1 for fit %2").arg(dlg->windowTitle()).arg(rows[0]));
+        dlg->show();
+    });
+    connect(ui->daqdata, &QPushButton::clicked, [=](bool){
+        std::vector<int> rows = getSelectedRows(ui->fits);
+        if ( rows.size() != 1 )
+            return;
+        DAQDialog *dlg = new DAQDialog(*session, session->gaFitter().results().at(rows[0]).resultIndex);
+        dlg->setWindowTitle(QString("%1 for fit %2").arg(dlg->windowTitle()).arg(rows[0]));
+        dlg->show();
+    });
+    connect(ui->fittersettings, &QPushButton::clicked, [=](bool){
+        std::vector<int> rows = getSelectedRows(ui->fits);
+        if ( rows.size() != 1 )
+            return;
+        GAFitterSettingsDialog *dlg = new GAFitterSettingsDialog(*session, session->gaFitter().results().at(rows[0]).resultIndex);
+        dlg->setWindowTitle(QString("%1 for fit %2").arg(dlg->windowTitle()).arg(rows[0]));
+        dlg->show();
+    });
 }
 
 ParameterFitPlotter::ParameterFitPlotter(Session &session, QWidget *parent) :

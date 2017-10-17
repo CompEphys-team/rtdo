@@ -97,6 +97,23 @@
       </property>
       <widget class="QWidget" name="widget_3" native="true">
        <layout class="QGridLayout" name="gridLayout_3">
+        <item row="2" column="0">
+         <widget class="QPushButton" name="sepcols">
+          <property name="text">
+           <string>Colours</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QPushButton" name="paste">
+          <property name="text">
+           <string>Paste</string>
+          </property>
+         </widget>
+        </item>
         <item row="0" column="0" colspan="3">
          <widget class="QSpinBox" name="opacity">
           <property name="suffix">
@@ -113,17 +130,14 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
-         <widget class="QPushButton" name="sepcols">
+        <item row="2" column="1">
+         <widget class="QPushButton" name="copy">
           <property name="text">
-           <string>Colours</string>
-          </property>
-          <property name="checkable">
-           <bool>true</bool>
+           <string>Copy</string>
           </property>
          </widget>
         </item>
-        <item row="3" column="0" colspan="3">
+        <item row="4" column="0" colspan="3">
          <widget class="QTableWidget" name="fits">
           <property name="selectionBehavior">
            <enum>QAbstractItemView::SelectRows</enum>
@@ -212,25 +226,53 @@
           </column>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QPushButton" name="copy">
-          <property name="text">
-           <string>Copy</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="2">
-         <widget class="QPushButton" name="paste">
-          <property name="text">
-           <string>Paste</string>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="0" colspan="3">
          <widget class="QCheckBox" name="rescale">
           <property name="text">
            <string>Rescale</string>
           </property>
+         </widget>
+        </item>
+        <item row="5" column="0" colspan="3">
+         <widget class="QWidget" name="settingsButtons" native="true">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_5">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item row="0" column="0">
+            <widget class="QPushButton" name="rundata">
+             <property name="text">
+              <string>RunData</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QPushButton" name="daqdata">
+             <property name="text">
+              <string>DAQData</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QPushButton" name="fittersettings">
+             <property name="text">
+              <string>FitterSettings</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
