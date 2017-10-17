@@ -286,11 +286,11 @@ void ParameterFitPlotter::updateFits()
         ui->fits->setCellWidget(i, 1, c);
         ui->fits->setItem(i, 2, new QTableWidgetItem(QString::number(fit.deck.idx)));
         ui->fits->setItem(i, 3, new QTableWidgetItem(QString::number(fit.epochs)));
-        ui->fits->setItem(i, 4, new QTableWidgetItem(QString::number(fit.settings.randomOrder)));
-        ui->fits->setItem(i, 5, new QTableWidgetItem(QString::number(fit.settings.crossover, 'g', 2)));
-        ui->fits->setItem(i, 6, new QTableWidgetItem(fit.settings.decaySigma ? "Y" : "N"));
-        ui->fits->setItem(i, 7, new QTableWidgetItem(QString("%1-%2").arg(fit.daqSettings.simulate).arg(fit.daqSettings.simd.paramSet)));
-        if ( fit.daqSettings.simulate == 1 )
+        ui->fits->setItem(i, 4, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).randomOrder)));
+        ui->fits->setItem(i, 5, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).crossover, 'g', 2)));
+        ui->fits->setItem(i, 6, new QTableWidgetItem(session->gaFitterSettings(fit.resultIndex).decaySigma ? "Y" : "N"));
+        ui->fits->setItem(i, 7, new QTableWidgetItem(QString("%1-%2").arg(session->daqData(fit.resultIndex).simulate).arg(session->daqData(fit.resultIndex).simd.paramSet)));
+        if ( session->daqData(fit.resultIndex).simulate == 1 )
             for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
                 ui->fits->setItem(i, 8+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
         if ( fit.final )
@@ -321,7 +321,7 @@ void ParameterFitPlotter::replot()
         for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ )
             keys[epoch] = epoch;
         for ( size_t i = 0; i < plots.size(); i++ ) {
-            if ( fit.daqSettings.simulate == 1 ) {
+            if ( session->daqData(fit.resultIndex).simulate == 1 ) {
                 QCPItemStraightLine *line = new QCPItemStraightLine(plots[i]);
                 line->setLayer("target");
                 line->setPen(QPen(getGraphColorBtn(row)->color));
@@ -420,7 +420,7 @@ ColorButton *ParameterFitPlotter::getGroupColorBtn(int row)
 void ParameterFitPlotter::progress(quint32 epoch)
 {
     GAFitter::Output fit = session->gaFitter().currentResults();
-    if ( epoch == 0 && fit.daqSettings.simulate == 1 ) {
+    if ( epoch == 0 && session->daqData(fit.resultIndex).simulate == 1 ) {
         for ( size_t i = 0; i < plots.size(); i++ ) {
             QCPItemStraightLine *line = new QCPItemStraightLine(plots[i]);
             line->setLayer("target");
@@ -565,7 +565,7 @@ void ParameterFitPlotter::plotSummary()
         bool hasTarget = true;
         for ( int fit : groups[row] ) {
             epochs = std::max(session->gaFitter().results().at(fit).epochs, epochs);
-            hasTarget &= (session->gaFitter().results().at(fit).daqSettings.simulate==1);
+            hasTarget &= (session->daqData(session->gaFitter().results().at(fit).resultIndex).simulate==1);
         }
         QVector<double> keys(epochs);
         for ( size_t i = 0; i < epochs; i++ )

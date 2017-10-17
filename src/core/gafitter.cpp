@@ -44,8 +44,6 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
     stimIdx(f.settings.maxEpochs),
     targets(f.lib.adjustableParams.size()),
     epochs(0),
-    settings(f.settings),
-    daqSettings(f.session.daqData()),
     final(false),
     finalParams(f.lib.adjustableParams.size()),
     finalError(f.lib.adjustableParams.size())
