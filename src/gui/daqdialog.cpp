@@ -6,20 +6,40 @@
 
 static std::vector<FilterMethod> methods;
 
-DAQDialog::DAQDialog(Session &s, QWidget *parent) :
+DAQDialog::DAQDialog(Session &s, int historicIndex, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::DAQDialog),
     session(s),
-    calibrator(s)
+    calibrator(s),
+    historicIndex(historicIndex)
 {
     ui->setupUi(this);
-    ui->buttonBox->addButton("Apply and set as project default", QDialogButtonBox::ApplyRole);
     ui->samplesPerDt->setSuffix(ui->samplesPerDt->suffix().arg(session.project.dt()));
     chanUI[0] = {ui->channel, ui->range, ui->reference, ui->conversionFactor, ui->offset}; // Voltage in
     chanUI[1] = {ui->channel_2, ui->range_2, ui->reference_2, ui->conversionFactor_2, ui->offset_2}; // Current in
     chanUI[2] = {ui->channel_5, ui->range_5, ui->reference_5, ui->conversionFactor_5, ui->offset_5}; // V2
     chanUI[3] = {ui->channel_3, ui->range_3, ui->reference_3, ui->conversionFactor_3, ui->offset_3}; // Voltage cmd
     chanUI[4] = {ui->channel_4, ui->range_4, ui->reference_4, ui->conversionFactor_4, ui->offset_4}; // Current cmd
+
+    if ( historicIndex >= 0 ) {
+        ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
+        ui->calibrate->setEnabled(false);
+        ui->calibrate_2->setEnabled(false);
+        ui->calibrate_3->setEnabled(false);
+        ui->calibrate_5->setEnabled(false);
+    } else {
+        ui->buttonBox->addButton("Apply and set as project default", QDialogButtonBox::ApplyRole);
+
+        connect(&session, SIGNAL(DAQDataChanged()), this, SLOT(importData()));
+        connect(this, SIGNAL(apply(DAQData)), &session, SLOT(setDAQData(DAQData)));
+
+        connect(ui->deviceNumber, SIGNAL(valueChanged(QString)), this, SLOT(updateChannelCapabilities()));
+        for ( int i = 0; i < 5; i++ ) {
+            connect(chanUI[i].channel, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int){
+                updateChannelCapabilities(i, false);
+            });
+        }
+    }
 
     connect(ui->calibrate, &QPushButton::clicked, [=](bool){ emit zeroV1(getFormData()); });
     connect(this, SIGNAL(zeroV1(DAQData)), &calibrator, SLOT(zeroV1(DAQData)));
@@ -45,16 +65,6 @@ DAQDialog::DAQDialog(Session &s, QWidget *parent) :
         if ( done ) ui->offset_5->setPrefix("");
         else        ui->offset_5->setPrefix("... ");
     });
-
-    connect(ui->deviceNumber, SIGNAL(valueChanged(QString)), this, SLOT(updateChannelCapabilities()));
-    for ( int i = 0; i < 5; i++ ) {
-        connect(chanUI[i].channel, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int){
-            updateChannelCapabilities(i, false);
-        });
-    }
-
-    connect(&session, SIGNAL(DAQDataChanged()), this, SLOT(importData()));
-    connect(this, SIGNAL(apply(DAQData)), &session, SLOT(setDAQData(DAQData)));
 
     methods = {FilterMethod::MovingAverage, FilterMethod::SavitzkyGolay23, FilterMethod::SavitzkyGolay45};
     QStringList labels;
@@ -99,7 +109,7 @@ DAQDialog::~DAQDialog()
 
 void DAQDialog::importData()
 {
-    const DAQData &p = session.daqData();
+    DAQData p = session.daqData(historicIndex);
 
     ui->source->setCurrentIndex(p.simulate);
     ui->deviceNumber->setValue(p.devNo);

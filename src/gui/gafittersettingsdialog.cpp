@@ -1,21 +1,25 @@
 #include "gafittersettingsdialog.h"
 #include "ui_gafittersettingsdialog.h"
 
-GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, QWidget *parent) :
+GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::GAFitterSettingsDialog),
-    session(s)
+    session(s),
+    historicIndex(historicIndex)
 {
     ui->setupUi(this);
 
-    connect(&session, &Session::actionLogged, [=](QString actor, QString action, QString, int) {
-        if ( actor == "Config" && action == "cfg" )
-            importData();
-    });
+    if ( historicIndex < 0 ) {
+        connect(&session, &Session::actionLogged, [=](QString actor, QString action, QString, int) {
+            if ( actor == "Config" && action == "cfg" )
+                importData();
+        });
+        connect(this, SIGNAL(apply(GAFitterSettings)), &session, SLOT(setGAFitterSettings(GAFitterSettings)));
+    } else {
+        ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
+    }
 
     importData();
-
-    connect(this, SIGNAL(apply(GAFitterSettings)), &session, SLOT(setGAFitterSettings(GAFitterSettings)));
 }
 
 GAFitterSettingsDialog::~GAFitterSettingsDialog()
@@ -25,7 +29,7 @@ GAFitterSettingsDialog::~GAFitterSettingsDialog()
 
 void GAFitterSettingsDialog::importData()
 {
-    const GAFitterSettings &p = session.gaFitterSettings();
+    GAFitterSettings p = session.gaFitterSettings(historicIndex);
     ui->maxEpochs->setValue(p.maxEpochs);
     ui->randomOrder->setCurrentIndex(p.randomOrder);
     ui->orderBiasDecay->setValue(p.orderBiasDecay);

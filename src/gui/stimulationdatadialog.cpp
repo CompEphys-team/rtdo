@@ -1,18 +1,24 @@
 #include "stimulationdatadialog.h"
 #include "ui_stimulationdatadialog.h"
 
-StimulationDataDialog::StimulationDataDialog(Session &s, QWidget *parent) :
+StimulationDataDialog::StimulationDataDialog(Session &s, int historicIndex, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::StimulationDataDialog),
-    session(s)
+    session(s),
+    historicIndex(historicIndex)
 {
     ui->setupUi(this);
-    connect(&session, SIGNAL(stimulationDataChanged()), this, SLOT(importData()));
-    connect(this, SIGNAL(apply(StimulationData)), &session, SLOT(setStimulationData(StimulationData)));
-    connect(this, SIGNAL(updateWavegenData(WavegenData)), &session, SLOT(setWavegenData(WavegenData)));
 
-    connect(this, SIGNAL(accepted()), this, SLOT(exportData()));
-    connect(this, SIGNAL(rejected()), this, SLOT(importData()));
+    if ( historicIndex < 0 ) {
+        connect(&session, SIGNAL(stimulationDataChanged()), this, SLOT(importData()));
+        connect(this, SIGNAL(apply(StimulationData)), &session, SLOT(setStimulationData(StimulationData)));
+        connect(this, SIGNAL(updateWavegenData(WavegenData)), &session, SLOT(setWavegenData(WavegenData)));
+
+        connect(this, SIGNAL(accepted()), this, SLOT(exportData()));
+        connect(this, SIGNAL(rejected()), this, SLOT(importData()));
+    } else {
+        ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
+    }
 
     ui->maxSteps->setMaximum(Stimulation::maxSteps - 1);
 
@@ -26,7 +32,7 @@ StimulationDataDialog::~StimulationDataDialog()
 
 void StimulationDataDialog::importData()
 {
-    const StimulationData &p = session.stimulationData();
+    StimulationData p = session.stimulationData(historicIndex);
     ui->baseV->setValue(p.baseV);
     ui->duration->setValue(p.duration);
     ui->minSteps->setValue(p.minSteps);

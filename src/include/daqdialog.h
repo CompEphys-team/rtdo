@@ -26,7 +26,7 @@ class DAQDialog : public QDialog
     };
 
 public:
-    explicit DAQDialog(Session &s, QWidget *parent = 0);
+    explicit DAQDialog(Session &s, int historicIndex = -1, QWidget *parent = 0);
     ~DAQDialog();
 
 public slots:
@@ -52,6 +52,7 @@ private:
     Ui::DAQDialog *ui;
     Session &session;
     Calibrator calibrator;
+    int historicIndex;
 
     ChannelUI chanUI[5];
 };

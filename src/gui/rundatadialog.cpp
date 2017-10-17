@@ -1,26 +1,32 @@
 #include "rundatadialog.h"
 #include "ui_rundatadialog.h"
 
-RunDataDialog::RunDataDialog(Session &s, QWidget *parent) :
+RunDataDialog::RunDataDialog(Session &s, int historicIndex, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::RunDataDialog),
     session(s),
-    calibrator(s)
+    calibrator(s),
+    historicIndex(historicIndex)
 {
     ui->setupUi(this);
 
-    connect(&session, &Session::actionLogged, [=](QString actor, QString action, QString, int) {
-        if ( actor == "Config" && action == "cfg" )
-            importData();
-    });
-    connect(this, SIGNAL(apply(RunData)), &session, SLOT(setRunData(RunData)));
-    connect(&session, SIGNAL(runDataChanged()), this, SLOT(importData()));
+    if ( historicIndex < 0 ) {
+        connect(&session, &Session::actionLogged, [=](QString actor, QString action, QString, int) {
+            if ( actor == "Config" && action == "cfg" )
+                importData();
+        });
+        connect(this, SIGNAL(apply(RunData)), &session, SLOT(setRunData(RunData)));
+        connect(&session, SIGNAL(runDataChanged()), this, SLOT(importData()));
 
-    connect(ui->measureResistance, &QPushButton::clicked, &calibrator, &Calibrator::findAccessResistance);
-    connect(&calibrator, &Calibrator::findingAccessResistance, this, [=](bool done){
-        if ( done ) ui->accessResistance->setPrefix("");
-        else        ui->accessResistance->setPrefix("... ");
-    });
+        connect(ui->measureResistance, &QPushButton::clicked, &calibrator, &Calibrator::findAccessResistance);
+        connect(&calibrator, &Calibrator::findingAccessResistance, this, [=](bool done){
+            if ( done ) ui->accessResistance->setPrefix("");
+            else        ui->accessResistance->setPrefix("... ");
+        });
+    } else {
+        ui->measureResistance->setEnabled(false);
+        ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
+    }
 
     importData();
 }
@@ -32,7 +38,7 @@ RunDataDialog::~RunDataDialog()
 
 void RunDataDialog::importData()
 {
-    const RunData &p = session.runData();
+    RunData p = session.runData(historicIndex);
     ui->simCycles->setValue(p.simCycles);
     ui->clampGain->setValue(p.clampGain);
     ui->accessResistance->setValue(p.accessResistance);

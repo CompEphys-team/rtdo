@@ -13,7 +13,7 @@ class StimulationDataDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit StimulationDataDialog(Session &s, QWidget *parent = 0);
+    explicit StimulationDataDialog(Session &s, int historicIndex = -1, QWidget *parent = 0);
     ~StimulationDataDialog();
 
 public slots:
@@ -27,6 +27,7 @@ signals:
 private:
     Ui::StimulationDataDialog *ui;
     Session &session;
+    int historicIndex;
 };
 
 #endif // STIMULATIONDATADIALOG_H

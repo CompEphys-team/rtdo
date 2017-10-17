@@ -15,7 +15,7 @@ class RunDataDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit RunDataDialog(Session &s, QWidget *parent = 0);
+    explicit RunDataDialog(Session &s, int historicIndex = -1, QWidget *parent = 0);
     ~RunDataDialog();
 
 public slots:
@@ -30,6 +30,7 @@ private:
     Ui::RunDataDialog *ui;
     Session &session;
     Calibrator calibrator;
+    int historicIndex;
 
 signals:
     void apply(RunData);

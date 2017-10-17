@@ -14,7 +14,7 @@ class WavegenDataDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit WavegenDataDialog(Session &s, QWidget *parent = 0);
+    explicit WavegenDataDialog(Session &s, int historicIndex = -1, QWidget *parent = 0);
     ~WavegenDataDialog();
 
 public slots:
@@ -30,6 +30,7 @@ private slots:
 private:
     Ui::WavegenDataDialog *ui;
     Session &session;
+    int historicIndex;
 };
 
 #endif // WAVEGENDATADIALOG_H

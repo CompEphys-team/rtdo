@@ -1,14 +1,20 @@
 #include "wavegendatadialog.h"
 #include "ui_wavegendatadialog.h"
 
-WavegenDataDialog::WavegenDataDialog(Session &s, QWidget *parent) :
+WavegenDataDialog::WavegenDataDialog(Session &s, int historicIndex, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::WavegenDataDialog),
-    session(s)
+    session(s),
+    historicIndex(historicIndex)
 {
     ui->setupUi(this);
-    connect(&session, SIGNAL(wavegenDataChanged()), this, SLOT(importData()));
-    connect(this, SIGNAL(apply(WavegenData)), &session, SLOT(setWavegenData(WavegenData)));
+
+    if ( historicIndex < 0 ) {
+        connect(&session, SIGNAL(wavegenDataChanged()), this, SLOT(importData()));
+        connect(this, SIGNAL(apply(WavegenData)), &session, SLOT(setWavegenData(WavegenData)));
+    } else {
+        ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
+    }
 
     importData();
 }
@@ -20,7 +26,7 @@ WavegenDataDialog::~WavegenDataDialog()
 
 void WavegenDataDialog::importData()
 {
-    const WavegenData &p = session.wavegenData();
+    WavegenData p = session.wavegenData(historicIndex);
     ui->numSigmaAdjustWaveforms->setValue(p.numSigmaAdjustWaveforms);
     ui->nInitialWaves->setValue(p.nInitialWaves);
     ui->nGroupsPerWave->setValue(p.nGroupsPerWave);

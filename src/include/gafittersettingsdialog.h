@@ -14,7 +14,7 @@ class GAFitterSettingsDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit GAFitterSettingsDialog(Session &s, QWidget *parent = 0);
+    explicit GAFitterSettingsDialog(Session &s, int historicIndex = -1, QWidget *parent = 0);
     ~GAFitterSettingsDialog();
 
     void importData();
@@ -26,6 +26,7 @@ private slots:
 private:
     Ui::GAFitterSettingsDialog *ui;
     Session &session;
+    int historicIndex;
 
 signals:
     void apply(GAFitterSettings);
