@@ -132,6 +132,16 @@ void DAQDialog::importData()
     ui->noiseStd->setValue(p.simd.noiseStd);
     ui->noiseTau->setValue(p.simd.noiseTau);
 
+    ui->targetType->setCurrentIndex(p.simd.paramSet);
+    if ( p.simd.paramSet == 2 ) {
+        for ( size_t i = 0; i < p.simd.paramValues.size(); i++ )
+            qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->setValue(p.simd.paramValues[i]);
+    } else {
+        const MetaModel &model = session.project.model(p.simulate-1);
+        for ( size_t i = 0; i < model.adjustableParams.size(); i++ )
+            qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->setValue(model.adjustableParams[i].initial);
+    }
+
     ui->cache->setChecked(p.cache.active);
     ui->numTraces->setValue(p.cache.numTraces);
     ui->useMedian->setChecked(p.cache.useMedian);
