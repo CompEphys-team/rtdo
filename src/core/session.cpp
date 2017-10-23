@@ -366,6 +366,7 @@ void Session::setDAQData(DAQData d)
 
 void Dispatcher::dispatch()
 {
+    busy = true;
     while ( running.load() ) {
         emit requestNextEntry();
         if ( !running.load() )
@@ -413,6 +414,7 @@ void Dispatcher::dispatch()
         }
         emit actionComplete(success);
     }
+    busy = false;
 }
 
 void Session::getNextEntry()

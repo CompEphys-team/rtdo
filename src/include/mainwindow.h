@@ -81,11 +81,6 @@ private:
 
     void closeEvent(QCloseEvent *event);
     void sessionOpened();
-
-    int pingTarget;
-
-signals:
-    void ping(int, int*);
 };
 
 #endif // MAINWINDOW_H

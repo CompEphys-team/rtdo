@@ -118,10 +118,7 @@ void MainWindow::on_actionGAFitter_triggered()
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     if ( session ) {
-        int value = session->RNG.uniform<int>(0, __INT_MAX__);
-        emit ping(value, &pingTarget);
-        QThread::msleep(50);
-        if ( pingTarget != value &&
+        if ( session->busy() &&
              QMessageBox::Yes != QMessageBox::question(this, "Application busy", "The application is busy. Are you sure you want to quit?")) {
             event->ignore();
             return;
@@ -193,7 +190,6 @@ void MainWindow::sessionOpened()
     ui->menuFigures->setEnabled(true);
     ui->menuSettings->setEnabled(true);
     setTitle();
-    connect(this, SIGNAL(ping(int, int*)), session, SLOT(ping(int,int*)));
 }
 
 void MainWindow::setTitle()

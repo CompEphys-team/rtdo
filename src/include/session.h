@@ -21,7 +21,7 @@ class Dispatcher : public QObject
 public:
     Dispatcher(Session &s) : s(s), running(true) {}
     Session &s;
-    std::atomic<bool> running;
+    std::atomic<bool> running, busy;
     SessionLog::Entry nextEntry;
     QMutex mutex;
 public slots:
@@ -109,7 +109,7 @@ public slots:
     void setGAFitterSettings(GAFitterSettings d);
     void setDAQData(DAQData d);
 
-    inline void ping(int value, int *target) { *target = value; }
+    inline bool busy() { return dispatcher.busy.load(); }
 
 public:
     Project &project;
