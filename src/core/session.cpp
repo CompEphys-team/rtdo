@@ -219,6 +219,8 @@ void Session::abort()
         m_wavesets->abort();
     if ( m_sprofiler )
         m_sprofiler->abort();
+    if ( m_gafitter )
+        m_gafitter->abort();
 }
 
 void Session::queue(QString actor, QString action, QString args, Result *res, bool wake)
