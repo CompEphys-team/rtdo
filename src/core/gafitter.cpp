@@ -39,6 +39,7 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
     finalParams(f.lib.adjustableParams.size()),
     finalError(f.lib.adjustableParams.size())
 {
+    deck.session =& f.session;
     for ( size_t i = 0; i < targets.size(); i++ ) // Initialise for back compat
         targets[i] = f.lib.adjustableParams.at(i).initial;
 }
