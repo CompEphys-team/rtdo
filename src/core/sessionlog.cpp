@@ -96,6 +96,24 @@ void SessionLog::clearActive(bool success)
     }
 }
 
+QVariant SessionLog::headerData(int section, Qt::Orientation orientation, int role) const
+{
+    if ( orientation == Qt::Vertical ) {
+        if ( role == Qt::DisplayRole )
+            return QString("%1").arg(section, 4, 10, QChar('0'));
+    } else {
+        if ( role == Qt::DisplayRole ) {
+            switch ( section ) {
+            case 0: return QString("Time");
+            case 1: return QString("Actor");
+            case 2: return QString("Action");
+            case 3: return QString("Arguments");
+            }
+        }
+    }
+    return QVariant();
+}
+
 QVariant SessionLog::data(const QModelIndex &index, int role) const
 {
     if ( index.row() < 0 || index.row() >= rowCount() )

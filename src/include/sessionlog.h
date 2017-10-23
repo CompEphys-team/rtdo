@@ -41,6 +41,7 @@ public:
 
     void clearActive(bool success);
 
+    QVariant headerData(int section, Qt::Orientation orientation, int role) const;
     QVariant data(const QModelIndex &index, int role) const;
     Entry entry(int row) const;
 

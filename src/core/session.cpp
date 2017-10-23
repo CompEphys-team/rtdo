@@ -224,7 +224,7 @@ void Session::abort()
 void Session::queue(QString actor, QString action, QString args, Result *res)
 {
     m_log.queue(actor, action, args, res);
-    resume();
+    emit doDispatch();
 }
 
 Settings Session::getSettings(int i) const
@@ -369,7 +369,7 @@ void Dispatcher::dispatch()
     busy = true;
     while ( running.load() ) {
         emit requestNextEntry();
-        if ( !running.load() )
+        if ( nextEntry.res == nullptr ) // Empty queue: Keep running==true, but wait for next doDispatch signal
             break;
 
         bool success = false;
@@ -420,7 +420,7 @@ void Dispatcher::dispatch()
 void Session::getNextEntry()
 {
     if ( m_log.queueSize() == 0 ) {
-        dispatcher.running = false;
+        dispatcher.nextEntry = SessionLog::Entry();
         return;
     }
     if ( initial ) {

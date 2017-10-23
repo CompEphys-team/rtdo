@@ -189,7 +189,10 @@ void MainWindow::sessionOpened()
     ui->mainToolBar->setEnabled(true);
     ui->menuFigures->setEnabled(true);
     ui->menuSettings->setEnabled(true);
+    ui->centralWidget->setEnabled(true);
     setTitle();
+    ui->log->setModel(session->getLog());
+    ui->log->setColumnWidth(0, 130);
 }
 
 void MainWindow::setTitle()
@@ -284,4 +287,23 @@ void MainWindow::on_actionCrossload_from_other_session_triggered()
     if ( loc.isEmpty() )
         return;
     session->crossloadConfig(loc);
+}
+
+void MainWindow::on_runCtrl_activated(int index)
+{
+    if ( index == 0 )
+        session->resume();
+    else
+        session->pause();
+}
+
+void MainWindow::on_abort_clicked()
+{
+    session->abort();
+}
+
+void MainWindow::on_remove_clicked()
+{
+    QModelIndexList selectedRows = ui->log->selectionModel()->selectedRows();
+    session->getLog()->removeQueued(selectedRows.first().row(), selectedRows.back().row());
 }
