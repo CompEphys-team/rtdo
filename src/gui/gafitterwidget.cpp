@@ -70,5 +70,5 @@ void GAFitterWidget::on_start_clicked()
 void GAFitterWidget::on_abort_clicked()
 {
     nQueued = 1;
-    session.gaFitter().abort();
+    session.abort();
 }

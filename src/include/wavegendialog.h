@@ -16,22 +16,9 @@ public:
     explicit WavegenDialog(Session &s, QWidget *parent = 0);
     ~WavegenDialog();
 
-signals:
-    void adjustSigmas();
-    void search(int param);
-
-private slots:
-    void end(int);
-    void startedSearch(int);
-    void searchTick(int);
-
 private:
     Ui::WavegenDialog *ui;
     Session &session;
-
-    std::list<QString> actions;
-
-    bool abort;
 };
 
 #endif // WAVEGENDIALOG_H

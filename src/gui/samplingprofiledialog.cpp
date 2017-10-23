@@ -12,9 +12,6 @@ SamplingProfileDialog::SamplingProfileDialog(Session &s, QWidget *parent) :
     ui->setupUi(this);
 
     connect(this, SIGNAL(generate(SamplingProfiler::Profile)), &session.samplingProfiler(), SLOT(generate(SamplingProfiler::Profile)));
-    connect(&session.samplingProfiler(), SIGNAL(progress(int,int)), this, SLOT(profileProgress(int,int)));
-    connect(&session.samplingProfiler(), SIGNAL(done()), this, SLOT(done()));
-    connect(&session.samplingProfiler(), SIGNAL(didAbort()), this, SLOT(aborted()));
 
     connect(&session.wavesets(), SIGNAL(addedSet()), this, SLOT(updateCombo()));
     connect(&session.samplingProfiler(), SIGNAL(done()), this, SLOT(updatePresets()));
@@ -167,32 +164,10 @@ void SamplingProfileDialog::on_btnStart_clicked()
     }
     prof.samplingInterval = ui->interval->value();
 
-    ui->log->addItem(QString("Profiling %1...").arg(ui->cbSelection->currentText()));
-    ui->log->addItem("");
-    ui->log->scrollToBottom();
-
     emit generate(prof);
 }
 
 void SamplingProfileDialog::on_btnAbort_clicked()
 {
     session.samplingProfiler().abort();
-}
-
-void SamplingProfileDialog::profileProgress(int nth, int total)
-{
-    QListWidgetItem *item = ui->log->item(ui->log->count()-1);
-    item->setText(QString("%1/%2 ...").arg(nth).arg(total));
-}
-
-void SamplingProfileDialog::done()
-{
-    ui->log->addItem("Done.");
-    ui->log->scrollToBottom();
-}
-
-void SamplingProfileDialog::aborted()
-{
-    ui->log->addItem("Aborted.");
-    ui->log->scrollToBottom();
 }

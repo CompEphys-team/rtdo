@@ -22,10 +22,6 @@ signals:
     void generate(SamplingProfiler::Profile);
 
 private slots:
-    void profileProgress(int, int);
-    void done();
-    void aborted();
-
     void updateCombo();
     void updatePresets();
 

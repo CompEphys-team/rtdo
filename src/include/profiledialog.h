@@ -24,10 +24,6 @@ signals:
     void generate();
 
 private slots:
-    void profileProgress(int, int);
-    void done();
-    void aborted();
-
     void updateCombo();
     void updatePresets();
 

@@ -17,10 +17,6 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
     connect(&session.wavesets(), SIGNAL(addedSet()), this, SLOT(updateCombo()));
     connect(&session.profiler(), SIGNAL(done()), this, SLOT(updatePresets()));
 
-    connect(&session.profiler(), SIGNAL(progress(int,int)), this, SLOT(profileProgress(int,int)));
-    connect(&session.profiler(), SIGNAL(done()), this, SLOT(done()));
-    connect(&session.profiler(), SIGNAL(didAbort()), this, SLOT(aborted()));
-
     QStringList labels;
     int rows = session.project.model().adjustableParams.size();
     ui->table->setRowCount(rows);
@@ -233,32 +229,10 @@ void ProfileDialog::on_btnStart_clicked()
         profile.setPermutation(i, perm);
     }
 
-    ui->log->addItem(QString("Profiling %1...").arg(ui->cbSelection->currentText()));
-    ui->log->addItem("");
-    ui->log->scrollToBottom();
-
     session.profiler().queueProfile(std::move(profile));
 }
 
 void ProfileDialog::on_btnAbort_clicked()
 {
-    session.profiler().abort();
-}
-
-void ProfileDialog::profileProgress(int nth, int total)
-{
-    QListWidgetItem *item = ui->log->item(ui->log->count()-1);
-    item->setText(QString("%1/%2 ...").arg(nth).arg(total));
-}
-
-void ProfileDialog::done()
-{
-    ui->log->addItem("Done.");
-    ui->log->scrollToBottom();
-}
-
-void ProfileDialog::aborted()
-{
-    ui->log->addItem("Aborted.");
-    ui->log->scrollToBottom();
+    session.abort();
 }
