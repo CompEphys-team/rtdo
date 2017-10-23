@@ -95,6 +95,7 @@ public:
     GAFitterSettings gaFitterSettings(int resultIndex) const;
     DAQData daqData(int resultIndex) const;
 
+    inline QString directory() const { return dir.absolutePath(); }
     inline QString name() const { return dir.dirName(); }
 
     void crossloadConfig(const QString &crossSessionDir);

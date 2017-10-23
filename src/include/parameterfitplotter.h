@@ -47,8 +47,12 @@ private slots:
     void percentileRangeChanged(QCPRange range);
 
     void plotSummary();
-    void addGroup();
+    void addGroup(std::vector<int> group = {}, QString label = "");
     void removeGroup();
+
+    void on_saveGroups_clicked();
+
+    void on_loadGroups_clicked();
 
 private:
     Ui::ParameterFitPlotter *ui;

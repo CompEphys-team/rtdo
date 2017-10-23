@@ -533,12 +533,14 @@ void ParameterFitPlotter::percentileRangeChanged(QCPRange range)
 
 //***************************************** summaries *******************************************************
 
-void ParameterFitPlotter::addGroup()
+void ParameterFitPlotter::addGroup(std::vector<int> group, QString label)
 {
-    std::vector<int> group = getSelectedRows(ui->fits);
-    if ( group.empty() )
-        return;
-    std::sort(group.begin(), group.end());
+    if ( group.empty() ) {
+        group = getSelectedRows(ui->fits);
+        if ( group.empty() )
+            return;
+        std::sort(group.begin(), group.end());
+    }
     groups.push_back(group);
 
     int row = ui->groups->rowCount();
@@ -548,18 +550,21 @@ void ParameterFitPlotter::addGroup()
     ui->groups->setCellWidget(row, 0, c);
     connect(c, SIGNAL(colorChanged(QColor)), this, SLOT(plotSummary()));
 
-    QString label = "Fits ";
-    for ( int i = 0, last = group.size()-1; i <= last; i++ ) {
-        int beginning = group[i];
-        while ( i < last && group[i+1] == group[i] + 1 )
-            ++i;
-        if ( group[i] > beginning )
-            label.append(QString("%1-%2").arg(beginning).arg(group[i]));
-        else
-            label.append(QString::number(group[i]));
-        if ( i < last )
-            label.append("; ");
+    if ( label.isEmpty() ) {
+        label = "Fits ";
+            for ( int i = 0, last = group.size()-1; i <= last; i++ ) {
+                int beginning = group[i];
+                while ( i < last && group[i+1] == group[i] + 1 )
+                    ++i;
+                if ( group[i] > beginning )
+                    label.append(QString("%1-%2").arg(beginning).arg(group[i]));
+                else
+                    label.append(QString::number(group[i]));
+                if ( i < last )
+                    label.append("; ");
+            }
     }
+
     QTableWidgetItem *item = new QTableWidgetItem(label);
     ui->groups->setItem(row, 1, item);
 }
@@ -571,6 +576,44 @@ void ParameterFitPlotter::removeGroup()
     for ( int row : rows ) {
         ui->groups->removeRow(row);
         groups.erase(groups.begin() + row);
+    }
+}
+
+void ParameterFitPlotter::on_saveGroups_clicked()
+{
+    if ( groups.empty() )
+        return;
+    QString file = QFileDialog::getSaveFileName(this, "Save groups to file...", session->directory());
+    if ( file.isEmpty() )
+        return;
+    std::ofstream os(file.toStdString());
+    for ( size_t i = 0; i < groups.size(); i++ ) {
+        os << groups[i].size() << ':';
+        for ( int f : groups[i] )
+            os << f << ',';
+        os << ui->groups->item(i, 1)->text().toStdString() << std::endl;
+    }
+}
+
+void ParameterFitPlotter::on_loadGroups_clicked()
+{
+    QString file = QFileDialog::getOpenFileName(this, "Select saved groups file...", session->directory());
+    if ( file.isEmpty() )
+        return;
+    std::ifstream is(file.toStdString());
+    int size;
+    std::vector<int> group;
+    char tmp;
+    std::string label;
+    is >> size;
+    while ( is.good() ) {
+        is >> tmp;
+        group.resize(size);
+        for ( int i = 0; i < size; i++ )
+            is >> group[i] >> tmp;
+        std::getline(is, label);
+        addGroup(group, QString::fromStdString(label));
+        is >> size;
     }
 }
 
