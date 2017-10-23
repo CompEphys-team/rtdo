@@ -23,18 +23,6 @@ Wavegen::Wavegen(Session &session) :
     aborted(false)
 {
     connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
-    connect(&session, &Session::sanitiseWavegenData, this, &Wavegen::sanitiseWavegenData, Qt::DirectConnection);
-    session.setWavegenData(searchd); // force immediate sanitisation
-}
-
-void Wavegen::sanitiseWavegenData(WavegenData *d)
-{
-    if ( d->nGroupsPerWave > (size_t) lib.numGroups )
-        d->nGroupsPerWave = lib.numGroups;
-    while ( lib.numGroups % d->nGroupsPerWave || !(d->nGroupsPerWave%32==0 || d->nGroupsPerWave==16 || d->nGroupsPerWave==8 || d->nGroupsPerWave==4 || d->nGroupsPerWave==2 || d->nGroupsPerWave==1) )
-        --d->nGroupsPerWave;
-    int nWavesPerKernel = lib.numGroups / d->nGroupsPerWave;
-    d->nWavesPerEpoch = ((d->nWavesPerEpoch + nWavesPerKernel - 1) / nWavesPerKernel) * nWavesPerKernel;
 }
 
 void Wavegen::load(const QString &action, const QString &args, QFile &results, Result r)

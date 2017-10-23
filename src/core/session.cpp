@@ -148,6 +148,17 @@ void Session::addAPs()
     for ( MAPEDimension &m : searchd.mapeDimensions )
         m.setDefaultMinMax(stimd);
     searchd.precisionIncreaseEpochs = { 100 };
+    sanitiseWavegenData(&searchd);
+}
+
+void Session::sanitiseWavegenData(WavegenData *d)
+{
+    if ( d->nGroupsPerWave > (size_t) project.wavegen().numGroups )
+        d->nGroupsPerWave = project.wavegen().numGroups;
+    while ( project.wavegen().numGroups % d->nGroupsPerWave || !(d->nGroupsPerWave%32==0 || d->nGroupsPerWave==16 || d->nGroupsPerWave==8 || d->nGroupsPerWave==4 || d->nGroupsPerWave==2 || d->nGroupsPerWave==1) )
+        --d->nGroupsPerWave;
+    int nWavesPerKernel = project.wavegen().numGroups / d->nGroupsPerWave;
+    d->nWavesPerEpoch = ((d->nWavesPerEpoch + nWavesPerKernel - 1) / nWavesPerKernel) * nWavesPerKernel;
 }
 
 Wavegen &Session::wavegen()

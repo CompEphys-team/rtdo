@@ -51,7 +51,6 @@ public:
      */
     Stimulation getRandomStim() const;
 
-    void sanitiseWavegenData(WavegenData*);
 
 public slots:
     /**

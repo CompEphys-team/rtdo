@@ -131,6 +131,8 @@ protected:
     void load();
     void readConfig(const QString &filename, int resultIndex, bool raiseDirtyFlags = false);
 
+    void sanitiseWavegenData(WavegenData *d);
+
     static QString results(int idx, const QString &actor, const QString &action);
 
 signals:
