@@ -25,6 +25,7 @@ MainWindow::MainWindow(QWidget *parent) :
     session(nullptr)
 {
     ui->setupUi(this);
+    statusBar()->addWidget(workerStatus = new QLabel());
 
     connect(ui->actionQuit, SIGNAL(triggered(bool)), this, SLOT(close()));
 
@@ -193,6 +194,39 @@ void MainWindow::sessionOpened()
     setTitle();
     ui->log->setModel(session->getLog());
     ui->log->setColumnWidth(0, 130);
+
+    QString *paramName = new QString();
+    connect(&session->wavegen(), &Wavegen::startedSearch, [=](int p){
+        *paramName = QString::fromStdString(project->model().adjustableParams[p].name);
+        workerStatus->setText(QString("Wavegen searching for %1 ...").arg(*paramName));
+    });
+    connect(&session->wavegen(), &Wavegen::searchTick, [=](int e){
+        workerStatus->setText(QString("Wavegen searching for %1 ... epoch %2").arg(*paramName).arg(e));
+    });
+    connect(&session->wavegen(), &Wavegen::done, [=](int) {
+        workerStatus->setText(QString("Wavegen search for %1 complete.").arg(*paramName));
+    });
+    connect(&session->profiler(), &ErrorProfiler::progress, [=](int nth, int total){
+        workerStatus->setText(QString("ErrorProfiler %1/%2").arg(nth).arg(total));
+    });
+    connect(&session->profiler(), &ErrorProfiler::done, [=](){
+        workerStatus->setText("ErrorProfiler complete.");
+    });
+    connect(&session->samplingProfiler(), &SamplingProfiler::progress, [=](int nth, int total){
+        workerStatus->setText(QString("SamplingProfiler %1/%2").arg(nth).arg(total));
+    });
+    connect(&session->samplingProfiler(), &SamplingProfiler::done, [=](){
+        workerStatus->setText("SamplingProfiler complete.");
+    });
+    connect(&session->gaFitter(), &GAFitter::starting, [=](){
+        workerStatus->setText("GAFitter starting...");
+    });
+    connect(&session->gaFitter(), &GAFitter::progress, [=](quint32 e){
+        workerStatus->setText(QString("GAFitter epoch %1").arg(e));
+    });
+    connect(&session->gaFitter(), &GAFitter::done, [=](){
+        workerStatus->setText("GAFitter complete.");
+    });
 }
 
 void MainWindow::setTitle()

@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QLabel>
 #include "wavegendialog.h"
 #include "profiledialog.h"
 #include "samplingprofiledialog.h"
@@ -84,6 +85,7 @@ private:
     Session *session;
 
     QString title;
+    QLabel *workerStatus;
 
     void closeEvent(QCloseEvent *event);
     void sessionOpened();
