@@ -316,4 +316,13 @@ struct DataPoint { double t; double value; };
 
 struct Result { int resultIndex = -1; };
 
+struct Settings : public Result
+{
+    WavegenData searchd;
+    StimulationData stimd;
+    RunData rund;
+    DAQData daqd;
+    GAFitterSettings gafs;
+};
+
 #endif // TYPES_H

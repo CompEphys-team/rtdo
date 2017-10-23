@@ -17,7 +17,6 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
     connect(&session.wavesets(), SIGNAL(addedSet()), this, SLOT(updateCombo()));
     connect(&session.profiler(), SIGNAL(done()), this, SLOT(updatePresets()));
 
-    connect(this, SIGNAL(generate()), &session.profiler(), SLOT(generate()));
     connect(&session.profiler(), SIGNAL(progress(int,int)), this, SLOT(profileProgress(int,int)));
     connect(&session.profiler(), SIGNAL(done()), this, SLOT(done()));
     connect(&session.profiler(), SIGNAL(didAbort()), this, SLOT(aborted()));
@@ -238,10 +237,7 @@ void ProfileDialog::on_btnStart_clicked()
     ui->log->addItem("");
     ui->log->scrollToBottom();
 
-    if ( session.profiler().queueProfile(std::move(profile)) )
-        emit generate();
-    else
-        QMessageBox::warning(this, "Combinatorially exploded", "Oops, looks like you're out of memory.");
+    session.profiler().queueProfile(std::move(profile));
 }
 
 void ProfileDialog::on_btnAbort_clicked()

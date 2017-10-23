@@ -6,11 +6,20 @@
 
 void Wavegen::search(int param)
 {
-    if ( aborted )
-        return;
-    emit startedSearch(param);
-
     assert(param >= 0 && param < (int)lib.adjustableParams.size());
+    Archive *a = new Archive;
+    a->param = param;
+    session.queue(actorName(), search_action, QString::fromStdString(lib.adjustableParams.at(param).name), a);
+}
+
+bool Wavegen::search_exec(QFile &file, Result *result)
+{
+    int param = static_cast<Archive*>(result)->param;
+    current = Archive(param, searchd, *result);
+    delete result;
+    result = nullptr;
+
+    emit startedSearch(param);
 
     // Note: Episode == a single call to stimulate and lib.step; Epoch == a full iteration, containing one or more episode.
     const int numWavesPerEpisode = lib.numGroups / searchd.nGroupsPerWave;
@@ -43,8 +52,6 @@ void Wavegen::search(int param)
     // Initialise waves pointer to episode 1, which is currently being stimulated
     std::vector<Stimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
 
-    current = Archive(param, searchd);
-
     while ( true ) {
         lib.pullBubbles();
         pushStims(*newWaves);
@@ -63,7 +70,7 @@ void Wavegen::search(int param)
             episodeCounter = 0;
             ++current.iterations;
 
-            if ( current.iterations == searchd.maxIterations || aborted )
+            if ( current.iterations == searchd.maxIterations || isAborted() )
                 break;
 
             if ( current.precision < searchd.precisionIncreaseEpochs.size() &&
@@ -73,7 +80,7 @@ void Wavegen::search(int param)
                     e.bin = mape_bin(e.wave);
                 current.elites.sort();
             }
-        } else if ( aborted ) {
+        } else if ( isAborted() ) {
             break;
         }
         emit searchTick(current.iterations);
@@ -147,10 +154,11 @@ void Wavegen::search(int param)
     current.maxFitness.squeeze();
     m_archives.push_back(std::move(current));
 
-    QFile file(session.log(this, search_action, m_archives.back(), QString::number(param)));
     search_save(file);
 
     emit done(param);
+
+    return true;
 }
 
 void Wavegen::mape_tournament(std::vector<Stimulation> &waves)

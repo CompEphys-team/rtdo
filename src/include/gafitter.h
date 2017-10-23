@@ -13,8 +13,6 @@ public:
     GAFitter(Session &session);
     ~GAFitter();
 
-    void abort();
-
     ExperimentLibrary &lib;
 
     const GAFitterSettings &settings;
@@ -24,6 +22,7 @@ public:
 
     struct Output : public Result
     {
+        Output(WaveSource deck);
         Output(const GAFitter &fitter, Result r = Result());
 
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]
@@ -41,27 +40,24 @@ public:
     inline const std::vector<Output> &results() const { return m_results; }
     Output currentResults() const { return output; }
 
+    inline QString actorName() const { return "GAFitter"; }
+    bool execute(QString action, QString args, Result *res, QFile &file);
+
 public slots:
     void run(WaveSource src);
     void finish();
 
 signals:
     void starting();
-    void didAbort();
     void done();
     void progress(quint32 epoch);
-
-protected slots:
-    void clearAbort();
 
 protected:
     friend class Session;
     void load(const QString &action, const QString &args, QFile &results, Result r);
-    inline QString actorName() const { return "GAFitter"; }
 
     DAQ *daq;
 
-    bool aborted;
     bool doFinish;
 
     std::vector<Stimulation> stims;

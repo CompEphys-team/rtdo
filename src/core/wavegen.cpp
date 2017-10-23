@@ -19,10 +19,8 @@ Wavegen::Wavegen(Session &session) :
     SessionWorker(session),
     searchd(session.wavegenData()),
     stimd(session.stimulationData()),
-    lib(session.project.wavegen()),
-    aborted(false)
+    lib(session.project.wavegen())
 {
-    connect(this, SIGNAL(didAbort()), this, SLOT(clearAbort()));
 }
 
 void Wavegen::load(const QString &action, const QString &args, QFile &results, Result r)
@@ -33,6 +31,17 @@ void Wavegen::load(const QString &action, const QString &args, QFile &results, R
         search_load(results, args, r);
     else
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
+}
+
+bool Wavegen::execute(QString action, QString, Result *res, QFile &file)
+{
+    clearAbort();
+    if ( action == sigmaAdjust_action )
+        return sigmaAdjust_exec(file, res);
+    else if ( action == search_action )
+        return search_exec(file, res);
+    else
+        return false;
 }
 
 std::vector<double> Wavegen::getSigmaMaxima()
@@ -56,17 +65,6 @@ std::vector<double> Wavegen::getSigmaMaxima()
         ++k;
     }
     return sigmax;
-}
-
-void Wavegen::abort()
-{
-    aborted = true;
-    emit didAbort();
-}
-
-void Wavegen::clearAbort()
-{
-    aborted = false;
 }
 
 void Wavegen::initModels(bool withBase)
@@ -128,8 +126,14 @@ void Wavegen::settle()
 
 void Wavegen::adjustSigmas()
 {
-    if ( aborted )
-        return;
+    session.queue(actorName(), sigmaAdjust_action, "", new Result());
+}
+
+bool Wavegen::sigmaAdjust_exec(QFile &file, Result *dummy)
+{
+    delete dummy;
+    dummy = nullptr;
+
     initModels(false);
     detune();
     settle();
@@ -145,7 +149,7 @@ void Wavegen::adjustSigmas()
     std::vector<Stimulation> waves(lib.numGroups);
     // Round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
     int end = (searchd.numSigmaAdjustWaveforms + lib.numGroups - 1) / lib.numGroups;
-    for ( int i = 0; i < end && !aborted; i++ ) {
+    for ( int i = 0; i < end && !isAborted(); i++ ) {
         lib.pushErr();
 
         // Generate random wave/s
@@ -212,11 +216,11 @@ void Wavegen::adjustSigmas()
                   << sigmaAdjust[i] << '\t' << lib.adjustableParams[i].adjustedSigma << std::endl;
     std::cout << "These adjustments are applied to all future actions." << std::endl;
 
-    Result dummy;
-    QFile file(session.log(this, sigmaAdjust_action, dummy));
+    // Save
     sigmaAdjust_save(file);
 
     emit done();
+    return true;
 }
 
 void Wavegen::sigmaAdjust_save(QFile &file)

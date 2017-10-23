@@ -48,16 +48,12 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     });
 
     connect(ui->saveSet, &QPushButton::clicked, [=](){
-        this->session.wavesets().makeManual(stims);
+        WavesetCreator &creator = this->session.wavesets();
+        this->session.queue(creator.actorName(), creator.actionManual, "", new ManualWaveset(stims));
     });
     connect(ui->saveDeck, &QPushButton::clicked, [=](){
-        this->session.wavesets().makeManual(stims);
-        size_t idx = this->session.wavesets().manuals().size()-1;
-        std::vector<WaveSource> src;
-        for ( size_t i = 0; i < stims.size(); i++ ) {
-            src.emplace_back(this->session, WaveSource::Manual, idx, i);
-        }
-        this->session.wavesets().makeDeck(src);
+        WavesetCreator &creator = this->session.wavesets();
+        this->session.queue(creator.actorName(), creator.actionManualDeck, "", new ManualWaveset(stims));
     });
 
     connect(ui->copy, &QPushButton::clicked, [=](){

@@ -14,28 +14,19 @@ GAFitter::GAFitter(Session &session) :
     qV(nullptr),
     qI(nullptr),
     qO(nullptr),
-    aborted(false),
     bias(lib.adjustableParams.size(), 0),
     p_err(lib.project.expNumCandidates()),
     output(*this)
 {
-    connect(this, &GAFitter::didAbort, this, &GAFitter::clearAbort);
 }
 
 GAFitter::~GAFitter()
 {
 }
 
-void GAFitter::abort()
-{
-    aborted = true;
-    emit didAbort();
-}
-
-void GAFitter::clearAbort()
-{
-    aborted = false;
-}
+GAFitter::Output::Output(WaveSource deck) :
+    deck(deck)
+{}
 
 GAFitter::Output::Output(const GAFitter &f, Result r) :
     Result(r),
@@ -48,17 +39,31 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
     finalParams(f.lib.adjustableParams.size()),
     finalError(f.lib.adjustableParams.size())
 {
-    deck.session =& f.session;
     for ( size_t i = 0; i < targets.size(); i++ ) // Initialise for back compat
         targets[i] = f.lib.adjustableParams.at(i).initial;
 }
 
 void GAFitter::run(WaveSource src)
 {
-    if ( aborted )
-        return;
     if ( src.type != WaveSource::Deck )
         throw std::runtime_error("Wave source for GAFitter must be a deck.");
+    session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src));
+}
+
+bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
+{
+    if ( action != this->action )
+        return false;
+
+    {
+        QMutexLocker locker(&mutex);
+        doFinish = false;
+        aborted = false;
+    }
+
+    output = Output(*this, *res);
+    output.deck = static_cast<Output*>(res)->deck;
+    delete res;
 
     emit starting();
 
@@ -67,8 +72,6 @@ void GAFitter::run(WaveSource src)
     qT = 0;
 
     // Prepare
-    output = Output(*this);
-    output.deck = std::move(src);
     stims = output.deck.stimulations();
     // Integrate settling into all stimulations
     double settleDuration = session.runData().settleDuration;
@@ -84,7 +87,6 @@ void GAFitter::run(WaveSource src)
             stim.insert(stim.begin(), Stimulation::Step {(scalar)settleDuration, stim.baseV, false});
     }
     stimIdx = 0;
-    doFinish = false;
 
     daq = new DAQFilter(session);
 
@@ -96,7 +98,7 @@ void GAFitter::run(WaveSource src)
 
     // Fit
     populate();
-    for ( epoch = 0; !aborted && !finished(); epoch++ ) {
+    for ( epoch = 0; !finished(); epoch++ ) {
         const Stimulation &stim = stims.at(stimIdx);
 
         // Stimulate
@@ -125,7 +127,6 @@ void GAFitter::run(WaveSource src)
     emit done();
 
     // Save
-    QFile file(session.log(this, action, m_results.back()));
     QDataStream os;
     if ( openSaveStream(file, os, magic, version) ) {
         const Output &out = m_results.back();
@@ -146,10 +147,13 @@ void GAFitter::run(WaveSource src)
 
     delete daq;
     daq = nullptr;
+
+    return true;
 }
 
 void GAFitter::finish()
 {
+    QMutexLocker locker(&mutex);
     doFinish = true;
 }
 
@@ -187,7 +191,8 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
 
 bool GAFitter::finished()
 {
-    return doFinish || epoch >= settings.maxEpochs;
+    QMutexLocker locker(&mutex);
+    return aborted || doFinish || epoch >= settings.maxEpochs;
 }
 
 void GAFitter::populate()
@@ -327,13 +332,10 @@ void GAFitter::procreate()
 
 void GAFitter::finalise()
 {
-    if ( aborted )
-        return;
-
     std::vector<std::vector<errTupel>> f_err(stims.size(), std::vector<errTupel>(lib.project.expNumCandidates()));
 
     // Evaluate existing population on all stims
-    for ( stimIdx = 0; !aborted && stimIdx < stims.size(); stimIdx++ ) {
+    for ( stimIdx = 0; stimIdx < stims.size() && !isAborted(); stimIdx++ ) {
         // Stimulate
         stimulate(stims.at(stimIdx));
 
@@ -349,9 +351,6 @@ void GAFitter::finalise()
         // Sort
         std::sort(f_err[stimIdx].begin(), f_err[stimIdx].end(), &errTupelSort);
     }
-
-    if ( aborted )
-        return;
 
     // Select final
     std::vector<errTupel> sumRank(lib.project.expNumCandidates());

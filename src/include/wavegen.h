@@ -16,8 +16,6 @@ public:
 
     WavegenLibrary &lib;
 
-    void abort(); //!< Abort all queued actions.
-
     static inline size_t mape_multiplier(size_t precision) { return size_t(1) << precision; }
 
     struct Archive : public Result
@@ -51,6 +49,8 @@ public:
      */
     Stimulation getRandomStim() const;
 
+    inline QString actorName() const { return "Wavegen"; }
+    bool execute(QString action, QString args, Result *res, QFile &file);
 
 public slots:
     /**
@@ -76,20 +76,17 @@ signals:
     void done(int arg = -1);
     void startedSearch(int param);
     void searchTick(int epoch);
-    void didAbort();
-
-protected slots:
-    void clearAbort();
 
 protected:
     friend class Session;
     void load(const QString &action, const QString &args, QFile &results, Result r);
-    inline QString actorName() const { return "Wavegen"; }
 
     /// Helper functions
+    bool sigmaAdjust_exec(QFile &file, Result *r);
     void sigmaAdjust_save(QFile &file);
     void sigmaAdjust_load(QFile &file, Result r);
 
+    bool search_exec(QFile &file, Result *r);
     void search_save(QFile &file);
     void search_load(QFile &file, const QString &args, Result r);
 
@@ -164,8 +161,6 @@ protected:
     Archive current;
 
     std::vector<Archive> m_archives; //!< All archives
-
-    bool aborted;
 
     static QString sigmaAdjust_action, search_action;
     static quint32 sigmaAdjust_magic, search_magic;

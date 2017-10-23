@@ -5,6 +5,7 @@
 #include <QThread>
 #include <QDir>
 #include <QMutex>
+#include <atomic>
 #include "sessionlog.h"
 #include "project.h"
 #include "wavegen.h"
@@ -14,11 +15,21 @@
 #include "samplingprofiler.h"
 #include "randutils.hpp"
 
-Q_DECLARE_METATYPE(RunData)
-Q_DECLARE_METATYPE(WavegenData)
-Q_DECLARE_METATYPE(StimulationData)
-Q_DECLARE_METATYPE(GAFitterSettings)
-Q_DECLARE_METATYPE(DAQData)
+class Dispatcher : public QObject
+{
+    Q_OBJECT
+public:
+    Dispatcher(Session &s) : s(s), running(true) {}
+    Session &s;
+    std::atomic<bool> running;
+    SessionLog::Entry nextEntry;
+    QMutex mutex;
+public slots:
+    void dispatch();
+signals:
+    void actionComplete(bool success);
+    void requestNextEntry();
+};
 
 class Session : public QObject
 {
@@ -41,35 +52,41 @@ public:
     SamplingProfiler &samplingProfiler();
 
     void quit();
+    void pause();
+    void resume();
+    void abort();
 
     /**
-     * @brief log enters an action into the session log. This should be called by the subordinate objects
-     * (wavegen, profiler etc) upon action completion.
-     * @param actor is a pointer to the object that completed the action (usually <caller>.this)
-     * @param action is a single-word string describing the action, e.g. "search". action must not be
-     * empty and will be read back to the actor on session load.
-     * @param result is the result produced by this action and will be furnished with a session-unique identifier.
-     * @param args is an arbitrary string providing closer specification to the action, e.g. arguments
-     * the action received on its execution. Must not contain any newline characters.
-     * @return a string indicating the default result file path, e.g. "/path/to/session/0000.Wavegen.search"
+     * @brief queue adds an action to the queue, starting asynchronous execution immediately (unless paused).
+     * Typically, this function is called by worker objects, although it can equally be called directly from the GUI.
+     * @param actor is the unique actor name (queue/log entry, file name suffix).
+     * @param action is the name of the action (queue/log entry, file name body); actors are responsible for making sense of this.
+     * @param args is an arbitrary string (no newlines) that may be used for both visual identification or functional purposes
+     * @param res is a pointer to a Result object containing e.g. bulkier arguments to the action. SessionLog takes ownership of this
+     * pointer, handing it back in a call to Worker::execute() or deleting it when the queue entry is removed.
      */
-    QString log(const SessionWorker *actor, const QString &action, Result &result, const QString &args = QString());
+    void queue(QString actor, QString action, QString args, Result *res);
 
     inline SessionLog *getLog() { return &m_log; }
 
     // q___ return the latest queued settings for use in the GUI
-    const RunData &qRunData() const { return rund; }
-    const WavegenData &qWavegenData() const { return searchd; }
-    const StimulationData &qStimulationData() const { return stimd; }
-    const GAFitterSettings &qGaFitterSettings() const { return gafs; }
-    const DAQData &qDaqData() const { return daqd; }
+    const Settings &qSettings() const { return q_settings; }
+    const RunData &qRunData() const { return q_settings.rund; }
+    const WavegenData &qWavegenData() const { return q_settings.searchd; }
+    const StimulationData &qStimulationData() const { return q_settings.stimd; }
+    const GAFitterSettings &qGaFitterSettings() const { return q_settings.gafs; }
+    const DAQData &qDaqData() const { return q_settings.daqd; }
 
-    const RunData &runData() const { return rund; }
-    const WavegenData &wavegenData() const { return searchd; }
-    const StimulationData &stimulationData() const { return stimd; }
-    const GAFitterSettings &gaFitterSettings() const { return gafs; }
-    const DAQData &daqData() const { return daqd; }
+    // Settings/___Data return the settings at execution time
+    const Settings &getSettings() const { return m_settings; }
+    const RunData &runData() const { return m_settings.rund; }
+    const WavegenData &wavegenData() const { return m_settings.searchd; }
+    const StimulationData &stimulationData() const { return m_settings.stimd; }
+    const GAFitterSettings &gaFitterSettings() const { return m_settings.gafs; }
+    const DAQData &daqData() const { return m_settings.daqd; }
 
+    // Settings/___Data(resultIndex) return the settings at historic time points
+    Settings getSettings(int resultIndex) const;
     RunData runData(int resultIndex) const;
     WavegenData wavegenData(int resultIndex) const;
     StimulationData stimulationData(int resultIndex) const;
@@ -78,9 +95,9 @@ public:
 
     inline QString name() const { return dir.dirName(); }
 
-    void appropriate(QObject *worker); //!< Moves @a worker to the session's worker thread
-
     void crossloadConfig(const QString &crossSessionDir);
+
+    inline void appropriate(QObject *worker) { worker->moveToThread(&thread); }
 
     randutils::mt19937_rng RNG;
 
@@ -100,20 +117,14 @@ public:
 protected:
     QThread thread;
 
-    RunData rund;
-    WavegenData searchd;
-    StimulationData stimd;
-    GAFitterSettings gafs;
-    DAQData daqd;
+    Dispatcher dispatcher;
+    friend class Dispatcher;
 
-    bool dirtyRund, dirtySearchd, dirtyStimd, dirtyGafs, dirtyDaqd;
+    Settings m_settings, q_settings; // m_settings: execution-time; q_settings: latest queued settings for GUI
+    std::vector<std::pair<int, Settings>> hist_settings;
+    bool initial = true;
+
     std::vector<std::unique_ptr<AP>> runAP, searchAP, stimAP, gafAP, daqAP;
-
-    std::vector<std::pair<int, RunData>> hist_rund;
-    std::vector<std::pair<int, WavegenData>> hist_searchd;
-    std::vector<std::pair<int, StimulationData>> hist_stimd;
-    std::vector<std::pair<int, GAFitterSettings>> hist_gafs;
-    std::vector<std::pair<int, DAQData>> hist_daqd;
 
     std::unique_ptr<Wavegen> m_wavegen;
     std::unique_ptr<ErrorProfiler> m_profiler;
@@ -125,26 +136,22 @@ protected:
 
     SessionLog m_log;
 
-    QMutex log_mutex;
-
     void addAPs();
     void load();
-    void readConfig(const QString &filename, int resultIndex, bool raiseDirtyFlags = false);
+    void readConfig(const QString &filename);
 
     void sanitiseWavegenData(WavegenData *d);
 
     static QString results(int idx, const QString &actor, const QString &action);
 
+protected slots:
+    void getNextEntry();
+    void onActionComplete(bool success);
+    void updateSettings();
+
 signals:
     void actionLogged(QString actorName, QString action, QString args, int idx);
-
-    void sanitiseWavegenData(WavegenData *d);
-
-    void redirectRunData(RunData d, QPrivateSignal);
-    void redirectWavegenData(WavegenData d, QPrivateSignal);
-    void redirectStimulationData(StimulationData d, QPrivateSignal);
-    void redirectGAFitterSettings(GAFitterSettings d, QPrivateSignal);
-    void redirectDAQData(DAQData d, QPrivateSignal);
+    void doDispatch();
 
     void runDataChanged();
     void wavegenDataChanged();

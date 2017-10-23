@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QFile>
+#include <QMutex>
 #include "types.h"
 
 class SessionWorker : public QObject
@@ -11,15 +12,23 @@ class SessionWorker : public QObject
 public:
     SessionWorker(Session &session);
 
-    virtual inline void abort() {}
+    ///! Abort the currently executing action. Worker is responsible for resetting aborted through clearAbort().
+    virtual inline void abort() { QMutexLocker locker(&mutex); aborted = true; }
 
     Session &session;
+
+    virtual QString actorName() const = 0;
+    virtual bool execute(QString action, QString args, Result *res, QFile &file) = 0;
 
 protected:
     friend class Session;
     virtual void load(const QString &action, const QString &args, QFile &results, Result r) = 0;
-    virtual QString actorName() const = 0;
 
+    bool aborted = false;
+    QMutex mutex;
+
+    inline bool isAborted() { QMutexLocker locker(&mutex); return aborted; }
+    inline void clearAbort() { QMutexLocker locker(&mutex); aborted = false; }
 
     /**
      * @brief openSaveStream creates a file for binary results output. @sa openLoadStream()

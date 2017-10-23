@@ -58,7 +58,7 @@ void GAFitterWidget::on_start_clicked()
         return;
     if ( nQueued == 0 ) {
         ui->params_plotter->clear();
-        ui->label_epoch->setText(QString("Epoch 0/%1").arg(session.gaFitterSettings().maxEpochs));
+        ui->label_epoch->setText("Starting...");
     }
     nQueued += ui->repeats->value();
     ui->label_queued->setText(QString("%1 queued").arg(nQueued));

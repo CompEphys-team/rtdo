@@ -220,7 +220,8 @@ void WavegenFitnessMapper::on_btnAdd_clicked()
     if ( !select(false) )
         return;
     savedSelection = true;
-    session.wavesets().makeSelection(*selection);
+    WavesetCreator &creator = session.wavesets();
+    session.queue(creator.actorName(), creator.actionSelect, "", selection.release());
 }
 
 void WavegenFitnessMapper::on_readMinFitness_clicked()

@@ -1,5 +1,6 @@
 #include "wavesubsets.h"
 #include "session.h"
+#include <cassert>
 
 std::vector<Stimulation> WaveSubset::stimulations() const
 {
@@ -16,6 +17,19 @@ QString WaveSubset::prettyName() const
 }
 
 
+
+WaveDeck::WaveDeck(Session &session, std::vector<WaveSource> sources) :
+    src(sources),
+    m_stimulations(session.project.model().adjustableParams.size())
+{
+    assert(sources.size() == m_stimulations.size());
+    int i = 0;
+    for ( const WaveSource &s : src ) {
+        std::vector<Stimulation> stim = s.stimulations();
+        assert(stim.size() == 1);
+        m_stimulations[i++] = std::move(stim[0]);
+    }
+}
 
 WaveDeck::WaveDeck(Session &session, Result r) :
     Result(r),

@@ -10,11 +10,9 @@ QDataStream &operator>>(QDataStream &is, SamplingProfiler::Profile &);
 
 SamplingProfiler::SamplingProfiler(Session &session) :
     SessionWorker(session),
-    lib(session.project.profiler()),
-    aborted(false)
+    lib(session.project.profiler())
 {
     qRegisterMetaType<Profile>();
-    connect(this, SIGNAL(doAbort()), this, SLOT(clearAbort()));
 }
 
 void SamplingProfiler::load(const QString &act, const QString &, QFile &results, Result r)
@@ -33,22 +31,18 @@ void SamplingProfiler::load(const QString &act, const QString &, QFile &results,
     }
 }
 
-void SamplingProfiler::abort()
-{
-    aborted = true;
-    emit doAbort();
-}
-
-void SamplingProfiler::clearAbort()
-{
-    aborted = false;
-    emit didAbort();
-}
-
 void SamplingProfiler::generate(SamplingProfiler::Profile prof)
 {
-    if ( aborted )
-        return;
+    session.queue(actorName(), action, prof.src.prettyName(), new Profile(std::move(prof)));
+}
+
+bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file)
+{
+    clearAbort();
+    if ( action != this->action )
+        return false;
+
+    Profile &prof = *static_cast<Profile*>(res);
 
     // Populate
     for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
@@ -85,7 +79,11 @@ void SamplingProfiler::generate(SamplingProfiler::Profile prof)
     prof.accuracy.resize(total);
 
     // Run
-    for ( size_t i = 0; i < total && !aborted; i++ ) {
+    for ( size_t i = 0; i < total; i++ ) {
+        if ( isAborted() ) {
+            delete res;
+            return false;
+        }
         // Settle, if necessary - lib maintains settled state
         if ( hold.baseV != stims[i].baseV ) {
             hold.baseV = stims[i].baseV;
@@ -98,14 +96,16 @@ void SamplingProfiler::generate(SamplingProfiler::Profile prof)
         emit progress(i, total);
     }
 
-    m_profiles.push_back(prof);
+    m_profiles.push_back(std::move(prof));
     emit done();
 
     // Save
-    QFile file(session.log(this, action, m_profiles.back(), "Descriptive metadata goes here..."));
     QDataStream os;
     if ( openSaveStream(file, os, magic, version) )
         os << m_profiles.back();
+
+    delete res;
+    return true;
 }
 
 QDataStream &operator<<(QDataStream &os, const SamplingProfiler::Profile &p)

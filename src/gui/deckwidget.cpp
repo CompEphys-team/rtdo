@@ -56,7 +56,8 @@ void DeckWidget::create()
         candidate.waveno = indices[i]->value();
         src[i] = std::move(candidate);
     }
-    session.wavesets().makeDeck(src);
+    WavesetCreator &creator = session.wavesets();
+    session.queue(creator.actorName(), creator.actionDeck, "", new WaveDeck(session, src));
 }
 
 void DeckWidget::showExisting()

@@ -11,10 +11,8 @@ const quint32 ErrorProfiler::version = 103;
 ErrorProfiler::ErrorProfiler(Session &session) :
     SessionWorker(session),
     lib(session.project.experiment()),
-    daq(lib.createSimulator(0, session, false)),
-    aborted(false)
+    daq(lib.createSimulator(0, session, false))
 {
-    connect(this, SIGNAL(doAbort()), this, SLOT(clearAbort()));
 }
 
 ErrorProfiler::~ErrorProfiler()
@@ -36,43 +34,35 @@ void ErrorProfiler::load(const QString &act, const QString &, QFile &results, Re
     is >> m_profiles.back();
 }
 
-void ErrorProfiler::abort()
+void ErrorProfiler::queueProfile(ErrorProfile &&p)
 {
-    aborted = true;
-    emit doAbort();
+    session.queue(actorName(), action, p.source().prettyName(), new ErrorProfile(std::move(p)));
+
 }
 
-bool ErrorProfiler::queueProfile(ErrorProfile &&p)
+bool ErrorProfiler::execute(QString action, QString, Result *result, QFile &file)
 {
+    clearAbort();
+    if ( action != this->action )
+        return false;
+
+    ErrorProfile ep = *static_cast<ErrorProfile*>(result);
     try {
-        p.errors.resize(p.stimulations().size());
-        for ( auto &err : p.errors )
-            err.resize(p.numPermutations());
+        ep.errors.resize(ep.stimulations().size());
+        for ( auto &err : ep.errors )
+            err.resize(ep.numPermutations());
     } catch (std::bad_alloc) {
+        delete result;
         return false;
     }
-    m_queue.push_back(p);
-    return true;
-}
-
-void ErrorProfiler::clearAbort()
-{
-    aborted = false;
-    emit didAbort();
-}
-
-void ErrorProfiler::generate()
-{
-    ErrorProfile ep = m_queue.front();
-    m_queue.pop_front();
-    if ( aborted )
-        return;
 
     auto iter = ep.errors.begin();
     int i = 0;
     for ( Stimulation const& stim : ep.stimulations() ) {
-        if ( aborted )
-            return;
+        if ( isAborted() ) {
+            emit didAbort();
+            return false;
+        }
         if ( stim.duration > 0 ) {
             ep.generate(stim, *iter);
         } // else, *iter is an empty vector, as befits an empty stimulation
@@ -86,10 +76,11 @@ void ErrorProfiler::generate()
     emit done();
 
     // Save
-    QFile file(session.log(this, action, m_profiles.back(), "Descriptive metadata goes here"));
     QDataStream os;
     if ( openSaveStream(file, os, magic, version) )
         os << m_profiles.back();
+
+    return true;
 }
 
 

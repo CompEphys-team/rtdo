@@ -18,6 +18,7 @@ public:
 class WaveDeck : public Result
 {
 public:
+    WaveDeck(Session &session, std::vector<WaveSource> sources);
     WaveDeck(Session &session, Result r = Result());
 
     bool setSource(size_t targetParam, WaveSource source); //!< Sets the stimulation for the given parameter. source must refer to a single stimulation.

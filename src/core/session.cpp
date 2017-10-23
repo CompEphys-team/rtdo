@@ -5,33 +5,9 @@
 Session::Session(Project &p, const QString &sessiondir) :
     RNG(),
     project(p),
-    dirtyRund(true),
-    dirtySearchd(true),
-    dirtyStimd(true),
-    dirtyGafs(true),
-    dirtyDaqd(true)
+    dispatcher(*this)
 {
-    static bool registered = false;
-    if ( !registered ) {
-        qRegisterMetaType<RunData>();
-        qRegisterMetaType<WavegenData>();
-        qRegisterMetaType<StimulationData>();
-        qRegisterMetaType<GAFitterSettings>();
-        qRegisterMetaType<DAQData>();
-
-        qRegisterMetaType<WaveSource>();
-
-        registered = true;
-    }
-
     addAPs();
-
-    // Connect redirection signals to ensure set* is always called on this->thread
-    connect(this, SIGNAL(redirectRunData(RunData)), this, SLOT(setRunData(RunData)), Qt::BlockingQueuedConnection);
-    connect(this, SIGNAL(redirectWavegenData(WavegenData)), this, SLOT(setWavegenData(WavegenData)), Qt::BlockingQueuedConnection);
-    connect(this, SIGNAL(redirectStimulationData(StimulationData)), this, SLOT(setStimulationData(StimulationData)), Qt::BlockingQueuedConnection);
-    connect(this, SIGNAL(redirectGAFitterSettings(GAFitterSettings)), this, SLOT(setGAFitterSettings(GAFitterSettings)), Qt::BlockingQueuedConnection);
-    connect(this, SIGNAL(redirectDAQData(DAQData)), this, SLOT(setDAQData(DAQData)), Qt::BlockingQueuedConnection);
 
     if ( sessiondir.isEmpty() ) {
         dir = QDir(project.dir());
@@ -48,17 +24,22 @@ Session::Session(Project &p, const QString &sessiondir) :
         }
     }
 
-    moveToThread(&thread);
+    dispatcher.moveToThread(&thread);
     thread.start();
+    connect(this, SIGNAL(doDispatch()), &dispatcher, SLOT(dispatch()));
+    connect(&dispatcher, SIGNAL(actionComplete(bool)), this, SLOT(onActionComplete(bool)), Qt::BlockingQueuedConnection);
+    connect(&dispatcher, SIGNAL(requestNextEntry()), this, SLOT(getNextEntry()), Qt::BlockingQueuedConnection);
+    connect(&m_log, SIGNAL(queueAltered()), this, SLOT(updateSettings()));
 
-    daqd = project.daqData(); // Load project defaults
+    q_settings.daqd = project.daqData(); // Load project defaults
 
     m_log.setLogFile(dir.filePath("session.log"));
     load(); // Load state from m_log
 
-    project.wavegen().setRunData(rund);
-    project.experiment().setRunData(rund);
-    project.profiler().setRunData(rund);
+    project.wavegen().setRunData(q_settings.rund);
+    project.experiment().setRunData(q_settings.rund);
+    project.profiler().setRunData(q_settings.rund);
+    m_settings = q_settings;
 }
 
 void Session::crossloadConfig(const QString &crossSessionDir)
@@ -79,76 +60,77 @@ void Session::crossloadConfig(const QString &crossSessionDir)
         QFile file(crossdir.filePath(filename));
         try {
             if ( entry.actor == "Config" )
-                readConfig(file.fileName(), -1, true);
+                readConfig(file.fileName());
         } catch (std::runtime_error err) {
             std::cerr << "An action could not be loaded (" << crosslog.data(crosslog.index(row, 0), Qt::UserRole).toString()
                       << ", " << filename << ") : "
                       << err.what() << std::endl;
         }
     }
+    m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
 void Session::addAPs()
 {
-    addAP(runAP, "S.Run.accessResistance", this, &Session::rund, &RunData::accessResistance);
-    addAP(runAP, "S.Run.clampGain", this, &Session::rund, &RunData::clampGain);
-    addAP(runAP, "S.Run.simCycles", this, &Session::rund, &RunData::simCycles);
-    addAP(runAP, "S.Run.settleDuration", this, &Session::rund, &RunData::settleDuration);
+    addAP(runAP, "S.Run.accessResistance", &q_settings, &Settings::rund, &RunData::accessResistance);
+    addAP(runAP, "S.Run.clampGain", &q_settings, &Settings::rund, &RunData::clampGain);
+    addAP(runAP, "S.Run.simCycles", &q_settings, &Settings::rund, &RunData::simCycles);
+    addAP(runAP, "S.Run.settleDuration", &q_settings, &Settings::rund, &RunData::settleDuration);
 
-    addAP(searchAP, "S.Wavegen.numSigmaAdjustWaveforms", this, &Session::searchd, &WavegenData::numSigmaAdjustWaveforms);
-    addAP(searchAP, "S.Wavegen.nInitialWaves", this, &Session::searchd, &WavegenData::nInitialWaves);
-    addAP(searchAP, "S.Wavegen.nGroupsPerWave", this, &Session::searchd, &WavegenData::nGroupsPerWave);
-    addAP(searchAP, "S.Wavegen.useBaseParameters", this, &Session::searchd, &WavegenData::useBaseParameters);
-    addAP(searchAP, "S.Wavegen.nWavesPerEpoch", this, &Session::searchd, &WavegenData::nWavesPerEpoch);
-    addAP(searchAP, "S.Wavegen.rerandomiseParameters", this, &Session::searchd, &WavegenData::rerandomiseParameters);
-    addAP(searchAP, "S.Wavegen.precisionIncreaseEpochs[#]", this, &Session::searchd, &WavegenData::precisionIncreaseEpochs);
-    addAP(searchAP, "S.Wavegen.maxIterations", this, &Session::searchd, &WavegenData::maxIterations);
-    addAP(searchAP, "S.Wavegen.mapeDimensions[#].func", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::func);
-    addAP(searchAP, "S.Wavegen.mapeDimensions[#].min", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::min);
-    addAP(searchAP, "S.Wavegen.mapeDimensions[#].max", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::max);
-    addAP(searchAP, "S.Wavegen.mapeDimensions[#].resolution", this, &Session::searchd, &WavegenData::mapeDimensions, &MAPEDimension::resolution);
+    addAP(searchAP, "S.Wavegen.numSigmaAdjustWaveforms", &q_settings, &Settings::searchd, &WavegenData::numSigmaAdjustWaveforms);
+    addAP(searchAP, "S.Wavegen.nInitialWaves", &q_settings, &Settings::searchd, &WavegenData::nInitialWaves);
+    addAP(searchAP, "S.Wavegen.nGroupsPerWave", &q_settings, &Settings::searchd, &WavegenData::nGroupsPerWave);
+    addAP(searchAP, "S.Wavegen.useBaseParameters", &q_settings, &Settings::searchd, &WavegenData::useBaseParameters);
+    addAP(searchAP, "S.Wavegen.nWavesPerEpoch", &q_settings, &Settings::searchd, &WavegenData::nWavesPerEpoch);
+    addAP(searchAP, "S.Wavegen.rerandomiseParameters", &q_settings, &Settings::searchd, &WavegenData::rerandomiseParameters);
+    addAP(searchAP, "S.Wavegen.precisionIncreaseEpochs[#]", &q_settings, &Settings::searchd, &WavegenData::precisionIncreaseEpochs);
+    addAP(searchAP, "S.Wavegen.maxIterations", &q_settings, &Settings::searchd, &WavegenData::maxIterations);
+    addAP(searchAP, "S.Wavegen.mapeDimensions[#].func", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::func);
+    addAP(searchAP, "S.Wavegen.mapeDimensions[#].min", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::min);
+    addAP(searchAP, "S.Wavegen.mapeDimensions[#].max", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::max);
+    addAP(searchAP, "S.Wavegen.mapeDimensions[#].resolution", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::resolution);
 
-    addAP(stimAP, "S.Stimulation.baseV", this, &Session::stimd, &StimulationData::baseV);
-    addAP(stimAP, "S.Stimulation.duration", this, &Session::stimd, &StimulationData::duration);
-    addAP(stimAP, "S.Stimulation.minSteps", this, &Session::stimd, &StimulationData::minSteps);
-    addAP(stimAP, "S.Stimulation.maxSteps", this, &Session::stimd, &StimulationData::maxSteps);
-    addAP(stimAP, "S.Stimulation.minVoltage", this, &Session::stimd, &StimulationData::minVoltage);
-    addAP(stimAP, "S.Stimulation.maxVoltage", this, &Session::stimd, &StimulationData::maxVoltage);
-    addAP(stimAP, "S.Stimulation.minStepLength", this, &Session::stimd, &StimulationData::minStepLength);
-    addAP(stimAP, "S.Stimulation.muta.lCrossover", this, &Session::stimd, &StimulationData::muta, &MutationData::lCrossover);
-    addAP(stimAP, "S.Stimulation.muta.lLevel", this, &Session::stimd, &StimulationData::muta, &MutationData::lLevel);
-    addAP(stimAP, "S.Stimulation.muta.lNumber", this, &Session::stimd, &StimulationData::muta, &MutationData::lNumber);
-    addAP(stimAP, "S.Stimulation.muta.lSwap", this, &Session::stimd, &StimulationData::muta, &MutationData::lSwap);
-    addAP(stimAP, "S.Stimulation.muta.lTime", this, &Session::stimd, &StimulationData::muta, &MutationData::lTime);
-    addAP(stimAP, "S.Stimulation.muta.lType", this, &Session::stimd, &StimulationData::muta, &MutationData::lType);
-    addAP(stimAP, "S.Stimulation.muta.n", this, &Session::stimd, &StimulationData::muta, &MutationData::n);
-    addAP(stimAP, "S.Stimulation.muta.sdLevel", this, &Session::stimd, &StimulationData::muta, &MutationData::sdLevel);
-    addAP(stimAP, "S.Stimulation.muta.sdTime", this, &Session::stimd, &StimulationData::muta, &MutationData::sdTime);
-    addAP(stimAP, "S.Stimulation.muta.std", this, &Session::stimd, &StimulationData::muta, &MutationData::std);
+    addAP(stimAP, "S.Stimulation.baseV", &q_settings, &Settings::stimd, &StimulationData::baseV);
+    addAP(stimAP, "S.Stimulation.duration", &q_settings, &Settings::stimd, &StimulationData::duration);
+    addAP(stimAP, "S.Stimulation.minSteps", &q_settings, &Settings::stimd, &StimulationData::minSteps);
+    addAP(stimAP, "S.Stimulation.maxSteps", &q_settings, &Settings::stimd, &StimulationData::maxSteps);
+    addAP(stimAP, "S.Stimulation.minVoltage", &q_settings, &Settings::stimd, &StimulationData::minVoltage);
+    addAP(stimAP, "S.Stimulation.maxVoltage", &q_settings, &Settings::stimd, &StimulationData::maxVoltage);
+    addAP(stimAP, "S.Stimulation.minStepLength", &q_settings, &Settings::stimd, &StimulationData::minStepLength);
+    addAP(stimAP, "S.Stimulation.muta.lCrossover", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::lCrossover);
+    addAP(stimAP, "S.Stimulation.muta.lLevel", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::lLevel);
+    addAP(stimAP, "S.Stimulation.muta.lNumber", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::lNumber);
+    addAP(stimAP, "S.Stimulation.muta.lSwap", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::lSwap);
+    addAP(stimAP, "S.Stimulation.muta.lTime", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::lTime);
+    addAP(stimAP, "S.Stimulation.muta.lType", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::lType);
+    addAP(stimAP, "S.Stimulation.muta.n", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::n);
+    addAP(stimAP, "S.Stimulation.muta.sdLevel", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::sdLevel);
+    addAP(stimAP, "S.Stimulation.muta.sdTime", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::sdTime);
+    addAP(stimAP, "S.Stimulation.muta.std", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::std);
 
-    addAP(gafAP, "S.GAFitter.maxEpochs", this, &Session::gafs, &GAFitterSettings::maxEpochs);
-    addAP(gafAP, "S.GAFitter.randomOrder", this, &Session::gafs, &GAFitterSettings::randomOrder);
-    addAP(gafAP, "S.GAFitter.orderBiasDecay", this, &Session::gafs, &GAFitterSettings::orderBiasDecay);
-    addAP(gafAP, "S.GAFitter.orderBiasStartEpoch", this, &Session::gafs, &GAFitterSettings::orderBiasStartEpoch);
-    addAP(gafAP, "S.GAFitter.nElite", this, &Session::gafs, &GAFitterSettings::nElite);
-    addAP(gafAP, "S.GAFitter.nReinit", this, &Session::gafs, &GAFitterSettings::nReinit);
-    addAP(gafAP, "S.GAFitter.crossover", this, &Session::gafs, &GAFitterSettings::crossover);
-    addAP(gafAP, "S.GAFitter.decaySigma", this, &Session::gafs, &GAFitterSettings::decaySigma);
-    addAP(gafAP, "S.GAFitter.sigmaInitial", this, &Session::gafs, &GAFitterSettings::sigmaInitial);
-    addAP(gafAP, "S.GAFitter.sigmaHalflife", this, &Session::gafs, &GAFitterSettings::sigmaHalflife);
+    addAP(gafAP, "S.GAFitter.maxEpochs", &q_settings, &Settings::gafs, &GAFitterSettings::maxEpochs);
+    addAP(gafAP, "S.GAFitter.randomOrder", &q_settings, &Settings::gafs, &GAFitterSettings::randomOrder);
+    addAP(gafAP, "S.GAFitter.orderBiasDecay", &q_settings, &Settings::gafs, &GAFitterSettings::orderBiasDecay);
+    addAP(gafAP, "S.GAFitter.orderBiasStartEpoch", &q_settings, &Settings::gafs, &GAFitterSettings::orderBiasStartEpoch);
+    addAP(gafAP, "S.GAFitter.nElite", &q_settings, &Settings::gafs, &GAFitterSettings::nElite);
+    addAP(gafAP, "S.GAFitter.nReinit", &q_settings, &Settings::gafs, &GAFitterSettings::nReinit);
+    addAP(gafAP, "S.GAFitter.crossover", &q_settings, &Settings::gafs, &GAFitterSettings::crossover);
+    addAP(gafAP, "S.GAFitter.decaySigma", &q_settings, &Settings::gafs, &GAFitterSettings::decaySigma);
+    addAP(gafAP, "S.GAFitter.sigmaInitial", &q_settings, &Settings::gafs, &GAFitterSettings::sigmaInitial);
+    addAP(gafAP, "S.GAFitter.sigmaHalflife", &q_settings, &Settings::gafs, &GAFitterSettings::sigmaHalflife);
 
-    Project::addDaqAPs(daqAP, &daqd);
+    Project::addDaqAPs(daqAP, &q_settings.daqd);
 
     // Defaults
-    searchd.mapeDimensions = {
+    q_settings.searchd.mapeDimensions = {
         {MAPEDimension::Func::BestBubbleDuration,   0, 0, 128},
         {MAPEDimension::Func::BestBubbleTime,       0, 0,  32},
         {MAPEDimension::Func::VoltageDeviation,     0, 0,  32}
     };
-    for ( MAPEDimension &m : searchd.mapeDimensions )
-        m.setDefaultMinMax(stimd);
-    searchd.precisionIncreaseEpochs = { 100 };
-    sanitiseWavegenData(&searchd);
+    for ( MAPEDimension &m : q_settings.searchd.mapeDimensions )
+        m.setDefaultMinMax(q_settings.stimd);
+    q_settings.searchd.precisionIncreaseEpochs = { 100 };
+    sanitiseWavegenData(&q_settings.searchd);
 }
 
 void Session::sanitiseWavegenData(WavegenData *d)
@@ -215,73 +197,54 @@ void Session::quit()
     thread.wait();
 }
 
-QString Session::log(const SessionWorker *actor, const QString &action, Result &result, const QString &args)
+void Session::pause()
 {
-    int idx;
-    QMutexLocker lock(&log_mutex);
-
-    if ( dirtyRund || dirtySearchd || dirtyStimd || dirtyGafs || dirtyDaqd ) {
-        QString actorName = "Config";
-        QString cfg = "cfg";
-        idx = m_log.put(actorName, cfg, "");
-        std::ofstream os(dir.filePath(results(idx, actorName, cfg)).toStdString());
-        if ( dirtyRund ) {
-            for ( auto const& p : runAP )
-                p->write(os);
-            hist_rund.push_back(std::make_pair(idx, rund));
-        }
-        if ( dirtySearchd ) {
-            for ( auto const& p : searchAP )
-                p->write(os);
-            hist_searchd.push_back(std::make_pair(idx, searchd));
-        }
-        if ( dirtyStimd ) {
-            for ( auto const& p : stimAP )
-                p->write(os);
-            hist_stimd.push_back(std::make_pair(idx, stimd));
-        }
-        if ( dirtyGafs ) {
-            for ( auto const& p : gafAP )
-                p->write(os);
-            hist_gafs.push_back(std::make_pair(idx, gafs));
-        }
-        if ( dirtyDaqd ) {
-            for ( auto const& p : daqAP )
-                p->write(os);
-            hist_daqd.push_back(std::make_pair(idx, daqd));
-        }
-        dirtyRund = dirtySearchd = dirtyStimd = dirtyGafs = dirtyDaqd = false;
-    }
-
-    idx = m_log.put(actor->actorName(), action, args);
-    result.resultIndex = idx;
-    emit actionLogged(actor->actorName(), action, args, idx);
-    return dir.filePath(results(idx, actor->actorName(), action));
+    dispatcher.running = false;
 }
 
-template <typename data>
-data getHistoricData(int index, std::vector<std::pair<int, data>> history)
+void Session::resume()
 {
-    auto it = history.begin() + 1;
-    while ( it != history.end() && it->first < index )
+    dispatcher.running = true;
+    emit doDispatch();
+}
+
+void Session::abort()
+{
+    dispatcher.running = false;
+    if ( m_wavegen )
+        m_wavegen->abort();
+    if ( m_profiler )
+        m_profiler->abort();
+    if ( m_wavesets)
+        m_wavesets->abort();
+    if ( m_sprofiler )
+        m_sprofiler->abort();
+}
+
+void Session::queue(QString actor, QString action, QString args, Result *res)
+{
+    m_log.queue(actor, action, args, res);
+    resume();
+}
+
+Settings Session::getSettings(int i) const
+{
+    auto it = hist_settings.begin() + 1;
+    while ( it != hist_settings.end() && it->first < i )
         ++it;
     return (it-1)->second;
 }
-RunData Session::runData(int i) const { return i < 0 ? rund : getHistoricData(i, hist_rund); }
-WavegenData Session::wavegenData(int i) const { return i < 0 ? searchd : getHistoricData(i, hist_searchd); }
-StimulationData Session::stimulationData(int i) const { return i < 0 ? stimd : getHistoricData(i, hist_stimd); }
-GAFitterSettings Session::gaFitterSettings(int i) const { return i < 0 ? gafs : getHistoricData(i, hist_gafs); }
-DAQData Session::daqData(int i) const { return i < 0 ? daqd : getHistoricData(i, hist_daqd); }
-
-void Session::appropriate(QObject *worker)
-{
-    worker->moveToThread(&thread);
-}
+RunData Session::runData(int i) const { return getSettings(i).rund; }
+WavegenData Session::wavegenData(int i) const { return getSettings(i).searchd; }
+StimulationData Session::stimulationData(int i) const { return getSettings(i).stimd; }
+GAFitterSettings Session::gaFitterSettings(int i) const { return getSettings(i).gafs; }
+DAQData Session::daqData(int i) const { return getSettings(i).daqd; }
 
 void Session::load()
 {
     Result result;
     for ( int row = 0; row < m_log.rowCount(); row++ ) {
+        initial = false;
         SessionLog::Entry entry = m_log.entry(row);
         QString filename = results(row, entry.actor, entry.action);
         QFile file(dir.filePath(filename));
@@ -292,7 +255,8 @@ void Session::load()
             else if ( entry.actor == profiler().actorName() )
                 profiler().load(entry.action, entry.args, file, result);
             else if ( entry.actor == "Config" ) {
-                readConfig(file.fileName(), row);
+                readConfig(file.fileName());
+                hist_settings.push_back(std::make_pair(row, q_settings));
             } else if ( entry.actor == wavesets().actorName() ) {
                 wavesets().load(entry.action, entry.args, file, result);
             } else if ( entry.actor == gaFitter().actorName() ) {
@@ -310,7 +274,7 @@ void Session::load()
     }
 }
 
-void Session::readConfig(const QString &filename, int resultIndex, bool raiseDirtyFlags)
+void Session::readConfig(const QString &filename)
 {
     std::ifstream is(filename.toStdString());
     QString name;
@@ -320,27 +284,27 @@ void Session::readConfig(const QString &filename, int resultIndex, bool raiseDir
     while ( is.good() ) {
         if ( (it = AP::find(name, &runAP)) ) {
             if ( !hasRun ) {
-                rund = RunData();
+                q_settings.rund = RunData();
                 hasRun = true;
             }
         } else if ( (it = AP::find(name, &searchAP)) ) {
             if ( !hasSearch ) {
-                searchd = WavegenData();
+                q_settings.searchd = WavegenData();
                 hasSearch = true;
             }
         } else if ( (it = AP::find(name, &stimAP)) ) {
             if ( !hasStim ) {
-                stimd = StimulationData();
+                q_settings.stimd = StimulationData();
                 hasStim = true;
             }
         } else if ( (it = AP::find(name, &gafAP)) ) {
             if ( !hasGafs ) {
-                gafs = GAFitterSettings();
+                q_settings.gafs = GAFitterSettings();
                 hasGafs = true;
             }
         } else if ( (it = AP::find(name, &daqAP)) ) {
             if ( !hasDaq ) {
-                daqd = DAQData();
+                q_settings.daqd = DAQData();
                 hasDaq = true;
             }
         }
@@ -348,39 +312,16 @@ void Session::readConfig(const QString &filename, int resultIndex, bool raiseDir
             it->readNow(name, is);
         is >> name;
     }
-    if ( hasRun ) {
-        dirtyRund = raiseDirtyFlags;
-        project.wavegen().setRunData(rund);
-        project.experiment().setRunData(rund);
-        project.profiler().setRunData(rund);
-        if ( resultIndex >= 0 )
-            hist_rund.push_back(std::make_pair(resultIndex, rund));
+    if ( hasRun )
         emit runDataChanged();
-    }
-    if ( hasSearch ) {
-        dirtySearchd = raiseDirtyFlags;
-        if ( resultIndex >= 0 )
-            hist_searchd.push_back(std::make_pair(resultIndex, searchd));
+    if ( hasSearch )
         emit wavegenDataChanged();
-    }
-    if ( hasStim ) {
-        dirtyStimd = raiseDirtyFlags;
-        if ( resultIndex >= 0 )
-            hist_stimd.push_back(std::make_pair(resultIndex, stimd));
+    if ( hasStim )
         emit stimulationDataChanged();
-    }
-    if ( hasGafs ) {
-        dirtyGafs = raiseDirtyFlags;
-        if ( resultIndex >= 0 )
-            hist_gafs.push_back(std::make_pair(resultIndex, gafs));
+    if ( hasGafs )
         emit GAFitterSettingsChanged();
-    }
-    if ( hasDaq ) {
-        dirtyDaqd = raiseDirtyFlags;
-        if ( resultIndex >= 0 )
-            hist_daqd.push_back(std::make_pair(resultIndex, daqd));
+    if ( hasDaq )
         emit DAQDataChanged();
-    }
 }
 
 QString Session::results(int idx, const QString &actor, const QString &action)
@@ -392,59 +333,137 @@ QString Session::results(int idx, const QString &actor, const QString &action)
 
 void Session::setRunData(RunData d)
 {
-    if ( QThread::currentThread() == &thread ) {
-        project.wavegen().setRunData(d);
-        project.experiment().setRunData(d);
-        project.profiler().setRunData(d);
-        rund = d;
-        dirtyRund = true;
-        emit runDataChanged();
-    } else {
-        redirectRunData(d, QPrivateSignal());
-    }
+    q_settings.rund = d;
+    m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
 void Session::setWavegenData(WavegenData d)
 {
-    if ( QThread::currentThread() == &thread ) {
-        sanitiseWavegenData(&d);
-        searchd = d;
-        dirtySearchd = true;
-        emit wavegenDataChanged();
-    } else {
-        redirectWavegenData(d, QPrivateSignal());
-    }
+    sanitiseWavegenData(&d);
+    q_settings.searchd = d;
+    m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
 void Session::setStimulationData(StimulationData d)
 {
-    if ( QThread::currentThread() == &thread ) {
-        stimd = d;
-        dirtyStimd = true;
-        emit stimulationDataChanged();
-    } else {
-        redirectStimulationData(d, QPrivateSignal());
-    }
+    q_settings.stimd = d;
+    m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
 void Session::setGAFitterSettings(GAFitterSettings d)
 {
-    if ( QThread::currentThread() == &thread ) {
-        gafs = d;
-        dirtyGafs = true;
-        emit GAFitterSettingsChanged();
-    } else {
-        redirectGAFitterSettings(d, QPrivateSignal());
-    }
+    q_settings.gafs = d;
+    m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
 void Session::setDAQData(DAQData d)
 {
-    if ( QThread::currentThread() == &thread ) {
-        daqd = d;
-        dirtyDaqd = true;
-        emit DAQDataChanged();
+    q_settings.daqd = d;
+    m_log.queue("Config", "cfg", "", new Settings(q_settings));
+}
+
+
+
+void Dispatcher::dispatch()
+{
+    while ( running.load() ) {
+        emit requestNextEntry();
+        if ( !running.load() )
+            break;
+
+        bool success = false;
+        QFile file(s.dir.filePath(s.results(nextEntry.res->resultIndex, nextEntry.actor, nextEntry.action)));
+
+        if ( nextEntry.actor == s.wavegen().actorName() ) {
+            success = s.wavegen().execute(nextEntry.action, nextEntry.args, nextEntry.res, file);
+        } else if ( nextEntry.actor == s.profiler().actorName() ) {
+            success = s.profiler().execute(nextEntry.action, nextEntry.args, nextEntry.res, file);
+        } else if ( nextEntry.actor == s.wavesets().actorName() ) {
+            success = s.wavesets().execute(nextEntry.action, nextEntry.args, nextEntry.res, file);
+        } else if ( nextEntry.actor == s.gaFitter().actorName() ) {
+            success = s.gaFitter().execute(nextEntry.action, nextEntry.args, nextEntry.res, file);
+        } else if ( nextEntry.actor == s.samplingProfiler().actorName() ) {
+            success = s.samplingProfiler().execute(nextEntry.action, nextEntry.args, nextEntry.res, file);
+        } else if ( nextEntry.actor == "Config" ) {
+            QMutexLocker locker(&mutex);
+            std::ofstream os(QFileInfo(file).filePath().toStdString());
+            s.m_settings = *static_cast<Settings*>(nextEntry.res);
+            delete nextEntry.res;
+
+            // Briefly swap m_ and q_ settings to write out via (q_settings-based) APs
+            using std::swap;
+            swap(s.m_settings, s.q_settings);
+            for ( auto const& p : s.runAP )
+                p->write(os);
+            for ( auto const& p : s.searchAP )
+                p->write(os);
+            for ( auto const& p : s.stimAP )
+                p->write(os);
+            for ( auto const& p : s.gafAP )
+                p->write(os);
+            for ( auto const& p : s.daqAP )
+                p->write(os);
+            swap(s.m_settings, s.q_settings);
+
+            s.project.wavegen().setRunData(s.m_settings.rund);
+            s.project.experiment().setRunData(s.m_settings.rund);
+            s.project.profiler().setRunData(s.m_settings.rund);
+            s.hist_settings.push_back(std::make_pair(s.m_settings.resultIndex, s.m_settings));
+            success = true;
+        }
+        emit actionComplete(success);
+    }
+}
+
+void Session::getNextEntry()
+{
+    if ( m_log.queueSize() == 0 ) {
+        dispatcher.running = false;
+        return;
+    }
+    if ( initial ) {
+        dispatcher.nextEntry = SessionLog::Entry(QDateTime::currentDateTime(), "Config", "cfg", "", new Settings(q_settings));
+        initial = false;
     } else {
-        redirectDAQData(d, QPrivateSignal());
+        dispatcher.nextEntry = m_log.dequeue(true);
+    }
+    dispatcher.nextEntry.res->resultIndex = m_log.nextIndex();
+
+    // Consolidate consecutive settings entries into one (the latest):
+    if ( dispatcher.nextEntry.actor == "Config" ) {
+        Settings *set = static_cast<Settings*>(dispatcher.nextEntry.res);
+        while (m_log.queueSize() > 0) {
+            if ( m_log.entry(set->resultIndex + 1).actor == "Config" ) {
+                // consolidate:
+                Settings *replacement = static_cast<Settings*>(m_log.dequeue(false).res);
+                replacement->resultIndex = set->resultIndex;
+                using std::swap;
+                swap(set, replacement); // pointer swap
+                delete replacement; // delete no longer used older settings object
+            } else {
+                break;
+            }
+        }
+        dispatcher.nextEntry.res = set;
+    }
+}
+
+void Session::onActionComplete(bool success)
+{
+    emit actionLogged(dispatcher.nextEntry.actor, dispatcher.nextEntry.action, dispatcher.nextEntry.args, m_log.nextIndex());
+    m_log.clearActive(success);
+}
+
+void Session::updateSettings()
+{
+    // Reload settings from history and existing queue:
+    QMutexLocker locker(&dispatcher.mutex);
+    q_settings = hist_settings.back().second;
+
+    int fullSize = m_log.rowCount(), qSize = m_log.queueSize();
+    for ( int i = fullSize - qSize; i < fullSize; i++ ) {
+        SessionLog::Entry e = m_log.entry(i);
+        if ( e.actor == "Config" )
+            q_settings = Settings(*static_cast<Settings*>(e.res));
     }
 }

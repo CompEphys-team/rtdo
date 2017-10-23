@@ -29,9 +29,10 @@ public:
         QVector<double> accuracy; //!< Output: Fraction of gradients correctly indicating target direction
     };
 
-    void abort();
-
     const inline std::vector<Profile> &profiles() const { return m_profiles; }
+
+    bool execute(QString action, QString args, Result *res, QFile &file);
+    inline QString actorName() const { return "SamplingProfiler"; }
 
 public slots:
     void generate(SamplingProfiler::Profile);
@@ -39,21 +40,14 @@ public slots:
 signals:
     void progress(int nth, int total);
     void done();
-    void doAbort();
     void didAbort();
-
-protected slots:
-    void clearAbort();
 
 protected:
     friend class Session;
     void load(const QString &action, const QString &args, QFile &results, Result r);
-    inline QString actorName() const { return "SamplingProfiler"; }
 
 private:
     ProfilerLibrary &lib;
-
-    bool aborted;
 
     std::vector<Profile> m_profiles;
 

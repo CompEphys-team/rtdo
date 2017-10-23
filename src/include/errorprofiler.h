@@ -24,39 +24,27 @@ public:
     ErrorProfiler(Session &session);
     ~ErrorProfiler();
 
-    void abort(); //!< Abort all queued slot actions.
-
     /**
-     * @brief queueProfile adds a new ErrorProfile to the queue for generate() to work with.
-     * A typical workflow will not require multiple ErrorProfiles in the queue, but passing them
-     * directly to the slot is tricky. To clear the queue, call abort().
-     */
-    bool queueProfile(ErrorProfile &&p);
-
-    const inline std::vector<ErrorProfile> &profiles() const { return m_profiles; }
-
-public slots:
-    /**
-     * @brief generate runs the simulations set up in the first queued ErrorProfile.
-     * A progress() signal is emitted at the end of each simulation block to allow users to keep track of progress.
+     * @brief queueProfile adds a new ErrorProfile to the queue. Once running,
+     * a progress() signal is emitted at the end of each simulation block to allow users to keep track of progress.
      * When the profiling is complete, a done() signal is also emitted. Only then does the resulting ErrorProfile
      * become accessible through profiles().
      */
-    void generate();
+    void queueProfile(ErrorProfile &&p);
+
+    const inline std::vector<ErrorProfile> &profiles() const { return m_profiles; }
+
+    bool execute(QString action, QString args, Result *res, QFile &file);
+    inline QString actorName() const { return "ErrorProfiler"; }
 
 signals:
     void progress(int nth, int total);
     void done();
-    void doAbort();
     void didAbort();
-
-protected slots:
-    void clearAbort();
 
 protected:
     friend class Session;
     void load(const QString &action, const QString &args, QFile &results, Result r);
-    inline QString actorName() const { return "ErrorProfiler"; }
 
     friend class ErrorProfile;
     void settle(scalar baseV, scalar settleDuration);
@@ -65,8 +53,6 @@ protected:
 private:
     ExperimentLibrary &lib;
     DAQ *daq;
-
-    bool aborted;
 
     std::list<ErrorProfile> m_queue;
     std::vector<ErrorProfile> m_profiles;
