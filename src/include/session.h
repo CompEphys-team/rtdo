@@ -19,7 +19,7 @@ class Dispatcher : public QObject
 {
     Q_OBJECT
 public:
-    Dispatcher(Session &s) : s(s), running(true) {}
+    Dispatcher(Session &s) : s(s), running(true), busy(false) {}
     Session &s;
     std::atomic<bool> running, busy;
     SessionLog::Entry nextEntry;
