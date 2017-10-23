@@ -221,7 +221,7 @@ void WavegenFitnessMapper::on_btnAdd_clicked()
         return;
     savedSelection = true;
     WavesetCreator &creator = session.wavesets();
-    session.queue(creator.actorName(), creator.actionSelect, "", selection.release());
+    session.queue(creator.actorName(), creator.actionSelect, "", selection.release(), false);
 }
 
 void WavegenFitnessMapper::on_readMinFitness_clicked()

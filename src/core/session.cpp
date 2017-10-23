@@ -221,10 +221,11 @@ void Session::abort()
         m_sprofiler->abort();
 }
 
-void Session::queue(QString actor, QString action, QString args, Result *res)
+void Session::queue(QString actor, QString action, QString args, Result *res, bool wake)
 {
     m_log.queue(actor, action, args, res);
-    emit doDispatch();
+    if ( wake )
+        emit doDispatch();
 }
 
 Settings Session::getSettings(int i) const
