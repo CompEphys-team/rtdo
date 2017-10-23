@@ -30,7 +30,7 @@ GAFitterSettingsDialog::~GAFitterSettingsDialog()
 
 void GAFitterSettingsDialog::importData()
 {
-    GAFitterSettings p = session.gaFitterSettings(historicIndex);
+    GAFitterSettings p = historicIndex < 0 ? session.qGaFitterSettings() : session.gaFitterSettings(historicIndex);
     ui->maxEpochs->setValue(p.maxEpochs);
     ui->randomOrder->setCurrentIndex(p.randomOrder);
     ui->orderBiasDecay->setValue(p.orderBiasDecay);

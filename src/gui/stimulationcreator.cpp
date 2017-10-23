@@ -15,8 +15,8 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     ui->splitter->setStretchFactor(1,1);
     ui->steps->setColumnWidth(0, 50);
 
-    stimCopy.baseV = session.stimulationData().baseV;
-    stimCopy.duration = session.stimulationData().duration;
+    stimCopy.baseV = session.qStimulationData().baseV;
+    stimCopy.duration = session.qStimulationData().duration;
     stimCopy.tObsBegin = 100;
     stimCopy.tObsEnd = 105;
     stimCopy.clear();
@@ -118,7 +118,7 @@ void StimulationCreator::setNStims(int n)
 
 void StimulationCreator::setLimits()
 {
-    double minV = session.stimulationData().minVoltage, maxV = session.stimulationData().maxVoltage;
+    double minV = session.qStimulationData().minVoltage, maxV = session.qStimulationData().maxVoltage;
     ui->nSteps->setMaximum(Stimulation::maxSteps - 1);
     ui->baseV->setRange(minV, maxV);
     ui->tObsBegin->setMaximum(ui->duration->value());
@@ -179,7 +179,7 @@ void StimulationCreator::setNSteps(int n)
         connect(time, SIGNAL(valueChanged(double)), this, SLOT(updateStimulation()));
 
         QDoubleSpinBox *voltage = new QDoubleSpinBox();
-        voltage->setRange(session.stimulationData().minVoltage, session.stimulationData().maxVoltage);
+        voltage->setRange(session.qStimulationData().minVoltage, session.qStimulationData().maxVoltage);
         voltage->setValue(stim->steps[i].V);
         ui->steps->setCellWidget(i, 2, voltage);
         connect(voltage, SIGNAL(valueChanged(double)), this, SLOT(updateStimulation()));

@@ -183,7 +183,7 @@ void Calibrator::findAccessResistance()
     base /= 4 * (samplesPerStep - 2*margin);
     step /= 4 * (samplesPerStep - 2*margin);
 
-    RunData rd = session.runData();
+    RunData rd = session.qRunData();
     rd.accessResistance = step - base;
     // Note, R [MOhm] = V [mV] / I [nA], with I = 1 nA
     session.setRunData(rd);

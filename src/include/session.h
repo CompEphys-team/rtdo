@@ -57,6 +57,13 @@ public:
 
     inline SessionLog *getLog() { return &m_log; }
 
+    // q___ return the latest queued settings for use in the GUI
+    const RunData &qRunData() const { return rund; }
+    const WavegenData &qWavegenData() const { return searchd; }
+    const StimulationData &qStimulationData() const { return stimd; }
+    const GAFitterSettings &qGaFitterSettings() const { return gafs; }
+    const DAQData &qDaqData() const { return daqd; }
+
     const RunData &runData() const { return rund; }
     const WavegenData &wavegenData() const { return searchd; }
     const StimulationData &stimulationData() const { return stimd; }

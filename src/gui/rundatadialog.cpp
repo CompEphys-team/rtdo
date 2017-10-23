@@ -39,7 +39,7 @@ RunDataDialog::~RunDataDialog()
 
 void RunDataDialog::importData()
 {
-    RunData p = session.runData(historicIndex);
+    RunData p = historicIndex < 0 ? session.qRunData() : session.runData(historicIndex);
     ui->simCycles->setValue(p.simCycles);
     ui->clampGain->setValue(p.clampGain);
     ui->accessResistance->setValue(p.accessResistance);

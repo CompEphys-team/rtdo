@@ -33,7 +33,7 @@ StimulationDataDialog::~StimulationDataDialog()
 
 void StimulationDataDialog::importData()
 {
-    StimulationData p = session.stimulationData(historicIndex);
+    StimulationData p = historicIndex < 0 ? session.qStimulationData() : session.stimulationData(historicIndex);
     ui->baseV->setValue(p.baseV);
     ui->duration->setValue(p.duration);
     ui->minSteps->setValue(p.minSteps);
@@ -76,11 +76,11 @@ void StimulationDataDialog::exportData()
     p.muta.lSwap = ui->mutaSwap->value();
     p.muta.lType = ui->mutaType->value();
 
-    WavegenData wd = session.wavegenData();
+    WavegenData wd = session.qWavegenData();
     bool wdChanged = false;
     for ( MAPEDimension &m : wd.mapeDimensions ) {
         scalar min = m.min, max = m.max;
-        m.setDefaultMinMax(session.stimulationData());
+        m.setDefaultMinMax(session.qStimulationData());
         if ( m.min == min && m.max == max ) {
             m.setDefaultMinMax(p);
             wdChanged |= (m.min != min || m.max != max);

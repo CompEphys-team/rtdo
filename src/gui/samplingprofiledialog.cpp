@@ -62,7 +62,7 @@ SamplingProfileDialog::SamplingProfileDialog(Session &s, QWidget *parent) :
             ui->target->setCurrentIndex(src.archive()->param);
     });
 
-    ui->interval->setValue(session.runData().simCycles);
+    ui->interval->setValue(session.qRunData().simCycles);
 
     updateCombo();
     updatePresets();

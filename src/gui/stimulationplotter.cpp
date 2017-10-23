@@ -164,7 +164,7 @@ void StimulationPlotter::replot()
         return;
 
     std::vector<Stimulation> stims;
-    double duration = 0, minV = session->stimulationData().minVoltage, maxV = session->stimulationData().maxVoltage;
+    double duration = 0, minV = session->qStimulationData().minVoltage, maxV = session->qStimulationData().maxVoltage;
     bool isDeck;
     if ( enslaved && single ) {
         stims.push_back(stim);

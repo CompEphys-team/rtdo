@@ -27,7 +27,7 @@ WavegenDataDialog::~WavegenDataDialog()
 
 void WavegenDataDialog::importData()
 {
-    WavegenData p = session.wavegenData(historicIndex);
+    WavegenData p = historicIndex < 0 ? session.qWavegenData() : session.wavegenData(historicIndex);
     ui->numSigmaAdjustWaveforms->setValue(p.numSigmaAdjustWaveforms);
     ui->nInitialWaves->setValue(p.nInitialWaves);
     ui->nGroupsPerWave->setValue(p.nGroupsPerWave);
@@ -79,17 +79,18 @@ void WavegenDataDialog::exportData()
     p.precisionIncreaseEpochs = prec;
 
     std::vector<MAPEDimension> dims;
-    scalar maxDeviation = session.stimulationData().maxVoltage-session.stimulationData().baseV > session.stimulationData().baseV-session.stimulationData().minVoltage
-            ? session.stimulationData().maxVoltage - session.stimulationData().baseV
-            : session.stimulationData().baseV - session.stimulationData().minVoltage;
+    const StimulationData &stimd = session.qStimulationData();
+    scalar maxDeviation = stimd.maxVoltage-stimd.baseV > stimd.baseV-stimd.minVoltage
+            ? stimd.maxVoltage - stimd.baseV
+            : stimd.baseV - stimd.minVoltage;
     if ( ui->nBinsBubbleTime->value() > 0 )
-        dims.push_back(MAPEDimension {MAPEDimension::Func::BestBubbleTime, 0, session.stimulationData().duration, (size_t)ui->nBinsBubbleTime->value()});
+        dims.push_back(MAPEDimension {MAPEDimension::Func::BestBubbleTime, 0, stimd.duration, (size_t)ui->nBinsBubbleTime->value()});
     if ( ui->nBinsBubbleDuration->value() > 0 )
-        dims.push_back(MAPEDimension {MAPEDimension::Func::BestBubbleDuration, 0, session.stimulationData().duration, (size_t)ui->nBinsBubbleDuration->value()});
+        dims.push_back(MAPEDimension {MAPEDimension::Func::BestBubbleDuration, 0, stimd.duration, (size_t)ui->nBinsBubbleDuration->value()});
     if ( ui->nBinsVoltageDeviation->value() > 0 )
         dims.push_back(MAPEDimension {MAPEDimension::Func::VoltageDeviation, 0, maxDeviation, (size_t)ui->nBinsVoltageDeviation->value()});
     if ( ui->nBinsVoltageIntegral->value() > 0 )
-        dims.push_back(MAPEDimension {MAPEDimension::Func::VoltageIntegral, 0, maxDeviation * session.stimulationData().duration, (size_t)ui->nBinsVoltageIntegral->value()});
+        dims.push_back(MAPEDimension {MAPEDimension::Func::VoltageIntegral, 0, maxDeviation * stimd.duration, (size_t)ui->nBinsVoltageIntegral->value()});
     p.mapeDimensions = dims;
 
     emit apply(p);
