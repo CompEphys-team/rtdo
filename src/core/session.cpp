@@ -130,17 +130,20 @@ void Session::addAPs()
     for ( MAPEDimension &m : q_settings.searchd.mapeDimensions )
         m.setDefaultMinMax(q_settings.stimd);
     q_settings.searchd.precisionIncreaseEpochs = { 100 };
-    sanitiseWavegenData(&q_settings.searchd);
+
+    sanitiseSettings(q_settings);
 }
 
-void Session::sanitiseWavegenData(WavegenData *d)
+void Session::sanitiseSettings(Settings &s)
 {
-    if ( d->nGroupsPerWave > (size_t) project.wavegen().numGroups )
-        d->nGroupsPerWave = project.wavegen().numGroups;
-    while ( project.wavegen().numGroups % d->nGroupsPerWave || !(d->nGroupsPerWave%32==0 || d->nGroupsPerWave==16 || d->nGroupsPerWave==8 || d->nGroupsPerWave==4 || d->nGroupsPerWave==2 || d->nGroupsPerWave==1) )
-        --d->nGroupsPerWave;
-    int nWavesPerKernel = project.wavegen().numGroups / d->nGroupsPerWave;
-    d->nWavesPerEpoch = ((d->nWavesPerEpoch + nWavesPerKernel - 1) / nWavesPerKernel) * nWavesPerKernel;
+    if ( s.searchd.nGroupsPerWave > (size_t) project.wavegen().numGroups )
+        s.searchd.nGroupsPerWave = project.wavegen().numGroups;
+    while ( project.wavegen().numGroups % s.searchd.nGroupsPerWave ||
+            !(s.searchd.nGroupsPerWave%32==0 || s.searchd.nGroupsPerWave==16 || s.searchd.nGroupsPerWave==8
+              || s.searchd.nGroupsPerWave==4 || s.searchd.nGroupsPerWave==2 || s.searchd.nGroupsPerWave==1) )
+        --s.searchd.nGroupsPerWave;
+    int nWavesPerKernel = project.wavegen().numGroups / s.searchd.nGroupsPerWave;
+    s.searchd.nWavesPerEpoch = ((s.searchd.nWavesPerEpoch + nWavesPerKernel - 1) / nWavesPerKernel) * nWavesPerKernel;
 }
 
 Wavegen &Session::wavegen()
@@ -325,6 +328,7 @@ void Session::readConfig(const QString &filename)
         emit GAFitterSettingsChanged();
     if ( hasDaq )
         emit DAQDataChanged();
+    sanitiseSettings(q_settings);
 }
 
 QString Session::results(int idx, const QString &actor, const QString &action)
@@ -337,31 +341,35 @@ QString Session::results(int idx, const QString &actor, const QString &action)
 void Session::setRunData(RunData d)
 {
     q_settings.rund = d;
+    sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
 void Session::setWavegenData(WavegenData d)
 {
-    sanitiseWavegenData(&d);
     q_settings.searchd = d;
+    sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
 void Session::setStimulationData(StimulationData d)
 {
     q_settings.stimd = d;
+    sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
 void Session::setGAFitterSettings(GAFitterSettings d)
 {
     q_settings.gafs = d;
+    sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
 void Session::setDAQData(DAQData d)
 {
     q_settings.daqd = d;
+    sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 

@@ -143,7 +143,7 @@ protected:
     void load();
     void readConfig(const QString &filename);
 
-    void sanitiseWavegenData(WavegenData *d);
+    void sanitiseSettings(Settings &s);
 
     static QString results(int idx, const QString &actor, const QString &action);
 
