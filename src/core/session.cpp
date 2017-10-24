@@ -118,6 +118,10 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.decaySigma", &q_settings, &Settings::gafs, &GAFitterSettings::decaySigma);
     addAP(gafAP, "S.GAFitter.sigmaInitial", &q_settings, &Settings::gafs, &GAFitterSettings::sigmaInitial);
     addAP(gafAP, "S.GAFitter.sigmaHalflife", &q_settings, &Settings::gafs, &GAFitterSettings::sigmaHalflife);
+    addAP(gafAP, "S.GAFitter.constraints[#]", &q_settings, &Settings::gafs, &GAFitterSettings::constraints);
+    addAP(gafAP, "S.GAFitter.min[#]", &q_settings, &Settings::gafs, &GAFitterSettings::min);
+    addAP(gafAP, "S.GAFitter.max[#]", &q_settings, &Settings::gafs, &GAFitterSettings::max);
+    addAP(gafAP, "S.GAFitter.fixedValue[#]", &q_settings, &Settings::gafs, &GAFitterSettings::fixedValue);
 
     Project::addDaqAPs(daqAP, &q_settings.daqd);
 
@@ -144,6 +148,24 @@ void Session::sanitiseSettings(Settings &s)
         --s.searchd.nGroupsPerWave;
     int nWavesPerKernel = project.wavegen().numGroups / s.searchd.nGroupsPerWave;
     s.searchd.nWavesPerEpoch = ((s.searchd.nWavesPerEpoch + nWavesPerKernel - 1) / nWavesPerKernel) * nWavesPerKernel;
+
+    size_t n = project.model().adjustableParams.size();
+    if ( s.gafs.constraints.empty() ) {
+        s.gafs.constraints = std::vector<int>(n, 0);
+        s.gafs.min.resize(n);
+        s.gafs.max.resize(n);
+        s.gafs.fixedValue.resize(n);
+        for ( size_t i = 0; i < n; i++ ) {
+            s.gafs.min[i] = project.model().adjustableParams[i].min;
+            s.gafs.max[i] = project.model().adjustableParams[i].max;
+            s.gafs.fixedValue[i] = project.model().adjustableParams[i].initial;
+        }
+    } else if ( s.gafs.constraints.size() != n ) {
+        s.gafs.constraints.resize(n);
+        s.gafs.min.resize(n);
+        s.gafs.max.resize(n);
+        s.gafs.fixedValue.resize(n);
+    }
 }
 
 Wavegen &Session::wavegen()

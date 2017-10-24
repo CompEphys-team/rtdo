@@ -6,14 +6,67 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>304</width>
-    <height>423</height>
+    <width>700</width>
+    <height>469</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>GA Fitter Settings</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_5">
+   <item row="3" column="0" colspan="2">
+    <widget class="QGroupBox" name="decaySigma">
+     <property name="title">
+      <string>Annealing</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="1">
+       <widget class="QDoubleSpinBox" name="sigmaHalflife">
+        <property name="maximum">
+         <double>999999.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QDoubleSpinBox" name="sigmaInitial"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Initial factor</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Sigma halflife</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QSpinBox" name="maxEpochs">
+     <property name="maximum">
+      <number>999999</number>
+     </property>
+     <property name="singleStep">
+      <number>100</number>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Epochs</string>
+     </property>
+    </widget>
+   </item>
    <item row="2" column="0" colspan="2">
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
@@ -132,7 +185,7 @@
      </layout>
     </widget>
    </item>
-   <item row="4" column="0" colspan="2">
+   <item row="5" column="0" colspan="2">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -142,57 +195,40 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="1">
-    <widget class="QSpinBox" name="maxEpochs">
-     <property name="maximum">
-      <number>999999</number>
-     </property>
-     <property name="singleStep">
-      <number>100</number>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0" colspan="2">
-    <widget class="QGroupBox" name="decaySigma">
+   <item row="0" column="2" rowspan="4">
+    <widget class="QGroupBox" name="groupBox_3">
      <property name="title">
-      <string>Annealing</string>
+      <string>Parameter constraints</string>
      </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="1">
-       <widget class="QDoubleSpinBox" name="sigmaHalflife">
-        <property name="maximum">
-         <double>999999.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QDoubleSpinBox" name="sigmaInitial"/>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_8">
-        <property name="text">
-         <string>Initial factor</string>
-        </property>
-       </widget>
-      </item>
+     <layout class="QGridLayout" name="gridLayout_4">
       <item row="0" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Sigma halflife</string>
-        </property>
+       <widget class="QTableWidget" name="constraints">
+        <attribute name="horizontalHeaderStretchLastSection">
+         <bool>true</bool>
+        </attribute>
+        <column>
+         <property name="text">
+          <string>Constraint</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>value</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>min</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>max</string>
+         </property>
+        </column>
        </widget>
       </item>
      </layout>
-    </widget>
-   </item>
-   <item row="0" column="0">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>Epochs</string>
-     </property>
     </widget>
    </item>
   </layout>

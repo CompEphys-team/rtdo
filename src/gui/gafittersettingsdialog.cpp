@@ -20,6 +20,42 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
         ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
     }
 
+    const MetaModel &model = session.project.model();
+    ui->constraints->setRowCount(model.adjustableParams.size());
+    QStringList labels;
+    for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
+        labels << QString::fromStdString(model.adjustableParams.at(i).name);
+
+        QDoubleSpinBox *min = new QDoubleSpinBox(), *max = new QDoubleSpinBox(), *fixed = new QDoubleSpinBox();
+        min->setDecimals(6);
+        max->setDecimals(6);
+        fixed->setDecimals(6);
+        min->setRange(-1e9, 1e9);
+        max->setRange(-1e9, 1e9);
+        fixed->setRange(-1e9, 1e9);
+
+        QComboBox *cb = new QComboBox();
+        connect(cb, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [=](int idx){
+            min->setEnabled(idx==1);
+            max->setEnabled(idx==1);
+            fixed->setEnabled(idx==2);
+            if ( idx == 3 ) { // Reset
+                min->setValue(model.adjustableParams[i].min);
+                max->setValue(model.adjustableParams[i].max);
+                fixed->setValue(model.adjustableParams[i].initial);
+                cb->setCurrentIndex(0);
+            }
+        });
+        cb->addItems({"Original", "Range", "Fixed", "Reset"});
+
+        ui->constraints->setCellWidget(i, 0, cb);
+        ui->constraints->setCellWidget(i, 1, fixed);
+        ui->constraints->setCellWidget(i, 2, min);
+        ui->constraints->setCellWidget(i, 3, max);
+    }
+    ui->constraints->setVerticalHeaderLabels(labels);
+    ui->constraints->setColumnWidth(0, 75);
+
     importData();
 }
 
@@ -41,6 +77,13 @@ void GAFitterSettingsDialog::importData()
     ui->decaySigma->setChecked(p.decaySigma);
     ui->sigmaHalflife->setValue(p.sigmaHalflife);
     ui->sigmaInitial->setValue(p.sigmaInitial);
+
+    for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
+        static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(p.constraints[i]);
+        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->setValue(p.fixedValue[i]);
+        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->setValue(p.min[i]);
+        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(p.max[i]);
+    }
 }
 
 void GAFitterSettingsDialog::exportData()
@@ -56,6 +99,14 @@ void GAFitterSettingsDialog::exportData()
     p.decaySigma = ui->decaySigma->isChecked();
     p.sigmaHalflife = ui->sigmaHalflife->value();
     p.sigmaInitial = ui->sigmaInitial->value();
+
+    for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
+        p.constraints.push_back(static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex());
+        p.fixedValue.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->value());
+        p.min.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->value());
+        p.max.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->value());
+    }
+
     emit apply(p);
 }
 

@@ -198,9 +198,22 @@ bool GAFitter::finished()
 
 void GAFitter::populate()
 {
-    for ( AdjustableParam &p : lib.adjustableParams ) {
-        for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
-            p[i] = session.RNG.uniform<scalar>(p.min, p.max);
+    for ( size_t j = 0; j < lib.adjustableParams.size(); j++ ) {
+        if ( settings.constraints[j] == 2 ) { // Fixed value
+            for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ )
+                lib.adjustableParams[j][i] = settings.fixedValue[j];
+        } else {
+            scalar min, max;
+            if ( settings.constraints[j] == 0 ) {
+                min = lib.adjustableParams[j].min;
+                max = lib.adjustableParams[j].max;
+            } else {
+                min = settings.min[j];
+                max = settings.max[j];
+            }
+            for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
+                lib.adjustableParams[j][i] = session.RNG.uniform<scalar>(min, max);
+            }
         }
     }
     for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
@@ -211,38 +224,49 @@ void GAFitter::populate()
 
 quint32 GAFitter::findNextStim()
 {
-    quint32 nextStimIdx(stimIdx);
+    // Exclude stims with fixed parameter value (constraints==2)
+    // translate stimIdx to point to a contiguous array of the actually used stimulations
+    quint32 nStims = 0, previousStimIdx = 0;
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+        if ( settings.constraints[i] != 2 ) {
+            ++nStims;
+            if ( i < stimIdx )
+                ++previousStimIdx;
+        }
+    }
+
+    quint32 nextStimIdx(previousStimIdx);
     if ( settings.randomOrder == 3 ) { // Sequence-biased random
         // bias[i] == number of epochs since i was last used
         if ( epoch == 0 ) {
-            for ( size_t i = 0; i < stims.size(); i++ )
+            for ( size_t i = 0; i < nStims; i++ )
                 bias[i] = 1;
         } else {
-            bias[stimIdx] = 0;
-            for ( size_t i = 0; i < stims.size(); i++ )
+            bias[previousStimIdx] = 0;
+            for ( size_t i = 0; i < nStims; i++ )
                 ++bias[i];
         }
-        std::vector<int> cumBias(stims.size(), bias[0]);
-        for ( size_t i = 1; i < stims.size(); i++ ) // Cumulative sum
+        std::vector<int> cumBias(nStims, bias[0]);
+        for ( size_t i = 1; i < nStims; i++ ) // Cumulative sum
             cumBias[i] = cumBias[i-1] + bias[i];
         int choice = session.RNG.uniform<int>(0, cumBias.back()-1);
         for ( nextStimIdx = 0; choice >= cumBias[nextStimIdx]; nextStimIdx++ ) ;
     } else if ( settings.randomOrder == 2 ) { // Error-biased random
-        if ( epoch == stimIdx ) // Initial: Full error
-            bias[stimIdx] = p_err[0].err;
+        if ( epoch == previousStimIdx ) // Initial: Full error
+            bias[previousStimIdx] = p_err[0].err;
         else // Recursively decay bias according to settings
-            bias[stimIdx] = settings.orderBiasDecay * p_err[0].err + (1-settings.orderBiasDecay) * bias[stimIdx];
+            bias[previousStimIdx] = settings.orderBiasDecay * p_err[0].err + (1-settings.orderBiasDecay) * bias[previousStimIdx];
 
-        if ( epoch + 1 < bias.size() ) { // Initial round: Sequential order
-            nextStimIdx = stimIdx + 1;
+        if ( epoch + 1 < nStims ) { // Initial round: Sequential order
+            nextStimIdx = previousStimIdx + 1;
         } else if ( int(epoch) < settings.orderBiasStartEpoch ) { // Further unbiased rounds: Random order
-            nextStimIdx = session.RNG.uniform<quint32>(0, stims.size()-1);
+            nextStimIdx = session.RNG.uniform<quint32>(0, nStims-1);
         } else { // Biased rounds
             double sumBias = 0;
-            for ( double b : bias )
-                sumBias += b;
+            for ( size_t i = 0; i < nStims; i++ )
+                sumBias += bias[i];
             double choice = session.RNG.uniform(0.0, sumBias);
-            for ( size_t i = 0; i < bias.size(); i++ ) {
+            for ( size_t i = 0; i < nStims; i++ ) {
                 choice -= bias[i];
                 if ( choice < 0 ) {
                     nextStimIdx = i;
@@ -251,9 +275,15 @@ quint32 GAFitter::findNextStim()
             }
         }
     } else if ( settings.randomOrder == 1 )
-        nextStimIdx = session.RNG.uniform<quint32>(0, stims.size()-1);
+        nextStimIdx = session.RNG.uniform<quint32>(0, nStims-1);
     else
-        nextStimIdx = (stimIdx + 1) % stims.size();
+        nextStimIdx = (previousStimIdx + 1) % nStims;
+
+    // Translate nextStimIdx back to index into full stim array
+    for ( size_t i = 0; i <= nextStimIdx; i++ )
+        if ( settings.constraints[i] == 2 )
+            ++nextStimIdx;
+
     return nextStimIdx;
 }
 
@@ -305,6 +335,10 @@ void GAFitter::procreate()
 
         for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
 
+            // Ignore fixed-value parameters
+            if ( settings.constraints[iParam] == 2 )
+                continue;
+
             // Parameter-wise crossover, implemented with minimal RNG use
             if ( targetSource != otherSource ) {
                 if ( iParam % (8*sizeof sourceSelect) == 0 )
@@ -319,10 +353,17 @@ void GAFitter::procreate()
                 p[p_err[i].idx] = p.multiplicative ?
                             (p[p_err[source].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(0, sigma)) :
                             session.RNG.variate<scalar, std::normal_distribution>(p[p_err[source].idx], sigma);
-                if ( p[p_err[i].idx] < p.min )
-                    p[p_err[i].idx] = p.min;
-                if ( p[p_err[i].idx] > p.max )
-                    p[p_err[i].idx] = p.max;
+                if ( settings.constraints[iParam] == 0 ) {
+                    if ( p[p_err[i].idx] < p.min )
+                        p[p_err[i].idx] = p.min;
+                    if ( p[p_err[i].idx] > p.max )
+                        p[p_err[i].idx] = p.max;
+                } else {
+                    if ( p[p_err[i].idx] < settings.min[iParam] )
+                        p[p_err[i].idx] = settings.min[iParam];
+                    if ( p[p_err[i].idx] > settings.max[iParam] )
+                        p[p_err[i].idx] = settings.max[iParam];
+                }
             } else {
                 // Copy non-target params
                 p[p_err[i].idx] = p[p_err[source].idx];
@@ -334,11 +375,17 @@ void GAFitter::procreate()
     for ( size_t source = 0; source < settings.nReinit; source++ ) {
         size_t i = p_err.size() - source - 1;
         for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
+            if ( settings.constraints[iParam] == 2 )
+                continue;
             AdjustableParam &p = lib.adjustableParams[iParam];
-            if ( iParam == stimIdx )
-                p[p_err[i].idx] = session.RNG.uniform(p.min, p.max);
-            else
+            if ( iParam == stimIdx ) {
+                if ( settings.constraints[iParam] == 0 )
+                    p[p_err[i].idx] = session.RNG.uniform(p.min, p.max);
+                else
+                    p[p_err[i].idx] = session.RNG.uniform(settings.min[iParam], settings.max[iParam]);
+            } else {
                 p[p_err[i].idx] = p[p_err[source].idx];
+            }
         }
     }
 
@@ -352,6 +399,9 @@ void GAFitter::finalise()
 
     // Evaluate existing population on all stims
     for ( stimIdx = 0; stimIdx < stims.size() && !isAborted(); stimIdx++ ) {
+        if ( settings.constraints[stimIdx] == 2 )
+            continue;
+
         // Stimulate
         stimulate(stims.at(stimIdx));
 
@@ -378,7 +428,8 @@ void GAFitter::finalise()
     // For each parameter set, add up the ranking across all stims
     for ( const std::vector<errTupel> &ranked : f_err ) {
         for ( size_t i = 0; i < sumRank.size(); i++ ) {
-            sumRank[ranked[i].idx].err += i;
+            if ( settings.constraints[i] != 2 )
+                sumRank[ranked[i].idx].err += i;
         }
     }
     // Sort by sumRank, ascending

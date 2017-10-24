@@ -74,8 +74,8 @@ protected:
     void pushToQ(double t, double V, double I, double O);
 
     struct errTupel {
-        size_t idx;
-        scalar err;
+        size_t idx = 0;
+        scalar err = 0;
     };
     static bool errTupelSort(const errTupel &x, const errTupel &y);
     std::vector<errTupel> p_err; //!< Sortable errTupels used in procreate()
