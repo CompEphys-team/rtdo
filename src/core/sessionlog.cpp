@@ -50,6 +50,7 @@ SessionLog::Entry SessionLog::dequeue(bool makeActive)
             clearActive(false);
         m_hasActive = true;
         m_active = m_queue.dequeue();
+        m_active.timestamp = QDateTime::currentDateTime();
         emit dataChanged(index(m_data.size(), 0), index(m_data.size(), columnCount()));
         return m_active;
     } else {
@@ -82,6 +83,7 @@ void SessionLog::clearActive(bool success)
         return;
     int row = m_data.size();
     if ( success ) {
+        m_active.timestamp = QDateTime::currentDateTime();
         m_data.push_back(m_active);
         m_hasActive = false;
         emit dataChanged(index(row, 0), index(row, columnCount()));
