@@ -111,7 +111,7 @@ DAQDialog::~DAQDialog()
 
 void DAQDialog::importData()
 {
-    DAQData p = session.daqData(historicIndex);
+    DAQData p = historicIndex < 0 ? session.qDaqData() : session.daqData(historicIndex);
 
     ui->source->setCurrentIndex(p.simulate);
     ui->deviceNumber->setValue(p.devNo);
