@@ -626,8 +626,8 @@ void ParameterFitPlotter::plotSummary()
     for ( QCustomPlot *p : plots ) {
         p->clearGraphs();
         p->layer("target")->setVisible(false);
-        p->yAxis->setVisible(false);
-        p->axisRect()->axis(QCPAxis::atLeft, 1)->setVisible(true);
+        p->yAxis->setVisible(!ui->param->isChecked());
+        p->axisRect()->axis(QCPAxis::atLeft, 1)->setVisible(ui->param->isChecked());
     }
     summarising = true;
 
