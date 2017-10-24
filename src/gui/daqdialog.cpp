@@ -37,31 +37,31 @@ DAQDialog::DAQDialog(Session &s, int historicIndex, QWidget *parent) :
 
         connect(ui->deviceNumber, SIGNAL(valueChanged(QString)), this, SLOT(updateChannelCapabilities()));
         for ( int i = 0; i < 5; i++ ) {
-            connect(chanUI[i].channel, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int){
+            connect(chanUI[i].channel, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [=](int){
                 updateChannelCapabilities(i, false);
             });
         }
     }
 
-    connect(ui->calibrate, &QPushButton::clicked, [=](bool){ emit zeroV1(getFormData()); });
+    connect(ui->calibrate, &QPushButton::clicked, this, [=](bool){ emit zeroV1(getFormData()); });
     connect(this, SIGNAL(zeroV1(DAQData)), &calibrator, SLOT(zeroV1(DAQData)));
     connect(&calibrator, &Calibrator::zeroingV1, this, [=](bool done){
         if ( done ) ui->offset->setPrefix("");
         else        ui->offset->setPrefix("... ");
     });
-    connect(ui->calibrate_2, &QPushButton::clicked, [=](bool){ emit zeroIin(getFormData()); });
+    connect(ui->calibrate_2, &QPushButton::clicked, this, [=](bool){ emit zeroIin(getFormData()); });
     connect(this, SIGNAL(zeroIin(DAQData)), &calibrator, SLOT(zeroIin(DAQData)));
     connect(&calibrator, &Calibrator::zeroingIin, this, [=](bool done){
         if ( done ) ui->offset_2->setPrefix("");
         else        ui->offset_2->setPrefix("... ");
     });
-    connect(ui->calibrate_3, &QPushButton::clicked, [=](bool){ emit zeroVout(getFormData()); });
+    connect(ui->calibrate_3, &QPushButton::clicked, this, [=](bool){ emit zeroVout(getFormData()); });
     connect(this, SIGNAL(zeroVout(DAQData)), &calibrator, SLOT(zeroVout(DAQData)));
     connect(&calibrator, &Calibrator::zeroingVout, this, [=](bool done){
         if ( done ) ui->offset_3->setPrefix("");
         else        ui->offset_3->setPrefix("... ");
     });
-    connect(ui->calibrate_5, &QPushButton::clicked, [=](bool){ emit zeroV2(getFormData()); });
+    connect(ui->calibrate_5, &QPushButton::clicked, this, [=](bool){ emit zeroV2(getFormData()); });
     connect(this, SIGNAL(zeroV2(DAQData)), &calibrator, SLOT(zeroV2(DAQData)));
     connect(&calibrator, &Calibrator::zeroingV2, this, [=](bool done){
         if ( done ) ui->offset_5->setPrefix("");
@@ -76,7 +76,7 @@ DAQDialog::DAQDialog(Session &s, int historicIndex, QWidget *parent) :
 
     ui->timeout->setSpecialValueText("No timeout");
 
-    connect(ui->source, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int idx){
+    connect(ui->source, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [=](int idx){
         ui->sourceStack->setCurrentIndex(idx ? 1 : 0);
         if ( idx ) {
             const MetaModel &model = session.project.model(idx-1);
@@ -94,7 +94,7 @@ DAQDialog::DAQDialog(Session &s, int historicIndex, QWidget *parent) :
             ui->targetValues->setVerticalHeaderLabels(labels);
         }
     });
-    connect(ui->targetType, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int idx){
+    connect(ui->targetType, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [=](int idx){
         ui->targetValues->setEnabled(idx == 2); // Enable manual value entry on fixed values only
     });
 

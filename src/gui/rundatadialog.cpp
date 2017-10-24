@@ -12,7 +12,7 @@ RunDataDialog::RunDataDialog(Session &s, int historicIndex, QWidget *parent) :
     setAttribute(Qt::WA_DeleteOnClose);
 
     if ( historicIndex < 0 ) {
-        connect(&session, &Session::actionLogged, [=](QString actor, QString action, QString, int) {
+        connect(&session, &Session::actionLogged, this, [=](QString actor, QString action, QString, int) {
             if ( actor == "Config" && action == "cfg" )
                 importData();
         });
