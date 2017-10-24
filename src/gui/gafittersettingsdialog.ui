@@ -88,7 +88,12 @@
         </item>
         <item>
          <property name="text">
-          <string>Biased random</string>
+          <string>Error-biased random</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Sequence-biased random</string>
          </property>
         </item>
        </widget>

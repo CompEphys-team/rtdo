@@ -212,7 +212,22 @@ void GAFitter::populate()
 quint32 GAFitter::findNextStim()
 {
     quint32 nextStimIdx(stimIdx);
-    if ( settings.randomOrder == 2 ) {
+    if ( settings.randomOrder == 3 ) { // Sequence-biased random
+        // bias[i] == number of epochs since i was last used
+        if ( epoch == 0 ) {
+            for ( size_t i = 0; i < stims.size(); i++ )
+                bias[i] = 1;
+        } else {
+            bias[stimIdx] = 0;
+            for ( size_t i = 0; i < stims.size(); i++ )
+                ++bias[i];
+        }
+        std::vector<int> cumBias(stims.size(), bias[0]);
+        for ( size_t i = 1; i < stims.size(); i++ ) // Cumulative sum
+            cumBias[i] = cumBias[i-1] + bias[i];
+        int choice = session.RNG.uniform<int>(0, cumBias.back()-1);
+        for ( nextStimIdx = 0; choice >= cumBias[nextStimIdx]; nextStimIdx++ ) ;
+    } else if ( settings.randomOrder == 2 ) { // Error-biased random
         if ( epoch == stimIdx ) // Initial: Full error
             bias[stimIdx] = p_err[0].err;
         else // Recursively decay bias according to settings
