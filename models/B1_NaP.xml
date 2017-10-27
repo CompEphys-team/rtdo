@@ -1,0 +1,99 @@
+<model name="B1_NaP">
+	<precision digits="8" scalar="float"/>
+
+	<variable name="V" value="-53">
+		<tmp current="1" name="I_Na">$(m)*$(m)*$(m)*$(h)*$(gNa)*($(V)-$(ENa))</tmp>
+		<tmp current="1" name="I_NaP">$(r)*$(r)*$(r)*$(gNaP)*($(V)-$(ENa))</tmp>
+		<tmp current="1" name="I_K">($(nA)*$(nA)*$(gKA) + $(nB)*$(gKB)) * ($(V)-$(EK))</tmp>
+		<tmp current="1" name="I_A">$(a)*$(a)*$(a)*$(a)*$(b)*$(gA)*($(V)-$(EK))</tmp>
+		<tmp current="1" name="I_l">$(gl)*($(V)-$(El))</tmp>
+		<dYdt>(Isyn - I_Na - I_NaP - I_K - I_A - I_l)/$(C)</dYdt>
+		<range min="-150" max="100" />
+	</variable>
+	<variable name="m" value="0.0285961">
+		<tmp name="_inf">1.0/(1.0 + exp((24.0+$(V))/(-8.0)))</tmp>
+		<tmp name="tau_">0.3 + 8.0/(1 + exp(($(V)+40.0)/2.0))</tmp>
+		<dYdt>((_inf-$(m))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="h" value="0.9977761">
+		<tmp name="_inf">1.0/(1.0 + exp((29.0+$(V))/3.8))</tmp>
+		<tmp name="tau_">2.4 + 15.0/(1 + exp(($(V)+24.3)/3.8))</tmp>
+		<dYdt>((_inf-$(h))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="r" value="0.1">
+		<tmp name="exp_Vfrac">exp((-47.03-$(V))/20.55)</tmp>
+		<tmp name="_inf">1.0/(1.0 + exp_Vfrac)</tmp>
+		<tmp name="tau_">4.01 * exp_Vfrac * _inf</tmp>
+		<dYdt>((_inf-$(r))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="nA" value="0.0172525">
+		<tmp name="_inf">1.0/(1.0 + exp((14.9-$(V))/16.6))</tmp>
+		<tmp name="tau_">38.3 - 0.41*$(V)</tmp>
+		<dYdt>((_inf-$(nA))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="nB" value="0.0152976">
+		<tmp name="_inf">1.0/(1.0 + exp((8.6-$(V))/14.6))</tmp>
+		<tmp name="tau_">5.7 - 0.07*$(V)</tmp>
+		<dYdt>((_inf-$(nB))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="a" value="0.0560959">
+		<tmp name="_inf">1.0/(1.0 + exp((12.4+$(V))/(-14.1)))</tmp>
+		<tmp name="tau_">1.8 - 0.03*$(V)</tmp>
+		<dYdt>((_inf-$(a))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="b" value="0.0547893">
+		<tmp name="_inf">1.0/(1.0 + exp((71.0+$(V))/6.6))</tmp>
+		<tmp name="tau_">26.0 - 0.22*$(V)</tmp>
+		<dYdt>((_inf-$(b))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+
+	<adjustableParam name="gNa" value="7">
+		<range min="0.1" max="25"/>
+		<perturbation type="*" rate="0.03"/>
+	</adjustableParam>
+	<adjustableParam name="gNaP" value="0.1">
+		<range min="0" max="1"/>
+	</adjustableParam>
+	<adjustableParam name="ENa" value="35">
+		<range min="20" max="50"/>
+		<perturbation type="+" rate="1.14"/>
+	</adjustableParam>
+
+	<adjustableParam name="gKA" value="1.44">
+		<range min="0.01" max="10"/>
+		<perturbation type="*" rate="0.008"/>
+	</adjustableParam>
+	<adjustableParam name="gKB" value="2.88">
+		<range min="0.01" max="10"/>
+		<perturbation type="*" rate="0.002"/>
+	</adjustableParam>
+	<adjustableParam name="gA" value="12">
+		<range min="0.1" max="40"/>
+		<perturbation type="*" rate="0.016"/>
+	</adjustableParam>
+	<adjustableParam name="EK" value="-67">
+		<range min="-82" max="-52"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="gl" value="0.02">
+		<range min="0.0001" max="1"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="El" value="-20">
+		<range min="-50" max="10"/>
+		<perturbation type="+" rate="3.4"/>
+	</adjustableParam>
+
+	<adjustableParam name="C" value="3.5">
+		<range min="1" max="6"/>
+		<perturbation type="*" rate="0.029"/>
+	</adjustableParam>
+</model>
