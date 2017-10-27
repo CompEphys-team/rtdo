@@ -267,6 +267,9 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         ui->fits->setColumnWidth(1, 15);
         ui->fits->setColumnWidth(3, 40);
         ui->fits->setColumnWidth(5, 40);
+        ui->groups->setColumnWidth(1, 80);
+        ui->groups->horizontalHeader()->setFixedHeight(5);
+        ui->groups->verticalHeader()->setSectionsMovable(true);
         connect(&session->gaFitter(), SIGNAL(done()), this, SLOT(updateFits()));
         connect(ui->fits, SIGNAL(itemSelectionChanged()), this, SLOT(replot()));
         connect(ui->groups, SIGNAL(itemSelectionChanged()), this, SLOT(plotSummary()));
@@ -550,23 +553,22 @@ void ParameterFitPlotter::addGroup(std::vector<int> group, QString label)
     ui->groups->setCellWidget(row, 0, c);
     connect(c, SIGNAL(colorChanged(QColor)), this, SLOT(plotSummary()));
 
-    if ( label.isEmpty() ) {
-        label = "Fits ";
-            for ( int i = 0, last = group.size()-1; i <= last; i++ ) {
-                int beginning = group[i];
-                while ( i < last && group[i+1] == group[i] + 1 )
-                    ++i;
-                if ( group[i] > beginning )
-                    label.append(QString("%1-%2").arg(beginning).arg(group[i]));
-                else
-                    label.append(QString::number(group[i]));
-                if ( i < last )
-                    label.append("; ");
-            }
+    QString numbers;
+    for ( int i = 0, last = group.size()-1; i <= last; i++ ) {
+        int beginning = group[i];
+        while ( i < last && group[i+1] == group[i] + 1 )
+            ++i;
+        if ( group[i] > beginning )
+            numbers.append(QString("%1-%2").arg(beginning).arg(group[i]));
+        else
+            numbers.append(QString::number(group[i]));
+        if ( i < last )
+            numbers.append("; ");
     }
+    ui->groups->setItem(row, 1, new QTableWidgetItem(numbers));
 
     QTableWidgetItem *item = new QTableWidgetItem(label);
-    ui->groups->setItem(row, 1, item);
+    ui->groups->setItem(row, 2, item);
 }
 
 void ParameterFitPlotter::removeGroup()
@@ -587,11 +589,12 @@ void ParameterFitPlotter::on_saveGroups_clicked()
     if ( file.isEmpty() )
         return;
     std::ofstream os(file.toStdString());
-    for ( size_t i = 0; i < groups.size(); i++ ) {
+    for ( size_t vi = 0; vi < groups.size(); vi++ ) {
+        int i = ui->groups->verticalHeader()->logicalIndex(vi);
         os << groups[i].size() << ':';
         for ( int f : groups[i] )
             os << f << ',';
-        os << ui->groups->item(i, 1)->text().toStdString() << std::endl;
+        os << ui->groups->item(i, 2)->text().toStdString() << std::endl;
     }
 }
 
