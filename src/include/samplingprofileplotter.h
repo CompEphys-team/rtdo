@@ -44,6 +44,9 @@ protected slots:
     void hideUnselected();
     void showAll();
 
+private slots:
+    void on_pdf_clicked();
+
 private:
     Ui::SamplingProfilePlotter *ui;
     Session &session;

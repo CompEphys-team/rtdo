@@ -228,3 +228,13 @@ void WavegenFitnessMapper::on_readMinFitness_clicked()
 {
     ui->minFitness->setValue(colorMap->dataRange().lower);
 }
+
+void WavegenFitnessMapper::on_pdf_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( file.isEmpty() )
+        return;
+    if ( !file.endsWith(".pdf") )
+        file.append(".pdf");
+    ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), ui->combo->currentText());
+}

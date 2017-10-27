@@ -27,6 +27,59 @@
        <string>Graph</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
+       <item row="0" column="1">
+        <widget class="QComboBox" name="y">
+         <property name="currentIndex">
+          <number>1</number>
+         </property>
+         <property name="sizeAdjustPolicy">
+          <enum>QComboBox::AdjustToContents</enum>
+         </property>
+         <item>
+          <property name="text">
+           <string>Stimulation</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Accuracy</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Gradient</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Fitness</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Score</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Score (visible items)</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="0" column="4">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
        <item row="0" column="3">
         <widget class="QComboBox" name="x">
          <property name="currentIndex">
@@ -74,19 +127,6 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>y:</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0" colspan="7">
-        <widget class="QCustomPlot" name="plot" native="true"/>
-       </item>
        <item row="0" column="2">
         <widget class="QLabel" name="label_2">
          <property name="text">
@@ -97,57 +137,14 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="4">
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>y:</string>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
          </property>
-        </spacer>
-       </item>
-       <item row="0" column="1">
-        <widget class="QComboBox" name="y">
-         <property name="currentIndex">
-          <number>1</number>
-         </property>
-         <property name="sizeAdjustPolicy">
-          <enum>QComboBox::AdjustToContents</enum>
-         </property>
-         <item>
-          <property name="text">
-           <string>Stimulation</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Accuracy</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Gradient</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Fitness</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Score</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Score (visible items)</string>
-          </property>
-         </item>
         </widget>
        </item>
        <item row="0" column="6">
@@ -156,6 +153,16 @@
           <string>Show all</string>
          </property>
         </widget>
+       </item>
+       <item row="0" column="7">
+        <widget class="QPushButton" name="pdf">
+         <property name="text">
+          <string>PDF...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="8">
+        <widget class="QCustomPlot" name="plot" native="true"/>
        </item>
       </layout>
      </widget>

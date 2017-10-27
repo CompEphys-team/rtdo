@@ -179,6 +179,9 @@ void SamplingProfilePlotter::replot(bool discardSelection, bool showAll)
     if ( updating || ui->profile->currentIndex() < 0 || ui->x->currentIndex() < 0 || ui->y->currentIndex() < 0 )
         return;
 
+    ui->plot->xAxis->setLabel(ui->x->currentText());
+    ui->plot->yAxis->setLabel(ui->y->currentText());
+
     const SamplingProfiler::Profile &prof = session.samplingProfiler().profiles().at(ui->profile->currentIndex());
     std::vector<MAPElite> elites = prof.src.elites();
     std::vector<MAPEDimension> dim;
@@ -313,4 +316,14 @@ void SamplingProfilePlotter::updateTable()
     }
     ui->table->setSortingEnabled(true);
     ui->table->scrollToTop();
+}
+
+void SamplingProfilePlotter::on_pdf_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( file.isEmpty() )
+        return;
+    if ( !file.endsWith(".pdf") )
+        file.append(".pdf");
+    ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), ui->profile->currentText());
 }
