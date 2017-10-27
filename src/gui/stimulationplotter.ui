@@ -22,34 +22,77 @@
      <widget class="QCustomPlot" name="overlay" native="true"/>
      <widget class="QWidget" name="widget_2" native="true">
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="0" column="1">
+       <item row="2" column="1" colspan="3">
+        <widget class="QScrollArea" name="scrollArea">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <widget class="QCustomPlot" name="panel">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>207</width>
+            <height>358</height>
+           </rect>
+          </property>
+         </widget>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QCheckBox" name="titles">
+         <property name="text">
+          <string>Titles</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
         <widget class="QLabel" name="label">
          <property name="text">
           <string>columns</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="0" colspan="2">
-        <widget class="QTableWidget" name="table">
-         <property name="verticalScrollMode">
-          <enum>QAbstractItemView::ScrollPerPixel</enum>
+       <item row="0" column="3">
+        <widget class="QPushButton" name="pdf">
+         <property name="text">
+          <string>PDF...</string>
          </property>
-         <attribute name="horizontalHeaderVisible">
-          <bool>false</bool>
-         </attribute>
-         <attribute name="verticalHeaderDefaultSectionSize">
-          <number>300</number>
-         </attribute>
         </widget>
        </item>
-       <item row="0" column="0">
-        <widget class="QSpinBox" name="columns">
+       <item row="1" column="3">
+        <widget class="QCheckBox" name="tails">
+         <property name="text">
+          <string>Tails</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QSlider" name="slider">
          <property name="minimum">
           <number>1</number>
          </property>
+         <property name="maximum">
+          <number>1000</number>
+         </property>
+         <property name="singleStep">
+          <number>10</number>
+         </property>
+         <property name="pageStep">
+          <number>100</number>
+         </property>
+         <property name="value">
+          <number>500</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="invertedAppearance">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
-       <item row="1" column="0">
+       <item row="1" column="0" colspan="2">
         <widget class="QCheckBox" name="scale">
          <property name="text">
           <string>Scale</string>
@@ -59,10 +102,10 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <widget class="QCheckBox" name="titles">
-         <property name="text">
-          <string>Titles</string>
+       <item row="0" column="0" colspan="2">
+        <widget class="QSpinBox" name="columns">
+         <property name="minimum">
+          <number>1</number>
          </property>
         </widget>
        </item>

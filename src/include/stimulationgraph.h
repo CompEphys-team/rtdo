@@ -8,7 +8,7 @@ class StimulationGraph: public QCPGraph
 {
     Q_OBJECT
 public:
-    StimulationGraph(QCPAxis *keyAxis, QCPAxis *valueAxis, Stimulation stim);
+    StimulationGraph(QCPAxis *keyAxis, QCPAxis *valueAxis, Stimulation stim, bool omitTail = false);
 
     virtual ~StimulationGraph();
 

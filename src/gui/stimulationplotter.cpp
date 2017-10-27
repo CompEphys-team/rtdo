@@ -1,22 +1,21 @@
 #include "stimulationplotter.h"
 #include "ui_stimulationplotter.h"
 #include "colorbutton.h"
-#include "stimulationgraph.h"
+#include <QTimer>
 
 StimulationPlotter::StimulationPlotter(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::StimulationPlotter),
-    resizing(false),
     rebuilding(false),
     enslaved(false)
 {
     ui->setupUi(this);
-    ui->table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    connect(ui->table->verticalHeader(), SIGNAL(sectionResized(int,int,int)), this, SLOT(resizeTableRows(int,int,int)));
-    connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(setColumnCount(int)));
+    connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(replot()));
     connect(ui->sources, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
     connect(ui->nStims, SIGNAL(valueChanged(int)), this, SLOT(replot()));
     connect(ui->offset, SIGNAL(valueChanged(int)), this, SLOT(replot()));
+    connect(ui->tails, SIGNAL(toggled(bool)), this, SLOT(replot()));
+    connect(ui->slider, SIGNAL(valueChanged(int)), this, SLOT(resizePanel()));
 
     connect(ui->legend, &QTableWidget::cellChanged, [=](int row, int col){ // Show/hide overlay graphs by legend column 0 checkstate
         if ( !rebuilding && col == 0 ) {
@@ -35,28 +34,25 @@ StimulationPlotter::StimulationPlotter(QWidget *parent) :
     });
 
     connect(ui->scale, &QCheckBox::toggled, [=](bool on) {
-        for ( QCustomPlot *p : plots ) {
-            p->xAxis->setTicks(on);
-            p->yAxis->setTicks(on);
-            p->xAxis->setTickLabels(on);
-            p->yAxis->setTickLabels(on);
-            p->replot();
+        for ( QCPGraph *g : graphs ) {
+            g->keyAxis()->setTicks(on);
+            g->keyAxis()->setTickLabels(on);
+            g->keyAxis()->setLabel(on ? "Time (ms)" : "");
+            g->valueAxis()->setTicks(on);
+            g->valueAxis()->setTickLabels(on);
+            g->valueAxis()->setLabel(on ? "Voltage (mV)" : "");
         }
+        ui->panel->replot();
     });
     connect(ui->titles, &QCheckBox::toggled, [=](bool on) {
-        int i = 0;
-        for ( QCustomPlot *p : plots ) {
-            if ( on ) {
-                QCPTextElement *title = new QCPTextElement(p, ui->legend->verticalHeaderItem(i++)->text());
-                p->plotLayout()->insertRow(0);
-                p->plotLayout()->addElement(0, 0, title);
-            } else {
-                p->plotLayout()->removeAt(p->plotLayout()->rowColToIndex(0,0));
-                p->plotLayout()->simplify();
-            }
-            p->replot();
-        }
+        QCPLayoutGrid *grid = ui->panel->plotLayout();
+        for ( int row = 0; row < grid->rowCount(); row += 2 )
+            for ( int col = 0; col < grid->columnCount() && (row+2)/2*(col+1) <= int(graphs.size()); col++ )
+                grid->element(row, col)->setVisible(on);
+        ui->panel->replot();
     });
+
+    ui->panel->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
 
     ui->overlay->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->overlay->xAxis->setLabel("Time (ms)");
@@ -77,40 +73,19 @@ StimulationPlotter::StimulationPlotter(Session &session, QWidget *parent) :
 StimulationPlotter::~StimulationPlotter()
 {
     delete ui;
-    for ( QCustomPlot *p : plots )
-        delete p;
 }
 
-void StimulationPlotter::resizeTableRows(int, int, int size)
+void StimulationPlotter::resizeEvent(QResizeEvent *event)
 {
-    if ( resizing )
-        return;
-    resizing = true;
-    for ( int i = 0; i < ui->table->rowCount(); i++ )
-        ui->table->verticalHeader()->resizeSection(i, size);
-    resizing = false;
+    QWidget::resizeEvent(event);
+    resizePanel();
 }
 
-void StimulationPlotter::setColumnCount(int n)
+void StimulationPlotter::resizePanel()
 {
-    ui->table->clear();
-    ui->table->setRowCount(std::ceil(double(plots.size())/n));
-    ui->table->setColumnCount(n);
-    int h = ui->table->rowHeight(0);
-    size_t i = 0;
-    for ( int row = 0; row < ui->table->rowCount(); row++ ) {
-        ui->table->setRowHeight(row, h);
-        for ( int col = 0; col < ui->table->columnCount(); col++ ) {
-            QWidget *widget = new QWidget();
-            QGridLayout *layout = new QGridLayout(widget);
-            layout->addWidget(plots[i]);
-            layout->setMargin(0);
-            widget->setLayout(layout);
-            ui->table->setCellWidget(row, col, widget);
-            if ( ++i >= plots.size() )
-                row = col = plots.size();
-        }
-    }
+    double height = std::max(1, ui->slider->height() * ui->slider->value() / ui->slider->maximum());
+    int nRows = (graphs.size() + ui->columns->value() - 1) / ui->columns->value();
+    ui->panel->setFixedHeight(height * nRows);
 }
 
 void StimulationPlotter::init(Session *session)
@@ -118,6 +93,7 @@ void StimulationPlotter::init(Session *session)
     this->session = session;
     connect(&session->wavesets(), SIGNAL(addedSet()), this, SLOT(updateSources()));
     updateSources();
+    QTimer::singleShot(10, this, &StimulationPlotter::resizePanel);
 }
 
 void StimulationPlotter::setSource(WaveSource src)
@@ -189,6 +165,7 @@ void StimulationPlotter::replot()
     ui->offset->setSingleStep(ui->nStims->value());
     size_t lower = ui->offset->value();
     size_t upper = std::min(lower + ui->nStims->value(), stims.size());
+    ui->columns->setMaximum(upper-lower);
 
     // Legend
     for ( size_t i = colors.size(); i < upper-lower; i++ ) {
@@ -219,44 +196,56 @@ void StimulationPlotter::replot()
     ui->legend->setVerticalHeaderLabels(labels);
 
     // Plots
-    for ( QCustomPlot *p : plots )
-        delete p;
-    plots.resize(upper-lower);
+    graphs.resize(upper-lower);
     ui->overlay->clearGraphs();
     ui->overlay->clearItems();
 
-    for ( size_t i = lower, row = 0; i < upper; i++, row++ ) {
-        new StimulationGraph(ui->overlay->xAxis, ui->overlay->yAxis, stims[i]); // ui->overlay takes ownership
+    ui->panel->clearPlottables();
+    ui->panel->plotLayout()->clear();
+
+    bool hasTitle = ui->titles->isChecked();
+    bool hasScale = ui->scale->isChecked();
+
+    for ( size_t i = 0; i < upper-lower; i++ ) {
+        new StimulationGraph(ui->overlay->xAxis, ui->overlay->yAxis, stims[i+lower]); // ui->overlay takes ownership
         if ( !single ) {
-            plots[row] = new QCustomPlot();
-            plots[row]->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
-            if ( ui->titles->isChecked() ) {
-                QCPTextElement *title = new QCPTextElement(plots[row], labels.at(row));
-                plots[row]->plotLayout()->insertRow(0);
-                plots[row]->plotLayout()->addElement(0, 0, title);
-            }
-            bool scale = ui->scale->isChecked();
-            plots[row]->xAxis->setTicks(scale);
-            plots[row]->yAxis->setTicks(scale);
-            plots[row]->xAxis->setTickLabels(scale);
-            plots[row]->yAxis->setTickLabels(scale);
-            new StimulationGraph(plots[row]->xAxis, plots[row]->yAxis, stims[i]);
-            duration = std::max(duration, double(stims[i].duration));
+            QCPAxisRect *axes = new QCPAxisRect(ui->panel);
+            QCPAxis *xAxis = axes->axis(QCPAxis::atBottom);
+            QCPAxis *yAxis = axes->axis(QCPAxis::atLeft);
+            xAxis->setTicks(hasScale);
+            xAxis->setTickLabels(hasScale);
+            xAxis->setLabel(hasScale ? "Time (ms)" : "");
+            xAxis->setLayer("axes");
+            xAxis->grid()->setLayer("grid");
+            yAxis->setTicks(hasScale);
+            yAxis->setTickLabels(hasScale);
+            yAxis->setLabel(hasScale ? "Voltage (mV)" : "");
+            yAxis->setLayer("axes");
+            yAxis->grid()->setLayer("grid");
+
+            int row = 2 * int(i / ui->columns->value());
+            int col = i % ui->columns->value();
+            QCPTextElement *title = new QCPTextElement(ui->panel, labels.at(i));
+            title->setVisible(hasTitle);
+            ui->panel->plotLayout()->addElement(row, col, title);
+            ui->panel->plotLayout()->addElement(row+1, col, axes); // add axes to panel
+
+            graphs[i] = new StimulationGraph(xAxis, yAxis, stims[i+lower], !ui->tails->isChecked()); // add new stimGraph to axes
+
+            duration = std::max(duration, double(stims[i+lower].duration));
         }
-        updateColor(row, false);
+        updateColor(i, false);
     }
     ui->overlay->xAxis->setRange(0, duration);
     ui->overlay->yAxis->setRange(minV, maxV);
     ui->overlay->replot();
 
-    for ( QCustomPlot *p : plots ) {
-        p->xAxis->setRange(0, duration);
-        p->yAxis->setRange(minV, maxV);
-        p->replot();
+    for ( QCPGraph *g : graphs ) {
+        g->keyAxis()->setRange(0, duration);
+        g->valueAxis()->setRange(minV, maxV);
     }
-
-    ui->columns->setMaximum(stims.size());
-    setColumnCount(ui->columns->value());
+    ui->panel->replot();
+    resizePanel();
 
     rebuilding = false;
 }
@@ -272,9 +261,20 @@ void StimulationPlotter::updateColor(size_t idx, bool replot)
     if ( replot )
         ui->overlay->replot();
     if ( !single ) {
-        plots[idx]->graph()->setPen(pen);
-        plots[idx]->graph()->setBrush(brush);
+        graphs[idx]->setPen(pen);
+        graphs[idx]->setBrush(brush);
         if ( replot )
-            plots[idx]->replot();
+            ui->panel->replot();
     }
+}
+
+void StimulationPlotter::on_pdf_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( file.isEmpty() )
+        return;
+    if ( !file.endsWith(".pdf") )
+        file.append(".pdf");
+
+    ui->panel->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), ui->sources->currentText());
 }

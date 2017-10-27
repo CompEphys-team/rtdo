@@ -4,6 +4,7 @@
 #include <QWidget>
 #include "session.h"
 #include "qcustomplot.h"
+#include "stimulationgraph.h"
 
 namespace Ui {
 class StimulationPlotter;
@@ -27,19 +28,21 @@ protected:
     void updateColor(size_t idx, bool replot);
 
 protected slots:
-    void setColumnCount(int n);
-    void resizeTableRows(int, int, int size);
+    void resizePanel();
     void updateSources();
     void replot();
+    void resizeEvent(QResizeEvent *event);
+
+private slots:
+    void on_pdf_clicked();
 
 private:
     Ui::StimulationPlotter *ui;
     Session *session;
 
-    std::vector<QCustomPlot*> plots;
+    std::vector<StimulationGraph*> graphs;
     std::vector<QColor> colors;
 
-    bool resizing;
     bool rebuilding;
 
     bool enslaved;
