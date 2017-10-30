@@ -34,12 +34,17 @@ protected:
                     QVector<double> &meanPlusSEM, //!< Return: The SEM added onto the mean. Must be of appropriate size.
                     QVector<double> &median, //!< Return: the median value per epoch. Must be of appropriate size.
                     QVector<double> &max); //!< Return: The maximum value per epoch. Must be of appropriate size.
+
+protected slots:
+    void resizeEvent(QResizeEvent *event);
+    void resizePanel();
+    void setGridAndAxVisibility();
+
 private slots:
-    void setColumnCount(int n);
-    void resizeTableRows(int, int, int size);
     void updateFits();
 
     void replot();
+    void plotIndividual();
     void progress(quint32);
     void addFinal(const GAFitter::Output &);
     void xRangeChanged(QCPRange range);
@@ -54,13 +59,15 @@ private slots:
 
     void on_loadGroups_clicked();
 
+    void on_pdf_clicked();
+
 private:
     Ui::ParameterFitPlotter *ui;
     Session *session;
 
-    std::vector<QCustomPlot*> plots;
+    std::vector<QCPAxisRect*> axRects;
 
-    bool resizing, enslaved, summarising;
+    bool enslaved, summarising;
 
     std::vector<QColor> clipboard;
 
