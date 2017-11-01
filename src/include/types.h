@@ -84,7 +84,7 @@ struct CacheData
     int timeout = 0;
 };
 
-enum class FilterMethod { MovingAverage, SavitzkyGolay23, SavitzkyGolay45 };
+enum class FilterMethod { MovingAverage, SavitzkyGolay23, SavitzkyGolay45, SavitzkyGolayEdge3, SavitzkyGolayEdge5 };
 std::string toString(const FilterMethod &m);
 std::ostream& operator<<(std::ostream& os, const FilterMethod &m);
 std::istream& operator>>(std::istream& is, FilterMethod &m);

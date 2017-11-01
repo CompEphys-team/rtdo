@@ -214,6 +214,8 @@ std::string toString(const FilterMethod &m)
     case FilterMethod::MovingAverage:   return "MovingAverage";
     case FilterMethod::SavitzkyGolay23: return "SavitzkyGolay23";
     case FilterMethod::SavitzkyGolay45: return "SavitzkyGolay45";
+    case FilterMethod::SavitzkyGolayEdge3: return "SavitzkyGolayEdge3";
+    case FilterMethod::SavitzkyGolayEdge5: return "SavitzkyGolayEdge5";
     }
     return "InvalidMethod";
 }

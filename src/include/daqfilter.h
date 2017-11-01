@@ -2,6 +2,7 @@
 #define DAQFILTER_H
 
 #include "daq.h"
+#include "filter.h"
 
 class DAQFilter : public DAQ
 {
@@ -19,8 +20,9 @@ public:
 protected:
     DAQ *daq;
     bool initial;
-    std::vector<double> kernel, currentBuffer, voltageBuffer, V2Buffer;
+    std::vector<double> currentBuffer, voltageBuffer, V2Buffer;
     int bufferIndex;
+    Filter filter;
 };
 
 #endif // DAQFILTER_H

@@ -75,7 +75,8 @@ SOURCES += \
     src/gui/responseplotter.cpp \
     src/gui/daqdialog.cpp \
     src/drivers/daqfilter.cpp \
-    src/core/calibrator.cpp
+    src/core/calibrator.cpp \
+    src/core/filter.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -134,7 +135,8 @@ HEADERS  += \
     src/include/responseplotter.h \
     src/include/daqdialog.h \
     src/include/daqfilter.h \
-    src/include/calibrator.h
+    src/include/calibrator.h \
+    src/include/filter.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
