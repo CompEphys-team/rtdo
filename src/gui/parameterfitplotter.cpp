@@ -840,9 +840,8 @@ void ParameterFitPlotter::plotSummary()
 
             // Max
             QCPGraph *maxGraph = ui->panel->addGraph(xAxis, yAxis3);
-            col.setAlphaF(0.6*opacity);
+            col.setAlphaF(opacity);
             QPen pen(col);
-            pen.setStyle(Qt::DotLine);
             maxGraph->setPen(pen);
             maxGraph->setData(keys, max, true);
             maxGraph->setLayer("max");
