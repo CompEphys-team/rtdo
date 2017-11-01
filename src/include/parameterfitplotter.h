@@ -39,6 +39,8 @@ protected slots:
     void resizeEvent(QResizeEvent *event);
     void resizePanel();
     void setGridAndAxVisibility();
+    void clearPlotLayout();
+    void buildPlotLayout();
 
 private slots:
     void updateFits();

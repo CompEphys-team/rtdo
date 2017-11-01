@@ -13,7 +13,8 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
 {
     ui->setupUi(this);
     connect(ui->slider, SIGNAL(valueChanged(int)), this, SLOT(resizePanel()));
-    connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(replot()));
+    connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(clearPlotLayout()));
+    connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(buildPlotLayout()));
     connect(ui->legend, SIGNAL(stateChanged(int)), this, SLOT(replot()));
     connect(ui->param, &QCheckBox::stateChanged, [=](int state) {
         bool on = state == Qt::Checked;
@@ -265,6 +266,11 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
 
         ar->setRangeDragAxes(ar->axes());
         ar->setRangeZoomAxes(ar->axes());
+
+        for ( QCPAxis *ax : ar->axes() ) {
+            ax->setLayer("axes");
+            ax->grid()->setLayer("grid");
+        }
     }
     ui->panel->legend->setVisible(true);
     ui->panel->setAutoAddPlottableToLegend(false);
@@ -277,6 +283,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
     // Enslave to GAFitterWidget
     if ( enslave ) {
         ui->sidebar->setVisible(false);
+        ui->legend->setVisible(false);
         connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
         connect(&session->gaFitter(), &GAFitter::done, this, [=](){
             const GAFitter::Output &o = session->gaFitter().results().back();
@@ -349,10 +356,8 @@ void ParameterFitPlotter::updateFits()
     }
 }
 
-void ParameterFitPlotter::replot()
+void ParameterFitPlotter::clearPlotLayout()
 {
-    ui->panel->clearItems();
-    ui->panel->clearGraphs();
     QCPLayoutGrid *graphLayout = qobject_cast<QCPLayoutGrid*>(ui->panel->plotLayout()->element(0, 0));
     if ( graphLayout ) {
         for ( QCPAxisRect *ar : axRects ) {
@@ -367,6 +372,15 @@ void ParameterFitPlotter::replot()
             qobject_cast<QCPLayoutGrid*>(ui->panel->plotLayout()->element(0, 1))->take(ui->panel->legend);
     }
     ui->panel->plotLayout()->clear();
+}
+
+void ParameterFitPlotter::replot()
+{
+    ui->panel->clearItems();
+    ui->panel->clearGraphs();
+
+    clearPlotLayout();
+
     ui->panel->plotLayout()->addElement(new QCPAxisRect(ui->panel)); // Prevent debug output from within QCP on adding items
 
     if ( summarising )
@@ -374,8 +388,15 @@ void ParameterFitPlotter::replot()
     else
         plotIndividual();
 
+    buildPlotLayout();
+}
+
+void ParameterFitPlotter::buildPlotLayout()
+{
     ui->panel->plotLayout()->clear();
-    graphLayout = new QCPLayoutGrid();
+    resizePanel();
+
+    QCPLayoutGrid *graphLayout = new QCPLayoutGrid();
     ui->panel->plotLayout()->addElement(0, 0, graphLayout);
 
     ui->panel->legend->setVisible(ui->legend->isChecked());
@@ -394,16 +415,11 @@ void ParameterFitPlotter::replot()
     for ( int row = 0; row < std::ceil(double(axRects.size())/n); row++ ) {
         for ( int col = 0; col < n; col++ ) {
             graphLayout->addElement(row, col, axRects[i]);
-            for ( QCPAxis *ax : axRects[i]->axes() ) {
-                ax->setLayer("axes");
-                ax->grid()->setLayer("grid");
-            }
             if ( ++i >= axRects.size() )
                 row = col = axRects.size(); // break
         }
     }
     setGridAndAxVisibility();
-    resizePanel();
     ui->panel->replot();
 }
 
