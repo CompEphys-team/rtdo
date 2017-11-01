@@ -5,6 +5,7 @@
 #include "session.h"
 #include "qcustomplot.h"
 #include "colorbutton.h"
+#include "filter.h"
 
 namespace Ui {
 class ParameterFitPlotter;
@@ -33,7 +34,8 @@ protected:
                     QVector<double> &mean, //!< Return: the mean value per epoch. Must be of appropriate size.
                     QVector<double> &meanPlusSEM, //!< Return: The SEM added onto the mean. Must be of appropriate size.
                     QVector<double> &median, //!< Return: the median value per epoch. Must be of appropriate size.
-                    QVector<double> &max); //!< Return: The maximum value per epoch. Must be of appropriate size.
+                    QVector<double> &max, //!< Return: The maximum value per epoch. Must be of appropriate size.
+                    Filter *filter = nullptr);
 
 protected slots:
     void resizeEvent(QResizeEvent *event);

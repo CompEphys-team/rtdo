@@ -16,6 +16,10 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(clearPlotLayout()));
     connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(buildPlotLayout()));
     connect(ui->legend, SIGNAL(stateChanged(int)), this, SLOT(replot()));
+    connect(ui->filter, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int){
+        if ( summarising )
+            replot();
+    });
     connect(ui->param, &QCheckBox::stateChanged, [=](int state) {
         bool on = state == Qt::Checked;
         for ( QCPAxisRect *ar : axRects )
@@ -742,6 +746,10 @@ void ParameterFitPlotter::plotSummary()
     for ( size_t i = 0; i < targets.size(); i++ )
         targets[i] = session->project.model().adjustableParams[i].initial;
 
+    Filter *filter = nullptr;
+    if ( ui->filter->value() > 1 )
+        filter = new Filter(FilterMethod::SavitzkyGolayEdge5, 2*int(ui->filter->value()/2) + 1);
+
     for ( int row : rows ) {
         quint32 epochs = 0;
         bool hasTarget = true;
@@ -760,19 +768,19 @@ void ParameterFitPlotter::plotSummary()
                 getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
                     // Parameter error relative to target (%) :
                     return 100 * std::fabs(1 - fit.params[ep][i] / (hasTarget ? fit.targets[i] : targets[i]));
-                }, mean, sem, median, max);
+                }, mean, sem, median, max, filter);
             } else {
                 getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
                     // Parameter error relative to range (%) :
                     return 100 * std::fabs((fit.params[ep][i] - (hasTarget ? fit.targets[i] : targets[i])) / (p.max - p.min));
-                }, mean, sem, median, max);
+                }, mean, sem, median, max, filter);
             }
             getSummary(groups[row], [=](const GAFitter::Output &fit, int ep) -> double {
                 for ( ; ep >= 0; ep-- )
                     if ( fit.stimIdx[ep] == i )
                         return fit.error[ep];
                 return 0;
-            }, errMean, errSEM, errMedian, errMax);
+            }, errMean, errSEM, errMedian, errMax, filter);
             QColor col(getGroupColorBtn(row)->color);
             double opacity = ui->opacity->value()/100.;
             col.setAlphaF(opacity);
@@ -865,7 +873,8 @@ void ParameterFitPlotter::getSummary(std::vector<int> fits,
                                      QVector<double> &mean,
                                      QVector<double> &meanPlusSEM,
                                      QVector<double> &median,
-                                     QVector<double> &max)
+                                     QVector<double> &max,
+                                     Filter *filter)
 {
     for ( int i = 0; i < mean.size(); i++ ) {
         std::vector<double> values;
@@ -901,6 +910,13 @@ void ParameterFitPlotter::getSummary(std::vector<int> fits,
             median[i] = (values[values.size()/2] + values[values.size()/2 - 1]) / 2;
 
         max[i] = values.back();
+    }
+
+    if ( filter ) {
+        mean = filter->filter(mean);
+        meanPlusSEM = filter->filter(meanPlusSEM);
+        median = filter->filter(median);
+        max = filter->filter(max);
     }
 }
 

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>781</width>
+    <width>825</width>
     <height>520</height>
    </rect>
   </property>
@@ -93,7 +93,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>362</width>
+            <width>406</width>
             <height>453</height>
            </rect>
           </property>
@@ -317,7 +317,7 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0" colspan="4">
+        <item row="3" column="0" colspan="4">
          <widget class="QTableWidget" name="groups">
           <property name="selectionBehavior">
            <enum>QAbstractItemView::SelectRows</enum>
@@ -400,6 +400,25 @@
          <widget class="QPushButton" name="loadGroups">
           <property name="text">
            <string>Load...</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0" colspan="4">
+         <widget class="QSpinBox" name="filter">
+          <property name="suffix">
+           <string> epochs</string>
+          </property>
+          <property name="prefix">
+           <string>Filter over </string>
+          </property>
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>999</number>
+          </property>
+          <property name="singleStep">
+           <number>10</number>
           </property>
          </widget>
         </item>
