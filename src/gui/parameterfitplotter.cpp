@@ -216,6 +216,11 @@ void ParameterFitPlotter::resizePanel()
     double height = std::max(1, ui->slider->height() * ui->slider->value() / ui->slider->maximum());
     int nRows = (axRects.size() + ui->columns->value() - 1) / ui->columns->value();
     ui->panel->setFixedHeight(height * nRows);
+
+    int legendWidth = 0;
+    if ( ui->panel->plotLayout()->columnCount() > 1 )
+        legendWidth = ui->panel->plotLayout()->element(0, 1)->outerRect().width();
+    ui->panel->setFixedWidth(ui->scrollArea->childrenRect().width() + legendWidth);
 }
 
 void ParameterFitPlotter::setGridAndAxVisibility()
@@ -398,7 +403,6 @@ void ParameterFitPlotter::replot()
 void ParameterFitPlotter::buildPlotLayout()
 {
     ui->panel->plotLayout()->clear();
-    resizePanel();
 
     QCPLayoutGrid *graphLayout = new QCPLayoutGrid();
     ui->panel->plotLayout()->addElement(0, 0, graphLayout);
@@ -424,7 +428,8 @@ void ParameterFitPlotter::buildPlotLayout()
         }
     }
     setGridAndAxVisibility();
-    ui->panel->replot();
+    ui->panel->replot(QCustomPlot::rpQueuedRefresh);
+    resizePanel();
 }
 
 void ParameterFitPlotter::plotIndividual()
