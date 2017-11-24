@@ -43,6 +43,8 @@ public:
     inline QString actorName() const { return "GAFitter"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
 
+    std::vector<Stimulation> sanitiseDeck(std::vector<Stimulation> stimulations, const RunData &rd);
+
 public slots:
     void run(WaveSource src);
     void finish();

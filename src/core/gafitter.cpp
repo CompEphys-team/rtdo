@@ -51,6 +51,26 @@ void GAFitter::run(WaveSource src)
     session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src));
 }
 
+std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, const RunData &rd)
+{
+    // Integrate settling into all stimulations
+    double settleDuration = rd.settleDuration;
+    double dt = session.project.dt();
+    for ( Stimulation &stim : stimulations ) {
+        // Expand observation window to complete time steps
+        stim.tObsBegin = floor((stim.tObsBegin+settleDuration) / dt) * dt;
+        stim.tObsEnd = ceil((stim.tObsEnd+settleDuration) / dt) * dt;
+        // Shorten stim
+        stim.duration = stim.tObsEnd;
+        for ( Stimulation::Step &step : stim ) {
+            step.t += settleDuration;
+        }
+        if ( stim.begin()->ramp )
+            stim.insert(stim.begin(), Stimulation::Step {(scalar)settleDuration, stim.baseV, false});
+    }
+    return stimulations;
+}
+
 bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 {
     if ( action != this->action )
@@ -73,20 +93,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     qT = 0;
 
     // Prepare
-    stims = output.deck.stimulations();
-    // Integrate settling into all stimulations
-    double settleDuration = session.runData().settleDuration;
-    for ( Stimulation &stim : stims ) {
-        stim.duration += settleDuration;
-        // Expand observation window to complete time steps (for tObsEnd this happens for free)
-        stim.tObsBegin = floor((stim.tObsBegin+settleDuration) / session.project.dt()) * session.project.dt();
-        stim.tObsEnd += settleDuration;
-        for ( Stimulation::Step &step : stim ) {
-            step.t += settleDuration;
-        }
-        if ( stim.begin()->ramp )
-            stim.insert(stim.begin(), Stimulation::Step {(scalar)settleDuration, stim.baseV, false});
-    }
+    stims = sanitiseDeck(output.deck.stimulations(), session.runData());
     stimIdx = 0;
 
     daq = new DAQFilter(session);
