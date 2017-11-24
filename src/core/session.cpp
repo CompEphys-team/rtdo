@@ -365,6 +365,7 @@ void Session::setRunData(RunData d)
     q_settings.rund = d;
     sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    emit runDataChanged();
 }
 
 void Session::setWavegenData(WavegenData d)
@@ -372,6 +373,7 @@ void Session::setWavegenData(WavegenData d)
     q_settings.searchd = d;
     sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    emit wavegenDataChanged();
 }
 
 void Session::setStimulationData(StimulationData d)
@@ -379,6 +381,7 @@ void Session::setStimulationData(StimulationData d)
     q_settings.stimd = d;
     sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    emit stimulationDataChanged();
 }
 
 void Session::setGAFitterSettings(GAFitterSettings d)
@@ -386,6 +389,7 @@ void Session::setGAFitterSettings(GAFitterSettings d)
     q_settings.gafs = d;
     sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    emit GAFitterSettingsChanged();
 }
 
 void Session::setDAQData(DAQData d)
@@ -393,6 +397,7 @@ void Session::setDAQData(DAQData d)
     q_settings.daqd = d;
     sanitiseSettings(q_settings);
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    emit DAQDataChanged();
 }
 
 
