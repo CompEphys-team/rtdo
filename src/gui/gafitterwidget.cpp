@@ -39,6 +39,8 @@ GAFitterWidget::~GAFitterWidget()
 
 void GAFitterWidget::updateDecks()
 {
+    ui->VCCreate->setEnabled(!session.wavesets().decks().empty());
+    ui->start->setEnabled(!session.wavesets().decks().empty());
     for ( size_t i = ui->decks->count(); i < session.wavesets().decks().size(); i++ )
         ui->decks->addItem(WaveSource(session, WaveSource::Deck, i).prettyName());
 }
@@ -89,6 +91,8 @@ void GAFitterWidget::on_VCBrowse_clicked()
 
 void GAFitterWidget::on_VCChannels_clicked()
 {
+    if ( !QFile(ui->VCRecord->text()).exists() )
+        return;
     CannedDAQ daq(session);
     const WaveDeck &deck = session.wavesets().decks().at(ui->decks->currentIndex());
     std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations(), session.qRunData());
