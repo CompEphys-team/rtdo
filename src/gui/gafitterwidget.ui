@@ -14,6 +14,22 @@
    <string>GA fitting</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="2" column="1">
+    <widget class="QLabel" name="label_epoch">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QComboBox" name="decks"/>
+   </item>
    <item row="0" column="2">
     <widget class="QPushButton" name="start">
      <property name="text">
@@ -21,7 +37,14 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0" colspan="5">
+   <item row="0" column="3">
+    <widget class="QPushButton" name="finish">
+     <property name="text">
+      <string>Finish</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="5">
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -30,20 +53,7 @@
      <widget class="ResponsePlotter" name="response_plotter" native="true"/>
     </widget>
    </item>
-   <item row="0" column="1">
-    <widget class="QSpinBox" name="repeats">
-     <property name="suffix">
-      <string> repeats</string>
-     </property>
-     <property name="minimum">
-      <number>1</number>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0">
-    <widget class="QComboBox" name="decks"/>
-   </item>
-   <item row="1" column="0">
+   <item row="2" column="0">
     <widget class="QLabel" name="label_queued">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -63,24 +73,54 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="1">
-    <widget class="QLabel" name="label_epoch">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
+   <item row="0" column="1">
+    <widget class="QSpinBox" name="repeats">
+     <property name="suffix">
+      <string> repeats</string>
      </property>
-     <property name="text">
-      <string/>
+     <property name="minimum">
+      <number>1</number>
      </property>
     </widget>
    </item>
-   <item row="0" column="3">
-    <widget class="QPushButton" name="finish">
-     <property name="text">
-      <string>Finish</string>
+   <item row="1" column="0" colspan="5">
+    <widget class="QWidget" name="records" native="true">
+     <property name="enabled">
+      <bool>false</bool>
      </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="2">
+       <widget class="QToolButton" name="VCBrowse">
+        <property name="text">
+         <string>...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="VCRecord">
+        <property name="toolTip">
+         <string>Voltage clamp record file...</string>
+        </property>
+        <property name="placeholderText">
+         <string>Voltage clamp record file...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QPushButton" name="VCChannels">
+        <property name="text">
+         <string>Channels...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QPushButton" name="VCCreate">
+        <property name="text">
+         <string>Create VC stim file</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>

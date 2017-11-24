@@ -28,6 +28,8 @@ private slots:
 
     void on_abort_clicked();
 
+    void on_VCCreate_clicked();
+
 private:
     Ui::GAFitterWidget *ui;
     Session &session;
