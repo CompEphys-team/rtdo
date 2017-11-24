@@ -5,7 +5,7 @@
 
 const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 102;
+const quint32 GAFitter::version = 103;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -24,8 +24,9 @@ GAFitter::~GAFitter()
 {
 }
 
-GAFitter::Output::Output(WaveSource deck) :
-    deck(deck)
+GAFitter::Output::Output(WaveSource deck, QString VCRecord) :
+    deck(deck),
+    VCRecord(VCRecord)
 {}
 
 GAFitter::Output::Output(const GAFitter &f, Result r) :
@@ -44,11 +45,11 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
         targets[i] = f.lib.adjustableParams.at(i).initial;
 }
 
-void GAFitter::run(WaveSource src)
+void GAFitter::run(WaveSource src, QString VCRecord)
 {
     if ( src.type != WaveSource::Deck )
         throw std::runtime_error("Wave source for GAFitter must be a deck.");
-    session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src));
+    session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord));
 }
 
 std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, const RunData &rd)
@@ -84,6 +85,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     output = Output(*this, *res);
     output.deck = static_cast<Output*>(res)->deck;
+    output.VCRecord = static_cast<Output*>(res)->VCRecord;
     delete res;
 
     emit starting();
@@ -98,10 +100,12 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     daq = new DAQFilter(session);
 
-    if ( session.daqData().simulate ) {
+    if ( session.daqData().simulate > 0 ) {
         for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
             output.targets[i] = daq->getAdjustableParam(i);
         }
+    } else if ( session.daqData().simulate < 0 ) {
+        daq->getCannedDAQ()->setRecord(stims, output.VCRecord);
     }
 
     // Fit
@@ -151,6 +155,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
             os << p;
         for ( const scalar &e : out.finalError )
             os << e;
+        os << out.VCRecord;
     }
 
     delete daq;
@@ -194,6 +199,8 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
         for ( scalar &e : out.finalError )
             is >> e;
     }
+    if ( ver >= 103 )
+        is >> out.VCRecord;
     m_results.push_back(std::move(out));
 }
 

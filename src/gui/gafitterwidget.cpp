@@ -14,7 +14,6 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     ui->params_plotter->init(&session, true);
 
     connect(&session.wavesets(), SIGNAL(addedDeck()), this, SLOT(updateDecks()));
-    connect(this, SIGNAL(startFitting(WaveSource)), &session.gaFitter(), SLOT(run(WaveSource)));
     connect(&session.gaFitter(), SIGNAL(done()), this, SLOT(done()));
     connect(&session.gaFitter(), SIGNAL(progress(quint32)), this, SLOT(progress(quint32)));
 
@@ -22,6 +21,11 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     session.gaFitter().qV = &ui->response_plotter->qV;
     session.gaFitter().qI = &ui->response_plotter->qI;
     session.gaFitter().qO = &ui->response_plotter->qO;
+
+    connect(&session, &Session::DAQDataChanged, this, [=](){
+        ui->records->setEnabled(this->session.qDaqData().simulate < 0);
+    });
+    ui->records->setEnabled(this->session.qDaqData().simulate < 0);
 
     updateDecks();
 
@@ -66,13 +70,31 @@ void GAFitterWidget::on_start_clicked()
     ui->label_queued->setText(QString("%1 queued").arg(nQueued));
     WaveSource deck(session, WaveSource::Deck, currentDeck);
     for ( int i = 0; i < ui->repeats->value(); i++ )
-        emit startFitting(deck);
+        session.gaFitter().run(deck, ui->VCRecord->text());
 }
 
 void GAFitterWidget::on_abort_clicked()
 {
     nQueued = 1;
     session.abort();
+}
+
+void GAFitterWidget::on_VCBrowse_clicked()
+{
+    QString file = QFileDialog::getOpenFileName(this, "Select voltage clamp recording", ui->VCRecord->text(), "*.atf");
+    if ( file.isEmpty() )
+        return;
+    ui->VCRecord->setText(file);
+}
+
+void GAFitterWidget::on_VCChannels_clicked()
+{
+    CannedDAQ daq(session);
+    const WaveDeck &deck = session.wavesets().decks().at(ui->decks->currentIndex());
+    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations(), session.qRunData());
+    daq.setRecord(stims, ui->VCRecord->text(), false, true);
+    CannedChannelAssociationDialog *dlg = new CannedChannelAssociationDialog(session, &daq, this);
+    dlg->open();
 }
 
 void GAFitterWidget::on_VCCreate_clicked()

@@ -5,6 +5,7 @@
 #include "experimentlibrary.h"
 #include "wavesubsets.h"
 #include "queue.h"
+#include "daqfilter.h"
 
 class GAFitter : public SessionWorker
 {
@@ -22,7 +23,7 @@ public:
 
     struct Output : public Result
     {
-        Output(WaveSource deck);
+        Output(WaveSource deck, QString VCRecord);
         Output(const GAFitter &fitter, Result r = Result());
 
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]
@@ -31,6 +32,8 @@ public:
         std::vector<scalar> targets; //!< Simulator's parameters
         quint32 epochs;
         WaveSource deck;
+
+        QString VCRecord;
 
         bool final;
         std::vector<scalar> finalParams; //!< Final best-performing model across all stimulations
@@ -46,7 +49,7 @@ public:
     std::vector<Stimulation> sanitiseDeck(std::vector<Stimulation> stimulations, const RunData &rd);
 
 public slots:
-    void run(WaveSource src);
+    void run(WaveSource src, QString VCRecord);
     void finish();
 
 signals:
@@ -58,7 +61,7 @@ protected:
     friend class Session;
     void load(const QString &action, const QString &args, QFile &results, Result r);
 
-    DAQ *daq;
+    DAQFilter *daq;
 
     bool doFinish;
 

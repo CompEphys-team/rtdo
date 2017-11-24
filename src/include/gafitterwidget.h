@@ -16,9 +16,6 @@ public:
     explicit GAFitterWidget(Session &session, QWidget *parent = 0);
     ~GAFitterWidget();
 
-signals:
-    void startFitting(WaveSource deck);
-
 private slots:
     void updateDecks();
     void progress(quint32 idx);
@@ -27,6 +24,10 @@ private slots:
     void on_start_clicked();
 
     void on_abort_clicked();
+
+    void on_VCBrowse_clicked();
+
+    void on_VCChannels_clicked();
 
     void on_VCCreate_clicked();
 

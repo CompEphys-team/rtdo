@@ -2,6 +2,7 @@
 #include "comedidaq.h"
 #include "daqcache.h"
 #include "session.h"
+#include "canneddaq.h"
 
 DAQFilter::DAQFilter(Session &s) :
     DAQ(s),
@@ -10,7 +11,9 @@ DAQFilter::DAQFilter(Session &s) :
     V2Buffer(p.filter.width),
     filter(p.filter.method, p.filter.width)
 {
-    if ( p.cache.active )
+    if ( p.simulate == -1 )
+        daq = new CannedDAQ(session);
+    else if ( p.cache.active )
         daq = new DAQCache(session);
     else if ( p.simulate )
         daq = s.project.experiment().createSimulator(p.simulate, s, true);
@@ -85,4 +88,12 @@ void DAQFilter::next()
 void DAQFilter::reset()
 {
     daq->reset();
+}
+
+CannedDAQ *DAQFilter::getCannedDAQ()
+{
+    if ( p.simulate < 0 )
+        return static_cast<CannedDAQ*>(daq);
+    else
+        return nullptr;
 }

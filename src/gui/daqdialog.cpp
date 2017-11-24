@@ -77,9 +77,10 @@ DAQDialog::DAQDialog(Session &s, int historicIndex, QWidget *parent) :
     ui->timeout->setSpecialValueText("No timeout");
 
     connect(ui->source, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [=](int idx){
-        ui->sourceStack->setCurrentIndex(idx ? 1 : 0);
-        if ( idx ) {
-            const MetaModel &model = session.project.model(idx-1);
+        if ( idx < 0 )  return;
+        ui->sourceStack->setCurrentIndex(std::min(idx, 2));
+        if ( idx > 1 ) {
+            const MetaModel &model = session.project.model(idx-2);
             ui->targetValues->clear();
             ui->targetValues->setRowCount(model.adjustableParams.size());
             QStringList labels;
@@ -113,7 +114,8 @@ void DAQDialog::importData()
 {
     DAQData p = historicIndex < 0 ? session.qDaqData() : session.daqData(historicIndex);
 
-    ui->source->setCurrentIndex(p.simulate);
+    ui->source->setCurrentIndex(-1); // Force dependent sourceStack update
+    ui->source->setCurrentIndex(p.simulate + 1);
     ui->deviceNumber->setValue(p.devNo);
     ui->throttle->setValue(p.throttle);
 
@@ -133,13 +135,15 @@ void DAQDialog::importData()
     ui->noiseTau->setValue(p.simd.noiseTau);
 
     ui->targetType->setCurrentIndex(p.simd.paramSet);
-    if ( p.simd.paramSet == 2 ) {
-        for ( size_t i = 0; i < p.simd.paramValues.size(); i++ )
-            qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->setValue(p.simd.paramValues[i]);
-    } else {
-        const MetaModel &model = session.project.model(p.simulate-1);
-        for ( size_t i = 0; i < model.adjustableParams.size(); i++ )
-            qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->setValue(model.adjustableParams[i].initial);
+    if ( p.simulate > 0 ) {
+        if ( p.simd.paramSet == 2 ) {
+            for ( size_t i = 0; i < p.simd.paramValues.size(); i++ )
+                qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->setValue(p.simd.paramValues[i]);
+        } else {
+            const MetaModel &model = session.project.model(p.simulate-1);
+            for ( size_t i = 0; i < model.adjustableParams.size(); i++ )
+                qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->setValue(model.adjustableParams[i].initial);
+        }
     }
 
     ui->cache->setChecked(p.cache.active);
@@ -157,7 +161,7 @@ DAQData DAQDialog::getFormData()
 {
     DAQData p;
 
-    p.simulate = ui->source->currentIndex();
+    p.simulate = ui->source->currentIndex() - 1;
     p.devNo = ui->deviceNumber->value();
     p.throttle = ui->throttle->value();
 

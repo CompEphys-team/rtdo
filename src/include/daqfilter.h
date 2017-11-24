@@ -3,6 +3,7 @@
 
 #include "daq.h"
 #include "filter.h"
+#include "canneddaq.h"
 
 class DAQFilter : public DAQ
 {
@@ -16,6 +17,8 @@ public:
     void run(Stimulation s);
     void next();
     void reset();
+
+    CannedDAQ *getCannedDAQ();
 
 protected:
     DAQ *daq;
