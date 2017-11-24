@@ -76,7 +76,9 @@ SOURCES += \
     src/gui/daqdialog.cpp \
     src/drivers/daqfilter.cpp \
     src/core/calibrator.cpp \
-    src/core/filter.cpp
+    src/core/filter.cpp \
+    src/gui/cannedchannelassociationdialog.cpp \
+    src/drivers/canneddaq.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -136,7 +138,9 @@ HEADERS  += \
     src/include/daqdialog.h \
     src/include/daqfilter.h \
     src/include/calibrator.h \
-    src/include/filter.h
+    src/include/filter.h \
+    src/include/cannedchannelassociationdialog.h \
+    src/include/canneddaq.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -158,7 +162,8 @@ FORMS    += \
     src/gui/stimulationdatadialog.ui \
     src/gui/wavegenprogressplotter.ui \
     src/gui/responseplotter.ui \
-    src/gui/daqdialog.ui
+    src/gui/daqdialog.ui \
+    src/gui/cannedchannelassociationdialog.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 
