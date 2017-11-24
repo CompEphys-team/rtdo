@@ -232,6 +232,7 @@ void Wavegen::search_save(QFile &file)
     if ( !openSaveStream(file, os, search_magic, search_version) )
         return;
     Archive &arch = m_archives.back();
+    os << quint32(arch.param);
     os << quint32(arch.precision);
     os << quint32(arch.iterations);
     os << quint32(arch.elites.size());
@@ -248,9 +249,13 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
     if ( version < 100 || version > search_version )
         throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
 
-    quint32 precision, iterations, archSize;
+    quint32 param, precision, iterations, archSize;
+    if ( version >= 102 )
+        is >> param;
+    else
+        param = args.toInt();
     is >> precision >> iterations >> archSize;
-    m_archives.push_back(Archive(args.toInt(), searchd, r)); // Note: this->searchd is correctly set up assuming sequential result loading
+    m_archives.push_back(Archive(param, searchd, r)); // Note: this->searchd is correctly set up assuming sequential result loading
     Archive &arch = m_archives.back();
     arch.precision = precision;
     arch.iterations = iterations;
