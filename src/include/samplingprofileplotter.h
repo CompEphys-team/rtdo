@@ -33,11 +33,11 @@ protected:
                  const std::vector<MAPEDimension> &dim,
                  const ScoreStruct &sstr);
     ScoreStruct getScoreStruct(const SamplingProfiler::Profile &prof,
-                               const std::vector<MAPElite> &elites);
-
-    void updateTable();
+                               const std::vector<MAPElite> &elites,
+                               bool scoreF, bool scoreG, bool scoreA);
 
 protected slots:
+    void updateTable();
     void updateProfiles();
     void setProfile(int);
     void replot(bool discardSelection = false, bool showAll = false);
