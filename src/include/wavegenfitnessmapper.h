@@ -43,8 +43,6 @@ private:
     std::unique_ptr<WavegenSelection> selection;
     QCPColorMap *colorMap;
 
-    bool savedSelection;
-
     bool select(bool flattenToPlot);
 
     void initPlot();

@@ -7,8 +7,7 @@
 WavegenFitnessMapper::WavegenFitnessMapper(Session &session, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::WavegenFitnessMapper),
-    session(session),
-    savedSelection(false)
+    session(session)
 {
     ui->setupUi(this);
     initPlot();
@@ -68,17 +67,11 @@ void WavegenFitnessMapper::updateCombo()
         if ( i == ui->combo->count() || !(ui->combo->itemData(i).value<WaveSource>() == src) )
             ui->combo->insertItem(i, src.prettyName(), QVariant::fromValue(src));
     }
-
-    if ( savedSelection ) {
-        savedSelection = false;
-        ui->combo->setCurrentIndex(ui->combo->count() - 1);
-        return;
-    }
 }
 
 void WavegenFitnessMapper::updateDimensions()
 {
-    if ( savedSelection || ui->combo->count() == 0 || ui->combo->currentIndex() < 0 )
+    if ( ui->combo->count() == 0 || ui->combo->currentIndex() < 0 )
         return;
 
     WaveSource src = ui->combo->currentData().value<WaveSource>();
@@ -219,7 +212,6 @@ void WavegenFitnessMapper::on_btnAdd_clicked()
 {
     if ( !select(false) )
         return;
-    savedSelection = true;
     WavesetCreator &creator = session.wavesets();
     session.queue(creator.actorName(), creator.actionSelect, "", selection.release(), false);
 }
