@@ -34,10 +34,12 @@ int ComediDAQ::throttledFor(const Stimulation &)
         return diff;
 }
 
-void ComediDAQ::run(Stimulation s)
+void ComediDAQ::run(Stimulation s, double settleDuration)
 {
     if ( running )
         return;
+
+    extendStimulation(s, settleDuration);
 
     currentStim = s;
     samplesRemaining = nSamples();

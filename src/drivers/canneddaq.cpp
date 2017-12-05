@@ -12,7 +12,9 @@ double CannedDAQ::Vscale = 1;
 double CannedDAQ::V2scale = 1;
 
 CannedDAQ::CannedDAQ(Session &s) :
-    DAQ(s)
+    DAQ(s),
+    currentRecord(0),
+    settleDuration(0)
 {
 
 }
@@ -69,6 +71,7 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
 
         if ( nRead != nTotal ) {
             std::cerr << "Warning: Data size mismatched. Expected " << nTotal << " samples, have " << nRead << std::endl;
+            std::cerr << "Expected buffer: " << records[recStart].nBuffer << " lines; likely buffer in file: " << int(nRead/64) << std::endl;
             for ( int r = recStart; r < recStart+nSweeps; r++ )
                 records[r].nTotal = nRead;
         }
@@ -114,17 +117,19 @@ int CannedDAQ::prepareRecords(std::vector<Stimulation> stims, bool useQueuedSett
     return nTotal;
 }
 
-void CannedDAQ::run(Stimulation s)
+void CannedDAQ::run(Stimulation s, double settleDuration)
 {
     currentStim = s;
-    for ( size_t i = 0; i < records.size(); i++ ) {
-        if ( s == records[i].stim ) {
-            currentRecord = i;
+    this->settleDuration = settleDuration;
+    for ( currentRecord = 0; currentRecord < records.size(); currentRecord++ ) {
+        if ( s == records[currentRecord].stim ) {
             reset();
             return;
         }
     }
-    std::cerr << "Warning: No record found for stimulation: " << s << std::endl;
+    std::cerr << "Warning: No record found for stimulation: " << s << ". Defaulting to record 0." << std::endl;
+    currentRecord = 0;
+    reset();
 }
 
 void CannedDAQ::next()
@@ -153,9 +158,11 @@ void CannedDAQ::next()
 
 void CannedDAQ::reset()
 {
-    if ( p.filter.active ) {
-        recordIndex = records[currentRecord].nBuffer - int(p.filter.width/2);
-    } else {
-        recordIndex = records[currentRecord].nBuffer;
-    }
+    recordIndex = records[currentRecord].nBuffer;
+    if ( p.filter.active )
+        recordIndex -= int(p.filter.width/2);
+    if ( settleDuration > 0 )
+        recordIndex -= settleDuration / samplingDt();
+
+    samplesRemaining = records[currentRecord].nTotal - recordIndex;
 }

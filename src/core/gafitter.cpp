@@ -52,22 +52,15 @@ void GAFitter::run(WaveSource src, QString VCRecord)
     session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord));
 }
 
-std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, const RunData &rd)
+std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations)
 {
-    // Integrate settling into all stimulations
-    double settleDuration = rd.settleDuration;
     double dt = session.project.dt();
     for ( Stimulation &stim : stimulations ) {
         // Expand observation window to complete time steps
-        stim.tObsBegin = floor((stim.tObsBegin+settleDuration) / dt) * dt;
-        stim.tObsEnd = ceil((stim.tObsEnd+settleDuration) / dt) * dt;
+        stim.tObsBegin = floor(stim.tObsBegin / dt) * dt;
+        stim.tObsEnd = ceil(stim.tObsEnd / dt) * dt;
         // Shorten stim
         stim.duration = stim.tObsEnd;
-        for ( Stimulation::Step &step : stim ) {
-            step.t += settleDuration;
-        }
-        if ( stim.begin()->ramp )
-            stim.insert(stim.begin(), Stimulation::Step {(scalar)settleDuration, stim.baseV, false});
     }
     return stimulations;
 }
@@ -95,7 +88,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     qT = 0;
 
     // Prepare
-    stims = sanitiseDeck(output.deck.stimulations(), session.runData());
+    stims = sanitiseDeck(output.deck.stimulations());
     stimIdx = 0;
 
     daq = new DAQFilter(session);
@@ -463,6 +456,9 @@ void GAFitter::finalise()
 
 void GAFitter::stimulate(const Stimulation &I)
 {
+    double settle = session.runData().settleDuration;
+    double duration = I.duration + session.runData().settleDuration;
+
     // Set up library
     lib.t = 0.;
     lib.iT = 0;
@@ -471,19 +467,19 @@ void GAFitter::stimulate(const Stimulation &I)
     // Set up DAQ
     daq->VC = true;
     daq->reset();
-    daq->run(I);
+    daq->run(I, settle);
 
     // Stimulate both
-    while ( lib.t < I.duration ) {
+    while ( lib.t < duration ) {
         daq->next();
         lib.Imem = daq->current;
-        lib.Vmem = getCommandVoltage(I, lib.t);
+        lib.Vmem = getCommandVoltage(I, lib.t - settle);
         pushToQ(qT + lib.t, daq->voltage, daq->current, lib.Vmem);
         lib.getErr = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd);
         lib.step();
     }
 
-    qT += I.duration;
+    qT += duration;
     daq->reset();
 }
 

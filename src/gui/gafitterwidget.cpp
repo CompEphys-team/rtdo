@@ -95,7 +95,7 @@ void GAFitterWidget::on_VCChannels_clicked()
         return;
     CannedDAQ daq(session);
     const WaveDeck &deck = session.wavesets().decks().at(ui->decks->currentIndex());
-    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations(), session.qRunData());
+    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations());
     daq.setRecord(stims, ui->VCRecord->text(), false, true);
     CannedChannelAssociationDialog *dlg = new CannedChannelAssociationDialog(session, &daq, this);
     dlg->open();
@@ -113,7 +113,7 @@ void GAFitterWidget::on_VCCreate_clicked()
     if ( !of.good() )
         return;
     WaveDeck deck = session.wavesets().decks().at(ui->decks->currentIndex());
-    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations(), session.qRunData());
+    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations());
 
     int nTotal, nSamples, nBuffer;
     double dt = session.project.dt();
@@ -127,7 +127,8 @@ void GAFitterWidget::on_VCCreate_clicked()
     of << "2\t" << (stims.size()+1) << "\r\n";
     of << "\"Comment=RTDO VC stimulations. Project " << QDir(session.project.dir()).dirName() << " (" << session.project.model().name()
        << "), Session " << session.name() << ", " << WaveSource(session, WaveSource::Deck, ui->decks->currentIndex()).prettyName() << "\"\r\n";
-    of << "\"Use=Use as stimulation file with sampling interval " << (1000*dt) << " us and " << nTotal << " total samples.\"\r\n";
+    of << "\"Use=Use as stimulation file with sampling interval " << (1000*dt) << " us (" << (1/dt) << " kHz) and "
+       << nTotal << " total samples (" << (nTotal*dt/1000) << " s including buffers).\"\r\n";
     of << "\"Time (s)\"";
         for ( const AdjustableParam &p : session.project.model().adjustableParams )
             of << "\t\"" << p.name << " (mV)\"";

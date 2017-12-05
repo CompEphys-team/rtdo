@@ -35,10 +35,11 @@ int DAQCache::throttledFor(const Stimulation &s)
     return diff;
 }
 
-void DAQCache::run(Stimulation s)
+void DAQCache::run(Stimulation s, double settleDuration)
 {
     if ( running )
         return;
+    extendStimulation(s, settleDuration);
     currentStim = s;
     for ( iterC = cache.begin(); iterC != cache.end(); ++iterC ) {
         if ( iterC->stim == currentStim && iterC->VC == VC )

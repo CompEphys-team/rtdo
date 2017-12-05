@@ -24,3 +24,13 @@ double DAQ::samplingDt() const
             ? session.project.dt() / p.filter.samplesPerDt
             : session.project.dt();
 }
+
+void DAQ::extendStimulation(Stimulation &stim, scalar settleDuration)
+{
+    stim.duration += settleDuration;
+    for ( Stimulation::Step &step : stim ) {
+        step.t += settleDuration;
+    }
+    if ( stim.begin()->ramp )
+        stim.insert(stim.begin(), Stimulation::Step {settleDuration, stim.baseV, false});
+}

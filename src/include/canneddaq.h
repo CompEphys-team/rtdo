@@ -14,7 +14,7 @@ public:
     double getAdjustableParam(size_t) { return 0; }
     void setAdjustableParam(size_t, double) {}
     int throttledFor(const Stimulation &) { return 0; }
-    void run(Stimulation s);
+    void run(Stimulation s, double settleDuration = 0);
     void next();
     void reset();
 
@@ -39,6 +39,7 @@ protected:
     std::vector<Record> records;
     size_t currentRecord;
     int recordIndex;
+    double settleDuration;
 };
 
 #endif // CANNEDDAQ_H

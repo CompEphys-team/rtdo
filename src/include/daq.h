@@ -18,7 +18,7 @@ public:
     virtual int throttledFor(const Stimulation &s) = 0;
 
     /// Run a stimulation/acquisition epoch, starting immediately
-    virtual void run(Stimulation s) = 0;
+    virtual void run(Stimulation s, double settleDuration = 0) = 0;
 
     /// Advance to next set of inputs, populating DAQ::current and DAQ::voltage
     virtual void next() = 0;
@@ -46,6 +46,7 @@ protected:
     Stimulation currentStim;
 
     double samplingDt() const;
+    void extendStimulation(Stimulation &stim, scalar settleDuration);
 };
 
 #endif // DAQ_H

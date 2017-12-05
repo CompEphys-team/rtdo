@@ -21,7 +21,7 @@ public:
     inline double getAdjustableParam(size_t) { return 0; }
     inline void setAdjustableParam(size_t, double) {}
     int throttledFor(const Stimulation &s);
-    void run(Stimulation s);
+    void run(Stimulation s, double settleDuration = 0);
     void next();
     void reset();
 
