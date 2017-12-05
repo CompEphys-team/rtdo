@@ -22,6 +22,7 @@ public:
     std::vector<QuotedString> channelNames;
 
     static int Iidx, Vidx, V2idx;
+    static double Iscale, Vscale, V2scale;
 
     void getSampleNumbers(const std::vector<Stimulation> &stims, double dt,
                           int *nTotal, int *nBuffer = nullptr, int *nSamples = nullptr);

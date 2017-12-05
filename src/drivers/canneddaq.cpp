@@ -7,6 +7,10 @@ int CannedDAQ::Iidx = 0;
 int CannedDAQ::Vidx = -1;
 int CannedDAQ::V2idx = -1;
 
+double CannedDAQ::Iscale = 1;
+double CannedDAQ::Vscale = 1;
+double CannedDAQ::V2scale = 1;
+
 CannedDAQ::CannedDAQ(Session &s) :
     DAQ(s)
 {
@@ -56,9 +60,9 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
             for ( int i = 0, r = recStart; i < nSweeps; i++, r++ ) {
                 for ( double &sample : samples )
                     is >> sample;
-                if ( Iidx >= 0 )    records[r].I.push_back(samples[Iidx]);
-                if ( Vidx >= 0 )    records[r].V.push_back(samples[Vidx]);
-                if ( V2idx >= 0 )   records[r].V2.push_back(samples[V2idx]);
+                if ( Iidx >= 0 )    records[r].I.push_back(samples[Iidx] * Iscale);
+                if ( Vidx >= 0 )    records[r].V.push_back(samples[Vidx] * Vscale);
+                if ( V2idx >= 0 )   records[r].V2.push_back(samples[V2idx] * V2scale);
             }
             is >> t; // advance to next line
         }
