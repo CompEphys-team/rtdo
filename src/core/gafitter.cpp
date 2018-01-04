@@ -108,7 +108,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
         // Stimulate
         stimulate(stim);
-        simtime += stim.duration;
+        simtime += stim.duration + session.runData().settleDuration;
 
         // Advance
         lib.pullErr();
