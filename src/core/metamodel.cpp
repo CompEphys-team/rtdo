@@ -45,6 +45,7 @@ MetaModel::MetaModel(const Project &p, std::string file) :
 ///     <tmp current="1" name="I_Na">code section</tmp>     <!-- Saved for diagnostic purposes during wavegen, and available to all state vars -->
 ///     <dYdt>code section</dYdt>               <!-- diff. eqn d(var)/dt. -->
 ///     <range min="0" max="1" />               <!-- Optional: Permissible value range, inclusive of bounds -->
+///     <tolerance>1e-6</tolerance>             <!-- Optional: RKF45 error tolerance. Defaults to 1e-3. -->
 /// </variable>
     bool hasV = false;
     for ( el = model->FirstChildElement("variable"); el; el = el->NextSiblingElement("variable") ) {
@@ -57,6 +58,8 @@ MetaModel::MetaModel(const Project &p, std::string file) :
             if ( p.min > p.max )
                 swap(p.min, p.max);
         }
+        if ( (sub = el->FirstChildElement("tolerance")) && sub->DoubleText() > 0 )
+            p.tolerance = sub->DoubleText();
         for ( sub = el->FirstChildElement("tmp"); sub; sub = sub->NextSiblingElement("tmp") ) {
             Variable tmp(sub->Attribute("name"), sub->GetText());
             bool isCur;
@@ -137,6 +140,9 @@ neuronModel MetaModel::generate(NNmodel &m, std::vector<double> &fixedParamIni, 
         n.varTypes.push_back(v.type);
         variableIni.push_back(v.initial);
     }
+    n.varNames.push_back("meta_hP");
+    n.varTypes.push_back("scalar");
+    variableIni.push_back(project.dt()/10);
     for ( const AdjustableParam &p : adjustableParams ) {
         n.varNames.push_back(p.name);
         n.varTypes.push_back(p.type);
@@ -190,6 +196,140 @@ string MetaModel::name(ModuleType type) const
     default:
         return _name + "_no_such_type";
     }
+}
+
+std::string MetaModel::resolveCode(const std::string &code) const
+{
+    QString qcode = QString::fromStdString(code);
+    for ( const StateVariable &v : stateVariables ) {
+        QString sub = "%1";
+        if ( v.name == "t" || v.name == "params" || v.name == "clamp" )
+            sub = "this->%1";
+        qcode.replace(QString("$(%1)").arg(QString::fromStdString(v.name)),
+                      sub.arg(QString::fromStdString(v.name)));
+    }
+    for ( const AdjustableParam &p : adjustableParams )
+        qcode.replace(QString("$(%1)").arg(QString::fromStdString(p.name)),
+                      QString("params.%1").arg(QString::fromStdString(p.name)));
+    for ( const Variable &p : _params )
+        qcode.replace(QString("$(%1)").arg(QString::fromStdString(p.name)),
+                      QString::number(p.initial, 'g', 10));
+    return qcode.toStdString();
+}
+
+std::string MetaModel::structDeclarations() const
+{
+    std::stringstream ss;
+    ss.setf(std::ios_base::scientific, std::ios_base::floatfield);
+    ss.precision(10);
+
+    ss << "struct Parameters {" << endl;
+    for ( const AdjustableParam &p : adjustableParams ) {
+        ss << "    " << p.type << " " << p.name << " = " << p.initial << ";" << endl;
+    }
+    ss << "};" << endl;
+    ss << endl;
+
+    ss << "struct State {" << endl;
+    for ( const StateVariable &v : stateVariables ) {
+        ss << "    " << v.type << " " << v.name << " = " << v.initial << ";" << endl;
+    }
+    ss << endl;
+
+    ss << "    __host__ __device__ State operator+(const State &state) const {" << endl;
+    ss << "        State retval;" << endl;
+    for ( const StateVariable &v : stateVariables ) {
+        ss << "        retval." << v.name << " = this->" << v.name << " + state." << v.name << ";" << endl;
+    }
+    ss << "        return retval;" << endl;
+    ss << "    }" << endl;
+    ss << endl;
+
+    ss << "    __host__ __device__ State operator*(scalar factor) const {" << endl;
+    ss << "        State retval;" << endl;
+    for ( const StateVariable &v : stateVariables ) {
+        ss << "        retval." << v.name << " = this->" << v.name << " * factor;" << endl;
+    }
+    ss << "        return retval;" << endl;
+    ss << "    }" << endl;
+
+    ss << "    __host__ __device__ State state__f(scalar t, const Parameters &params, scalar Isyn) const {" << endl;
+    ss << "        State retval;" << endl;
+    for ( const StateVariable &v : stateVariables ) {
+        ss << "        " << "{" << endl;
+        for ( const Variable &t : v.tmp ) {
+            ss << "            " << t.type << " " << t.name << " = " << resolveCode(t.code) << ";" << endl;
+        }
+        ss << "            retval." << v.name << " = " << resolveCode(v.code) << ";" << endl;
+        ss << "        }" << endl;
+    }
+    ss << "        return retval;" << endl;
+    ss << "    }" << endl;
+
+    ss << "    __host__ __device__ inline State state__f(scalar t, const Parameters &params, const ClampParameters &clamp) const {" << endl;
+    ss << "        return state__f(t, params, clamp.getCurrent(t, this->V));" << endl;
+    ss << "    }" << endl;
+    ss << endl;
+
+    ss << "    __host__ __device__ scalar state__delta(scalar h, bool &success) const {" << endl;
+    ss << "        scalar err, maxErr = 0;" << endl;
+    for ( const StateVariable &v : stateVariables ) {
+        ss << "        err = fabs(" << v.name << ") / (h * " << v.tolerance << ");" << endl;
+        ss << "        if ( err > maxErr ) maxErr = err;" << endl;
+    }
+    ss << "        success = (maxErr <= 1);" << endl;
+    ss << "        if ( maxErr <= 0.03125 ) return 2;" << endl;
+    ss << "        return 0.84 * sqrt(sqrt(1/maxErr));" << endl;
+    ss << "    }" << endl;
+    ss << endl;
+
+    ss << "    __host__ __device__ void state__limit() {" << endl;
+    for ( const StateVariable &v : stateVariables ) {
+        ss << "        if ( " << v.name << " > " << v.max << " ) " << v.name << " = " << v.max << ";" << endl;
+        ss << "        if ( " << v.name << " < " << v.min << " ) " << v.name << " = " << v.min << ";" << endl;
+    }
+    ss << "    }" << endl;
+
+    ss << "};" << endl;
+
+    return ss.str();
+}
+
+std::string MetaModel::supportCode() const
+{
+    return structDeclarations();
+}
+
+std::string MetaModel::populateStructs(std::string paramPre, std::string paramPost, std::string rundPre, std::string rundPost) const
+{
+    std::stringstream ss;
+    ss << "State state;" << endl;
+    for ( const Variable &v : stateVariables ) {
+        ss << "    state." << v.name << " = " << paramPre << v.name << paramPost << ";" << endl;
+    }
+    ss << endl;
+
+    ss << "Parameters params;" << endl;
+    for ( const AdjustableParam &p : adjustableParams ) {
+        ss << "    params." << p.name << " = " << paramPre << p.name << paramPost << ";" << endl;
+    }
+    ss << endl;
+
+    ss << "ClampParameters clamp;" << endl;
+    ss << "    clamp.clampGain = " << rundPre << "clampGain" << rundPost << ";" << endl;
+    ss << "    clamp.accessResistance = " << rundPre << "accessResistance" << rundPost << ";" << endl;
+    // Note, params.VClamp0 and params.dVClamp to be populated by caller.
+
+    return ss.str();
+}
+
+std::string MetaModel::extractState(std::string pre, std::string post) const
+{
+    std::stringstream ss;
+    for ( const Variable &v : stateVariables ) {
+        ss << pre << v.name << post << " = state." << v.name << ";" << endl;
+    }
+    return ss.str();
 }
 
 // Runge-Kutta k variable names
@@ -337,11 +477,14 @@ bool MetaModel::isCurrent(const Variable &tmp) const
 string MetaModel::daqCode(int ordinal) const
 {
     std::stringstream ss;
-    ss << endl << "#define Simulator_numbered Simulator_" << ordinal;
+    ss << endl << "#define Simulator_numbered Simulator_" << ordinal << endl;
+    ss << "class Simulator_numbered : public DAQ {" << endl;
+    ss << "private:" << endl;
+
+    if ( ordinal > 1 ) // Ordinal 1 is the original model, use the public structs
+        ss << structDeclarations() << endl;
+
     ss << R"EOF(
-class Simulator_numbered : public DAQ
-{
-private:
     struct CacheStruct {
         CacheStruct(Stimulation s, bool VC, double sDt, int extraSamples) :
             _stim(s),
@@ -353,10 +496,7 @@ private:
         bool _VC;
         std::vector<scalar> _voltage;
         std::vector<scalar> _current;
-)EOF";
-    for ( const StateVariable &v : stateVariables )
-        ss << "        " << v.type << " " << v.name << ";" << endl;
-    ss << R"EOF(
+        State state;
     };
 
     std::list<CacheStruct> cache;
@@ -364,21 +504,25 @@ private:
     size_t iT;
     bool useRealism;
 
-    scalar tStart, sDt, mdt, noiseI, noiseExp, noiseA;
+    scalar tStart, sDt, mdt, meta_hP, noiseI[3], noiseExp, noiseA;
     bool caching = false, generating = false;
+    int skipSamples;
+
+    State state;
+    Parameters params;
+    ClampParameters clamp;
 
 public:
     Simulator_numbered(Session &session, bool useRealism) : DAQ(session), useRealism(useRealism)
     {
-        initialise();
         if ( p.simd.paramSet == 1 ) {
 )EOF";
     for ( const AdjustableParam &p : adjustableParams ) {
-        ss << "            " << p.name << " = RNG.uniform<" << p.type << ">(" << p.min << ", " << p.max << ");" << endl;
+        ss << "            params." << p.name << " = RNG.uniform<" << p.type << ">(" << p.min << ", " << p.max << ");" << endl;
     }
     ss << "        } else if ( p.simd.paramSet == 2 ) {" << endl;
     for ( size_t i = 0; i < adjustableParams.size(); i++ ) {
-        ss << "            " << adjustableParams[i].name << " = p.simd.paramValues[" << i << "];" << endl;
+        ss << "            params." << adjustableParams[i].name << " = p.simd.paramValues[" << i << "];" << endl;
     }
     ss << R"EOF(
         }
@@ -388,13 +532,16 @@ public:
 
     int throttledFor(const Stimulation &) { return 0; }
 
-    void run(Stimulation s)
+    void run(Stimulation s, double settle)
     {
         currentStim = s;
         iT = 0;
         tStart = 0;
         sDt = DT;
         int extraSamples = 0;
+
+        clamp.clampGain = rund.clampGain;
+        clamp.accessResistance = rund.accessResistance;
 
         if ( useRealism ) {
             sDt = samplingDt();
@@ -403,10 +550,10 @@ public:
                 tStart = -int(p.filter.width/2) * sDt;
             }
             if ( p.simd.noise ) {
-                noiseI = p.simd.noiseStd * RNG.variate<scalar>(0,1);
+                noiseI[2] = p.simd.noiseStd * RNG.variate<scalar>(0,1);
                 if ( p.simd.noiseTau > 0 ) { // Brown noise
                     scalar noiseD = 2 * p.simd.noiseStd * p.simd.noiseStd / p.simd.noiseTau; // nA^2/ms
-                    noiseExp = std::exp(-sDt/rund.simCycles/p.simd.noiseTau);
+                    noiseExp = std::exp(-sDt/rund.simCycles/2/p.simd.noiseTau); // RK4 has one evaluation per dt/2
                     noiseA = std::sqrt(noiseD * p.simd.noiseTau / 2 * (1 - noiseExp*noiseExp));
                 } else { // White noise
                     noiseExp = 0;
@@ -416,7 +563,33 @@ public:
         }
 
         samplesRemaining = s.duration/sDt + extraSamples;
-        mdt = sDt/rund.simCycles;
+        meta_hP = mdt = sDt/rund.simCycles;
+
+        if ( settle > 0 ) {
+            Stimulation settlingStim;
+            settlingStim.baseV = s.baseV;
+            settlingStim.duration = settle;
+            for ( currentCacheEntry = cache.begin(); currentCacheEntry != cache.end(); ++currentCacheEntry )
+                if ( currentCacheEntry->_stim == settlingStim && currentCacheEntry->_VC == VC )
+                    break;
+            if ( currentCacheEntry == cache.end() ) {
+                clamp.VClamp0 = s.baseV;
+                clamp.dVClamp = 0;
+                RKF45(0, settle, meta_hP, settle, meta_hP, state, params, clamp);
+                currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(settlingStim, VC, settle, 0));
+                currentCacheEntry->state = state;
+                currentCacheEntry->_current[0] = clamp.getCurrent(0, state.V);
+                currentCacheEntry->_voltage[0] = state.V;
+            } else {
+                state = currentCacheEntry->state;
+            }
+
+            current = currentCacheEntry->_current[0];
+            voltage = currentCacheEntry->_voltage[0];
+
+            skipSamples = settle/sDt;
+            samplesRemaining += skipSamples;
+        }
 
         if ( useRealism && p.simd.noise ) {
             caching = false;
@@ -432,34 +605,65 @@ public:
                 currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(s, VC, sDt, extraSamples));
             } else {
                 generating = false;
-                restoreState();
+                state = currentCacheEntry->state;
             }
         }
     }
 
     void next()
     {
+        if ( skipSamples-- > 0 )
+            return;
+
         if ( generating ) {
-            scalar Isyn;
-            scalar t = tStart + iT*sDt;
-            scalar Vcmd = getCommandVoltage(currentStim, t);
-            for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
-                Isyn = VC ? ((rund.clampGain*(Vcmd-V) - V) / rund.accessResistance) : Vcmd;
-                if ( p.simd.noise ) {
-                    noiseI = noiseI * noiseExp + noiseA * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-dt/tau) + A*X(0,1), I0 = 0
-                    Isyn += noiseI;
+            scalar Isyn, t = tStart + iT*sDt;
+            scalar VClamp0_2, dVClamp_2, t_2 = getCommandVoltages(currentStim, t, sDt, clamp.VClamp0, clamp.dVClamp, VClamp0_2, dVClamp_2);
+
+            if ( useRealism && p.simd.noise ) {
+                Isyn = clamp.getCurrent(t, state.V) + noiseI[2];
+                for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
+                    t = tStart + iT*sDt + mt*mdt;
+                    if ( t > t_2 ) {
+                        clamp.VClamp0 = VClamp0_2;
+                        clamp.dVClamp = dVClamp_2;
+                        t_2 += sDt; // ignore for the rest of the loop
+                    }
+
+                    // Keep noise constant across evaluations for the same time point
+                    noiseI[0] = noiseI[2];
+                    noiseI[1] = noiseI[0] * noiseExp + noiseA * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-h/tau) + A*X(0,1), I0 = 0
+                    noiseI[2] = noiseI[1] * noiseExp + noiseA * RNG.variate<scalar>(0, 1);
+                    scalar pureIsyn = clamp.getCurrent(t, state.V);
+
+                    // RK4, fixed step:
+                    constexpr scalar half = 1/2.;
+                    constexpr scalar third = 1/3.;
+                    constexpr scalar sixth = 1/6.;
+                    State k1 = state.state__f(t, params, Isyn) * mdt;
+                    State k2 = State(state + k1*half).state__f(t + mdt*half, params, pureIsyn + noiseI[1]) * mdt;
+                    State k3 = State(state + k2*half).state__f(t + mdt*half, params, pureIsyn + noiseI[1]) * mdt;
+                    State k4 = State(state + k3).state__f(t + mdt, params, pureIsyn + noiseI[2]) * mdt;
+                    state = state + k1*sixth + k2*third + k3*third + k4*sixth;
+                    state.state__limit();
                 }
-)EOF";
-ss << kernel("                ", false, false);
-ss << R"EOF(
-            } // end for mt
+            } else {
+                Isyn = clamp.getCurrent(t, state.V); // For return values
+                if ( t_2 == 0 ) {
+                    RKF45(t, t + sDt, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
+                } else {
+                    RKF45(t, t_2, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
+                    clamp.VClamp0 = VClamp0_2;
+                    clamp.dVClamp = dVClamp_2;
+                    RKF45(t_2, t + sDt, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
+                }
+            }
 
             if ( caching ) {
-                currentCacheEntry->_voltage[iT] = V;
+                currentCacheEntry->_voltage[iT] = state.V;
                 currentCacheEntry->_current[iT] = Isyn;
             }
             current = Isyn;
-            voltage = V;
+            voltage = state.V;
         } else {
             current = currentCacheEntry->_current[iT];
             voltage = currentCacheEntry->_voltage[iT];
@@ -473,57 +677,29 @@ ss << R"EOF(
         iT = 0;
         voltage = current = 0.0;
         if ( caching && generating )
-            saveState();
+            currentCacheEntry->state = state;
         caching = generating = false;
     }
 
-    void saveState()
-    {
 )EOF";
-    for ( const StateVariable &v : stateVariables )
-        ss << "        currentCacheEntry->" << v.name << " = " << v.name << ";" << endl;
-    ss << "    }" << endl;
-    ss << endl;
-
-    ss << "    void restoreState()" << endl;
-    ss << "    {" << endl;
-    for ( const StateVariable &v : stateVariables )
-        ss << "        " << v.name << " = currentCacheEntry->" << v.name << ";" << endl;
-    ss << "    }" << endl;
-    ss << endl;
-
-    ss << "    void initialise()" << endl;
-    ss << "    {" << endl;
-    for ( const StateVariable &v : stateVariables )
-        ss << "        " << v.name << " = " << v.initial << ";" << endl;
-    ss << "    }" << endl << endl;
 
     ss << "    void setAdjustableParam(size_t idx, double value)" << endl;
     ss << "    {" << endl;
     ss << "        switch ( idx ) {" << endl;
     for ( size_t i = 0; i < adjustableParams.size(); i++ )
-        ss << "        case " << i << ": " << adjustableParams[i].name << " = value; break;" << endl;
+        ss << "        case " << i << ": params." << adjustableParams[i].name << " = value; break;" << endl;
     ss << "        }" << endl;
     ss << "        cache.clear();" << endl;
-    ss << "        initialise();" << endl;
     ss << "    }" << endl << endl;
 
     ss << "    double getAdjustableParam(size_t idx)" << endl;
     ss << "    {" << endl;
     ss << "        switch ( idx ) {" << endl;
     for ( size_t i = 0; i < adjustableParams.size(); i++ )
-        ss << "        case " << i << ": return " << adjustableParams[i].name << ";" << endl;
+        ss << "        case " << i << ": return params." << adjustableParams[i].name << ";" << endl;
     ss << "        }" << endl;
     ss << "        return 0;" << endl;
     ss << "    }" << endl << endl;
-
-    // Declarations
-    for ( const StateVariable &v : stateVariables )
-        ss << "    " << v.type << " " << v.name << ";" << endl;
-
-    ss << endl;
-    for ( const AdjustableParam &p : adjustableParams )
-        ss << "    " << p.type << " " << p.name << " = " << p.initial << ";" << endl;
 
     ss << "};" << endl;
     ss << "#undef Simulator_numbered" << endl;

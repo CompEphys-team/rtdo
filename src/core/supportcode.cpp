@@ -62,6 +62,49 @@ __device__ scalar getStep(Stimulation::Step &step, const Stimulation &I, scalar 
     }
 }
 
+scalar getCommandVoltages(const Stimulation &I, scalar t, scalar dt,
+                        scalar &VClamp0, scalar &dVClamp,
+                        scalar &VClamp0_2, scalar &dVClamp_2)
+{
+    if ( I.empty() || t < 0 || t >= I.duration ) {
+        dVClamp = 0;
+        VClamp0 = I.baseV;
+        return 0;
+    }
+    const Stimulation::Step *s = I.begin();
+
+    // First partial interval
+    if ( t < s->t ) {
+        dVClamp = s->ramp ? (s->V - I.baseV) / s->t : 0;
+        VClamp0 = I.baseV;
+    } else {
+        while ( s != I.end() && s->t <= t )
+            s++;
+        if ( s == I.end() ) {
+            dVClamp = 0;
+            VClamp0 = (s-1)->V;
+            return 0;
+        } else {
+            dVClamp = s->ramp ? (s->V - (s-1)->V) / (s->t - (s-1)->t) : 0;
+            VClamp0 = s->ramp ? s->V - dVClamp*s->t : (s-1)->V;
+        }
+    }
+
+    // Second partial interval
+    if ( t + dt > s->t ) {
+        if ( s+1 == I.end() ) {
+            dVClamp_2 = 0;
+            VClamp0_2 = s->V;
+        } else {
+            dVClamp_2 = (s+1)->ramp ? ((s+1)->V - s->V) / ((s+1)->t - s->t) : 0;
+            VClamp0_2 = (s+1)->ramp ? (s+1)->V - dVClamp_2*(s+1)->t : s->V;
+        }
+        return s->t;
+    } else {
+        return 0;
+    }
+}
+
 __host__ __device__ scalar getCommandVoltage(const Stimulation &I, scalar t)
 {
     scalar Vcmd;

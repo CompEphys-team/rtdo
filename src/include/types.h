@@ -162,6 +162,7 @@ struct StateVariable : public Variable {
     StateVariable() {}
     StateVariable(std::string n, std::string c = "", std::string t = "scalar") : Variable(n,c,t) {}
     std::vector<Variable> tmp;
+    double tolerance = 1e-3;
 };
 
 struct AdjustableParam : public Variable {

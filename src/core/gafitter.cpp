@@ -456,30 +456,41 @@ void GAFitter::finalise()
 
 void GAFitter::stimulate(const Stimulation &I)
 {
-    double settle = session.runData().settleDuration;
-    double duration = I.duration + session.runData().settleDuration;
-
     // Set up library
     lib.t = 0.;
     lib.iT = 0;
     lib.VC = true;
 
-    // Set up DAQ
+    // Settle library
+    lib.getErr = false;
+    lib.VClamp0 = I.baseV;
+    lib.dVClamp = 0;
+    lib.t_2 = 0;
+    lib.settle = session.runData().settleDuration;
+    lib.step();
+
+    // Set up + settle DAQ
     daq->VC = true;
     daq->reset();
-    daq->run(I, settle);
+    daq->run(I, session.runData().settleDuration);
+    for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.project.dt(); iT < iTEnd; iT++ )
+        daq->next();
 
     // Stimulate both
-    while ( lib.t < duration ) {
+    lib.t = 0;
+    lib.settle = 0;
+    while ( lib.t < I.duration ) {
         daq->next();
         lib.Imem = daq->current;
-        lib.Vmem = getCommandVoltage(I, lib.t - settle);
-        pushToQ(qT + lib.t, daq->voltage, daq->current, lib.Vmem);
+        lib.t_2 = getCommandVoltages(I, lib.t, session.project.dt(),
+                                     lib.VClamp0, lib.dVClamp,
+                                     lib.VClamp0_2, lib.dVClamp_2);
+        pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
         lib.getErr = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd);
         lib.step();
     }
 
-    qT += duration;
+    qT += I.duration;
     daq->reset();
 }
 

@@ -31,7 +31,14 @@ ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
     Imem(*(pointers.Imem)),
     VC(*(pointers.VC)),
     getErr(*(pointers.getErr)),
-    err(pointers.err)
+    VClamp0(*pointers.VClamp0),
+    dVClamp(*pointers.dVClamp),
+    VClamp0_2(*pointers.VClamp0_2),
+    dVClamp_2(*pointers.dVClamp_2),
+    t_2(*pointers.t_2),
+    settle(*pointers.settle),
+    err(pointers.err),
+    meta_hP(pointers.meta_hP)
 {
 }
 
@@ -101,7 +108,13 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("Vprev"),
         Variable("Imem"),
         Variable("VC", "", "bool"),
-        Variable("getErr", "", "bool")
+        Variable("getErr", "", "bool"),
+        Variable("VClamp0"),
+        Variable("dVClamp"),
+        Variable("VClamp0_2"),
+        Variable("dVClamp_2"),
+        Variable("t_2"),
+        Variable("settle")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -130,25 +143,42 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
 
 std::string ExperimentLibrary::simCode()
 {
-    return R"EOF(
-scalar mdt = DT/$(simCycles);
-for ( unsigned int mt = 0; mt < $(simCycles); mt++ ) {
-   if ( $(VC) ) { // Voltage clamp to $(Vmem)
-       Isyn = ($(clampGain)*($(Vmem)-$(V)) - $(V)) / $(accessResistance);
-   } else { // Pattern clamp: Inject current $(Imem) and clamp to voltage $(Vprev) to $(Vmem), linearly interpolated
-       scalar Vcmd = (($(simCycles)-mt) * $(Vprev) + mt * $(Vmem)) / $(simCycles);
-       Isyn = $(clampGain)*(Vcmd-$(V)) / $(accessResistance) + $(Imem); // Perfect clamp
-   }
-)EOF"
-   + model.kernel("    ", true, false)
-   + R"EOF(
-}
+    std::stringstream ss;
+
+    ss << model.populateStructs() << endl;
+
+    ss << R"EOF(
+clamp.VClamp0 = $(VClamp0);
+clamp.dVClamp = $(dVClamp);
 
 if ( $(getErr) ) {
-   scalar tmp = Isyn - $(Imem);
-   $(err) += tmp*tmp;
+    scalar tmp = clamp.getCurrent(t, $(V)) - $(Imem);
+    $(err) += tmp*tmp;
 }
+
+if ( $(settle) > 0 ) {
+    RKF45(t, t+$(settle), DT/$(simCycles), $(settle), $(meta_hP), state, params, clamp);
+} else {
+    if ( $(t_2) == 0 ) {
+        RKF45(t, t+DT, DT/$(simCycles), DT, $(meta_hP), state, params, clamp);
+    } else {
+        RKF45(t, $(t_2), DT/$(simCycles), DT, $(meta_hP), state, params, clamp);
+        clamp.VClamp0 = $(VClamp0_2);
+        clamp.dVClamp = $(dVClamp_2);
+        RKF45($(t_2), t+DT, DT/$(simCycles), DT, $(meta_hP), state, params, clamp);
+    }
+}
+
 )EOF";
+
+    ss << model.extractState();
+
+    return ss.str();
+
+//   } else { // Pattern clamp: Inject current $(Imem) and clamp to voltage $(Vprev) to $(Vmem), linearly interpolated
+//       scalar Vcmd = (($(simCycles)-mt) * $(Vprev) + mt * $(Vmem)) / $(simCycles);
+//       Isyn = $(clampGain)*(Vcmd-$(V)) / $(accessResistance) + $(Imem); // Perfect clamp
+//   }
 }
 
 std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars)
@@ -164,6 +194,8 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
     ss << "#include \"../core/supportcode.cpp\"" << endl;
     ss << "#include \"experimentlibrary.cu\"" << endl;
     ss << endl;
+
+    ss << model.supportCode() << endl;
 
     ss << project.simulatorCode();
 
@@ -188,6 +220,7 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
         ss << "    pointers.d_" << v.name << " = d_" << v.name << SUFFIX << ";" << endl;
     }
     ss << endl;
+    ss << "    pointers.meta_hP = meta_hP" << SUFFIX << ";" << endl;
     ss << "    pointers.t =& t;" << endl;
     ss << "    pointers.iT =& iT;" << endl;
     ss << "    pointers.push =& push" << SUFFIX << "StateToDevice;" << endl;

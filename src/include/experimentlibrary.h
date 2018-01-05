@@ -28,9 +28,16 @@ public:
         scalar *Imem;
         bool *VC;
         bool *getErr;
+        scalar *VClamp0;
+        scalar *dVClamp;
+        scalar *VClamp0_2;
+        scalar *dVClamp_2;
+        scalar *t_2;
+        scalar *settle;
 
         scalar *err;
         scalar *d_err;
+        scalar *meta_hP;
 
         scalar *t;
         unsigned long long *iT;
@@ -83,9 +90,16 @@ public:
     scalar &Imem;
     bool &VC;
     bool &getErr;
+    scalar &VClamp0;
+    scalar &dVClamp;
+    scalar &VClamp0_2;
+    scalar &dVClamp_2;
+    scalar &t_2;
+    scalar &settle;
 
     // Model vars
     scalar *err;
+    scalar *meta_hP;
 };
 
 #endif // EXPERIMENTCONSTRUCTOR_H

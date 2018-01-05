@@ -15,6 +15,10 @@ public:
 
     neuronModel generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni) const;
 
+    std::string supportCode() const;
+    std::string populateStructs(std::string paramPre = "$(", std::string paramPost = ")",
+                                std::string rundPre = "$(", std::string rundPost = ")") const;
+    std::string extractState(std::string pre = "$(", std::string post = ")") const;
     std::string kernel(const std::string &tab, bool wrapVariables, bool defineCurrents) const;
     std::string daqCode(int ordinal) const;
 
@@ -36,6 +40,8 @@ protected:
     double _baseV;
 
     bool isCurrent(const Variable &tmp) const;
+    std::string resolveCode(const std::string &code) const;
+    std::string structDeclarations() const;
 };
 
 // generateALL.cc's renamed main - see core/generateAllNoMain.cpp:
