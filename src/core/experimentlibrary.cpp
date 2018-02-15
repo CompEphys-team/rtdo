@@ -33,10 +33,7 @@ ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
     getErr(*(pointers.getErr)),
     VClamp0(*pointers.VClamp0),
     dVClamp(*pointers.dVClamp),
-    VClamp0_2(*pointers.VClamp0_2),
-    dVClamp_2(*pointers.dVClamp_2),
-    t_2(*pointers.t_2),
-    settle(*pointers.settle),
+    tStep(*pointers.tStep),
     err(pointers.err),
     meta_hP(pointers.meta_hP)
 {
@@ -111,10 +108,7 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("getErr", "", "bool"),
         Variable("VClamp0"),
         Variable("dVClamp"),
-        Variable("VClamp0_2"),
-        Variable("dVClamp_2"),
-        Variable("t_2"),
-        Variable("settle")
+        Variable("tStep")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -156,18 +150,7 @@ if ( $(getErr) ) {
     $(err) += tmp*tmp;
 }
 
-if ( $(settle) > 0 ) {
-    RKF45(t, t+$(settle), DT/$(simCycles), $(settle), $(meta_hP), state, params, clamp);
-} else {
-    if ( $(t_2) == 0 ) {
-        RKF45(t, t+DT, DT/$(simCycles), DT, $(meta_hP), state, params, clamp);
-    } else {
-        RKF45(t, $(t_2), DT/$(simCycles), DT, $(meta_hP), state, params, clamp);
-        clamp.VClamp0 = $(VClamp0_2);
-        clamp.dVClamp = $(dVClamp_2);
-        RKF45($(t_2), t+DT, DT/$(simCycles), DT, $(meta_hP), state, params, clamp);
-    }
-}
+RKF45(t, t+$(tStep), DT/$(simCycles), $(tStep), $(meta_hP), state, params, clamp);
 
 )EOF";
 

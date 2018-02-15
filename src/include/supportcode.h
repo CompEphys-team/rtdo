@@ -12,6 +12,11 @@ scalar getCommandVoltages(const Stimulation &I, scalar t, scalar dt,
                           scalar &VClamp0, scalar &dVClamp,
                           scalar &VClamp0_2, scalar &dVClamp_2);
 
+//! Calculates command voltage extrapolated to t=0, the corresponding gradient (mV/ms), and the duration of the first linear segment in [t, t+dt]
+//! Returns a flag indicating whether additional steps are required, i.e., whether there are multiple linear segments in [t, t+dt]
+bool getCommandSegment(const Stimulation &I, scalar t, scalar dt,
+                       scalar &VClamp0, scalar &dVClamp, scalar &tStep);
+
 struct ClampParameters {
     scalar clampGain, accessResistance;
     scalar VClamp0; // = VClamp linearly extrapolated to t=0

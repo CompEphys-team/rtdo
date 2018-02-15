@@ -30,10 +30,7 @@ public:
         bool *getErr;
         scalar *VClamp0;
         scalar *dVClamp;
-        scalar *VClamp0_2;
-        scalar *dVClamp_2;
-        scalar *t_2;
-        scalar *settle;
+        scalar *tStep;
 
         scalar *err;
         scalar *d_err;
@@ -92,10 +89,7 @@ public:
     bool &getErr;
     scalar &VClamp0;
     scalar &dVClamp;
-    scalar &VClamp0_2;
-    scalar &dVClamp_2;
-    scalar &t_2;
-    scalar &settle;
+    scalar &tStep;
 
     // Model vars
     scalar *err;

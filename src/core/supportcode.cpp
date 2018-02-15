@@ -105,6 +105,45 @@ scalar getCommandVoltages(const Stimulation &I, scalar t, scalar dt,
     }
 }
 
+bool getCommandSegment(const Stimulation &I, scalar t, scalar dt,
+                       scalar &VClamp0, scalar &dVClamp, scalar &tStep)
+{
+    if ( I.empty() || t < 0 || t >= I.duration ) {
+        dVClamp = 0;
+        VClamp0 = I.baseV;
+        tStep = dt;
+        return false;
+    }
+    const Stimulation::Step *s = I.begin();
+
+    // Find segment at t
+    if ( t < s->t ) {
+        dVClamp = s->ramp ? (s->V - I.baseV) / s->t : 0;
+        VClamp0 = I.baseV;
+    } else {
+        while ( s != I.end() && s->t <= t )
+            s++;
+        if ( s == I.end() ) {
+            // Final segment, definitely no further chunking
+            dVClamp = 0;
+            VClamp0 = (s-1)->V;
+            tStep = dt;
+            return false;
+        } else {
+            dVClamp = s->ramp ? (s->V - (s-1)->V) / (s->t - (s-1)->t) : 0;
+            VClamp0 = s->ramp ? s->V - dVClamp*s->t : (s-1)->V;
+        }
+    }
+
+    if ( s->t < t + dt ) {
+        // Next segment begins within [t, t+dt]
+        tStep = s->t - t;
+        return true;
+    }
+    tStep = dt;
+    return false;
+}
+
 __host__ __device__ scalar getCommandVoltage(const Stimulation &I, scalar t)
 {
     scalar Vcmd;

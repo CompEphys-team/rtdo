@@ -465,8 +465,7 @@ void GAFitter::stimulate(const Stimulation &I)
     lib.getErr = false;
     lib.VClamp0 = I.baseV;
     lib.dVClamp = 0;
-    lib.t_2 = 0;
-    lib.settle = session.runData().settleDuration;
+    lib.tStep = session.runData().settleDuration;
     lib.step();
 
     // Set up + settle DAQ
@@ -478,16 +477,30 @@ void GAFitter::stimulate(const Stimulation &I)
 
     // Stimulate both
     lib.t = 0;
-    lib.settle = 0;
+    lib.iT = 0;
+    bool chop;
+    scalar tStepCum;
     while ( lib.t < I.duration ) {
         daq->next();
-        lib.Imem = daq->current;
-        lib.t_2 = getCommandVoltages(I, lib.t, session.project.dt(),
-                                     lib.VClamp0, lib.dVClamp,
-                                     lib.VClamp0_2, lib.dVClamp_2);
+
+        chop = getCommandSegment(I, lib.t, session.project.dt(),
+                                 lib.VClamp0, lib.dVClamp, lib.tStep);
         pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
-        lib.getErr = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd);
+
+        lib.Imem = daq->current;
+        lib.getErr = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd); // collect error at step initiation
         lib.step();
+
+        tStepCum = 0;
+        while ( chop ) {
+            // replace GeNN's automatic `++iT; t = iT*DT` logic on lib.step() with a `t += tStep; finally ++iT`
+            tStepCum += lib.tStep;
+            lib.t = (--lib.iT) * session.project.dt() + tStepCum;
+            chop = getCommandSegment(I, lib.t, session.project.dt() - tStepCum,
+                                     lib.VClamp0, lib.dVClamp, lib.tStep);
+            lib.getErr = false; // No error collection within subdivided steps
+            lib.step();
+        }
     }
 
     qT += I.duration;
