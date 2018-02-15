@@ -35,6 +35,7 @@ protected:
         std::vector<std::vector<double>> sampI, sampV, sampV2;
         std::vector<double> medI, medV, medV2;
         std::vector<QTime> time;
+        double outputResolution;
     };
 
     std::list<Cache> cache;

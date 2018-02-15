@@ -14,7 +14,9 @@ scalar getCommandVoltages(const Stimulation &I, scalar t, scalar dt,
 
 //! Calculates command voltage extrapolated to t=0, the corresponding gradient (mV/ms), and the duration of the first linear segment in [t, t+dt]
 //! Returns a flag indicating whether additional steps are required, i.e., whether there are multiple linear segments in [t, t+dt]
-bool getCommandSegment(const Stimulation &I, scalar t, scalar dt,
+//! @a res defines the output resolution, i.e. the time between command updates
+//! @a res_t0 defines the time of first command output, provided to allow unaligned output (as in comedidaq)
+bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
                        scalar &VClamp0, scalar &dVClamp, scalar &tStep);
 
 struct ClampParameters {

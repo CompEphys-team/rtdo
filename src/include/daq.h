@@ -28,6 +28,8 @@ public:
     double voltage_2;
     int samplesRemaining;
 
+    double outputResolution; //!< Time in ms between command output updates. Populated upon calling @fn run().
+
     /// Stop stimulation/acquisition, discarding any acquired inputs
     virtual void reset() = 0;
 

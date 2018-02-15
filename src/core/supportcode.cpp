@@ -105,7 +105,7 @@ scalar getCommandVoltages(const Stimulation &I, scalar t, scalar dt,
     }
 }
 
-bool getCommandSegment(const Stimulation &I, scalar t, scalar dt,
+bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
                        scalar &VClamp0, scalar &dVClamp, scalar &tStep)
 {
     if ( I.empty() || t < 0 || t >= I.duration ) {
@@ -115,6 +115,11 @@ bool getCommandSegment(const Stimulation &I, scalar t, scalar dt,
         return false;
     }
     const Stimulation::Step *s = I.begin();
+
+    // Adjust t to resolution, rounding down (adding a safety margin against numeric inaccuracy where res neatly divides t)
+    // Note that in most cases this does not change t; it only affects cases where res is unaligned to DT (i.e. ComediDAQ)
+    if ( res > 0 )
+        t = res_t0 + res * int((t - res_t0) / res + 1e-5);
 
     // Find segment at t
     if ( t < s->t ) {
@@ -135,11 +140,14 @@ bool getCommandSegment(const Stimulation &I, scalar t, scalar dt,
         }
     }
 
-    if ( s->t < t + dt ) {
-        // Next segment begins within [t, t+dt]
+    if ( res > 0 ) // Divide time to step by res, rounding up (no safety margin: s->t is unaligned anyway)
+        tStep = res_t0 + res * std::ceil((s->t - res_t0) / res) - t;
+    else
         tStep = s->t - t;
+
+    if ( tStep < dt ) // If the next step is within the interval, split it
         return true;
-    }
+
     tStep = dt;
     return false;
 }

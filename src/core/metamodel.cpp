@@ -543,6 +543,8 @@ public:
         clamp.clampGain = rund.clampGain;
         clamp.accessResistance = rund.accessResistance;
 
+        outputResolution = 0;
+
         if ( useRealism ) {
             sDt = samplingDt();
             if ( p.filter.active ) {
@@ -559,6 +561,7 @@ public:
                     noiseExp = 0;
                     noiseA = p.simd.noiseStd;
                 }
+                outputResolution = sDt;
             }
         }
 
@@ -616,30 +619,34 @@ public:
             return;
 
         if ( generating ) {
-            scalar Isyn, t = tStart + iT*sDt;
+            scalar t = tStart + iT*sDt;
             scalar VClamp0_2, dVClamp_2, t_2 = getCommandVoltages(currentStim, t, sDt, clamp.VClamp0, clamp.dVClamp, VClamp0_2, dVClamp_2);
 
+            voltage = state.V;
+            current = clamp.getCurrent(t, state.V);
+
             if ( useRealism && p.simd.noise ) {
-                Isyn = clamp.getCurrent(t, state.V) + noiseI[2];
+                scalar pureIsyn = current;
+                current += noiseI[2];
                 for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
                     t = tStart + iT*sDt + mt*mdt;
-                    if ( t > t_2 ) {
-                        clamp.VClamp0 = VClamp0_2;
-                        clamp.dVClamp = dVClamp_2;
-                        t_2 += sDt; // ignore for the rest of the loop
-                    }
+//                    if ( t > t_2 ) {
+//                        clamp.VClamp0 = VClamp0_2;
+//                        clamp.dVClamp = dVClamp_2;
+//                        t_2 += sDt; // ignore for the rest of the loop
+//                    }
 
                     // Keep noise constant across evaluations for the same time point
                     noiseI[0] = noiseI[2];
                     noiseI[1] = noiseI[0] * noiseExp + noiseA * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-h/tau) + A*X(0,1), I0 = 0
                     noiseI[2] = noiseI[1] * noiseExp + noiseA * RNG.variate<scalar>(0, 1);
-                    scalar pureIsyn = clamp.getCurrent(t, state.V);
+//                    scalar pureIsyn = clamp.getCurrent(t, state.V);
 
                     // RK4, fixed step:
                     constexpr scalar half = 1/2.;
                     constexpr scalar third = 1/3.;
                     constexpr scalar sixth = 1/6.;
-                    State k1 = state.state__f(t, params, Isyn) * mdt;
+                    State k1 = state.state__f(t, params, pureIsyn + noiseI[0]) * mdt;
                     State k2 = State(state + k1*half).state__f(t + mdt*half, params, pureIsyn + noiseI[1]) * mdt;
                     State k3 = State(state + k2*half).state__f(t + mdt*half, params, pureIsyn + noiseI[1]) * mdt;
                     State k4 = State(state + k3).state__f(t + mdt, params, pureIsyn + noiseI[2]) * mdt;
@@ -647,7 +654,6 @@ public:
                     state.state__limit();
                 }
             } else {
-                Isyn = clamp.getCurrent(t, state.V); // For return values
                 if ( t_2 == 0 ) {
                     RKF45(t, t + sDt, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
                 } else {
@@ -659,11 +665,9 @@ public:
             }
 
             if ( caching ) {
-                currentCacheEntry->_voltage[iT] = state.V;
-                currentCacheEntry->_current[iT] = Isyn;
+                currentCacheEntry->_voltage[iT] = voltage;
+                currentCacheEntry->_current[iT] = current;
             }
-            current = Isyn;
-            voltage = state.V;
         } else {
             current = currentCacheEntry->_current[iT];
             voltage = currentCacheEntry->_voltage[iT];

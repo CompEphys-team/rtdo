@@ -295,8 +295,11 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
             for ( unsigned int i = 0, offset = (p.filter.active ? p.filter.width/2 : 0); i < aocmd.stop_arg-1; i++ )
                 aoData[i] = conO->toSamp(getCommandVoltage(currentStim, 1e-6 * aocmd.scan_begin_arg * (i - offset)));
             aoData.back() = V0;
+
+            outputResolution = 1e-6 * aocmd.scan_begin_arg;
         } else {
             aoData.clear();
+            outputResolution = 0;
         }
 
         // Exit empty loop

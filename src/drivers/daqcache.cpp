@@ -84,11 +84,13 @@ void DAQCache::run(Stimulation s, double settleDuration)
         daq->VC = VC;
         daq->run(s);
         samplesRemaining = daq->samplesRemaining;
+        outputResolution = iterC->outputResolution = daq->outputResolution;
     } else {
         iterI = iterC->medI.begin();
         iterV = iterC->medV.begin();
         iterV2 = iterC->medV2.begin();
         samplesRemaining = iterC->medI.size();
+        outputResolution = iterC->outputResolution;
     }
 
     running = true;

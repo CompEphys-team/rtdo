@@ -161,6 +161,7 @@ void *ComediDAQ::launch()
             VRamp = V0;
             VRampDelta = (stepIter->V - VRamp) / (stepIter->t / dt);
         }
+        outputResolution = samplingDt();
 
         reltime = 0;
         rt_make_hard_real_time();

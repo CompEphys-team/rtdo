@@ -165,4 +165,5 @@ void CannedDAQ::reset()
         recordIndex -= settleDuration / samplingDt();
 
     samplesRemaining = records[currentRecord].nTotal - recordIndex;
+    outputResolution = samplingDt();
 }
