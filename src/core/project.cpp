@@ -78,6 +78,7 @@ void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
     addAP(arg, "DAQ.simd.noiseTau", p, &DAQData::simd, &SimulatorData::noiseTau);
     addAP(arg, "DAQ.simd.paramSet", p, &DAQData::simd, &SimulatorData::paramSet);
     addAP(arg, "DAQ.simd.paramValues[#]", p, &DAQData::simd, &SimulatorData::paramValues);
+    addAP(arg, "DAQ.simd.outputResolution", p, &DAQData::simd, &SimulatorData::outputResolution);
 
     addAP(arg, "DAQ.cache.active", p, &DAQData::cache, &CacheData::active);
     addAP(arg, "DAQ.cache.numTraces", p, &DAQData::cache, &CacheData::numTraces);

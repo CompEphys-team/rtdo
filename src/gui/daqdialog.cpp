@@ -130,6 +130,7 @@ void DAQDialog::importData()
         chanUI[i].offset->setValue(cp[i]->offset);
     }
 
+    ui->outputResolution->setValue(p.simd.outputResolution);
     ui->noise->setChecked(p.simd.noise);
     ui->noiseStd->setValue(p.simd.noiseStd);
     ui->noiseTau->setValue(p.simd.noiseTau);
@@ -176,6 +177,7 @@ DAQData DAQDialog::getFormData()
         cp[i]->offset = chanUI[i].offset->value();
     }
 
+    p.simd.outputResolution = ui->outputResolution->value();
     p.simd.noise = ui->noise->isChecked();
     p.simd.noiseStd = ui->noiseStd->value();
     p.simd.noiseTau = ui->noiseTau->value();

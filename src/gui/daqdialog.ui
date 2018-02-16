@@ -684,7 +684,7 @@
          <column/>
         </widget>
        </item>
-       <item row="2" column="0" colspan="2">
+       <item row="3" column="0" colspan="2">
         <widget class="QGroupBox" name="noise">
          <property name="title">
           <string>Inject noise current</string>
@@ -731,6 +731,29 @@
            </widget>
           </item>
          </layout>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QDoubleSpinBox" name="outputResolution">
+         <property name="suffix">
+          <string> ms</string>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="maximum">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.050000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_38">
+         <property name="text">
+          <string>Command resolution</string>
+         </property>
         </widget>
        </item>
       </layout>

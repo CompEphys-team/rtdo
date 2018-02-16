@@ -505,6 +505,7 @@ string MetaModel::daqCode(int ordinal) const
     bool useRealism;
 
     scalar tStart, sDt, mdt, meta_hP, noiseI[3], noiseExp, noiseA, noiseDefaultH;
+    scalar outputResT0;
     bool caching = false, generating = false;
     int skipSamples;
 
@@ -567,7 +568,8 @@ public:
         clamp.clampGain = rund.clampGain;
         clamp.accessResistance = rund.accessResistance;
 
-        outputResolution = 0;
+        outputResolution = p.simd.outputResolution;
+        outputResT0 = settle > 0 ? -settle : 0;
 
         if ( useRealism ) {
             sDt = samplingDt();
@@ -580,7 +582,6 @@ public:
                 noiseI[2] = p.simd.noiseStd * RNG.variate<scalar>(0,1);
                 noiseDefaultH = mdt/2; // Fixed-step RK4 has two evenly spaced evaluations per step
                 getNoiseParams(noiseDefaultH, noiseExp, noiseA);
-                outputResolution = sDt;
             }
         }
 
@@ -638,48 +639,42 @@ public:
             return;
 
         if ( generating ) {
-            scalar t = tStart + iT*sDt;
-            scalar VClamp0_2, dVClamp_2, t_2 = getCommandVoltages(currentStim, t, sDt, clamp.VClamp0, clamp.dVClamp, VClamp0_2, dVClamp_2);
+            scalar t = tStart + iT*sDt, tStep, tStepCum = 0;
+            bool chop_sDt = getCommandSegment(currentStim, t, sDt, outputResolution, outputResT0,
+                                              clamp.VClamp0, clamp.dVClamp, tStep);
 
             voltage = state.V;
             current = clamp.getCurrent(t, state.V);
 
             if ( useRealism && p.simd.noise ) {
-                scalar pureIsyn = current;
                 current += noiseI[2];
                 for ( unsigned int mt = 0; mt < rund.simCycles; mt++ ) {
                     t = tStart + iT*sDt + mt*mdt;
-//                    if ( t > t_2 ) {
-//                        clamp.VClamp0 = VClamp0_2;
-//                        clamp.dVClamp = dVClamp_2;
-//                        t_2 += sDt; // ignore for the rest of the loop
-//                    }
-
-                    // Keep noise constant across evaluations for the same time point
-                    noiseI[0] = noiseI[2];
-                    noiseI[1] = getNextNoise(noiseI[0], mdt/2);
-                    noiseI[2] = getNextNoise(noiseI[1], mdt/2);
-//                    scalar pureIsyn = clamp.getCurrent(t, state.V);
-
-                    // RK4, fixed step:
-                    constexpr scalar half = 1/2.;
-                    constexpr scalar third = 1/3.;
-                    constexpr scalar sixth = 1/6.;
-                    State k1 = state.state__f(t, params, pureIsyn + noiseI[0]) * mdt;
-                    State k2 = State(state + k1*half).state__f(t + mdt*half, params, pureIsyn + noiseI[1]) * mdt;
-                    State k3 = State(state + k2*half).state__f(t + mdt*half, params, pureIsyn + noiseI[1]) * mdt;
-                    State k4 = State(state + k3).state__f(t + mdt, params, pureIsyn + noiseI[2]) * mdt;
-                    state = state + k1*sixth + k2*third + k3*third + k4*sixth;
-                    state.state__limit();
+                    if ( chop_sDt ) { // Divide fixed step if command changes within it
+                        bool chop_mdt = getCommandSegment(currentStim, t, mdt, outputResolution, outputResT0,
+                                                          clamp.VClamp0, clamp.dVClamp, tStep);
+                        tStepCum = 0;
+                        while ( chop_mdt ) {
+                            RK4(t, tStep);
+                            tStepCum += tStep;
+                            t = tStart + iT*sDt + mt*mdt + tStepCum;
+                            chop_mdt = getCommandSegment(currentStim, t, mdt - tStepCum, outputResolution, outputResT0,
+                                                         clamp.VClamp0, clamp.dVClamp, tStep);
+                        }
+                    } else {
+                        tStep = mdt;
+                    }
+                    RK4(t, tStep);
                 }
             } else {
-                if ( t_2 == 0 ) {
-                    RKF45(t, t + sDt, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
-                } else {
-                    RKF45(t, t_2, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
-                    clamp.VClamp0 = VClamp0_2;
-                    clamp.dVClamp = dVClamp_2;
-                    RKF45(t_2, t + sDt, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
+                RKF45(t, t + tStep, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
+                tStepCum = 0;
+                while ( chop_sDt ) {
+                    tStepCum += tStep;
+                    t = tStart + iT*sDt + tStepCum;
+                    chop_sDt = getCommandSegment(currentStim, t, sDt - tStepCum, outputResolution, outputResT0,
+                                                 clamp.VClamp0, clamp.dVClamp, tStep);
+                    RKF45(t, t + tStep, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
                 }
             }
 
@@ -693,6 +688,32 @@ public:
         }
         ++iT;
         --samplesRemaining;
+    }
+
+    void RK4(scalar t, scalar h)
+    {
+        constexpr scalar half = 1/2.;
+        constexpr scalar third = 1/3.;
+        constexpr scalar sixth = 1/6.;
+
+        // Keep noise constant across evaluations for a given time point
+        noiseI[0] = noiseI[2];
+        noiseI[1] = getNextNoise(noiseI[0], h/2);
+        noiseI[2] = getNextNoise(noiseI[1], h/2);
+
+        State k1 = state.state__f(t, params, clamp.getCurrent(t, state.V) + noiseI[0]) * h;
+        State est1 = state + k1*half;
+
+        State k2 = est1.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est1.V) + noiseI[1]) * h;
+        State est2 = state + k2*half;
+
+        State k3 = est2.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est2.V) + noiseI[1]) * h;
+        State est3 = state + k3;
+
+        State k4 = est3.state__f(t+h, params, clamp.getCurrent(t+h, est3.V) + noiseI[2]) * h;
+
+        state = state + k1*sixth + k2*third + k3*third + k4*sixth;
+        state.state__limit();
     }
 
     void reset()
