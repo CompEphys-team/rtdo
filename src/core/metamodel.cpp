@@ -274,7 +274,7 @@ std::string MetaModel::structDeclarations() const
     ss << "    __host__ __device__ scalar state__delta(scalar h, bool &success) const {" << endl;
     ss << "        scalar err, maxErr = 0;" << endl;
     for ( const StateVariable &v : stateVariables ) {
-        ss << "        err = fabs(" << v.name << ") / (h * " << v.tolerance << ");" << endl;
+        ss << "        err = fabs(this->" << v.name << ") / (h * " << v.tolerance << ");" << endl;
         ss << "        if ( err > maxErr ) maxErr = err;" << endl;
     }
     ss << "        success = (maxErr <= 1);" << endl;
