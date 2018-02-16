@@ -504,7 +504,7 @@ string MetaModel::daqCode(int ordinal) const
     size_t iT;
     bool useRealism;
 
-    scalar tStart, sDt, mdt, meta_hP, noiseI[3], noiseExp, noiseA;
+    scalar tStart, sDt, mdt, meta_hP, noiseI[3], noiseExp, noiseA, noiseDefaultH;
     bool caching = false, generating = false;
     int skipSamples;
 
@@ -532,6 +532,30 @@ public:
 
     int throttledFor(const Stimulation &) { return 0; }
 
+    void getNoiseParams(scalar h, scalar &Exp, scalar &A)
+    {
+      if ( p.simd.noiseTau > 0 ) { // Ornstein-Uhlenbeck
+          scalar noiseD = 2 * p.simd.noiseStd * p.simd.noiseStd / p.simd.noiseTau; // nA^2/ms
+          Exp = std::exp(-h/p.simd.noiseTau);
+          A = std::sqrt(noiseD * p.simd.noiseTau * (1 - Exp*Exp) / 2);
+      } else { // White noise
+          Exp = 0;
+          A = p.simd.noiseStd;
+      }
+    }
+
+    scalar getNextNoise(scalar I_t, scalar h)
+    {
+        scalar Exp, A;
+        if ( h == noiseDefaultH || p.simd.noiseTau == 0 ) {
+            Exp = noiseExp;
+            A = noiseA;
+        } else {
+            getNoiseParams(h, Exp, A);
+        }
+        return I_t * Exp + A * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-h/tau) + A*X(0,1), I0 = 0
+    }
+
     void run(Stimulation s, double settle)
     {
         currentStim = s;
@@ -552,21 +576,16 @@ public:
                 tStart = -int(p.filter.width/2) * sDt;
             }
             if ( p.simd.noise ) {
+                mdt = sDt/rund.simCycles;
                 noiseI[2] = p.simd.noiseStd * RNG.variate<scalar>(0,1);
-                if ( p.simd.noiseTau > 0 ) { // Brown noise
-                    scalar noiseD = 2 * p.simd.noiseStd * p.simd.noiseStd / p.simd.noiseTau; // nA^2/ms
-                    noiseExp = std::exp(-sDt/rund.simCycles/2/p.simd.noiseTau); // RK4 has one evaluation per dt/2
-                    noiseA = std::sqrt(noiseD * p.simd.noiseTau / 2 * (1 - noiseExp*noiseExp));
-                } else { // White noise
-                    noiseExp = 0;
-                    noiseA = p.simd.noiseStd;
-                }
+                noiseDefaultH = mdt/2; // Fixed-step RK4 has two evenly spaced evaluations per step
+                getNoiseParams(noiseDefaultH, noiseExp, noiseA);
                 outputResolution = sDt;
             }
         }
 
         samplesRemaining = s.duration/sDt + extraSamples;
-        meta_hP = mdt = sDt/rund.simCycles;
+        meta_hP = sDt/rund.simCycles;
 
         if ( settle > 0 ) {
             Stimulation settlingStim;
@@ -638,8 +657,8 @@ public:
 
                     // Keep noise constant across evaluations for the same time point
                     noiseI[0] = noiseI[2];
-                    noiseI[1] = noiseI[0] * noiseExp + noiseA * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-h/tau) + A*X(0,1), I0 = 0
-                    noiseI[2] = noiseI[1] * noiseExp + noiseA * RNG.variate<scalar>(0, 1);
+                    noiseI[1] = getNextNoise(noiseI[0], mdt/2);
+                    noiseI[2] = getNextNoise(noiseI[1], mdt/2);
 //                    scalar pureIsyn = clamp.getCurrent(t, state.V);
 
                     // RK4, fixed step:
