@@ -140,9 +140,6 @@ neuronModel MetaModel::generate(NNmodel &m, std::vector<double> &fixedParamIni, 
         n.varTypes.push_back(v.type);
         variableIni.push_back(v.initial);
     }
-    n.varNames.push_back("meta_hP");
-    n.varTypes.push_back("scalar");
-    variableIni.push_back(project.dt()/10);
     for ( const AdjustableParam &p : adjustableParams ) {
         n.varNames.push_back(p.name);
         n.varTypes.push_back(p.type);
@@ -272,22 +269,38 @@ std::string MetaModel::structDeclarations() const
     ss << endl;
 
     ss << "    __host__ __device__ scalar state__delta(scalar h, bool &success) const {" << endl;
-    ss << "        scalar err, maxErr = 0;" << endl;
+    ss << "        scalar maxErr = 0;" << endl;
+    ss << "        if ( state__hasNan() ) {" << endl;
+    ss << "            success = false;" << endl;
+    ss << "            return 0.5;" << endl;
+    ss << "        } else {" << endl;
     for ( const StateVariable &v : stateVariables ) {
-        ss << "        err = fabs(this->" << v.name << ") / (h * " << v.tolerance << ");" << endl;
-        ss << "        if ( err > maxErr ) maxErr = err;" << endl;
+        ss << "            maxErr = scalarmax(maxErr, fabs(this->" << v.name << ") / " << v.tolerance << ");" << endl;
     }
-    ss << "        success = (maxErr <= 1);" << endl;
-    ss << "        if ( maxErr <= 0.03125 ) return 2;" << endl;
-    ss << "        return 0.84 * sqrt(sqrt(1/maxErr));" << endl;
+    ss << "        }" << endl;
+    ss << "        success = (maxErr <= h);" << endl;
+    ss << "        if ( maxErr <= 0.03125*h ) return 2;" << endl;
+    ss << "        return 0.84 * powf(h/maxErr, 0.25);" << endl;
     ss << "    }" << endl;
     ss << endl;
 
     ss << "    __host__ __device__ void state__limit() {" << endl;
+    for ( const StateVariable &v : stateVariables )
+        ss << "        " << v.name << " = scalarmin(" << v.max << ", scalarmax(" << v.name << ", " << v.min << "));" << endl;
+    ss << "    }" << endl;
+    ss << endl;
+
+    ss << "    __host__ __device__ inline bool state__hasNan() const {" << endl;
+    ss << "        return ";
+    bool first = true;
     for ( const StateVariable &v : stateVariables ) {
-        ss << "        if ( " << v.name << " > " << v.max << " ) " << v.name << " = " << v.max << ";" << endl;
-        ss << "        if ( " << v.name << " < " << v.min << " ) " << v.name << " = " << v.min << ";" << endl;
+        if ( first )
+            first = false;
+        else
+            ss << " || ";
+        ss << "::isnan(" << v.name << ")";
     }
+    ss << ";" << endl;
     ss << "    }" << endl;
 
     ss << "};" << endl;

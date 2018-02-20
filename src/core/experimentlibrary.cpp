@@ -116,7 +116,8 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
     }
 
     std::vector<Variable> vars = {
-        Variable("err")
+        Variable("err"),
+        Variable("meta_hP")
     };
     for ( Variable &v : vars ) {
         n.varNames.push_back(v.name);
@@ -203,7 +204,6 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
         ss << "    pointers.d_" << v.name << " = d_" << v.name << SUFFIX << ";" << endl;
     }
     ss << endl;
-    ss << "    pointers.meta_hP = meta_hP" << SUFFIX << ";" << endl;
     ss << "    pointers.t =& t;" << endl;
     ss << "    pointers.iT =& iT;" << endl;
     ss << "    pointers.push =& push" << SUFFIX << "StateToDevice;" << endl;

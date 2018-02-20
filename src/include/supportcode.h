@@ -67,35 +67,32 @@ __host__ __device__ int RKF45(scalar t, scalar tEnd, scalar hMin, scalar hMax, s
                                StateT &state, const ParamsT &params, const ClampParameters &clamp)
 {
     using namespace RKF45_Constants;
-    scalar h = hP;
+    scalar h = hP, delta = 1;
     int n = 0;
+    bool success;
     while ( t < tEnd ) {
-        bool truncateStep = (tEnd-t < h);
-        if ( truncateStep )
+        h *= delta;
+        hP = h = scalarmin(hMax, scalarmax(hMin, h));
+        if ( h >= tEnd-t )
             h = tEnd-t; // Truncate final step to return a precise value at t = tEnd
+
         StateT k1 = state.state__f(t, params, clamp) * h;
         StateT k2 = StateT(state + k1*a21)                                    .state__f(t + h*c2, params, clamp) * h;
         StateT k3 = StateT(state + k1*a31 + k2*a32)                           .state__f(t + h*c3, params, clamp) * h;
         StateT k4 = StateT(state + k1*a41 + k2*a42 + k3*a43)                  .state__f(t + h*c4, params, clamp) * h;
         StateT k5 = StateT(state + k1*a51 + k2*a52 + k3*a53 + k4*a54)         .state__f(t + h*c5, params, clamp) * h;
         StateT k6 = StateT(state + k1*a61 + k2*a62 + k3*a63 + k4*a64 + k5*a65).state__f(t + h*c6, params, clamp) * h;
+
         StateT est4 = state + k1*b_1 + k3*b_3 + k4*b_4 + k5*b_5;
         StateT est5 = state + k1*b1 + k3*b3 + k4*b4 + k5*b5 + k6*b6;
-        est4.state__limit();
-        est5.state__limit();
-        bool success;
-        scalar delta = StateT(est4 + est5*-1).state__delta(h, success);
+
+        delta = StateT(est4 + est5*-1).state__delta(h, success);
+
         if ( success || h <= hMin ) {
             t += h;
             state = est5;
+            state.state__limit();
         }
-        h *= delta;
-        if ( h > hMax )
-            h = hMax;
-        else if ( h < hMin )
-            h = hMin;
-        if ( !truncateStep || delta < 1 )
-            hP = h; // Update persistent h only on non-truncated or inaccurate steps
         ++n;
     }
     return n;

@@ -34,7 +34,7 @@ public:
 
         scalar *err;
         scalar *d_err;
-        scalar *meta_hP;
+        scalar *meta_hP, *d_meta_hP;
 
         scalar *t;
         unsigned long long *iT;
