@@ -36,6 +36,7 @@ namespace RKF45_Constants {
     constexpr scalar c4 = 12./13.;
     constexpr scalar c5 = 1.;
     constexpr scalar c6 = 1./2.;
+
     constexpr scalar a21 = 1./4.;
     constexpr scalar a31 = 3./32.;
     constexpr scalar a32 = 9./32.;
@@ -51,15 +52,18 @@ namespace RKF45_Constants {
     constexpr scalar a63 = -3544./2565.;
     constexpr scalar a64 = 1859./4104.;
     constexpr scalar a65 = -11./40.;
+
     constexpr scalar b1 = 16./135.;
     constexpr scalar b3 = 5565./12825.;
     constexpr scalar b4 = 28561./56430.;
     constexpr scalar b5 = -9./50.;
     constexpr scalar b6 = 2./55.;
-    constexpr scalar b_1 = 25./216.;
-    constexpr scalar b_3 = 1408./2565.;
-    constexpr scalar b_4 = 2197./4104.;
-    constexpr scalar b_5 = -1./5.;
+
+    // Fourth-order estimate parameters are inverted around 0 for efficiency (avoid one call to State::operator*(-1) per iteration)
+    constexpr scalar b_1 = -25./216.;
+    constexpr scalar b_3 = -1408./2565.;
+    constexpr scalar b_4 = -2197./4104.;
+    constexpr scalar b_5 = 1./5.;
 }
 
 template <class StateT, class ParamsT>
@@ -76,21 +80,21 @@ __host__ __device__ int RKF45(scalar t, scalar tEnd, scalar hMin, scalar hMax, s
         if ( h >= tEnd-t )
             h = tEnd-t; // Truncate final step to return a precise value at t = tEnd
 
-        StateT k1 = state.state__f(t, params, clamp) * h;
-        StateT k2 = StateT(state + k1*a21)                                    .state__f(t + h*c2, params, clamp) * h;
-        StateT k3 = StateT(state + k1*a31 + k2*a32)                           .state__f(t + h*c3, params, clamp) * h;
-        StateT k4 = StateT(state + k1*a41 + k2*a42 + k3*a43)                  .state__f(t + h*c4, params, clamp) * h;
-        StateT k5 = StateT(state + k1*a51 + k2*a52 + k3*a53 + k4*a54)         .state__f(t + h*c5, params, clamp) * h;
-        StateT k6 = StateT(state + k1*a61 + k2*a62 + k3*a63 + k4*a64 + k5*a65).state__f(t + h*c6, params, clamp) * h;
+        StateT k1 = state.state__f(t, params, clamp);
+        StateT k2 = StateT(state + k1*(a21*h))                                                    .state__f(t + h*c2, params, clamp);
+        StateT k3 = StateT(state + k1*(a31*h) + k2*(a32*h))                                       .state__f(t + h*c3, params, clamp);
+        StateT k4 = StateT(state + k1*(a41*h) + k2*(a42*h) + k3*(a43*h))                          .state__f(t + h*c4, params, clamp);
+        StateT k5 = StateT(state + k1*(a51*h) + k2*(a52*h) + k3*(a53*h) + k4*(a54*h))             .state__f(t + h*c5, params, clamp);
+        StateT k6 = StateT(state + k1*(a61*h) + k2*(a62*h) + k3*(a63*h) + k4*(a64*h) + k5*(a65*h)).state__f(t + h*c6, params, clamp);
 
-        StateT est4 = state + k1*b_1 + k3*b_3 + k4*b_4 + k5*b_5;
-        StateT est5 = state + k1*b1 + k3*b3 + k4*b4 + k5*b5 + k6*b6;
-
-        delta = StateT(est4 + est5*-1).state__delta(h, success);
+        StateT dEst5 = k1*(b1*h) + k3*(b3*h) + k4*(b4*h) + k5*(b5*h) + k6*(b6*h);
+        delta = StateT(dEst5
+                       + k1*(b_1*h) + k3*(b_3*h) + k4*(b_4*h) + k5*(b_5*h) // == -dEst4
+                       ).state__delta(h, success);
 
         if ( success || h <= hMin ) {
             t += h;
-            state = est5;
+            state = state + dEst5;
             state.state__limit();
         }
         ++n;
@@ -99,26 +103,22 @@ __host__ __device__ int RKF45(scalar t, scalar tEnd, scalar hMin, scalar hMax, s
 }
 
 template <class StateT, class ParamsT>
-__host__ __device__ void RK4(scalar t, scalar h,
-                             StateT &state, const ParamsT &params, const ClampParameters &clamp,
-                             scalar noiseI[3] = 0)
+__host__ __device__ inline void RK4(scalar t, scalar h,
+                                    StateT &state, const ParamsT &params, const ClampParameters &clamp,
+                                    scalar noiseI[3] = 0)
 {
-    constexpr scalar half = 1/2.;
-    constexpr scalar third = 1/3.;
-    constexpr scalar sixth = 1/6.;
+    StateT k1 = state.state__f(t, params, clamp.getCurrent(t, state.V) + (noiseI ? noiseI[0] : 0));
+    StateT est = state + k1*(h/2);
 
-    StateT k1 = state.state__f(t, params, clamp.getCurrent(t, state.V) + (noiseI ? noiseI[0] : 0)) * h;
-    StateT est = state + k1*half;
+    StateT k2 = est.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est.V) + (noiseI ? noiseI[1] : 0));
+    est = state + k2*(h/2);
 
-    StateT k2 = est.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est.V) + (noiseI ? noiseI[1] : 0)) * h;
-    est = state + k2*half;
+    StateT k3 = est.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est.V) + (noiseI ? noiseI[1] : 0));
+    est = state + k3*h;
 
-    StateT k3 = est.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est.V) + (noiseI ? noiseI[1] : 0)) * h;
-    est = state + k3;
+    StateT k4 = est.state__f(t+h, params, clamp.getCurrent(t+h, est.V) + (noiseI ? noiseI[2] : 0));
 
-    StateT k4 = est.state__f(t+h, params, clamp.getCurrent(t+h, est.V) + (noiseI ? noiseI[2] : 0)) * h;
-
-    state = state + k1*sixth + k2*third + k3*third + k4*sixth;
+    state = state + (k1 + k2*2 + k3*2 + k4) * (h/6);
     state.state__limit();
 }
 
