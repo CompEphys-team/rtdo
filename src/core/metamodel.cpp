@@ -668,7 +668,11 @@ public:
                                                           clamp.VClamp0, clamp.dVClamp, tStep);
                         tStepCum = 0;
                         while ( chop_mdt ) {
-                            RK4(t, tStep);
+                            // Keep noise constant across evaluations for a given time point
+                            noiseI[0] = noiseI[2];
+                            noiseI[1] = getNextNoise(noiseI[0], tStep/2);
+                            noiseI[2] = getNextNoise(noiseI[1], tStep/2);
+                            RK4(t, tStep, state, params, clamp, noiseI);
                             tStepCum += tStep;
                             t = tStart + iT*sDt + mt*mdt + tStepCum;
                             chop_mdt = getCommandSegment(currentStim, t, mdt - tStepCum, outputResolution, outputResT0,
@@ -677,7 +681,10 @@ public:
                     } else {
                         tStep = mdt;
                     }
-                    RK4(t, tStep);
+                    noiseI[0] = noiseI[2];
+                    noiseI[1] = getNextNoise(noiseI[0], tStep/2);
+                    noiseI[2] = getNextNoise(noiseI[1], tStep/2);
+                    RK4(t, tStep, state, params, clamp, noiseI);
                 }
             } else {
                 RKF45(t, t + tStep, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
@@ -701,32 +708,6 @@ public:
         }
         ++iT;
         --samplesRemaining;
-    }
-
-    void RK4(scalar t, scalar h)
-    {
-        constexpr scalar half = 1/2.;
-        constexpr scalar third = 1/3.;
-        constexpr scalar sixth = 1/6.;
-
-        // Keep noise constant across evaluations for a given time point
-        noiseI[0] = noiseI[2];
-        noiseI[1] = getNextNoise(noiseI[0], h/2);
-        noiseI[2] = getNextNoise(noiseI[1], h/2);
-
-        State k1 = state.state__f(t, params, clamp.getCurrent(t, state.V) + noiseI[0]) * h;
-        State est1 = state + k1*half;
-
-        State k2 = est1.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est1.V) + noiseI[1]) * h;
-        State est2 = state + k2*half;
-
-        State k3 = est2.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est2.V) + noiseI[1]) * h;
-        State est3 = state + k3;
-
-        State k4 = est3.state__f(t+h, params, clamp.getCurrent(t+h, est3.V) + noiseI[2]) * h;
-
-        state = state + k1*sixth + k2*third + k3*third + k4*sixth;
-        state.state__limit();
     }
 
     void reset()

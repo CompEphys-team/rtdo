@@ -98,4 +98,28 @@ __host__ __device__ int RKF45(scalar t, scalar tEnd, scalar hMin, scalar hMax, s
     return n;
 }
 
+template <class StateT, class ParamsT>
+__host__ __device__ void RK4(scalar t, scalar h,
+                             StateT &state, const ParamsT &params, const ClampParameters &clamp,
+                             scalar noiseI[3] = 0)
+{
+    constexpr scalar half = 1/2.;
+    constexpr scalar third = 1/3.;
+    constexpr scalar sixth = 1/6.;
+
+    StateT k1 = state.state__f(t, params, clamp.getCurrent(t, state.V) + (noiseI ? noiseI[0] : 0)) * h;
+    StateT est = state + k1*half;
+
+    StateT k2 = est.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est.V) + (noiseI ? noiseI[1] : 0)) * h;
+    est = state + k2*half;
+
+    StateT k3 = est.state__f(t+h/2, params, clamp.getCurrent(t+h/2, est.V) + (noiseI ? noiseI[1] : 0)) * h;
+    est = state + k3;
+
+    StateT k4 = est.state__f(t+h, params, clamp.getCurrent(t+h, est.V) + (noiseI ? noiseI[2] : 0)) * h;
+
+    state = state + k1*sixth + k2*third + k3*third + k4*sixth;
+    state.state__limit();
+}
+
 #endif // SUPPORTCODE_H
