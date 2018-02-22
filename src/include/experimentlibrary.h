@@ -23,6 +23,7 @@ public:
         int *simCycles;
         scalar *clampGain;
         scalar *accessResistance;
+        int *integrator;
         scalar *Vmem;
         scalar *Vprev;
         scalar *Imem;
@@ -82,6 +83,7 @@ public:
     int &simCycles;
     scalar &clampGain;
     scalar &accessResistance;
+    int &integrator;
     scalar &Vmem;
     scalar &Vprev;
     scalar &Imem;

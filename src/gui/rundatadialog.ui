@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>369</width>
-    <height>202</height>
+    <width>420</width>
+    <height>240</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,7 +24,7 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="2">
+   <item row="4" column="2">
     <widget class="QDoubleSpinBox" name="settleDuration">
      <property name="suffix">
       <string> ms</string>
@@ -34,21 +34,21 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="2">
+   <item row="2" column="2">
     <widget class="QSpinBox" name="clampGain">
      <property name="maximum">
       <number>1000000</number>
      </property>
     </widget>
    </item>
-   <item row="4" column="1" colspan="2">
+   <item row="6" column="1" colspan="2">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>
     </widget>
    </item>
-   <item row="2" column="2">
+   <item row="3" column="2">
     <widget class="QDoubleSpinBox" name="accessResistance">
      <property name="suffix">
       <string> MOhm</string>
@@ -58,7 +58,7 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
+   <item row="3" column="1">
     <widget class="QPushButton" name="measureResistance">
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ensure current-passing electrode is in saline and stable, and bridge balance is disabled.&lt;/p&gt;&lt;p&gt;Important note: Headstage resistance must be added to the measured value manually!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -68,14 +68,14 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
+   <item row="3" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
       <string>Access resistance</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="2">
+   <item row="2" column="0" colspan="2">
     <widget class="QLabel" name="label_2">
      <property name="text">
       <string>Voltage clamp gain</string>
@@ -90,11 +90,37 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="2">
+   <item row="4" column="0" colspan="2">
     <widget class="QLabel" name="label_4">
      <property name="text">
       <string>Settling duration</string>
      </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_5">
+     <property name="text">
+      <string>Integration method</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QComboBox" name="integrator">
+     <item>
+      <property name="text">
+       <string>Forward Euler</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Runge-Kutta 4</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Runge-Kutta-Fehlberg 4/5</string>
+      </property>
+     </item>
     </widget>
    </item>
   </layout>

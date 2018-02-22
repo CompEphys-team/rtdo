@@ -70,6 +70,7 @@ std::ostream& operator<<(std::ostream& os, const IntegrationMethod &m)
     switch ( m ) {
     case IntegrationMethod::ForwardEuler: os << "ForwardEuler"; break;
     case IntegrationMethod::RungeKutta4: os << "RungeKutta4"; break;
+    case IntegrationMethod::RungeKuttaFehlberg45: os << "RungeKuttaFehlberg45"; break;
     }
     return os;
 }
@@ -79,6 +80,7 @@ std::istream& operator>>(std::istream& is, IntegrationMethod &m)
     is >> s;
     if ( s == std::string("ForwardEuler") )     m = IntegrationMethod::ForwardEuler;
     else if ( s == std::string("RungeKutta4") ) m = IntegrationMethod::RungeKutta4;
+    else if ( s == std::string("RungeKuttaFehlberg45") ) m = IntegrationMethod::RungeKuttaFehlberg45;
     else /* Default: */ m = IntegrationMethod::RungeKutta4;
     return is;
 }

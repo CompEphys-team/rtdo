@@ -122,4 +122,11 @@ __host__ __device__ inline void RK4(scalar t, scalar h,
     state.state__limit();
 }
 
+template <class StateT, class ParamsT>
+__host__ __device__ inline void Euler(scalar t, scalar h,
+                                      StateT &state, const ParamsT &params, const ClampParameters &clamp)
+{
+    state = state + state.state__f(t, params, clamp) * h;
+}
+
 #endif // SUPPORTCODE_H

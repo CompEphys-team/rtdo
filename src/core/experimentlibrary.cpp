@@ -26,6 +26,7 @@ ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
     simCycles(*(pointers.simCycles)),
     clampGain(*(pointers.clampGain)),
     accessResistance(*(pointers.accessResistance)),
+    integrator(*(pointers.integrator)),
     Vmem(*(pointers.Vmem)),
     Vprev(*(pointers.Vprev)),
     Imem(*(pointers.Imem)),
@@ -101,6 +102,7 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("simCycles", "", "int"),
         Variable("clampGain"),
         Variable("accessResistance"),
+        Variable("integrator", "", "int"),
         Variable("Vmem"),
         Variable("Vprev"),
         Variable("Imem"),
@@ -151,8 +153,18 @@ if ( $(getErr) ) {
     $(err) += tmp*tmp;
 }
 
-RKF45(t, t+$(tStep), DT/$(simCycles), $(tStep), $(meta_hP), state, params, clamp);
+scalar mdt = $(tStep) < DT ? $(tStep)/$(simCycles) : DT/$(simCycles);
+unsigned int mEnd = $(simCycles) * max(1, int($(tStep)/DT));
 
+if ( $(integrator) == (int)IntegrationMethod::RungeKutta4 ) {
+    for ( unsigned int mt = 0; mt < mEnd; mt++ )
+        RK4(t + mt*mdt, mdt, state, params, clamp);
+} else if ( $(integrator) == (int)IntegrationMethod::ForwardEuler ) {
+    for ( unsigned int mt = 0; mt < mEnd; mt++ )
+        Euler(t + mt*mdt, mdt, state, params, clamp);
+} else /*if ( $(integrator) == (int)IntegrationMethod::RungeKuttaFehlberg45 )*/ {
+    RKF45(t, t+$(tStep), DT/$(simCycles), $(tStep), $(meta_hP), state, params, clamp);
+}
 )EOF";
 
     ss << model.extractState();
@@ -226,4 +238,5 @@ void ExperimentLibrary::setRunData(RunData rund)
     clampGain = rund.clampGain;
     accessResistance = rund.accessResistance;
     simCycles = rund.simCycles;
+    integrator = int(rund.integrator);
 }

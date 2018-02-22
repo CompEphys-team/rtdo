@@ -139,7 +139,7 @@ struct ThreadData
     unsigned long name;
 };
 
-enum class IntegrationMethod { ForwardEuler, RungeKutta4 };
+enum class IntegrationMethod { ForwardEuler = 0, RungeKutta4 = 1, RungeKuttaFehlberg45 = 2 };
 std::ostream& operator<<(std::ostream& os, const IntegrationMethod &m);
 std::istream& operator>>(std::istream& is, IntegrationMethod &m);
 
@@ -218,6 +218,7 @@ struct RunData
     double clampGain = 1000;
     double accessResistance = 15; // MOhm
     double settleDuration = 100; // msec
+    IntegrationMethod integrator = IntegrationMethod::RungeKutta4;
 };
 
 struct Bubble

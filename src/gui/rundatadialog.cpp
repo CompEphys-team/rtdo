@@ -44,6 +44,11 @@ void RunDataDialog::importData()
     ui->clampGain->setValue(p.clampGain);
     ui->accessResistance->setValue(p.accessResistance);
     ui->settleDuration->setValue(p.settleDuration);
+    switch ( p.integrator ) {
+    case IntegrationMethod::ForwardEuler:         ui->integrator->setCurrentIndex(0); break;
+    case IntegrationMethod::RungeKutta4:          ui->integrator->setCurrentIndex(1); break;
+    case IntegrationMethod::RungeKuttaFehlberg45: ui->integrator->setCurrentIndex(2); break;
+    }
 }
 
 void RunDataDialog::exportData()
@@ -53,6 +58,11 @@ void RunDataDialog::exportData()
     p.clampGain = ui->clampGain->value();
     p.accessResistance = ui->accessResistance->value();
     p.settleDuration = ui->settleDuration->value();
+    switch ( ui->integrator->currentIndex() ) {
+    case 0: p.integrator = IntegrationMethod::ForwardEuler;         break;
+    case 1: p.integrator = IntegrationMethod::RungeKutta4;          break;
+    case 2: p.integrator = IntegrationMethod::RungeKuttaFehlberg45; break;
+    }
     emit apply(p);
 }
 
