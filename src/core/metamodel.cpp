@@ -8,6 +8,7 @@
 #include <QString>
 #include <QRegularExpression>
 #include "project.h"
+#include "stringUtils.h"
 
 void (*MetaModel::modelDef)(NNmodel&);
 
@@ -210,7 +211,7 @@ std::string MetaModel::resolveCode(const std::string &code) const
                       QString("params.%1").arg(QString::fromStdString(p.name)));
     for ( const Variable &p : _params )
         qcode.replace(QString("$(%1)").arg(QString::fromStdString(p.name)),
-                      QString::number(p.initial, 'g', 10));
+                      QString::number(p.initial, 'e', 10));
     return qcode.toStdString();
 }
 
@@ -305,7 +306,13 @@ std::string MetaModel::structDeclarations() const
 
     ss << "};" << endl;
 
-    return ss.str();
+#ifdef USEDOUBLE
+    return ensureFtype(ss.str(), "double");
+#else
+    std::string ret = ensureFtype(ss.str(), "float");
+    substitute(ret, "isnanf", "isnan"); // GeNN replaces "nan" to "nanf" regardless of the prefix, but isnanf is not a cuda function.
+    return ret;
+#endif
 }
 
 std::string MetaModel::supportCode() const
