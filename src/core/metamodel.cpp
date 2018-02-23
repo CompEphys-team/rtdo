@@ -1,5 +1,4 @@
 #include "metamodel.h"
-#include "tinyxml2.h"
 #include <stdexcept>
 #include "modelSpec.h"
 #include "global.h"
@@ -26,7 +25,7 @@ MetaModel::MetaModel(const Project &p, std::string file) :
         throw std::runtime_error("Load XML failed with error " + doc.ErrorID() );
     }
 
-    const tinyxml2::XMLElement *model, *el, *sub;
+    const tinyxml2::XMLElement *model, *voltage, *capacitance;
 
 /// Base tag and model name:
 /// <model name="MyModel">
@@ -40,6 +39,36 @@ MetaModel::MetaModel(const Project &p, std::string file) :
     if ( _name.empty() )
         throw std::runtime_error("Invalid model file: model name not set.");
 
+    readVariables(model);
+    readParams(model);
+    readAdjustableParams(model);
+
+    voltage = model->FirstChildElement("voltage");
+    capacitance = model->FirstChildElement("capacitance");
+    if ( voltage && capacitance ) {
+        readCurrents(model);
+        readVoltage(voltage);
+        readCapacitance(capacitance);
+    } else {
+        bool hasV = false;
+        for ( auto it = stateVariables.begin(); it != stateVariables.end(); it++ ) {
+            if ( it->name == "V" ) {
+                hasV = true;
+                if ( it != stateVariables.begin() ) {
+                    StateVariable v = *it;
+                    stateVariables.erase(it);
+                    stateVariables.insert(stateVariables.begin(), std::move(v));
+                }
+                V =& stateVariables.front();
+                break;
+            }
+        }
+        if ( !hasV ) {
+            throw std::runtime_error("Error: Model fails to define a voltage variable V.");
+        }
+    }
+}
+
 /// State variables:
 /// <variable name="V" value="-63.5">           <!-- refer to as `$(name)` in code sections; value is the initial default -->
 ///     <tmp name="foo">code section</tmp>      <!-- temporary variable, refer to as `name` in code sections -->
@@ -48,8 +77,10 @@ MetaModel::MetaModel(const Project &p, std::string file) :
 ///     <range min="0" max="1" />               <!-- Optional: Permissible value range, inclusive of bounds -->
 ///     <tolerance>1e-6</tolerance>             <!-- Optional: RKF45 error tolerance. Defaults to 1e-3. -->
 /// </variable>
-    bool hasV = false;
-    for ( el = model->FirstChildElement("variable"); el; el = el->NextSiblingElement("variable") ) {
+void MetaModel::readVariables(const tinyxml2::XMLElement *model)
+{
+    const tinyxml2::XMLElement *sub;
+    for ( const tinyxml2::XMLElement *el = model->FirstChildElement("variable"); el; el = el->NextSiblingElement("variable") ) {
         StateVariable p(el->Attribute("name"), el->FirstChildElement("dYdt")->GetText());
         el->QueryDoubleAttribute("value", &p.initial);
         if ( (sub = el->FirstChildElement("range")) ) {
@@ -69,26 +100,20 @@ MetaModel::MetaModel(const Project &p, std::string file) :
             }
             p.tmp.push_back(tmp);
         }
-
-        if ( p.name == "V" ) {
-            hasV = true;
-            _baseV = p.initial;
-            stateVariables.insert(stateVariables.begin(), p);
-        } else {
-            stateVariables.push_back(p);
-        }
+        stateVariables.push_back(p);
     }
-    if ( !hasV ) {
-        throw std::runtime_error("Error: Model fails to define a voltage variable V.");
-    }
+}
 
 /// Fixed parameters:
 /// <parameter name="m_VSlope" value="-21.3" />     <!-- refer to as `$(name)`. Value can not change at runtime. -->
-    for ( el = model->FirstChildElement("parameter"); el; el = el->NextSiblingElement("parameter") ) {
+void MetaModel::readParams(const tinyxml2::XMLElement *model)
+{
+    for ( const tinyxml2::XMLElement *el = model->FirstChildElement("parameter"); el; el = el->NextSiblingElement("parameter") ) {
         Variable p(el->Attribute("name"));
         el->QueryDoubleAttribute("value", &p.initial);
         _params.push_back(p);
     }
+}
 
 /// Adjustable parameters:
 /// <adjustableParam name="gNa" value="7.2">    <!-- refer to as `$(name)`. Value is the initial default. -->
@@ -101,7 +126,10 @@ MetaModel::MetaModel(const Project &p, std::string file) :
 ///                     is 5 times the perturbation rate.
 ///                     The default value is always used and does not count towards the total. -->
 /// </adjustableParam>
-    for ( el = model->FirstChildElement("adjustableParam"); el; el = el->NextSiblingElement("adjustableParam") ) {
+void MetaModel::readAdjustableParams(const tinyxml2::XMLElement *model)
+{
+    const tinyxml2::XMLElement *sub;
+    for ( const tinyxml2::XMLElement *el = model->FirstChildElement("adjustableParam"); el; el = el->NextSiblingElement("adjustableParam") ) {
         AdjustableParam p(el->Attribute("name"));
         el->QueryDoubleAttribute("value", &p.initial);
         if ( (sub = el->FirstChildElement("range")) ) {
@@ -126,6 +154,118 @@ MetaModel::MetaModel(const Project &p, std::string file) :
                 sub->QueryDoubleAttribute("standarddev", &p.wgSD);
         }
         adjustableParams.push_back(p);
+    }
+}
+
+/// Currents:
+/// <current name="I_A">
+///     <popen>$(nA)*$(nA)*$(nA)*$(nA)*$(hA)</popen>    <!-- Active currents: Open probability, expressed in code form -->
+///     <gunit>20e-6</gunit>                            <!-- Active currents: Unit conductance (same units as gbar, typically muS) -->
+///     <gbar>gA</gbar> <!-- Name of the maximum conductance, which must be a defined param (adjustable or fixed) elsewhere in the model -->
+///     <E>EK</E>       <!-- Name of the equilibrium conductance, which must be a defined param (adjustable or fixed) elsewhere in the model -->
+/// </current>
+void MetaModel::readCurrents(const tinyxml2::XMLElement *model)
+{
+    const tinyxml2::XMLElement *sub;
+    for ( const tinyxml2::XMLElement *el = model->FirstChildElement("current"); el; el = el->NextSiblingElement("current") ) {
+        Current c;
+        c.name = el->Attribute("name");
+        if ( (sub = el->FirstChildElement("popen")) )
+            c.popen = sub->GetText();
+        if ( (sub = el->FirstChildElement("gunit")) )
+            c.gUnit = sub->DoubleText(c.gUnit);
+        if ( (sub = el->FirstChildElement("gbar")) ) {
+            for ( AdjustableParam &p : adjustableParams )
+                if ( p.name == sub->GetText() )
+                    c.gbar =& p;
+            for ( Variable &p : _params )
+                if ( p.name == sub->GetText() )
+                    c.gbar =& p;
+        }
+        if ( (sub = el->FirstChildElement("E")) ) {
+            for ( AdjustableParam &p : adjustableParams )
+                if ( p.name == sub->GetText() )
+                    c.E =& p;
+            for ( Variable &p : _params )
+                if ( p.name == sub->GetText() )
+                    c.E =& p;
+        }
+        currentDefs.push_back(c);
+    }
+}
+
+/// Voltage:
+/// <voltage>                           <!-- refer to as `$(V)` -->
+///     <value>-60</value>              <!-- The default initial/resting/holding potential -->
+///     <range min="-150" max="100"/>   <!-- Permissible range, edges inclusive -->
+/// </voltage>
+void MetaModel::readVoltage(const tinyxml2::XMLElement *voltage)
+{
+    stateVariables.insert(stateVariables.begin(), std::move(StateVariable("V")));
+    V =& stateVariables.front();
+    const tinyxml2::XMLElement *sub;
+    if ( (sub = voltage->FirstChildElement("value")) )
+        V->initial = sub->DoubleText();
+    if ( (sub = voltage->FirstChildElement("range")) ) {
+        sub->QueryDoubleAttribute("min", &V->min);
+        sub->QueryDoubleAttribute("max", &V->max);
+        using std::swap;
+        if ( V->min > V->max )
+            swap(V->min, V->max);
+    }
+
+    for ( const Current &i : currentDefs ) {
+        Variable v(i.name);
+        v.code = QString("$(%1) * ($(V) - $(%2))")
+                .arg(QString::fromStdString(i.gbar->name))
+                .arg(QString::fromStdString(i.E->name))
+                .toStdString();
+        if ( !i.popen.empty() )
+            v.code = std::string("(") + i.popen + ") * " + v.code;
+        V->tmp.push_back(v);
+
+        if ( V->code.empty() )
+            V->code = "(Isyn";
+        V->code += std::string(" - ") + i.name;
+    }
+    V->code += ") / $(C)";
+}
+
+/// Capacitance:
+/// <capacitance>                       <!-- refer to as `$(C)`. If range and perturbation elements are present, this parameter becomes adjustable. -->
+///     <value>150</value>              <!-- The default initial value -->
+///     <range min="20" max="500"/>     <!-- Permissible range, edges inclusive -->
+///     <perturbation rate="0.2" type="*|+|multiplicative|additive (default)" /> <!-- see adjustableParam -->
+/// </capacitance>
+void MetaModel::readCapacitance(const tinyxml2::XMLElement *capacitance)
+{
+    const tinyxml2::XMLElement *range, *pert, *value;
+    range = capacitance->FirstChildElement("range");
+    pert = capacitance->FirstChildElement("perturbation");
+    value = capacitance->FirstChildElement("value");
+    if ( range && pert ) {
+        AdjustableParam p("C");
+        if ( value )
+            p.initial = value->DoubleText(p.initial);
+
+        range->QueryDoubleAttribute("min", &p.min);
+        range->QueryDoubleAttribute("max", &p.max);
+        using std::swap;
+        if ( p.min > p.max )
+            swap(p.min, p.max);
+
+        pert->QueryDoubleAttribute("rate", &p.sigma);
+        p.adjustedSigma = p.sigma;
+        std::string ptype = pert->Attribute("type");
+        p.multiplicative = !ptype.compare("*") || !ptype.compare("multiplicative");
+
+        adjustableParams.push_back(std::move(p));
+        C =& adjustableParams.back();
+    } else {
+        _params.emplace_back("C");
+        C =& _params.back();
+        if ( value )
+            C->initial = value->DoubleText(C->initial);
     }
 }
 

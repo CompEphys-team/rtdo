@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "types.h"
+#include "../tinyxml2/tinyxml2.h"
 
 class neuronModel;
 class NNmodel;
@@ -29,6 +30,17 @@ public:
     std::vector<AdjustableParam> adjustableParams;
     std::vector<Variable> currents;
 
+    struct Current {
+        std::string name;
+        std::string popen;
+        scalar gUnit = 0.02;
+        Variable *gbar;
+        Variable *E;
+    };
+    std::vector<Current> currentDefs;
+    StateVariable *V = nullptr;
+    Variable *C = nullptr;
+
     static void (*modelDef)(NNmodel&);
 
     static size_t numLibs; //!< Count the number of open Wavegen/Experiment libraries
@@ -37,11 +49,17 @@ protected:
     const Project &project;
     std::string _name;
     std::vector<Variable> _params;
-    double _baseV;
 
     bool isCurrent(const Variable &tmp) const;
     std::string resolveCode(const std::string &code) const;
     std::string structDeclarations() const;
+
+    void readVariables(const tinyxml2::XMLElement *);
+    void readParams(const tinyxml2::XMLElement *);
+    void readAdjustableParams(const tinyxml2::XMLElement *);
+    void readCurrents(const tinyxml2::XMLElement *);
+    void readVoltage(const tinyxml2::XMLElement *);
+    void readCapacitance(const tinyxml2::XMLElement *);
 };
 
 // generateALL.cc's renamed main - see core/generateAllNoMain.cpp:
