@@ -199,13 +199,9 @@ string MetaModel::name(ModuleType type) const
 std::string MetaModel::resolveCode(const std::string &code) const
 {
     QString qcode = QString::fromStdString(code);
-    for ( const StateVariable &v : stateVariables ) {
-        QString sub = "%1";
-        if ( v.name == "t" || v.name == "params" || v.name == "clamp" )
-            sub = "this->%1";
+    for ( const StateVariable &v : stateVariables )
         qcode.replace(QString("$(%1)").arg(QString::fromStdString(v.name)),
-                      sub.arg(QString::fromStdString(v.name)));
-    }
+                      QString("this->%1").arg(QString::fromStdString(v.name)));
     for ( const AdjustableParam &p : adjustableParams )
         qcode.replace(QString("$(%1)").arg(QString::fromStdString(p.name)),
                       QString("params.%1").arg(QString::fromStdString(p.name)));
