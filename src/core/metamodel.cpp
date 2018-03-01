@@ -465,6 +465,14 @@ std::string MetaModel::structDeclarations() const
     }
     ss << "        return variance;" << endl;
     ss << "    }" << endl;
+    ss << endl;
+
+    ss << "    __host__ __device__ inline scalar state__negLogLikelihood(scalar dI, scalar var, const Parameters &params) const {" << endl;
+    // log(N(mu, s^2)) = -1/2 log(2Pi) - 1/2 log(s^2) - 1/2 (x-mu)^2/s^2
+    constexpr double halfLog2Pi = log(2*M_PI) / 2;
+    ss << "        var += state__variance(params);" << endl;
+    ss << "        return " << halfLog2Pi << " + 0.5 * (log(var) + dI*dI/var);" << endl;
+    ss << "    }" << endl;
 
     ss << "};" << endl;
 
