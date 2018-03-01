@@ -443,6 +443,28 @@ std::string MetaModel::structDeclarations() const
     }
     ss << ";" << endl;
     ss << "    }" << endl;
+    ss << endl;
+
+    ss << "    __host__ __device__ inline scalar state__variance(const Parameters &params) const {" << endl;
+    // var = N * i^2 * p*(1-p), where N = number of channels, and i = unit current (current through a single channel) [Hille, eqn 12-4]
+    // N = gbar / gUnit
+    // i = gUnit * (V - E)
+    // => N*i^2 = gbar * gUnit * (V-E)^2
+    ss << "        scalar variance = 0;" << endl;
+    for ( const Current &c : currentDefs ) {
+        if ( c.popen.empty() )
+            continue;
+        std::stringstream cs;
+        cs << "        {" << endl;
+        cs << "            scalar p = " << c.popen << ";" << endl;
+        cs << "            scalar dE = $(" << V->name << ") - $(" << c.E->name << ");" << endl;
+        cs << "            variance += $(" << c.gbar->name << ") * dE * dE * p * (1.0 - p) * "
+           << QString::number(c.gUnit, 'e', 10).toStdString() << ";" << endl;
+        cs << "        }" << endl;
+        ss << resolveCode(cs.str());
+    }
+    ss << "        return variance;" << endl;
+    ss << "    }" << endl;
 
     ss << "};" << endl;
 
