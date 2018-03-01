@@ -46,6 +46,10 @@ MetaModel::MetaModel(const Project &p, std::string file) :
     voltage = model->FirstChildElement("voltage");
     capacitance = model->FirstChildElement("capacitance");
     if ( voltage && capacitance ) {
+        // Add space for V and C before taking pointers
+        stateVariables.reserve(stateVariables.size()+1);
+        adjustableParams.reserve(adjustableParams.size()+1);
+        _params.reserve(_params.size()+1);
         readCurrents(model);
         readVoltage(voltage);
         readCapacitance(capacitance);
