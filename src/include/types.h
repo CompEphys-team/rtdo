@@ -161,7 +161,7 @@ struct Variable {
     double min = 0;
     double max = 0;
 
-    scalar *v;
+    scalar *v, *d_v;
     inline scalar &operator[](std::size_t i) { return v[i]; }
 };
 

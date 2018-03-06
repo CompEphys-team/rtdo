@@ -201,11 +201,15 @@ std::string ExperimentLibrary::supportCode(const std::vector<Variable> &globals,
     ss << "    libInit(pointers, " << project.expNumCandidates() << ");" << endl;
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
-        ss << "    state[" << i++ << "].v = " << v.name << SUFFIX << ";" << endl;
+        ss << "    state[" << i << "].v = " << v.name << SUFFIX << ";" << endl;
+        ss << "    state[" << i << "].d_v = d_" << v.name << SUFFIX << ";" << endl;
+        ++i;
     }
     i = 0;
     for ( const AdjustableParam &p : adjustableParams ) {
-        ss << "    param[" << i++ << "].v = " << p.name << SUFFIX << ";" << endl;
+        ss << "    param[" << i << "].v = " << p.name << SUFFIX << ";" << endl;
+        ss << "    param[" << i << "].d_v = d_" << p.name << SUFFIX << ";" << endl;
+        ++i;
     }
     ss << endl;
     for ( const Variable &p : globals ) {

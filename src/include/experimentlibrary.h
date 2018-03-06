@@ -48,6 +48,8 @@ public:
         void (*destroySim)(DAQ *);
         std::function<void(void)> pushErr;
         std::function<void(void)> pullErr;
+        std::function<void(Variable &)> pushV;
+        std::function<void(Variable &)> pullV;
     };
 
     const Project &project;
@@ -63,6 +65,8 @@ public:
     inline void reset() { pointers.reset(); }
     inline void pushErr() { pointers.pushErr(); }
     inline void pullErr() { pointers.pullErr(); }
+    inline void push(Variable &v) { pointers.pushV(v); }
+    inline void pull(Variable &v) { pointers.pullV(v); }
 
 private:
     void *load();

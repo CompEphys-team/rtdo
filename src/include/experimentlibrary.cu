@@ -12,6 +12,12 @@ void libInit(ExperimentLibrary::Pointers &pointers, size_t numModels)
     pointers.pullErr = [&pointers, numModels](){
         CHECK_CUDA_ERRORS(cudaMemcpy(pointers.err, pointers.d_err, numModels * sizeof(scalar), cudaMemcpyDeviceToHost))
     };
+    pointers.pushV = [numModels](Variable &var){
+        CHECK_CUDA_ERRORS(cudaMemcpy(var.d_v, var.v, numModels * sizeof(scalar), cudaMemcpyHostToDevice))
+    };
+    pointers.pullV = [numModels](Variable &var){
+        CHECK_CUDA_ERRORS(cudaMemcpy(var.v, var.d_v, numModels * sizeof(scalar), cudaMemcpyDeviceToHost))
+    };
 
     allocateMem();
     initialize();
@@ -21,6 +27,7 @@ extern "C" void libExit(ExperimentLibrary::Pointers &pointers)
 {
     freeMem();
     pointers.pushErr = pointers.pullErr = nullptr;
+    pointers.pushV = pointers.pullV = nullptr;
 }
 
 extern "C" void resetDevice()
