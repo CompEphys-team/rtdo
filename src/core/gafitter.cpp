@@ -5,7 +5,7 @@
 
 const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 103;
+const quint32 GAFitter::version = 104;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -36,6 +36,7 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
     stimIdx(f.settings.maxEpochs),
     targets(f.lib.adjustableParams.size()),
     epochs(0),
+    variance(0),
     final(false),
     finalParams(f.lib.adjustableParams.size()),
     finalError(f.lib.adjustableParams.size())
@@ -110,6 +111,8 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
         daq->getCannedDAQ()->setRecord(stims, output.VCRecord);
     }
 
+    output.variance = getVariance();
+
     // Fit
     populate();
     for ( epoch = 0; !finished(); epoch++ ) {
@@ -158,6 +161,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
         for ( const scalar &e : out.finalError )
             os << e;
         os << out.VCRecord;
+        os << out.variance;
     }
 
     delete daq;
@@ -203,6 +207,8 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
     }
     if ( ver >= 103 )
         is >> out.VCRecord;
+    if ( ver >= 104 )
+        is >> out.variance;
     m_results.push_back(std::move(out));
 }
 
@@ -524,4 +530,29 @@ void GAFitter::pushToQ(double t, double V, double I, double O)
         qI->push({t,I});
     if ( qO )
         qO->push({t,O});
+}
+
+double GAFitter::getVariance()
+{
+    daq->reset();
+    daq->run(stims.back(), session.runData().settleDuration);
+    for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.project.dt(); iT < iTEnd; iT++ )
+        daq->next();
+
+    double mean = 0, sse = 0;
+    std::vector<double> samples;
+    samples.reserve(daq->samplesRemaining);
+
+    while ( daq->samplesRemaining ) {
+        daq->next();
+        samples.push_back(daq->current);
+        mean += daq->current;
+    }
+    mean /= samples.size();
+
+    for ( double sample : samples ) {
+        double deviation = sample - mean;
+        sse += deviation*deviation;
+    }
+    return sse / samples.size();
 }

@@ -32,6 +32,7 @@ public:
         std::vector<scalar> targets; //!< Simulator's parameters
         quint32 epochs;
         WaveSource deck;
+        double variance;
 
         QString VCRecord;
 
@@ -70,6 +71,7 @@ protected:
     quint32 epoch;
     std::vector<double> bias;
 
+    double getVariance();
     void populate();
     void stimulate(const Stimulation &I);
     void procreate();
