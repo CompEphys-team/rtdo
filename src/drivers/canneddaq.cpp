@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include "session.h"
+#include <QFileInfo>
 
 int CannedDAQ::Iidx = 0;
 int CannedDAQ::Vidx = -1;
@@ -21,6 +22,9 @@ CannedDAQ::CannedDAQ(Session &s) :
 
 void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool readData, bool useQueuedSettings)
 {
+    QFileInfo finfo(record);
+    bool backcompat_noise = finfo.baseName().startsWith("2017");
+
     std::ifstream is(record.toStdString());
     std::string str;
     is >> str;
@@ -29,7 +33,7 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
         return;
     }
     std::getline(is, str);
-    int nHeaderLines, nColumns, nChannels, nSweeps = stims.size();
+    int nHeaderLines, nColumns, nChannels, nSweeps = stims.size() - backcompat_noise;
     char cr;
     is >> nHeaderLines >> nColumns >> cr;
     nChannels = (nColumns-1) / nSweeps;
@@ -74,6 +78,34 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
             std::cerr << "Expected buffer: " << records[recStart].nBuffer << " lines; likely buffer in file: " << int(nRead/64) << std::endl;
             for ( int r = recStart; r < recStart+nSweeps; r++ )
                 records[r].nTotal = nRead;
+        }
+
+        // 2017 recordings did not have a noise sample. Use initial buffers and any flat initial stim segments to replace this shortfall.
+        if ( backcompat_noise ) {
+            Record &compat = records.back();
+            std::vector<Record> sortedRecs = records;
+            sortedRecs.pop_back(); // Remove the noise-associated, but not yet initialised record
+            // Sort stimulations by length of undisturbed initial segment, descending
+            std::sort(sortedRecs.begin(), sortedRecs.end(), [](const Record &a, const Record &b){
+                if ( a.stim.begin()->ramp )
+                    return false;
+                if ( b.stim.begin()->ramp )
+                    return true;
+                return a.stim.begin()->t > b.stim.begin()->t;
+            });
+
+            int i, iMax = compat.nTotal - compat.nBuffer;
+            for ( i = 0; i < compat.nBuffer && i < iMax; i++ )
+                compat.I.push_back(0);
+
+            while ( i < iMax ) {
+                for ( const Record &rec: sortedRecs ) {
+                    int jMax = rec.nBuffer + (rec.stim.begin()->ramp ? 0 : rec.stim.begin()->t/samplingDt());
+                    for ( int j = 0; j < jMax && i < iMax; i++, j++ ) {
+                        compat.I.push_back(rec.I[j]);
+                    }
+                }
+            }
         }
     }
 }
