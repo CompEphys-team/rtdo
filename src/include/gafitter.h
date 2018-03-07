@@ -46,7 +46,7 @@ public:
     inline QString actorName() const { return "GAFitter"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
 
-    std::vector<Stimulation> sanitiseDeck(std::vector<Stimulation> stimulations);
+    std::vector<Stimulation> sanitiseDeck(std::vector<Stimulation> stimulations, const DAQData *daqp = nullptr);
 
 public slots:
     void run(WaveSource src, QString VCRecord);

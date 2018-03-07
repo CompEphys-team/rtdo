@@ -127,6 +127,7 @@ struct DAQData
     CacheData cache;
     FilterData filter;
     SimulatorData simd;
+    double varianceDuration = 50;
 };
 
 struct ThreadData

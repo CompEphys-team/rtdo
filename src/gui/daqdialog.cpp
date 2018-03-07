@@ -156,6 +156,8 @@ void DAQDialog::importData()
     ui->samplesPerDt->setValue(p.filter.samplesPerDt);
     ui->filterWidth->setValue(p.filter.width);
     ui->filterMethod->setCurrentText(QString::fromStdString(toString(p.filter.method)));
+
+    ui->varianceDuration->setValue(p.varianceDuration);
 }
 
 DAQData DAQDialog::getFormData()
@@ -206,6 +208,8 @@ DAQData DAQDialog::getFormData()
             break;
         }
     }
+
+    p.varianceDuration = ui->varianceDuration->value();
 
     return p;
 }

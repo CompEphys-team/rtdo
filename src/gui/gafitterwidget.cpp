@@ -113,7 +113,7 @@ void GAFitterWidget::on_VCCreate_clicked()
     if ( !of.good() )
         return;
     WaveDeck deck = session.wavesets().decks().at(ui->decks->currentIndex());
-    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations());
+    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations(), &session.qDaqData());
 
     int nTotal, nSamples, nBuffer;
     double dt = session.project.dt();
@@ -132,6 +132,7 @@ void GAFitterWidget::on_VCCreate_clicked()
     of << "\"Time (s)\"";
         for ( const AdjustableParam &p : session.project.model().adjustableParams )
             of << "\t\"" << p.name << " (mV)\"";
+        of << "\t\"noise_sample\"";
         of << "\r\n";
 
     for ( int i = 0; i < nBuffer; i++ ) {

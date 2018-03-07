@@ -52,7 +52,7 @@ void GAFitter::run(WaveSource src, QString VCRecord)
     session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord));
 }
 
-std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations)
+std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, const DAQData *daqp)
 {
     double dt = session.project.dt();
     for ( Stimulation &stim : stimulations ) {
@@ -62,6 +62,15 @@ std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimula
         // Shorten stim
         stim.duration = stim.tObsEnd;
     }
+
+    // Add a stimulation for noise sampling
+    if ( !daqp )
+        daqp =& session.daqData();
+    Stimulation noiseSample = stimulations.front();
+    noiseSample.clear();
+    noiseSample.duration = daqp->varianceDuration;
+    stimulations.push_back(noiseSample);
+
     return stimulations;
 }
 
@@ -402,10 +411,10 @@ void GAFitter::procreate()
 
 void GAFitter::finalise()
 {
-    std::vector<std::vector<errTupel>> f_err(stims.size(), std::vector<errTupel>(lib.project.expNumCandidates()));
+    std::vector<std::vector<errTupel>> f_err(lib.adjustableParams.size(), std::vector<errTupel>(lib.project.expNumCandidates()));
 
     // Evaluate existing population on all stims
-    for ( stimIdx = 0; stimIdx < stims.size() && !isAborted(); stimIdx++ ) {
+    for ( stimIdx = 0; stimIdx < lib.adjustableParams.size() && !isAborted(); stimIdx++ ) {
         if ( settings.constraints[stimIdx] == 2 )
             continue;
 
@@ -442,7 +451,7 @@ void GAFitter::finalise()
     // Sort by sumRank, ascending
     std::sort(sumRank.begin(), sumRank.end(), &errTupelSort);
 
-    for ( size_t i = 0; i < stims.size(); i++ ) {
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         output.finalParams[i] = lib.adjustableParams[i][sumRank[0].idx];
         for ( size_t j = 0; j < sumRank.size(); j++ ) {
             if ( f_err[i][j].idx == sumRank[0].idx ) {
