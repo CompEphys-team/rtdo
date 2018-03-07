@@ -186,6 +186,8 @@ void CannedDAQ::next()
         voltage_2 = 0;
     else
         voltage_2 = records[currentRecord].V2[idx];
+
+    --samplesRemaining;
 }
 
 void CannedDAQ::reset()
@@ -196,6 +198,6 @@ void CannedDAQ::reset()
     if ( settleDuration > 0 )
         recordIndex -= settleDuration / samplingDt();
 
-    samplesRemaining = records[currentRecord].nTotal - recordIndex;
+    samplesRemaining = records[currentRecord].nTotal - recordIndex - records[currentRecord].nBuffer;
     outputResolution = samplingDt();
 }
