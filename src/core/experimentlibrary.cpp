@@ -35,8 +35,12 @@ ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
     VClamp0(*pointers.VClamp0),
     dVClamp(*pointers.dVClamp),
     tStep(*pointers.tStep),
+    setVariance(*pointers.setVariance),
+    variance(*pointers.variance),
+
     err(pointers.err),
-    meta_hP(pointers.meta_hP)
+    meta_hP(pointers.meta_hP),
+    ext_variance(pointers.ext_variance)
 {
 }
 
@@ -110,7 +114,9 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("getErr", "", "bool"),
         Variable("VClamp0"),
         Variable("dVClamp"),
-        Variable("tStep")
+        Variable("tStep"),
+        Variable("setVariance", "", "bool"),
+        Variable("variance")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -119,7 +125,8 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
 
     std::vector<Variable> vars = {
         Variable("err"),
-        Variable("meta_hP")
+        Variable("meta_hP"),
+        Variable("ext_variance")
     };
     for ( Variable &v : vars ) {
         n.varNames.push_back(v.name);
@@ -147,6 +154,10 @@ std::string ExperimentLibrary::simCode()
     ss << R"EOF(
 clamp.VClamp0 = $(VClamp0);
 clamp.dVClamp = $(dVClamp);
+
+if ( $(setVariance) ) {
+    $(ext_variance) = fmax(0., $(variance) - state.state__variance(params));
+}
 
 if ( $(getErr) ) {
     scalar tmp = clamp.getCurrent(t, $(V)) - $(Imem);

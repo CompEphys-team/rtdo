@@ -478,6 +478,7 @@ void GAFitter::stimulate(const Stimulation &I)
 
     // Settle library
     lib.getErr = false;
+    lib.setVariance = false;
     lib.VClamp0 = I.baseV;
     lib.dVClamp = 0;
     lib.tStep = session.runData().settleDuration;
@@ -493,6 +494,8 @@ void GAFitter::stimulate(const Stimulation &I)
     // Stimulate both
     lib.t = 0;
     lib.iT = 0;
+    lib.setVariance = true; // Set variance just after settling
+    lib.variance = output.variance;
     bool chop;
     scalar tStepCum, res = daq->outputResolution, res_t0 = -session.runData().settleDuration;
     while ( lib.t < I.duration ) {
@@ -505,6 +508,7 @@ void GAFitter::stimulate(const Stimulation &I)
         lib.Imem = daq->current;
         lib.getErr = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd); // collect error at step initiation
         lib.step();
+        lib.setVariance = false;
 
         tStepCum = 0;
         while ( chop ) {

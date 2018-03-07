@@ -32,10 +32,13 @@ public:
         scalar *VClamp0;
         scalar *dVClamp;
         scalar *tStep;
+        bool *setVariance;
+        scalar *variance;
 
         scalar *err;
         scalar *d_err;
         scalar *meta_hP, *d_meta_hP;
+        scalar *ext_variance, *d_ext_variance;
 
         scalar *t;
         unsigned long long *iT;
@@ -96,10 +99,13 @@ public:
     scalar &VClamp0;
     scalar &dVClamp;
     scalar &tStep;
+    bool &setVariance;
+    scalar &variance;
 
     // Model vars
     scalar *err;
     scalar *meta_hP;
+    scalar *ext_variance;
 };
 
 #endif // EXPERIMENTCONSTRUCTOR_H
