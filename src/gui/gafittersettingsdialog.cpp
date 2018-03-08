@@ -77,6 +77,7 @@ void GAFitterSettingsDialog::importData()
     ui->decaySigma->setChecked(p.decaySigma);
     ui->sigmaHalflife->setValue(p.sigmaHalflife);
     ui->sigmaInitial->setValue(p.sigmaInitial);
+    ui->useLikelihood->setChecked(p.useLikelihood);
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(p.constraints[i]);
@@ -99,6 +100,7 @@ void GAFitterSettingsDialog::exportData()
     p.decaySigma = ui->decaySigma->isChecked();
     p.sigmaHalflife = ui->sigmaHalflife->value();
     p.sigmaInitial = ui->sigmaInitial->value();
+    p.useLikelihood = ui->useLikelihood->isChecked();
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         p.constraints.push_back(static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex());
