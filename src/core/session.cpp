@@ -123,6 +123,7 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.min[#]", &q_settings, &Settings::gafs, &GAFitterSettings::min);
     addAP(gafAP, "S.GAFitter.max[#]", &q_settings, &Settings::gafs, &GAFitterSettings::max);
     addAP(gafAP, "S.GAFitter.fixedValue[#]", &q_settings, &Settings::gafs, &GAFitterSettings::fixedValue);
+    addAP(gafAP, "S.GAFitter.useLikelihood", &q_settings, &Settings::gafs, &GAFitterSettings::useLikelihood);
 
     Project::addDaqAPs(daqAP, &q_settings.daqd);
 

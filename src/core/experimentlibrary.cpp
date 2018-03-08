@@ -37,6 +37,7 @@ ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
     tStep(*pointers.tStep),
     setVariance(*pointers.setVariance),
     variance(*pointers.variance),
+    getLikelihood(*pointers.getLikelihood),
 
     err(pointers.err),
     meta_hP(pointers.meta_hP),
@@ -116,7 +117,8 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("dVClamp"),
         Variable("tStep"),
         Variable("setVariance", "", "bool"),
-        Variable("variance")
+        Variable("variance"),
+        Variable("getLikelihood", "", "bool")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -162,6 +164,8 @@ if ( $(setVariance) ) {
 if ( $(getErr) ) {
     scalar tmp = clamp.getCurrent(t, $(V)) - $(Imem);
     $(err) += tmp*tmp;
+} else if ( $(getLikelihood) ) {
+    $(err) += state.state__negLogLikelihood(clamp.getCurrent(t, $(V)) - $(Imem), $(ext_variance), params);
 }
 
 scalar mdt = $(tStep) < DT ? $(tStep)/$(simCycles) : DT/$(simCycles);

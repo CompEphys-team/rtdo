@@ -95,6 +95,7 @@ void ErrorProfiler::settle(scalar baseV, scalar settleDuration)
     lib.t = 0.;
     lib.iT = 0;
     lib.getErr = false;
+    lib.getLikelihood = false;
     lib.VC = true;
     lib.Vmem = I.baseV;
 

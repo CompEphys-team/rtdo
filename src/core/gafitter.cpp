@@ -274,10 +274,11 @@ quint32 GAFitter::findNextStim()
         int choice = session.RNG.uniform<int>(0, cumBias.back()-1);
         for ( nextStimIdx = 0; choice >= cumBias[nextStimIdx]; nextStimIdx++ ) ;
     } else if ( settings.randomOrder == 2 ) { // Error-biased random
+        double cost = settings.useLikelihood ? exp(p_err[0].err) : p_err[0].err; // Ensure bias stays positive
         if ( epoch == previousStimIdx ) // Initial: Full error
-            bias[previousStimIdx] = p_err[0].err;
+            bias[previousStimIdx] = cost;
         else // Recursively decay bias according to settings
-            bias[previousStimIdx] = settings.orderBiasDecay * p_err[0].err + (1-settings.orderBiasDecay) * bias[previousStimIdx];
+            bias[previousStimIdx] = settings.orderBiasDecay * cost + (1-settings.orderBiasDecay) * bias[previousStimIdx];
 
         if ( epoch + 1 < nStims ) { // Initial round: Sequential order
             nextStimIdx = previousStimIdx + 1;
@@ -326,7 +327,9 @@ void GAFitter::procreate()
     }
     std::sort(p_err.begin(), p_err.end(), &errTupelSort);
 
-    output.error[epoch] = std::sqrt(p_err[0].err / std::ceil((stims.at(stimIdx).tObsEnd-stims.at(stimIdx).tObsBegin)/session.project.dt())); // RMSE
+    output.error[epoch] = settings.useLikelihood
+            ? p_err[0].err // negative log likelihood
+            : std::sqrt(p_err[0].err / std::ceil((stims.at(stimIdx).tObsEnd-stims.at(stimIdx).tObsBegin)/session.project.dt())); // RMSE
     output.stimIdx[epoch] = stimIdx;
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
@@ -461,7 +464,9 @@ void GAFitter::finalise()
         output.finalParams[i] = lib.adjustableParams[i][sumRank[0].idx];
         for ( size_t j = 0; j < sumRank.size(); j++ ) {
             if ( f_err[i][j].idx == sumRank[0].idx ) {
-                output.finalError[i] = f_err[i][j].err;
+                output.finalError[i] = settings.useLikelihood
+                        ? f_err[i][j].err
+                        : std::sqrt(f_err[i][j].err / std::ceil((stims.at(i).tObsEnd-stims.at(i).tObsBegin)/session.project.dt()));
                 break;
             }
         }
@@ -471,6 +476,8 @@ void GAFitter::finalise()
 
 void GAFitter::stimulate(const Stimulation &I)
 {
+    bool &observe = settings.useLikelihood ? lib.getLikelihood : lib.getErr;
+
     // Set up library
     lib.t = 0.;
     lib.iT = 0;
@@ -478,6 +485,7 @@ void GAFitter::stimulate(const Stimulation &I)
 
     // Settle library
     lib.getErr = false;
+    lib.getLikelihood = false;
     lib.setVariance = false;
     lib.VClamp0 = I.baseV;
     lib.dVClamp = 0;
@@ -506,7 +514,7 @@ void GAFitter::stimulate(const Stimulation &I)
         pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
 
         lib.Imem = daq->current;
-        lib.getErr = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd); // collect error at step initiation
+        observe = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd); // collect error at step initiation
         lib.step();
         lib.setVariance = false;
 
@@ -517,7 +525,7 @@ void GAFitter::stimulate(const Stimulation &I)
             lib.t = (--lib.iT) * session.project.dt() + tStepCum;
             chop = getCommandSegment(I, lib.t, session.project.dt() - tStepCum, res, res_t0,
                                      lib.VClamp0, lib.dVClamp, lib.tStep);
-            lib.getErr = false; // No error collection within subdivided steps
+            observe = false; // No error collection within subdivided steps
             lib.step();
         }
     }

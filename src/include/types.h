@@ -322,6 +322,8 @@ struct GAFitterSettings {
 
     std::vector<int> constraints; //!< Candidate parameter constraint mode; 0: Model preset, 1: custom range (min/max), 2: fixed
     std::vector<scalar> min, max, fixedValue;
+
+    bool useLikelihood = false;
 };
 
 

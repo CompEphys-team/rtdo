@@ -34,6 +34,7 @@ public:
         scalar *tStep;
         bool *setVariance;
         scalar *variance;
+        bool *getLikelihood;
 
         scalar *err;
         scalar *d_err;
@@ -101,6 +102,7 @@ public:
     scalar &tStep;
     bool &setVariance;
     scalar &variance;
+    bool &getLikelihood;
 
     // Model vars
     scalar *err;
