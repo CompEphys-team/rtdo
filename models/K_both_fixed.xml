@@ -1,11 +1,30 @@
 <model name="K_both_fixed">
-	<variable name="V" value="-60">
-		<tmp current="1" name="I_A">$(nA)*$(nA)*$(nA)*$(nA)*$(hA)*$(gA) * ($(V)-$(EK))</tmp>
-		<tmp current="1" name="I_K">$(nK)*$(nK)*$(nK)*$(nK)*$(hK)*$(gK) * ($(V)-$(EK))</tmp>
-		<tmp current="1" name="I_l">$(gl) * ($(V)-$(El))</tmp>
-		<dYdt>(Isyn - I_A - I_K - I_l)/$(C)</dYdt>
+	<voltage>
+		<value>-60</value>
 		<range min="-150" max="100" />
-	</variable>
+	</voltage>
+	<capacitance>
+		<value>150</value>
+		<range min="50" max="200"/>
+		<perturbation type="*" rate="0.01"/>
+	</capacitance>
+	<current name="I_A">
+		<popen>$(nA)*$(nA)*$(nA)*$(nA)*$(hA)</popen>
+		<gbar>gA</gbar>
+		<gunit>4.7e-6</gunit>
+		<E>EK</E>
+	</current>
+	<current name="I_K">
+		<popen>$(nK)*$(nK)*$(nK)*$(nK)*$(hK)</popen>
+		<gbar>gK</gbar>
+		<gunit>10e-6</gunit>
+		<E>EK</E>
+	</current>
+	<current name="I_l">
+		<gbar>gl</gbar>
+		<E>El</E>
+	</current>
+
 	<variable name="nA" value="0.02">
 		<tmp name="_inf">1.0/(1.0 + exp(($(nA_mid)-$(V))/$(nA_slope)))</tmp>
 		<tmp name="tau_">$(taunA_min) + $(taunA_max)/(exp(($(taunA_off)+$(V))/$(taunA_slope1))+exp(($(taunA_off)+$(V))/$(taunA_slope2)))</tmp>
@@ -51,11 +70,6 @@
 	<adjustableParam name="El" value="-10">
 		<range min="-30" max="10"/>
 		<perturbation type="+" rate="1"/>
-	</adjustableParam>
-
-	<adjustableParam name="C" value="150">
-		<range min="50" max="200"/>
-		<perturbation type="*" rate="0.01"/>
 	</adjustableParam>
 
 	<parameter name="nA_mid" value="-55" />
