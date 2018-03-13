@@ -112,6 +112,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     }
 
     output.variance = getVariance();
+    std::cout << "Baseline current noise s.d.: " << std::sqrt(output.variance) << " nA" << std::endl;
 
     // Fit
     populate();
