@@ -220,6 +220,7 @@ struct RunData
     double accessResistance = 15; // MOhm
     double settleDuration = 100; // msec
     IntegrationMethod integrator = IntegrationMethod::RungeKutta4;
+    double dt = 0.25;
 };
 
 struct Bubble

@@ -168,17 +168,16 @@ if ( $(getErr) ) {
     $(err) += state.state__negLogLikelihood(clamp.getCurrent(t, $(V)) - $(Imem), $(ext_variance), params);
 }
 
-scalar mdt = $(tStep) < DT ? $(tStep)/$(simCycles) : DT/$(simCycles);
-unsigned int mEnd = $(simCycles) * max(1, int($(tStep)/DT));
+scalar mdt = $(tStep)/$(simCycles);
 
 if ( $(integrator) == (int)IntegrationMethod::RungeKutta4 ) {
-    for ( unsigned int mt = 0; mt < mEnd; mt++ )
+    for ( unsigned int mt = 0; mt < $(simCycles); mt++ )
         RK4(t + mt*mdt, mdt, state, params, clamp);
 } else if ( $(integrator) == (int)IntegrationMethod::ForwardEuler ) {
-    for ( unsigned int mt = 0; mt < mEnd; mt++ )
+    for ( unsigned int mt = 0; mt < $(simCycles); mt++ )
         Euler(t + mt*mdt, mdt, state, params, clamp);
 } else /*if ( $(integrator) == (int)IntegrationMethod::RungeKuttaFehlberg45 )*/ {
-    RKF45(t, t+$(tStep), DT/$(simCycles), $(tStep), $(meta_hP), state, params, clamp);
+    RKF45(t, t+$(tStep), mdt, $(tStep), $(meta_hP), state, params, clamp);
 }
 )EOF";
 
@@ -258,4 +257,20 @@ void ExperimentLibrary::setRunData(RunData rund)
     accessResistance = rund.accessResistance;
     simCycles = rund.simCycles;
     integrator = int(rund.integrator);
+    tStep = rund.dt;
+}
+
+void ExperimentLibrary::step(double dt, int cycles, bool advance_iT)
+{
+    scalar tPrev = t, tStepPrev = tStep, simCyclesPrev = simCycles;
+    tStep = dt;
+    simCycles = cycles;
+
+    pointers.step();
+    t = tPrev + tStep;
+    if ( !advance_iT )
+        --iT;
+
+    tStep = tStepPrev;
+    simCycles = simCyclesPrev;
 }

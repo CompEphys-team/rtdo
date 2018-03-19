@@ -77,6 +77,7 @@ void Session::addAPs()
     addAP(runAP, "S.Run.simCycles", &q_settings, &Settings::rund, &RunData::simCycles);
     addAP(runAP, "S.Run.settleDuration", &q_settings, &Settings::rund, &RunData::settleDuration);
     addAP(runAP, "S.Run.integrator", &q_settings, &Settings::rund, &RunData::integrator);
+    addAP(runAP, "S.Run.dt", &q_settings, &Settings::rund, &RunData::dt);
 
     addAP(searchAP, "S.Wavegen.numSigmaAdjustWaveforms", &q_settings, &Settings::searchd, &WavegenData::numSigmaAdjustWaveforms);
     addAP(searchAP, "S.Wavegen.nInitialWaves", &q_settings, &Settings::searchd, &WavegenData::nInitialWaves);

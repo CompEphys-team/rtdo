@@ -113,10 +113,10 @@ void GAFitterWidget::on_VCCreate_clicked()
     if ( !of.good() )
         return;
     WaveDeck deck = session.wavesets().decks().at(ui->decks->currentIndex());
-    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations(), &session.qDaqData());
+    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(deck.stimulations(), true);
 
     int nTotal, nSamples, nBuffer;
-    double dt = session.project.dt();
+    double dt = session.qRunData().dt;
     if ( session.qDaqData().filter.active )
         dt /= session.qDaqData().filter.samplesPerDt;
     CannedDAQ(session).getSampleNumbers(stims, dt, &nTotal, &nBuffer, &nSamples);

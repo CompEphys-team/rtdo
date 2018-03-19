@@ -53,9 +53,9 @@ void GAFitter::run(WaveSource src, QString VCRecord)
     session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord));
 }
 
-std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, const DAQData *daqp)
+std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, bool useQueuedSettings)
 {
-    double dt = session.project.dt();
+    double dt = (useQueuedSettings ? session.qRunData().dt : session.runData().dt);
     for ( Stimulation &stim : stimulations ) {
         // Expand observation window to complete time steps
         stim.tObsBegin = floor(stim.tObsBegin / dt) * dt;
@@ -65,11 +65,9 @@ std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimula
     }
 
     // Add a stimulation for noise sampling
-    if ( !daqp )
-        daqp =& session.daqData();
     Stimulation noiseSample = stimulations.front();
     noiseSample.clear();
-    noiseSample.duration = daqp->varianceDuration;
+    noiseSample.duration = (useQueuedSettings ? session.qDaqData().varianceDuration : session.daqData().varianceDuration);
     stimulations.push_back(noiseSample);
 
     return stimulations;
@@ -330,7 +328,7 @@ void GAFitter::procreate()
 
     output.error[epoch] = settings.useLikelihood
             ? p_err[0].err // negative log likelihood
-            : std::sqrt(p_err[0].err / std::ceil((stims.at(stimIdx).tObsEnd-stims.at(stimIdx).tObsBegin)/session.project.dt())); // RMSE
+            : std::sqrt(p_err[0].err / std::ceil((stims.at(stimIdx).tObsEnd-stims.at(stimIdx).tObsBegin)/session.runData().dt)); // RMSE
     output.stimIdx[epoch] = stimIdx;
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
@@ -467,7 +465,7 @@ void GAFitter::finalise()
             if ( f_err[i][j].idx == sumRank[0].idx ) {
                 output.finalError[i] = settings.useLikelihood
                         ? f_err[i][j].err
-                        : std::sqrt(f_err[i][j].err / std::ceil((stims.at(i).tObsEnd-stims.at(i).tObsBegin)/session.project.dt()));
+                        : std::sqrt(f_err[i][j].err / std::ceil((stims.at(i).tObsEnd-stims.at(i).tObsBegin)/session.runData().dt));
                 break;
             }
         }
@@ -478,6 +476,7 @@ void GAFitter::finalise()
 void GAFitter::stimulate(const Stimulation &I)
 {
     bool &observe = settings.useLikelihood ? lib.getLikelihood : lib.getErr;
+    const RunData &rd = session.runData();
 
     // Set up library
     lib.t = 0.;
@@ -490,14 +489,13 @@ void GAFitter::stimulate(const Stimulation &I)
     lib.setVariance = false;
     lib.VClamp0 = I.baseV;
     lib.dVClamp = 0;
-    lib.tStep = session.runData().settleDuration;
-    lib.step();
+    lib.step(rd.settleDuration, rd.simCycles * int(rd.settleDuration/rd.dt), true);
 
     // Set up + settle DAQ
     daq->VC = true;
     daq->reset();
-    daq->run(I, session.runData().settleDuration);
-    for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.project.dt(); iT < iTEnd; iT++ )
+    daq->run(I, rd.settleDuration);
+    for ( size_t iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
         daq->next();
 
     // Stimulate both
@@ -506,28 +504,29 @@ void GAFitter::stimulate(const Stimulation &I)
     lib.setVariance = true; // Set variance just after settling
     lib.variance = output.variance;
     bool chop;
-    scalar tStepCum, res = daq->outputResolution, res_t0 = -session.runData().settleDuration;
+    scalar tStep = rd.dt, tStepCum, res = daq->outputResolution, res_t0 = -rd.settleDuration;
     while ( lib.t < I.duration ) {
         daq->next();
 
-        chop = getCommandSegment(I, lib.t, session.project.dt(), res, res_t0,
-                                 lib.VClamp0, lib.dVClamp, lib.tStep);
+        chop = getCommandSegment(I, lib.t, rd.dt, res, res_t0,
+                                 lib.VClamp0, lib.dVClamp, tStep);
         pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
 
         lib.Imem = daq->current;
         observe = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd); // collect error at step initiation
-        lib.step();
+        if ( chop )
+            lib.step(tStep, rd.simCycles, true);
+        else
+            lib.step();
         lib.setVariance = false;
 
         tStepCum = 0;
         while ( chop ) {
-            // replace GeNN's automatic `++iT; t = iT*DT` logic on lib.step() with a `t += tStep; finally ++iT`
-            tStepCum += lib.tStep;
-            lib.t = (--lib.iT) * session.project.dt() + tStepCum;
-            chop = getCommandSegment(I, lib.t, session.project.dt() - tStepCum, res, res_t0,
-                                     lib.VClamp0, lib.dVClamp, lib.tStep);
+            tStepCum += tStep;
+            chop = getCommandSegment(I, lib.t, rd.dt - tStepCum, res, res_t0,
+                                     lib.VClamp0, lib.dVClamp, tStep);
             observe = false; // No error collection within subdivided steps
-            lib.step();
+            lib.step(tStep, rd.simCycles, false);
         }
     }
 
@@ -549,7 +548,7 @@ double GAFitter::getVariance()
 {
     daq->reset();
     daq->run(stims.back(), session.runData().settleDuration);
-    for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.project.dt(); iT < iTEnd; iT++ )
+    for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.runData().dt; iT < iTEnd; iT++ )
         daq->next();
 
     double mean = 0, sse = 0;

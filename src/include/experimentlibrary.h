@@ -65,7 +65,8 @@ public:
 
     inline void push() { pointers.push(); }
     inline void pull() { pointers.pull(); }
-    inline void step() { pointers.step(); }
+    inline void step() { pointers.step(); t = iT * tStep; }
+    void step(double dt, int cycles, bool advance_iT);
     inline void reset() { pointers.reset(); }
     inline void pushErr() { pointers.pushErr(); }
     inline void pullErr() { pointers.pullErr(); }

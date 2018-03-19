@@ -237,7 +237,7 @@ void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors
 
         // Store errors
         for ( size_t iM = 0; iM < batchSize; iM++ ) {
-            errors[iM + offset] = std::sqrt(lib.err[iM]/std::ceil((stim.tObsEnd-stim.tObsBegin)/session.project.dt())); // RMSE
+            errors[iM + offset] = std::sqrt(lib.err[iM]/std::ceil((stim.tObsEnd-stim.tObsBegin)/session.runData().dt)); // RMSE
         }
     }
 }

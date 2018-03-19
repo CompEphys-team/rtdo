@@ -752,7 +752,7 @@ public:
         currentStim = s;
         iT = 0;
         tStart = 0;
-        sDt = DT;
+        sDt = rund.dt;
         int extraSamples = 0;
 
         clamp.clampGain = rund.clampGain;

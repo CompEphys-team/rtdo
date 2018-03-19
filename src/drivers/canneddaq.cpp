@@ -128,7 +128,7 @@ int CannedDAQ::prepareRecords(std::vector<Stimulation> stims, bool useQueuedSett
 {
     int nTotal, nBuffer;
     const DAQData &dd = useQueuedSettings ? session.qDaqData() : p;
-    double dt = session.project.dt();
+    double dt = useQueuedSettings ? session.qRunData().dt : session.runData().dt;
     if ( dd.filter.active )
         dt /= dd.filter.samplesPerDt;
     getSampleNumbers(stims, dt, &nTotal, &nBuffer);
