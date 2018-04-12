@@ -1,3 +1,5 @@
 *.calibrate
 *.pro.user
 build
+python/.ipynb_checkpoints
+*.pyc
