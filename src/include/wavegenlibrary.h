@@ -16,7 +16,7 @@ public:
 
     struct Pointers
     {
-        int *simCycles;
+        scalar *dt;
         scalar *clampGain;
         scalar *accessResistance;
         int *targetParam;
@@ -28,8 +28,8 @@ public:
 
         scalar *err;
 
-        Stimulation *waveforms;
-        Stimulation *d_waveforms;
+        iStimulation *waveforms;
+        iStimulation *d_waveforms;
 
         Bubble *bubbles, *d_bubbles;
 
@@ -70,7 +70,7 @@ public:
     inline void pushErr() { pointers.pushErr(); }
     inline void pullErr() { pointers.pullErr(); }
 
-    void generateBubbles(scalar duration);
+    void generateBubbles(int iDuration);
 
 private:
     void *load();
@@ -85,7 +85,7 @@ private:
 
 public:
     // Model globals
-    int &simCycles;
+    scalar &dt;
     scalar &clampGain;
     scalar &accessResistance;
     int &targetParam;
@@ -100,7 +100,7 @@ public:
     scalar *err;
 
     // Group vars
-    Stimulation *waveforms;
+    iStimulation *waveforms;
     Bubble *&bubbles;
 };
 

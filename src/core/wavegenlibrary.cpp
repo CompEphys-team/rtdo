@@ -22,7 +22,7 @@ WavegenLibrary::WavegenLibrary(Project &p, bool compile) :
     lib(compile ? compile_and_load() : load()),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(*this)),
-    simCycles(*(pointers.simCycles)),
+    dt(*(pointers.dt)),
     clampGain(*(pointers.clampGain)),
     accessResistance(*(pointers.accessResistance)),
     targetParam(*(pointers.targetParam)),
@@ -94,7 +94,7 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
     neuronModel n = model.generate(nn, fixedParamIni, variableIni);
 
     std::vector<Variable> globals = {
-        Variable("simCycles", "", "int"),
+        Variable("dt"),
         Variable("clampGain"),
         Variable("accessResistance"),
         Variable("targetParam", "", "int"),
@@ -166,18 +166,14 @@ std::string WavegenLibrary::simCode()
 const int groupID = id % MM_NumGroupsPerBlock;                                  // Block-local group id
 const int group = groupID + (id/MM_NumModelsPerBlock) * MM_NumGroupsPerBlock;   // Global group id
 const int paramID = (id % MM_NumModelsPerBlock) / MM_NumGroupsPerBlock;
-const scalar mdt = DT/$(simCycles);
 scalar value = 0.; // Dual use: As cumulative error when targetParam<0, and as lambda when targetParam==paramID
-const Stimulation stim = dd_waveforms[group];
+const iStimulation stim = dd_waveforms[group];
 Bubble bestBubble = {-1,0,0}, currentBubble = {-1,0,0};
-scalar tStep = 0.;
-t = 0.;
-unsigned int mt = 0;
-while ( t < stim.duration ) {
-    getCommandSegment(stim, t, stim.duration - t, mdt, 0., // Discarding return value: tStep is an integer multiple of tres=mdt
-                      clamp.VClamp0, clamp.dVClamp, tStep);
+int mt = 0, tStep = 0;
+while ( mt < stim.duration ) {
+    getiCommandSegment(stim, t, stim.duration - t, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
 
-    for ( unsigned int mtEnd = mt + rint(tStep/mdt); mt < mtEnd; t = (++mt) * mdt ) {
+    for ( int mtEnd = mt + tStep; mt < mtEnd; t = (++mt) * $(dt) ) {
         if ( $(getErr) ) {
             __shared__ double errShare[MM_NumModelsPerBlock];
             scalar err = clamp.getCurrent(t, state.V);
@@ -191,7 +187,7 @@ while ( t < stim.duration ) {
             if ( paramID ) {
 /* D: */        err = fabs(err - errShare[groupID]);
                 if ( $(targetParam) < 0 )
-                    value += err * mdt;
+                    value += err;
 /* D/Dbar: */   errShare[paramID*MM_NumGroupsPerBlock + groupID] = err / $(deltaBar);
             }
             __syncthreads();
@@ -227,7 +223,7 @@ while ( t < stim.duration ) {
         }
 
         // Integrate
-        RK4(t, mdt, state, params, clamp);
+        RK4(t, $(dt), state, params, clamp);
 
     } // end for mtEnd
 } // end while t < duration
@@ -320,10 +316,10 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     return ss.str();
 }
 
-void WavegenLibrary::generateBubbles(scalar duration)
+void WavegenLibrary::generateBubbles(int iDuration)
 {
     getErr = true;
-    unsigned int nSamples = duration / (project.dt() / simCycles);
+    unsigned int nSamples = iDuration;
     pointers.generateBubbles(nSamples, nStim, pointers);
 }
 
@@ -331,5 +327,4 @@ void WavegenLibrary::setRunData(RunData rund)
 {
     clampGain = rund.clampGain;
     accessResistance = rund.accessResistance;
-    simCycles = rund.simCycles;
 }

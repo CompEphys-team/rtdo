@@ -101,7 +101,7 @@ scalar getCommandVoltages(const Stimulation &I, scalar t, scalar dt,
     }
 }
 
-__host__ __device__ bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
+bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
                        scalar &VClamp0, scalar &dVClamp, scalar &tStep)
 {
     if ( I.empty() || t < 0 || t >= I.duration ) {
@@ -145,6 +145,46 @@ __host__ __device__ bool getCommandSegment(const Stimulation &I, scalar t, scala
         return true;
 
     tStep = dt;
+    return false;
+}
+
+__host__ __device__ bool getiCommandSegment(const iStimulation &I, int t, int tSpan, scalar dt,
+                                            scalar &VClamp0, scalar &dVClamp, int &tStep)
+{
+    if ( I.empty() || t < 0 || t >= I.duration ) {
+        dVClamp = 0;
+        VClamp0 = I.baseV;
+        tStep = tSpan;
+        return false;
+    }
+    const iStimulation::Step *s = I.begin();
+
+    // Find segment at t
+    if ( t < s->t ) {
+        dVClamp = s->ramp ? (s->V - I.baseV) / (s->t * dt) : 0;
+        VClamp0 = I.baseV;
+    } else {
+        while ( s != I.end() && s->t <= t )
+            s++;
+        if ( s == I.end() ) {
+            // Final segment, definitely no further chunking
+            dVClamp = 0;
+            VClamp0 = (s-1)->V;
+            tStep = tSpan;
+            return false;
+        } else {
+            dVClamp = s->ramp ? (s->V - (s-1)->V) / (s->t - (s-1)->t) : 0; // mV / unit time
+            VClamp0 = s->ramp ? s->V - dVClamp*s->t : (s-1)->V;            // ... used here
+            dVClamp /= dt;                                                 // ... and turned into mV / ms here.
+        }
+    }
+
+    tStep = s->t - t;
+
+    if ( tStep < tSpan ) // If the next step is within the interval, split it
+        return true;
+
+    tStep = tSpan;
     return false;
 }
 

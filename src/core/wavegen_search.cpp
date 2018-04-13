@@ -26,10 +26,10 @@ bool Wavegen::search_exec(QFile &file, Result *result)
     const int numEpisodesPerEpoch = searchd.nWavesPerEpoch / numWavesPerEpisode;
     int episodeCounter = 0;
 
-    std::vector<Stimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
+    std::vector<iStimulation> waves_ep1(numWavesPerEpisode), waves_ep2(numWavesPerEpisode);
 
     // Initialise the population for episode 1:
-    for ( Stimulation &w : waves_ep1 )
+    for ( iStimulation &w : waves_ep1 )
         w = getRandomStim();
     size_t nInitialWaves = numWavesPerEpisode;
 
@@ -43,16 +43,16 @@ bool Wavegen::search_exec(QFile &file, Result *result)
     lib.getErr = true;
     lib.nStim = numWavesPerEpisode;
     pushStims(waves_ep1);
-    lib.generateBubbles(stimd.duration);
+    lib.generateBubbles(istimd.iDuration);
 
     // Prepare the second episode:
-    for ( Stimulation &w : waves_ep2 )
+    for ( iStimulation &w : waves_ep2 )
         w = getRandomStim();
     nInitialWaves += numWavesPerEpisode;
     bool initialising = nInitialWaves < searchd.nInitialWaves;
 
     // Initialise waves pointer to episode 1, which is currently being stimulated
-    std::vector<Stimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
+    std::vector<iStimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
 
     while ( true ) {
         lib.pullBubbles();
@@ -90,7 +90,7 @@ bool Wavegen::search_exec(QFile &file, Result *result)
         // Prepare next episode's waves
         if ( initialising ) {
             // Generate at random
-            for ( Stimulation &w : *newWaves )
+            for ( iStimulation &w : *newWaves )
                 w = getRandomStim();
             nInitialWaves += numWavesPerEpisode;
             initialising = nInitialWaves < searchd.nInitialWaves;
@@ -163,16 +163,15 @@ bool Wavegen::search_exec(QFile &file, Result *result)
     return true;
 }
 
-void Wavegen::mape_tournament(std::vector<Stimulation> &waves)
+void Wavegen::mape_tournament(std::vector<iStimulation> &waves)
 {
     // Gather candidates
     std::vector<MAPElite> candidates;
     candidates.reserve(waves.size());
-    scalar msPerCycle = lib.project.dt() / lib.simCycles;
     for ( size_t i = 0; i < waves.size(); i++ ) {
         if ( lib.bubbles[i].cycles > 0 ) {
-            waves[i].tObsBegin = lib.bubbles[i].startCycle * msPerCycle;
-            waves[i].tObsEnd = (lib.bubbles[i].startCycle + lib.bubbles[i].cycles) * msPerCycle;
+            waves[i].tObsBegin = lib.bubbles[i].startCycle;
+            waves[i].tObsEnd = lib.bubbles[i].startCycle + lib.bubbles[i].cycles;
             candidates.emplace_back(mape_bin(waves[i]), waves[i], lib.bubbles[i].value);
         }
     }
@@ -217,7 +216,7 @@ void Wavegen::mape_insert(std::vector<MAPElite> &candidates)
     current.maxFitness.push_back(maxFitness);
 }
 
-std::vector<size_t> Wavegen::mape_bin(const Stimulation &I)
+std::vector<size_t> Wavegen::mape_bin(const iStimulation &I)
 {
     size_t mult = mape_multiplier(current.precision);
     std::vector<size_t> bin(searchd.mapeDimensions.size());
@@ -262,8 +261,20 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
     arch.precision = precision;
     arch.iterations = iterations;
     arch.elites.resize(archSize);
-    for ( MAPElite &e : arch.elites )
-        is >> e;
+
+    if ( version >= 110 ) {
+        for ( MAPElite &e : arch.elites )
+            is >> e;
+    } else {
+        for ( MAPElite &e : arch.elites ) {
+            MAPElite__scalarStim old;
+            is >> old;
+            e.bin = old.bin;
+            e.wave = iStimulation(old.wave, searchd.dt);
+            e.fitness = old.fitness;
+        }
+    }
+
     if ( version >= 101 ) {
         is >> arch.nCandidates >> arch.nInsertions >> arch.nReplacements >> arch.nElites;
         is >> arch.meanFitness >> arch.maxFitness;

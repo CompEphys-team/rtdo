@@ -34,6 +34,7 @@ typedef float scalar;
 
 class Project; // Forward
 class Session; // Forward
+struct iStimulation; // Forward
 
 struct Stimulation
 {
@@ -66,11 +67,54 @@ struct Stimulation
 
     CUDA_HOST_MEMBER bool operator==(const Stimulation &other) const;
 
+    Stimulation() = default;
+    Stimulation(const iStimulation &I, double dt);
+
 private:
     size_t numSteps;
+    friend struct iStimulation;
 };
 std::ostream &operator<<(std::ostream&, const Stimulation&);
 std::ostream &operator<<(std::ostream&, const Stimulation::Step&);
+
+struct iStimulation
+{
+    int duration;
+    int tObsBegin;
+    int tObsEnd;
+    scalar baseV;
+
+    struct Step
+    {
+        int t;
+        scalar V;
+        bool ramp;
+        CUDA_HOST_MEMBER bool operator==(const Step &other) const;
+    };
+
+    static constexpr size_t maxSteps = 10;
+    Step steps[maxSteps];
+
+    // Some functions that simplify handling steps ... almost as though it were a vector.
+    CUDA_CALLABLE_MEMBER inline Step* begin() { return steps; }
+    CUDA_CALLABLE_MEMBER inline const Step* begin() const { return steps; }
+    CUDA_CALLABLE_MEMBER inline Step* end() { return steps + numSteps; }
+    CUDA_CALLABLE_MEMBER inline const Step* end() const { return steps + numSteps; }
+    CUDA_HOST_MEMBER void insert(Step* position, const Step & value);
+    CUDA_HOST_MEMBER void erase(Step* position);
+    CUDA_HOST_MEMBER inline void clear() { numSteps = 0; }
+    CUDA_CALLABLE_MEMBER inline size_t size() const { return numSteps; }
+    CUDA_CALLABLE_MEMBER inline bool empty() const { return numSteps == 0; }
+
+    CUDA_HOST_MEMBER bool operator==(const iStimulation &other) const;
+
+    iStimulation() = default;
+    iStimulation(const Stimulation &I, double dt);
+
+private:
+    size_t numSteps;
+    friend struct Stimulation;
+};
 
 struct ChnData
 {
@@ -234,11 +278,11 @@ struct Bubble
 struct MAPElite
 {
     std::vector<size_t> bin;
-    Stimulation wave;
+    iStimulation wave;
     scalar fitness;
 
     MAPElite() : fitness(0) {}
-    MAPElite(std::vector<size_t> bin, Stimulation wave, scalar fitness) : bin(bin), wave(wave), fitness(fitness) {}
+    MAPElite(std::vector<size_t> bin, iStimulation wave, scalar fitness) : bin(bin), wave(wave), fitness(fitness) {}
 
     /**
      * @brief compare performs a lexical comparison on bin.
@@ -272,7 +316,7 @@ struct MAPEDimension
      * @param multiplier: Multiplier to the resolution (i.e., number of bins = multiplier * resolution)
      * @return The bin index this Stimulation belongs to.
      */
-    size_t bin(const Stimulation &I, size_t multiplier) const;
+    size_t bin(const iStimulation &I, size_t multiplier) const;
     size_t bin(scalar value, size_t multiplier) const; //!< As above, but with a fully processed behavioural value
     scalar bin_inverse(size_t bin, size_t multiplier) const; //!< Inverse function of bin(scalar, size_t), aliased to the lower boundary of the bin.
 
@@ -306,6 +350,7 @@ struct WavegenData
     std::vector<size_t> precisionIncreaseEpochs; //!< Epochs on which MAPE precision/resolution is to double
     size_t maxIterations = 1000; //!< Total number of epochs (cf nWavesPerEpoch)
     double ext_variance = 0.; //!< Expected instrument noise variance
+    double dt = 0.01;
 };
 
 struct GAFitterSettings {

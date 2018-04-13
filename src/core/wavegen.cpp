@@ -13,7 +13,7 @@ quint32 Wavegen::sigmaAdjust_version = 101;
 
 QString Wavegen::search_action = QString("search");
 quint32 Wavegen::search_magic = 0x8a33c402;
-quint32 Wavegen::search_version = 102;
+quint32 Wavegen::search_version = 110;
 
 Wavegen::Wavegen(Session &session) :
     SessionWorker(session),
@@ -36,6 +36,8 @@ void Wavegen::load(const QString &action, const QString &args, QFile &results, R
 bool Wavegen::execute(QString action, QString, Result *res, QFile &file)
 {
     clearAbort();
+    istimd.iDuration = lrint(stimd.duration / searchd.dt);
+    istimd.iMinStep = lrint(stimd.minStepLength / searchd.dt);
     if ( action == sigmaAdjust_action )
         return sigmaAdjust_exec(file, res);
     else if ( action == search_action )
@@ -112,13 +114,14 @@ void Wavegen::detune()
 void Wavegen::settle()
 {
     // Simulate for a given time, retaining the final state
-    Stimulation I;
-    I.duration = session.runData().settleDuration;
+    iStimulation I;
+    I.duration = lrint(session.runData().settleDuration / searchd.dt);
     I.baseV = stimd.baseV;
     I.clear();
     pushStims({I});
     lib.getErr = false;
     lib.settling = true;
+    lib.dt = searchd.dt;
     lib.push();
     lib.step();
     lib.settling = false;
@@ -146,14 +149,14 @@ bool Wavegen::sigmaAdjust_exec(QFile &file, Result *dummy)
     // simulate each (in turn across all model permutations, or in parallel), and collect the
     // per-parameter average deviation from the base model produced by that parameter's detuning.
     std::vector<double> sumParamErr(lib.adjustableParams.size(), 0);
-    std::vector<Stimulation> waves(lib.numGroups);
+    std::vector<iStimulation> waves(lib.numGroups);
     // Round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
     int end = (searchd.numSigmaAdjustWaveforms + lib.numGroups - 1) / lib.numGroups;
     for ( int i = 0; i < end && !isAborted(); i++ ) {
         lib.pushErr();
 
         // Generate random wave/s
-        for ( Stimulation &w : waves )
+        for ( iStimulation &w : waves )
             w = getRandomStim();
 
         // Simulate
@@ -172,7 +175,7 @@ bool Wavegen::sigmaAdjust_exec(QFile &file, Result *dummy)
 
     std::vector<double> meanParamErr(sumParamErr);
     for ( double & e : meanParamErr ) {
-        e /= end * lib.numGroups * stimd.duration/lib.project.dt() * lib.simCycles;
+        e /= end * lib.numGroups;
     }
 
     // Find the median of mean parameter errors:
@@ -249,7 +252,7 @@ void Wavegen::sigmaAdjust_load(QFile &file, Result)
     }
 }
 
-void Wavegen::pushStims(const std::vector<Stimulation> &stim)
+void Wavegen::pushStims(const std::vector<iStimulation> &stim)
 {
     if ( stim.size() == size_t(lib.numGroups) )
         for ( int group = 0; group < lib.numGroups; group++ )

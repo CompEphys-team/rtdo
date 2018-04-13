@@ -47,7 +47,7 @@ public:
     /**
      * @brief getRandomStim generates a fully randomised stimulation according to the Wavegen's StimulationData
      */
-    Stimulation getRandomStim() const;
+    iStimulation getRandomStim() const;
 
     inline QString actorName() const { return "Wavegen"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
@@ -117,32 +117,32 @@ protected:
      * Changes: waveforms.
      * @param stim A vector with 1, lib.numGroups/searchd.nGroupsPerWave, or lib.numGroups elements.
      */
-    void pushStims(const std::vector<Stimulation> &stim);
+    void pushStims(const std::vector<iStimulation> &stim);
 
     /**
      * @brief mutate returns a mutant offspring of the @p parent.
      * @param parent is the primary parent stimulation of the offspring.
      * @param xoverParent is the secondary parent stimulation used for crossover mutation.
      */
-    Stimulation mutate(const Stimulation &parent, const Stimulation &xoverParent);
+    iStimulation mutate(const iStimulation &parent, const iStimulation &xoverParent);
 
     /// mutate helper functions
-    void mutateCrossover(Stimulation&, const Stimulation&);
-    void mutateVoltage(Stimulation&);
-    void mutateNumber(Stimulation&);
-    void mutateSwap(Stimulation&);
-    void mutateTime(Stimulation&);
-    void mutateType(Stimulation&);
+    void mutateCrossover(iStimulation&, const iStimulation&);
+    void mutateVoltage(iStimulation&);
+    void mutateNumber(iStimulation&);
+    void mutateSwap(iStimulation&);
+    void mutateTime(iStimulation&);
+    void mutateType(iStimulation&);
 
     /// MAP-Elites helper functions
-    void mape_tournament(std::vector<Stimulation> &);
+    void mape_tournament(std::vector<iStimulation> &);
     void mape_insert(std::vector<MAPElite> &candidates);
 
     /**
      * @brief mape_bin returns a vector of discretised behavioural measures used as MAPE dimensions.
      * It adheres to the level of precision indicated in current.precision.
      */
-    std::vector<size_t> mape_bin(const Stimulation &I);
+    std::vector<size_t> mape_bin(const iStimulation &I);
 
     /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
@@ -165,6 +165,13 @@ protected:
     static QString sigmaAdjust_action, search_action;
     static quint32 sigmaAdjust_magic, search_magic;
     static quint32 sigmaAdjust_version, search_version;
+
+    struct iStimData
+    {
+        int iMinStep;
+        int iDuration;
+    };
+    iStimData istimd;
 };
 
 #endif // WAVEGEN_H

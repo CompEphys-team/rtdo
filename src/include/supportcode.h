@@ -16,8 +16,14 @@ scalar getCommandVoltages(const Stimulation &I, scalar t, scalar dt,
 //! Returns a flag indicating whether additional steps are required, i.e., whether there are multiple linear segments in [t, t+dt]
 //! @a res defines the output resolution, i.e. the time between command updates
 //! @a res_t0 defines the time of first command output, provided to allow unaligned output (as in comedidaq)
-__host__ __device__ bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
+bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
                        scalar &VClamp0, scalar &dVClamp, scalar &tStep);
+
+//! Same as getCommandSegment, but for a discrete-time iStimulation; dVClamp is returned as mV/ms, not mV/unit time!
+//! @a tSpan is the number of discrete-time units (i.e. cycles) to consider (first linear segment in [t, t+tSpan])
+//! @a dt is the temporal resolution factor in ms / unit time (cf. WavegenData::dt)
+__host__ __device__ bool getiCommandSegment(const iStimulation &I, int t, int tSpan, scalar dt,
+                                            scalar &VClamp0, scalar &dVClamp, int &tStep);
 
 struct ClampParameters {
     scalar clampGain, accessResistance;

@@ -72,7 +72,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
     {
         ret.reserve(archive()->elites.size());
         for ( MAPElite const& e : archive()->elites )
-            ret.push_back(e.wave);
+            ret.push_back(Stimulation(e.wave, session->wavegenData(resultIndex()).dt));
         break;
     }
     case Selection :
@@ -81,7 +81,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
         shrunk = true;
         ret.reserve(el.size());
         for ( const MAPElite &e : el )
-            ret.push_back(e.wave);
+            ret.push_back(Stimulation(e.wave, session->wavegenData(resultIndex()).dt));
         break;
     }
     case Subset :
@@ -142,7 +142,7 @@ std::vector<MAPElite> WaveSource::elites() const
         ret.reserve(stims.size());
         for ( Stimulation &stim : stims ) {
             MAPElite el;
-            el.wave = stim;
+            el.wave = iStimulation(stim, session->wavegenData(resultIndex()).dt);
             ret.push_back(el);
         }
         break;

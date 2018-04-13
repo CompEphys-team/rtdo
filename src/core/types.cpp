@@ -39,6 +39,69 @@ bool Stimulation::operator==(const Stimulation &other) const
     return equal;
 }
 
+Stimulation::Stimulation(const iStimulation &I, double dt) :
+    duration(I.duration * dt),
+    tObsBegin(I.tObsBegin * dt),
+    tObsEnd(I.tObsEnd * dt),
+    baseV(I.baseV),
+    numSteps(I.numSteps)
+{
+    for ( size_t i = 0; i < numSteps; i++ )
+        steps[i] = { scalar(I.steps[i].t * dt),
+                     I.steps[i].V,
+                     I.steps[i].ramp };
+}
+
+void iStimulation::insert(Step *position, const Step &value)
+{
+    if ( position < steps || position > end() )
+        throw std::runtime_error("iStimulation::insert: invalid position.");
+    if ( numSteps == maxSteps )
+        throw std::runtime_error("iStimulation::insert: Step array is full.");
+
+    for ( Step *it = end(); it > position; it-- ) // Move everything from position to the end right by one
+        *it = *(it-1);
+    *position = value;
+    numSteps++;
+    assert(numSteps <= maxSteps);
+}
+
+void iStimulation::erase(Step *position)
+{
+    if ( position < steps || position >= end() )
+        throw std::runtime_error("iStimulation::erase: invalid position.");
+    for ( Step *it = position; it < end()-1; it++ ) // Move everything from position to the end left by one
+        *it = *(it+1);
+    numSteps--;
+    assert(numSteps > 0);
+}
+
+bool iStimulation::operator==(const iStimulation &other) const
+{
+    bool equal =
+           duration  == other.duration
+        && tObsBegin == other.tObsBegin
+        && tObsEnd   == other.tObsEnd
+        && baseV     == other.baseV
+        && numSteps  == other.numSteps;
+    for ( size_t i = 0; equal && i < size(); i++ )
+        equal &= steps[i] == other.steps[i];
+    return equal;
+}
+
+iStimulation::iStimulation(const Stimulation &I, double dt) :
+    duration(lrint(I.duration / dt)),
+    tObsBegin(lrint(I.tObsBegin / dt)),
+    tObsEnd(lrint(I.tObsEnd / dt)),
+    baseV(I.baseV),
+    numSteps(I.numSteps)
+{
+    for ( size_t i = 0; i < numSteps; i++ )
+        steps[i] = { int(lrint(I.steps[i].t / dt)),
+                     I.steps[i].V,
+                     I.steps[i].ramp };
+}
+
 std::ostream &operator<<(std::ostream &os, const Stimulation &I)
 {
     using std::endl;
@@ -56,7 +119,14 @@ bool Stimulation::Step::operator==(const Stimulation::Step &other) const
 {
     return t    == other.t
         && V    == other.V
-            && ramp == other.ramp;
+        && ramp == other.ramp;
+}
+
+bool iStimulation::Step::operator==(const iStimulation::Step &other) const
+{
+    return t    == other.t
+        && V    == other.V
+        && ramp == other.ramp;
 }
 
 std::ostream &operator<<(std::ostream &os, const Stimulation::Step &s)
@@ -95,7 +165,7 @@ bool MAPElite::compete(const MAPElite &rhs)
     return false;
 }
 
-size_t MAPEDimension::bin(const Stimulation &I, size_t multiplier) const
+size_t MAPEDimension::bin(const iStimulation &I, size_t multiplier) const
 {
     scalar intermediate = 0.0;
     scalar factor = 1.0;
@@ -114,16 +184,18 @@ size_t MAPEDimension::bin(const Stimulation &I, size_t multiplier) const
             factor = 1.0 / I.duration;
     case MAPEDimension::Func::VoltageIntegral:
     {
-        scalar prevV = I.baseV, prevT = 0., tEnd = I.tObsEnd>0 ? I.tObsEnd : I.duration;
+        scalar prevV = I.baseV;
+        int prevT = 0, tEnd = I.tObsEnd>0 ? I.tObsEnd : I.duration;
         intermediate = 0.;
         // Calculate I's voltage integral against I.baseV, from t=0 to t=S.best.tEnd (the fitness-relevant bubble's end).
         // Since the stimulation is piecewise linear, decompose it step by step and cumulate the pieces
-        for ( const Stimulation::Step &s : I ) {
-            scalar sT = s.t, sV = s.V;
+        for ( const iStimulation::Step &s : I ) {
+            int sT = s.t;
+            scalar sV = s.V;
             if ( sT > tEnd ) { // Shorten last step to end of observed period
                 sT = tEnd;
                 if ( s.ramp )
-                    sV = (s.V - prevV) * (sT - prevT)/(s.t - prevT);
+                    sV = ((s.V - prevV) * (sT - prevT))/(s.t - prevT);
             }
             if ( s.ramp ) {
                 if ( (sV >= I.baseV && prevV >= I.baseV) || (sV <= I.baseV && prevV <= I.baseV) ) { // Ramp does not cross baseV

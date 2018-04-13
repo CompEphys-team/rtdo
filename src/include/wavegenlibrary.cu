@@ -4,7 +4,7 @@
 #include "wavegenlibrary.h"
 #include "cuda_helper.h" // For syntax highlighting only
 
-static __device__ Stimulation *dd_waveforms;
+static __device__ iStimulation *dd_waveforms;
 
 static __device__ scalar dd_err[MM_NumModels];
 static scalar err[MM_NumModels];
@@ -19,8 +19,8 @@ static __constant__ Bubble *dd_bubbles;
 
 void allocateGroupMem(WavegenLibrary::Pointers &pointers)
 {
-    cudaHostAlloc(&pointers.waveforms, MM_NumGroups * sizeof(Stimulation), cudaHostAllocPortable);
-        deviceMemAllocate(&pointers.d_waveforms, dd_waveforms, MM_NumGroups * sizeof(Stimulation));
+    cudaHostAlloc(&pointers.waveforms, MM_NumGroups * sizeof(iStimulation), cudaHostAllocPortable);
+        deviceMemAllocate(&pointers.d_waveforms, dd_waveforms, MM_NumGroups * sizeof(iStimulation));
 
     CHECK_CUDA_ERRORS(cudaHostAlloc(&pointers.bubbles, MM_NumGroups * sizeof(Bubble), cudaHostAllocPortable));
     pointers.d_bubbles = nullptr;
@@ -38,10 +38,10 @@ void libInit(WavegenLibrary::Pointers &pointers, size_t numGroups, size_t numMod
         CHECK_CUDA_ERRORS(cudaMemcpy(pointers.bubbles, pointers.d_bubbles, n * sizeof(Bubble), cudaMemcpyDeviceToHost))
     };
     pointers.pushWaveforms = [&pointers, numGroups](){
-        CHECK_CUDA_ERRORS(cudaMemcpy(pointers.d_waveforms, pointers.waveforms, numGroups * sizeof(Stimulation), cudaMemcpyHostToDevice))
+        CHECK_CUDA_ERRORS(cudaMemcpy(pointers.d_waveforms, pointers.waveforms, numGroups * sizeof(iStimulation), cudaMemcpyHostToDevice))
     };
     pointers.pullWaveforms = [&pointers, numGroups](){
-        CHECK_CUDA_ERRORS(cudaMemcpy(pointers.waveforms, pointers.d_waveforms, numGroups * sizeof(Stimulation), cudaMemcpyDeviceToHost))
+        CHECK_CUDA_ERRORS(cudaMemcpy(pointers.waveforms, pointers.d_waveforms, numGroups * sizeof(iStimulation), cudaMemcpyDeviceToHost))
     };
     pointers.pushErr = [&pointers, numModels](){
         CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(dd_err, pointers.err, numModels * sizeof(scalar)))
