@@ -37,6 +37,11 @@ bool Wavegen::search_exec(QFile &file, Result *result)
     initModels();
     detune();
     settle();
+
+    std::vector<double> meanErr = getMeanParamError();
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+        lib.adjustableParams[i].deltaBar = meanErr[i];
+
     lib.targetParam = param+1;
     lib.deltaBar = lib.adjustableParams[param].deltaBar;
     lib.ext_variance = searchd.ext_variance;

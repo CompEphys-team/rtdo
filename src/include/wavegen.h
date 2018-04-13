@@ -113,6 +113,12 @@ protected:
     void settle();
 
     /**
+     * @brief getMeanParamError runs a number of randomly generated stimulations, returning the average error per cycle
+     * produced by each parameter detuning.
+     */
+    std::vector<double> getMeanParamError();
+
+    /**
      * @brief pushStims pushes waveforms to the library, dispersing them as appropriate for the size of @p stim.
      * Changes: waveforms.
      * @param stim A vector with 1, lib.numGroups/searchd.nGroupsPerWave, or lib.numGroups elements.

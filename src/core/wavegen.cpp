@@ -132,14 +132,8 @@ void Wavegen::adjustSigmas()
     session.queue(actorName(), sigmaAdjust_action, "", new Result());
 }
 
-bool Wavegen::sigmaAdjust_exec(QFile &file, Result *dummy)
+std::vector<double> Wavegen::getMeanParamError()
 {
-    delete dummy;
-    dummy = nullptr;
-
-    initModels(false);
-    detune();
-    settle();
     for ( int i = 0; i < lib.numModels; i++ )
         lib.err[i] = 0;
     lib.getErr = true;
@@ -147,8 +141,9 @@ bool Wavegen::sigmaAdjust_exec(QFile &file, Result *dummy)
 
     // Generate a set of random waveforms,
     // simulate each (in turn across all model permutations, or in parallel), and collect the
-    // per-parameter average deviation from the base model produced by that parameter's detuning.
+    // average deviation from the base model produced by that parameter's detuning.
     std::vector<double> sumParamErr(lib.adjustableParams.size(), 0);
+    std::vector<size_t> nValid(lib.adjustableParams.size(), 0);
     std::vector<iStimulation> waves(lib.numGroups);
     // Round numSigAdjWaves up to nearest multiple of nGroups to fully occupy each iteration:
     int end = (searchd.numSigmaAdjustWaveforms + lib.numGroups - 1) / lib.numGroups;
@@ -166,17 +161,32 @@ bool Wavegen::sigmaAdjust_exec(QFile &file, Result *dummy)
         // Collect per-parameter error
         lib.pullErr();
         for ( int j = 0; j < lib.numModels; j++ ) {
-            int param = (j % lib.numModelsPerBlock) / lib.numGroupsPerBlock;
-            if ( param && !isnan(lib.err[j]) ) // Collect error for stable detuned models only
+            int param = (j % lib.numModelsPerBlock) / lib.numGroupsPerBlock; // 1-based (param==0 is base model)
+            if ( param && !isnan(lib.err[j]) ) { // Collect error for stable detuned models only
                 sumParamErr[param-1] += lib.err[j];
+                nValid[param-1]++;
+            }
             lib.err[j] = 0;
         }
     }
+    lib.pushErr();
 
-    std::vector<double> meanParamErr(sumParamErr);
-    for ( double & e : meanParamErr ) {
-        e /= end * lib.numGroups;
-    }
+    for ( size_t i = 0; i < sumParamErr.size(); i++ )
+        sumParamErr[i] /= nValid[i] * istimd.iDuration;
+
+    return sumParamErr;
+}
+
+bool Wavegen::sigmaAdjust_exec(QFile &file, Result *dummy)
+{
+    delete dummy;
+    dummy = nullptr;
+
+    initModels(false);
+    detune();
+    settle();
+
+    std::vector<double> meanParamErr = getMeanParamError();
 
     // Find the median of mean parameter errors:
     double medianErr; {
