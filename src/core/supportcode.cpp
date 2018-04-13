@@ -22,15 +22,11 @@ __device__ void closeBubble(Bubble &best, Bubble &current, int mt)
     }
 }
 
-__device__ void extendBubble(Bubble &best, Bubble &current, scalar parfit, int mt)
+__device__ void extendBubble(Bubble &current, scalar parfit, int mt)
 {
-    if ( parfit > 1 ) {
-        current.value += parfit;
-        if ( current.startCycle < 0 )
-            current.startCycle = mt;
-    } else {
-        closeBubble(best, current, mt);
-    }
+    current.value += parfit;
+    if ( current.startCycle < 0 )
+        current.startCycle = mt;
 }
 
 // Returns the command voltage; populates @a step with V_(offset per dt, if ramp is true), t_(next step), and ramp_(now).
@@ -105,7 +101,7 @@ scalar getCommandVoltages(const Stimulation &I, scalar t, scalar dt,
     }
 }
 
-bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
+__host__ __device__ bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
                        scalar &VClamp0, scalar &dVClamp, scalar &tStep)
 {
     if ( I.empty() || t < 0 || t >= I.duration ) {

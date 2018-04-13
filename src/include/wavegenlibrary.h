@@ -21,6 +21,8 @@ public:
         scalar *accessResistance;
         int *targetParam;
         bool *settling;
+        scalar *deltaBar;
+        scalar *ext_variance;
         bool *getErr;
         int *nGroupsPerStim;
 
@@ -88,6 +90,8 @@ public:
     scalar &accessResistance;
     int &targetParam;
     bool &settling;
+    scalar &deltaBar;
+    scalar &ext_variance;
     bool &getErr;
 
     unsigned int nStim;

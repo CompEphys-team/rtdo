@@ -16,7 +16,7 @@ scalar getCommandVoltages(const Stimulation &I, scalar t, scalar dt,
 //! Returns a flag indicating whether additional steps are required, i.e., whether there are multiple linear segments in [t, t+dt]
 //! @a res defines the output resolution, i.e. the time between command updates
 //! @a res_t0 defines the time of first command output, provided to allow unaligned output (as in comedidaq)
-bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
+__host__ __device__ bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, scalar res_t0,
                        scalar &VClamp0, scalar &dVClamp, scalar &tStep);
 
 struct ClampParameters {

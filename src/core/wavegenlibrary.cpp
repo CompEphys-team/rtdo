@@ -27,6 +27,8 @@ WavegenLibrary::WavegenLibrary(Project &p, bool compile) :
     accessResistance(*(pointers.accessResistance)),
     targetParam(*(pointers.targetParam)),
     settling(*(pointers.settling)),
+    deltaBar(*(pointers.deltaBar)),
+    ext_variance(*(pointers.ext_variance)),
     getErr(*(pointers.getErr)),
     err(pointers.err),
     waveforms(pointers.waveforms),
@@ -98,7 +100,9 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("targetParam", "", "int"),
         Variable("getErr", "", "bool"),
         Variable("settling", "", "bool"),
-        Variable("nGroupsPerStim", "", "int")
+        Variable("nGroupsPerStim", "", "int"),
+        Variable("deltaBar"),
+        Variable("ext_variance")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -155,89 +159,96 @@ std::string WavegenLibrary::simCode()
 {
     stringstream ss;
     ss << endl << "#ifndef _" << model.name(ModuleType::Wavegen) << "_neuronFnct_cc" << endl; // No Wavegen on the CPU
+
+    ss << model.populateStructs() << endl;
+
     ss << R"EOF(
 const int groupID = id % MM_NumGroupsPerBlock;                                  // Block-local group id
 const int group = groupID + (id/MM_NumModelsPerBlock) * MM_NumGroupsPerBlock;   // Global group id
 const int paramID = (id % MM_NumModelsPerBlock) / MM_NumGroupsPerBlock;
 const scalar mdt = DT/$(simCycles);
-scalar gathErr = 0.;
+scalar value = 0.; // Dual use: As cumulative error when targetParam<0, and as lambda when targetParam==paramID
 const Stimulation stim = dd_waveforms[group];
-Stimulation::Step nextStep;
 Bubble bestBubble = {-1,0,0}, currentBubble = {-1,0,0};
+scalar tStep = 0.;
 t = 0.;
-scalar Vcmd = getStep(nextStep, stim, t, mdt);
-for ( unsigned int mt = 0; t < stim.duration; mt++ ) {
-    t = mt*mdt;
-    if ( t >= nextStep.t )
-        Vcmd = getStep(nextStep, stim, t, mdt);
-    else if ( nextStep.ramp )
-        Vcmd += nextStep.V;
-    Isyn = ($(clampGain)*(Vcmd-$(V)) - $(V)) / $(accessResistance);
-)EOF";
-    ss << model.kernel("    ", true, true) << endl;
-    ss <<   R"EOF(
-    if ( $(getErr) ) {
-        __shared__ double errShare[MM_NumModelsPerBlock];
-        scalar err;
+unsigned int mt = 0;
+while ( t < stim.duration ) {
+    getCommandSegment(stim, t, stim.duration - t, mdt, 0., // Discarding return value: tStep is an integer multiple of tres=mdt
+                      clamp.VClamp0, clamp.dVClamp, tStep);
 
-        // Make base model (paramID==0) Isyn available
-        if ( !paramID )
-            errShare[groupID] = Isyn;
-        __syncthreads();
+    for ( unsigned int mtEnd = mt + rint(tStep/mdt); mt < mtEnd; t = (++mt) * mdt ) {
+        if ( $(getErr) ) {
+            __shared__ double errShare[MM_NumModelsPerBlock];
+            scalar err = clamp.getCurrent(t, state.V);
 
-        // Get deviation from the base model
-        if ( paramID ) {
-            err = fabs(Isyn - errShare[groupID]);
-            if ( $(targetParam) < 0 )
-                gathErr += err * mdt;
-            errShare[paramID*MM_NumGroupsPerBlock + groupID] = err;
-        }
-        __syncthreads();
+            // Make base model (paramID==0) Isyn available
+            if ( !paramID )
+                errShare[groupID] = err;
+            __syncthreads();
 
-        // Collect statistics for target param
-        if ( paramID == $(targetParam) ) {
-            scalar value = 0.;
-            for ( int i = 1; i < NPARAM+1; i++ ) {
-                value += errShare[i*MM_NumGroupsPerBlock + groupID];
-                if ( i == paramID )
-                    continue;
+            // Get deviation from the base model
+            if ( paramID ) {
+/* D: */        err = fabs(err - errShare[groupID]);
+                if ( $(targetParam) < 0 )
+                    value += err * mdt;
+/* D/Dbar: */   errShare[paramID*MM_NumGroupsPerBlock + groupID] = err / $(deltaBar);
             }
-            value = fitnessPartial(err, value/NPARAM);
-            if ( $(nGroupsPerStim) == 1 )
-                extendBubble(bestBubble, currentBubble, value, mt);
-            else if ( $(nGroupsPerStim) <= MM_NumGroupsPerBlock ) {
-                value = warpReduceSum(value, $(nGroupsPerStim))/$(nGroupsPerStim);
-                if ( groupID % $(nGroupsPerStim) == 0 )
-                    extendBubble(bestBubble, currentBubble, value, mt);
-            } else {
-                value = warpReduceSum(value, MM_NumGroupsPerBlock);
-                if ( groupID == 0 )
-                    dd_parfitBlock[int(group/MM_NumGroupsPerBlock) + mt * int(MM_NumGroups / MM_NumGroupsPerBlock)] = value;
+            __syncthreads();
+
+            // Collect statistics for target param
+            if ( paramID == $(targetParam) ) {
+                value = 0.;
+                for ( int i = 1; i < NPARAM+1; i++ ) {
+                    value += errShare[i*MM_NumGroupsPerBlock + groupID];
+                }
+/* L: */        value = NPARAM * err / ($(deltaBar) * value);
+
+                if ( $(nGroupsPerStim) == 1 ) {
+                    if ( value < 1 ) {
+                        closeBubble(bestBubble, currentBubble, mt);
+                    } else {
+/* F: */                value = (value - 1.) * err / sqrt($(ext_variance) + state.state__variance(params));
+                        extendBubble(currentBubble, value, mt);
+                    }
+                } else if ( $(nGroupsPerStim) <= MM_NumGroupsPerBlock ) {
+                    value = warpReduceSum(value, $(nGroupsPerStim))/$(nGroupsPerStim); // Mean lambda
+                    if ( value < 1 ) {
+                        if ( groupID % $(nGroupsPerStim) == 0 )
+                            closeBubble(bestBubble, currentBubble, mt);
+                    } else {
+/* F: */                value = (value - 1.) * err / sqrt($(ext_variance) + state.state__variance(params));
+                        value = warpReduceSum(value, $(nGroupsPerStim))/$(nGroupsPerStim); // Mean fitness
+                        if ( groupID % $(nGroupsPerStim) == 0 )
+                            extendBubble(currentBubble, value, mt);
+                    }
+                }
             }
         }
-    }
-} // end for mt
+
+        // Integrate
+        RK4(t, mdt, state, params, clamp);
+
+    } // end for mtEnd
+} // end while t < duration
 
 if ( $(getErr) && $(targetParam) < 0 ) {
-    dd_err[id] = gathErr;
+    dd_err[id] = value;
 }
 
 if ( $(getErr) && paramID == $(targetParam) ) {
     if ( bestBubble.cycles )
         bestBubble.value /= bestBubble.cycles;
-    if ( $(nGroupsPerStim) == 1 )
-        dd_bubbles[group] = bestBubble.cycles ? bestBubble : Bubble {0,0,0};
-    else if ( $(nGroupsPerStim) <= MM_NumGroupsPerBlock && groupID % $(nGroupsPerStim) == 0 )
-        dd_bubbles[group/$(nGroupsPerStim)] = bestBubble.cycles ? bestBubble : Bubble {0,0,0};
+    dd_bubbles[group] = bestBubble.cycles ? bestBubble : Bubble {0,0,0};
 }
 
 if ( !$(settling) )
     return;
-
-#else
-Isyn += 0.; // Squelch Wunused in neuronFnct.cc
-#endif
 )EOF";
+
+    ss << model.extractState();
+
+    ss << "#endif\nIsyn += 0.;";
 
     return ss.str();
 }
@@ -260,6 +271,8 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "#include \"../core/supportcode.cpp\"" << endl;
     ss << "#include \"wavegenlibrary.cu\"" << endl;
     ss << endl;
+
+    ss << model.supportCode() << endl;
 
     ss << "extern \"C\" WavegenLibrary::Pointers populate(WavegenLibrary &lib) {" << endl;
     ss << "    WavegenLibrary::Pointers pointers;" << endl;
