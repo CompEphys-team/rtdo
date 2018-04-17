@@ -83,9 +83,13 @@ bool Wavegen::search_exec(QFile &file, Result *result)
             if ( current.precision < searchd.precisionIncreaseEpochs.size() &&
                  current.iterations == searchd.precisionIncreaseEpochs[current.precision] ) {
                 current.precision++;
-                for ( MAPElite &e : current.elites )
+                double sumFitness = 0;
+                for ( MAPElite &e : current.elites ) {
                     e.bin = mape_bin(e.wave);
+                    sumFitness += e.fitness;
+                }
                 current.elites.sort();
+                current.meanFitness.last() = sumFitness / current.elites.size();
             }
         } else if ( isAborted() ) {
             break;
