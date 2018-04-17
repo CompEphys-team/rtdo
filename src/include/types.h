@@ -316,7 +316,7 @@ struct MAPEDimension
      * @param multiplier: Multiplier to the resolution (i.e., number of bins = multiplier * resolution)
      * @return The bin index this Stimulation belongs to.
      */
-    size_t bin(const iStimulation &I, size_t multiplier) const;
+    size_t bin(const iStimulation &I, size_t multiplier, double dt) const;
     size_t bin(scalar value, size_t multiplier) const; //!< As above, but with a fully processed behavioural value
     scalar bin_inverse(size_t bin, size_t multiplier) const; //!< Inverse function of bin(scalar, size_t), aliased to the lower boundary of the bin.
 

@@ -226,7 +226,7 @@ std::vector<size_t> Wavegen::mape_bin(const iStimulation &I)
     size_t mult = mape_multiplier(current.precision);
     std::vector<size_t> bin(searchd.mapeDimensions.size());
     for ( size_t i = 0; i < searchd.mapeDimensions.size(); i++ ) {
-        bin[i] = searchd.mapeDimensions.at(i).bin(I, mult);
+        bin[i] = searchd.mapeDimensions.at(i).bin(I, mult, searchd.dt);
     }
 
     return bin;

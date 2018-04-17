@@ -165,23 +165,23 @@ bool MAPElite::compete(const MAPElite &rhs)
     return false;
 }
 
-size_t MAPEDimension::bin(const iStimulation &I, size_t multiplier) const
+size_t MAPEDimension::bin(const iStimulation &I, size_t multiplier, double dt) const
 {
     scalar intermediate = 0.0;
-    scalar factor = 1.0;
+    scalar factor = dt;
     switch ( func ) {
     case MAPEDimension::Func::BestBubbleDuration:
-        intermediate = I.tObsEnd - I.tObsBegin;
+        intermediate = (I.tObsEnd - I.tObsBegin) * dt;
         break;
     case MAPEDimension::Func::BestBubbleTime:
-        intermediate = I.tObsBegin;
+        intermediate = I.tObsBegin * dt;
         break;
     case MAPEDimension::Func::VoltageDeviation:
         // Piggy-back on integral, divide it by its length to get mean abs deviation
         if ( I.tObsEnd > 0 )
-            factor = 1.0 / I.tObsEnd;
+            factor /= I.tObsEnd;
         else
-            factor = 1.0 / I.duration;
+            factor /= I.duration;
     case MAPEDimension::Func::VoltageIntegral:
     {
         scalar prevV = I.baseV;
