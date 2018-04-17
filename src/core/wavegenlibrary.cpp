@@ -188,9 +188,12 @@ while ( mt < stim.duration ) {
 /* D: */        err = fabs(err - errShare[groupID]);
                 if ( $(targetParam) < 0 )
                     value += err;
-/* D/Dbar: */   errShare[paramID*MM_NumGroupsPerBlock + groupID] = err / $(deltaBar);
             }
-            __syncthreads();
+
+            if ( $(targetParam) > 0 ) {
+/* D/Dbar: */   errShare[paramID*MM_NumGroupsPerBlock + groupID] = err / $(deltaBar);
+                __syncthreads();
+            }
 
             // Collect statistics for target param
             if ( paramID == $(targetParam) ) {
