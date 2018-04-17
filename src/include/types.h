@@ -349,7 +349,7 @@ struct WavegenData
     std::vector<MAPEDimension> mapeDimensions; //!< List of dimensions along which stimulation behaviour is to be measured
     std::vector<size_t> precisionIncreaseEpochs; //!< Epochs on which MAPE precision/resolution is to double
     size_t maxIterations = 1000; //!< Total number of epochs (cf nWavesPerEpoch)
-    double ext_variance = 0.; //!< Expected instrument noise variance
+    double noise_sd = 0.; //!< Expected instrument/environment current noise standard deviation (nA)
     double dt = 0.01;
 };
 

@@ -44,7 +44,7 @@ bool Wavegen::search_exec(QFile &file, Result *result)
 
     lib.targetParam = param+1;
     lib.deltaBar = lib.adjustableParams[param].deltaBar;
-    lib.ext_variance = searchd.ext_variance;
+    lib.ext_variance = searchd.noise_sd * searchd.noise_sd;
     lib.getErr = true;
     lib.nStim = numWavesPerEpisode;
     pushStims(waves_ep1);

@@ -55,6 +55,9 @@ void WavegenDataDialog::importData()
         if ( dim.func == MAPEDimension::Func::VoltageIntegral)
             ui->nBinsVoltageIntegral->setValue(dim.resolution);
     }
+
+    ui->dt->setValue(p.dt);
+    ui->noise_sd->setValue(p.noise_sd);
 }
 
 void WavegenDataDialog::exportData()
@@ -92,6 +95,9 @@ void WavegenDataDialog::exportData()
     if ( ui->nBinsVoltageIntegral->value() > 0 )
         dims.push_back(MAPEDimension {MAPEDimension::Func::VoltageIntegral, 0, maxDeviation * stimd.duration, (size_t)ui->nBinsVoltageIntegral->value()});
     p.mapeDimensions = dims;
+
+    p.dt = ui->dt->value();
+    p.noise_sd = ui->noise_sd->value();
 
     emit apply(p);
 }

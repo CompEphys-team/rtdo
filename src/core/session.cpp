@@ -87,7 +87,7 @@ void Session::addAPs()
     addAP(searchAP, "S.Wavegen.rerandomiseParameters", &q_settings, &Settings::searchd, &WavegenData::rerandomiseParameters);
     addAP(searchAP, "S.Wavegen.precisionIncreaseEpochs[#]", &q_settings, &Settings::searchd, &WavegenData::precisionIncreaseEpochs);
     addAP(searchAP, "S.Wavegen.maxIterations", &q_settings, &Settings::searchd, &WavegenData::maxIterations);
-    addAP(searchAP, "S.Wavegen.ext_variance", &q_settings, &Settings::searchd, &WavegenData::ext_variance);
+    addAP(searchAP, "S.Wavegen.noise_sd", &q_settings, &Settings::searchd, &WavegenData::noise_sd);
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].func", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::func);
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].min", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::min);
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].max", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::max);
