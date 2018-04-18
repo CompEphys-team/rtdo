@@ -202,11 +202,13 @@ void Wavegen::mutateNumber(iStimulation &I)
 
 void Wavegen::mutateSwap(iStimulation &I)
 {
+    if ( I.size() < 2 )
+        return;
     iStimulation::Step *src, *dest;
     do {
         src = session.RNG.choose(I);
         dest = session.RNG.choose(I);
-    } while ( src->t == dest->t );
+    } while ( src == dest );
     using std::swap;
     swap(src->V, dest->V);
     swap(src->ramp, dest->ramp);
