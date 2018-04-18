@@ -179,9 +179,9 @@ size_t MAPEDimension::bin(const iStimulation &I, size_t multiplier, double dt) c
     case MAPEDimension::Func::VoltageDeviation:
         // Piggy-back on integral, divide it by its length to get mean abs deviation
         if ( I.tObsEnd > 0 )
-            factor /= I.tObsEnd;
+            factor = 1./I.tObsEnd;
         else
-            factor /= I.duration;
+            factor = 1./I.duration;
     case MAPEDimension::Func::VoltageIntegral:
     {
         scalar prevV = I.baseV;
