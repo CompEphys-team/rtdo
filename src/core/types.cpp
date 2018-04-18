@@ -56,14 +56,14 @@ void iStimulation::insert(Step *position, const Step &value)
 {
     if ( position < steps || position > end() )
         throw std::runtime_error("iStimulation::insert: invalid position.");
-    if ( numSteps == maxSteps )
+    if ( numSteps == Stimulation::maxSteps )
         throw std::runtime_error("iStimulation::insert: Step array is full.");
 
     for ( Step *it = end(); it > position; it-- ) // Move everything from position to the end right by one
         *it = *(it-1);
     *position = value;
     numSteps++;
-    assert(numSteps <= maxSteps);
+    assert(numSteps <= Stimulation::maxSteps);
 }
 
 void iStimulation::erase(Step *position)

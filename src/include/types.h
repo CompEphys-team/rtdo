@@ -92,8 +92,7 @@ struct iStimulation
         CUDA_HOST_MEMBER bool operator==(const Step &other) const;
     };
 
-    static constexpr size_t maxSteps = 10;
-    Step steps[maxSteps];
+    Step steps[Stimulation::maxSteps];
 
     // Some functions that simplify handling steps ... almost as though it were a vector.
     CUDA_CALLABLE_MEMBER inline Step* begin() { return steps; }

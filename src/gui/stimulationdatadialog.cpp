@@ -21,7 +21,7 @@ StimulationDataDialog::StimulationDataDialog(Session &s, int historicIndex, QWid
         ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
     }
 
-    ui->maxSteps->setMaximum(Stimulation::maxSteps - 1);
+    ui->maxSteps->setMaximum(Stimulation::maxSteps);
 
     importData();
 }
