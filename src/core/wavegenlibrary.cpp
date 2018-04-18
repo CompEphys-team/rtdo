@@ -171,9 +171,14 @@ const iStimulation stim = dd_waveforms[group];
 Bubble bestBubble = {-1,0,0}, currentBubble = {-1,0,0};
 int mt = 0, tStep = 0;
 while ( mt < stim.duration ) {
-    getiCommandSegment(stim, t, stim.duration - t, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
+    getiCommandSegment(stim, mt, stim.duration - mt, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
 
-    for ( int mtEnd = mt + tStep; mt < mtEnd; t = (++mt) * $(dt) ) {
+    // Butterfly reduction to get smallest tStep in warp -- also smallest tStep in block, because each warp has the same set of stims
+    for ( int i = 16; i >= 1; i /= 2 )
+        tStep = min(tStep, __shfl_xor_sync(0xffffffff, tStep, i, 32));
+
+    for ( int i = 0; i < tStep; i++ ) {
+        t = mt * $(dt);
         if ( $(getErr) ) {
             __shared__ double errShare[MM_NumModelsPerBlock];
             scalar err = clamp.getCurrent(t, state.V);
@@ -227,9 +232,9 @@ while ( mt < stim.duration ) {
 
         // Integrate
         RK4(t, $(dt), state, params, clamp);
-
-    } // end for mtEnd
-} // end while t < duration
+        ++mt;
+    } // end for i from 0 to tStep
+} // end while mt < duration
 
 if ( $(getErr) && $(targetParam) < 0 ) {
     dd_err[id] = value;
