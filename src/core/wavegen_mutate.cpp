@@ -94,6 +94,7 @@ iStimulation Wavegen::mutate(const iStimulation &parent, const iStimulation &xov
 
 void Wavegen::mutateCrossover(iStimulation &I, const iStimulation &parent)
 {
+    int failCount = 0;
     do { // Repeat on failures
         std::vector<iStimulation::Step> steps;
         bool coin = session.RNG.pick({true, false});
@@ -156,7 +157,7 @@ void Wavegen::mutateCrossover(iStimulation &I, const iStimulation &parent)
         for ( iStimulation::Step &s : steps )
             I.insert(I.end(), std::move(s));
         return;
-    } while ( true );
+    } while ( ++failCount < 10 );
 }
 
 void Wavegen::mutateVoltage(iStimulation &I)
@@ -239,16 +240,8 @@ void Wavegen::mutateTime(iStimulation &I)
                 target->t = newT;
             } else {
                 iStimulation::Step tmp = *target;
-                tmp.t = newT;
-                // Ensure placement is correct; work from tail to head:
-                int tOff = target - I.begin(), iOff = it - I.begin();
-                if ( tOff < iOff ) {
-                    I.insert(it, std::move(tmp));
-                    I.erase(I.begin() + tOff);
-                } else {
-                    I.erase(target);
-                    I.insert(I.begin() + iOff, std::move(tmp));
-                }
+                I.erase(target);
+                I.insert(it - (it > target), std::move(tmp));
             }
             return;
         }
