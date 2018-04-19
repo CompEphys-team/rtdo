@@ -34,6 +34,7 @@ public:
 
     std::vector<Stimulation> stimulations() const;
     std::vector<MAPElite> elites() const;
+    std::vector<iStimulation> iStimulations(double dt) const;
 
     QString prettyName() const;
     int index() const; //!< Returns the overall index (eg. for comboboxes), ignoring waveno.

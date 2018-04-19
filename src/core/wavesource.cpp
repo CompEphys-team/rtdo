@@ -155,6 +155,53 @@ std::vector<MAPElite> WaveSource::elites() const
         return ret;
 }
 
+std::vector<iStimulation> WaveSource::iStimulations(double dt) const
+{
+    std::vector<iStimulation> ret;
+    bool shrunk = false;
+    switch ( type ) {
+    case Archive :
+    {
+        ret.reserve(archive()->elites.size());
+        if ( session->wavegenData(resultIndex()).dt == dt ) {
+            for ( MAPElite const& e : archive()->elites )
+                ret.push_back(e.wave);
+        } else {
+            for ( Stimulation const& I : stimulations() )
+                ret.push_back(iStimulation(I, dt));
+        }
+        break;
+    }
+    case Selection :
+    {
+        std::vector<MAPElite> el = elites();
+        shrunk = true;
+        ret.reserve(el.size());
+        if ( session->wavegenData(resultIndex()).dt == dt ) {
+            for ( const MAPElite &e : el )
+                ret.push_back(e.wave);
+        } else {
+            for ( Stimulation const& I : stimulations() )
+                ret.push_back(iStimulation(I, dt));
+        }
+        break;
+    }
+    case Subset :
+    case Deck:
+    case Manual:
+        std::vector<Stimulation> stims = stimulations();
+        ret.reserve(stims.size());
+        for ( Stimulation const& I : stims )
+            ret.push_back(iStimulation(I, dt));
+        break;
+    }
+
+    if ( !shrunk && waveno >= 0 )
+        return {ret[waveno]};
+    else
+        return ret;
+}
+
 QString WaveSource::prettyName() const
 {
     QString ret;
