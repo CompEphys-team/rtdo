@@ -62,8 +62,8 @@ __global__ void compute_err_and_gradient(unsigned int nSamples, scalar *targetPa
     unsigned int y = blockIdx.y * blockDim.y + threadIdx.y; // reference
     scalar tuned_err = 0, detuned_err = 0;
     for ( unsigned int i = 0; i < nSamples; i++ ) {
-        tuned_err += std::fabs(current[2*x + NMODELS*i] - current[2*y + NMODELS*i]);
-        detuned_err += std::fabs(current[2*x+1 + NMODELS*i] - current[2*y + NMODELS*i]);
+        tuned_err += fdims(current[2*x + NMODELS*i], current[2*y + NMODELS*i]);
+        detuned_err += fdims(current[2*x+1 + NMODELS*i], current[2*y + NMODELS*i]);
     }
 
     if ( x != y ) // Ignore diagonal (don't probe against self)
