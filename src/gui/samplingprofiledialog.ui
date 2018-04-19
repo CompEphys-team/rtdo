@@ -16,14 +16,14 @@
   <layout class="QGridLayout" name="gridLayout">
    <item row="2" column="1">
     <widget class="QSpinBox" name="interval">
+     <property name="minimum">
+      <number>1</number>
+     </property>
      <property name="maximum">
       <number>99999999</number>
      </property>
      <property name="singleStep">
       <number>1</number>
-     </property>
-     <property name="value">
-      <number>5</number>
      </property>
     </widget>
    </item>
@@ -109,7 +109,7 @@
    <item row="2" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Interval</string>
+      <string>Sampling interval</string>
      </property>
     </widget>
    </item>

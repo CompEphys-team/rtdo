@@ -15,11 +15,11 @@ public:
     struct Profile : public Result
     {
         Profile(Result r = Result()) : Result(r) {}
-        Profile(WaveSource src, Result r = Result()); //!< Populates sensible defaults for target and sigma, and sizes the vectors.
+        Profile(WaveSource src, size_t target, Result r = Result()); //!< Populates sensible defaults for sigma and sizes the vectors.
         WaveSource src; //!< Stimulations to profile.
         size_t target; //!< Parameter to profile.
         double sigma; //!< Detuning coefficient
-        size_t samplingInterval; //!< in cycles; frequency of current evaluation. Defaults to RunData::simCycles.
+        size_t samplingInterval; //!< in cycles; frequency of current evaluation. Defaults to 1.
 
         QVector<bool> uniform; //!< Flag for each parameter: true to interpret value1/value2 as min/max rather than mean/sd.
         QVector<double> value1, value2; //!< min/max or mean/sd for each parameter, depending on uniform. No distinction is made between additive and multiplicative params.

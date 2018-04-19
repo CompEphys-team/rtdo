@@ -127,11 +127,12 @@ QDataStream &operator>>(QDataStream &is, SamplingProfiler::Profile &p)
     return is;
 }
 
-SamplingProfiler::Profile::Profile(WaveSource src, Result r) :
+SamplingProfiler::Profile::Profile(WaveSource src, size_t target, Result r) :
     Result(r),
     src(src),
-    target(src.archive() ? src.archive()->param : 0),
-    sigma(src.archive() ? src.session->project.model().adjustableParams[target].adjustedSigma : 1e-5),
+    target(target),
+    sigma(src.session->project.model().adjustableParams[target].adjustedSigma),
+    samplingInterval(1),
     uniform(src.session->project.model().adjustableParams.size()),
     value1(uniform.size()),
     value2(uniform.size()),

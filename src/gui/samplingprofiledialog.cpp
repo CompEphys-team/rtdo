@@ -59,8 +59,6 @@ SamplingProfileDialog::SamplingProfileDialog(Session &s, QWidget *parent) :
             ui->target->setCurrentIndex(src.archive()->param);
     });
 
-    ui->interval->setValue(session.qRunData().simCycles);
-
     updateCombo();
     updatePresets();
 }
@@ -156,7 +154,7 @@ void SamplingProfileDialog::on_btnStart_clicked()
     if ( ui->cbSelection->currentIndex() < 0 )
         return;
 
-    SamplingProfiler::Profile prof(ui->cbSelection->currentData().value<WaveSource>());
+    SamplingProfiler::Profile prof(ui->cbSelection->currentData().value<WaveSource>(), ui->target->currentIndex());
     for ( int i = 0; i < prof.uniform.size(); i++ ) {
         prof.uniform[i] = ui->table->item(i, 0)->checkState() == Qt::Checked;
         prof.value1[i] = mins[i]->value();
