@@ -21,7 +21,7 @@ ProfilerLibrary::ProfilerLibrary(const Project & p, bool compile) :
     lib(compile ? compile_and_load() : load()),
     populate((decltype(populate))dlsym(lib, "populate")),
     pointers(populate(stateVariables, adjustableParams)),
-    simCycles(*(pointers.simCycles)),
+    dt(*(pointers.dt)),
     samplingInterval(*(pointers.samplingInterval)),
     clampGain(*(pointers.clampGain)),
     accessResistance(*(pointers.accessResistance))
@@ -87,7 +87,7 @@ void ProfilerLibrary::GeNN_modelDefinition(NNmodel &nn)
     neuronModel n = model.generate(nn, fixedParamIni, variableIni);
 
     std::vector<Variable> globals = {
-        Variable("simCycles", "", "int"),
+        Variable("dt"),
         Variable("samplingInterval", "", "int"),
         Variable("clampGain"),
         Variable("accessResistance"),
@@ -112,28 +112,33 @@ void ProfilerLibrary::GeNN_modelDefinition(NNmodel &nn)
 
 std::string ProfilerLibrary::simCode()
 {
-    return std::string("\n#ifndef _") + model.name(ModuleType::Profiler) + "_neuronFnct_cc\n"
-    + R"EOF(
-scalar mdt = DT/$(simCycles);
-t = 0.;
+    std::stringstream ss;
+    ss << std::string("\n#ifndef _") + model.name(ModuleType::Profiler) + "_neuronFnct_cc\n";
+    ss << model.populateStructs() << endl;
+    ss << R"EOF(
 unsigned int samples = 0;
-for ( unsigned int mt = 0; t < stim.duration && t < stim.tObsEnd; mt++ ) {
-    t = mt*mdt;
-    Isyn = ($(clampGain)*(getCommandVoltage(stim, t) - $(V)) - $(V)) / $(accessResistance);
-)EOF"
-    + model.kernel("    ", true, false)
-    + R"EOF(
-    if ( !$(settling) && (mt+1) % $(samplingInterval) == 0 && t > stim.tObsBegin && t < stim.tObsEnd )
-        $(current)[id + NMODELS * samples++] = Isyn;
+int mt = 0, tStep = 0;
+while ( mt < stim.duration ) {
+    getiCommandSegment(stim, mt, stim.duration - mt, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
+
+    for ( int i = 0; i < tStep; i++ ) {
+        t = mt * $(dt);
+        if ( !$(settling) && mt >= stim.tObsBegin && (mt-stim.tObsBegin) % $(samplingInterval) == 0 )
+            $(current)[id + NMODELS * samples++] = clamp.getCurrent(t, state.V);
+
+        // Integrate
+        RK4(t, $(dt), state, params, clamp);
+        ++mt;
+    }
 }
 
 if ( !$(settling) )
     return; // do not overwrite settled initial state
-
-#else
-Isyn += 0.;
-#endif
 )EOF";
+
+    ss << model.extractState() << endl;
+    ss << "#endif\nIsyn += 0.;";
+    return ss.str();
 }
 
 std::string ProfilerLibrary::supportCode(const std::vector<Variable> &globals, const std::vector<Variable> &vars)
@@ -152,6 +157,8 @@ std::string ProfilerLibrary::supportCode(const std::vector<Variable> &globals, c
     ss << "#include \"../core/supportcode.cpp\"" << endl;
     ss << "#include \"profilerlibrary.cu\"" << endl;
     ss << endl;
+
+    ss << model.supportCode() << endl;
 
     ss << "extern \"C\" ProfilerLibrary::Pointers populate(std::vector<StateVariable> &state, "
                                                          << "std::vector<AdjustableParam> &param) {" << endl;
@@ -193,16 +200,17 @@ std::string ProfilerLibrary::supportCode(const std::vector<Variable> &globals, c
     return ss.str();
 }
 
-void ProfilerLibrary::settle(Stimulation stim)
+void ProfilerLibrary::settle(iStimulation stim)
 {
     pointers.pushStim(stim);
     *pointers.settling = true;
     pointers.step();
 }
 
-void ProfilerLibrary::profile(Stimulation stim, size_t targetParam, double &accuracy, double &median_norm_gradient)
+void ProfilerLibrary::profile(iStimulation stim, size_t targetParam, double &accuracy, double &median_norm_gradient)
 {
-    unsigned int nSamples = std::ceil((stim.tObsEnd-stim.tObsBegin) / (samplingInterval * project.dt() / simCycles));
+    unsigned int nSamples = (stim.tObsEnd - stim.tObsBegin) / samplingInterval;
+    stim.duration = stim.tObsEnd;
     pointers.pushStim(stim);
     *pointers.settling = false;
     pointers.doProfile(pointers, targetParam, nSamples, accuracy, median_norm_gradient);
@@ -212,6 +220,5 @@ void ProfilerLibrary::setRunData(RunData rund)
 {
     clampGain = rund.clampGain;
     accessResistance = rund.accessResistance;
-    simCycles = rund.simCycles;
 }
 

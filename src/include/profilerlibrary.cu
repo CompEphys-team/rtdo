@@ -12,11 +12,11 @@ static unsigned int currentSz = 1024;
 static constexpr unsigned int gradientSz = NCOMP - NPAIRS; // No diagonal
 static constexpr unsigned int errSz = (NCOMP - NPAIRS)/2; // Above diagonal only
 
-__constant__ Stimulation stim;
+__constant__ iStimulation stim;
 
-extern "C" void pushStim(const Stimulation &h_stim)
+extern "C" void pushStim(const iStimulation &h_stim)
 {
-    cudaMemcpyToSymbol(stim, &h_stim, sizeof(Stimulation));
+    cudaMemcpyToSymbol(stim, &h_stim, sizeof(iStimulation));
 }
 
 void libInit(ProfilerLibrary::Pointers &pointers)

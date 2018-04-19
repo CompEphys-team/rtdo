@@ -16,7 +16,7 @@ public:
 
     struct Pointers
     {
-        int *simCycles;
+        scalar *dt;
         int *samplingInterval;
         scalar *clampGain;
         scalar *accessResistance;
@@ -27,7 +27,7 @@ public:
 
         void (*push)(void);
         void (*pull)(void);
-        void (*pushStim)(const Stimulation &);
+        void (*pushStim)(const iStimulation &);
         void (*step)(void);
         void (*doProfile)(Pointers&, size_t, unsigned int, double&, double&);
         void (*reset)(void);
@@ -57,13 +57,13 @@ private:
 
 public:
     // Model globals
-    int &simCycles;
+    scalar &dt;
     int &samplingInterval;
     scalar &clampGain;
     scalar &accessResistance;
 
-    void settle(Stimulation stim); // Settle (i.e. apply stim), saving the state back into device memory.
-    void profile(Stimulation stim, size_t targetParam, double &accuracy, double &median_norm_gradient);
+    void settle(iStimulation stim); // Settle (i.e. apply stim), saving the state back into device memory.
+    void profile(iStimulation stim, size_t targetParam, double &accuracy, double &median_norm_gradient);
 };
 
 #endif // PROFILERLIBRARY_H

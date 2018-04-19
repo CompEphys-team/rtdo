@@ -68,12 +68,12 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
 
     lib.samplingInterval = prof.samplingInterval;
 
-    Stimulation hold;
+    iStimulation hold;
     hold.clear();
-    hold.duration = session.runData().settleDuration;
+    hold.duration = lrint(session.runData().settleDuration / session.wavegenData().dt);
     hold.baseV = NAN;
 
-    std::vector<Stimulation> stims = prof.src.stimulations();
+    std::vector<iStimulation> stims = prof.src.iStimulations(session.wavegenData().dt);
     size_t total = stims.size();
     prof.gradient.resize(total);
     prof.accuracy.resize(total);
@@ -132,7 +132,6 @@ SamplingProfiler::Profile::Profile(WaveSource src, Result r) :
     src(src),
     target(src.archive() ? src.archive()->param : 0),
     sigma(src.archive() ? src.session->project.model().adjustableParams[target].adjustedSigma : 1e-5),
-    samplingInterval(src.session->runData().simCycles),
     uniform(src.session->project.model().adjustableParams.size()),
     value1(uniform.size()),
     value2(uniform.size()),
