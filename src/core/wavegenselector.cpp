@@ -225,6 +225,44 @@ void WavegenSelection::finalise()
     }
 }
 
+size_t WavegenSelection::getSizeLimit(size_t n, size_t dimension, bool descending)
+{
+    if ( n >= nFinal )
+        return descending ? ranges[dimension].min : ranges[dimension].max;
+
+    std::vector<const MAPElite*> copy;
+    copy.reserve(nFinal);
+    for ( const MAPElite *e : selection )
+        if ( e )
+            copy.push_back(e);
+    std::sort(copy.begin(), copy.end(), [&](const MAPElite * const &a, const MAPElite * const &b) {
+        if ( !a )   return false;
+        if ( !b )   return true;
+        return descending ? (b->bin[dimension] < a->bin[dimension]) : (a->bin[dimension] < b->bin[dimension]);
+    });
+
+    return copy.at(n-1)->bin[dimension];
+}
+
+double WavegenSelection::getFitnessSizeLimit(size_t n)
+{
+    if ( n >= nFinal )
+        return minFitness;
+
+    std::vector<const MAPElite*> copy;
+    copy.reserve(nFinal);
+    for ( const MAPElite *e : selection )
+        if ( e )
+            copy.push_back(e);
+    std::sort(copy.begin(), copy.end(), [](const MAPElite * const &a, const MAPElite * const &b) {
+        if ( !a )   return false;
+        if ( !b )   return true;
+        return a->fitness > b->fitness;
+    });
+
+    return copy.at(n-1)->fitness;
+}
+
 QString WavegenSelection::prettyName() const
 {
     return QString("%1 waves from archive %2")

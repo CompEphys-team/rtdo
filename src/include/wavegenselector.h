@@ -60,8 +60,25 @@ public:
 
     QString prettyName() const;
 
-protected:
-    size_t nFinal;
+    size_t nFinal; ///!< Total number of valid selected entries. Unlike @fn size(), this does not include empty cells.
+
+    /**
+     * @brief getSizeLimit returns the threshold to limit the selection to a given number of valid entries.
+     *      Selection must be finalised prior to calling this function.
+     * @param n: The desired number of entries
+     * @param dimension: The dimension along which the threshold shall be found
+     * @param descending: Whether to find the highest (true) or lowest (false) entries along the selected dimension
+     * @return the bin value of the threshold
+     */
+    size_t getSizeLimit(size_t n, size_t dimension, bool descending);
+
+    /**
+     * @brief getFitnessSizeLimit returns the minimum fitness to limit the selection to a given number of valid entries.
+     *      Selection must be finalised prior to calling this function.
+     * @param n: The desired number of entries
+     * @return the fitness value of the threshold
+     */
+    double getFitnessSizeLimit(size_t n);
 };
 
 #endif // WAVEGENSELECTOR_H

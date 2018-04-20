@@ -137,11 +137,23 @@ void WavegenFitnessMapper::updateDimensions()
 
     ui->minFitness->setValue(src.selection() ? src.selection()->minFitness : 0);
 
+    int axis = ui->limitAxis->currentIndex();
+    for ( int i = ui->limitAxis->count() - 1; i > 0; i-- )
+        ui->limitAxis->removeItem(i);
+    ui->limitAxis->addItems(labels);
+    ui->limitAxis->setCurrentIndex(axis);
+
     replot();
 }
 
 bool WavegenFitnessMapper::select(bool flattenToPlot)
 {
+    if ( flattenToPlot ) {
+        // Recurse without artificial flattening to set limit to true nFinal, and if checked to limit over the full dimensionality
+        // This updates limits and unchecks limitCheck, see below.
+        select(false);
+    }
+
     WaveSource src = ui->combo->currentData().value<WaveSource>();
     if ( src.type == WaveSource::Selection ) {
         selection.reset(new WavegenSelection(*src.selection()));
@@ -157,6 +169,36 @@ bool WavegenFitnessMapper::select(bool flattenToPlot)
     }
     selection->minFitness = ui->minFitness->value();
     selection->finalise();
+
+    if ( ui->limitCheck->isChecked() ) {
+        ui->limitCheck->setChecked(false);
+        bool reFinalise = false;
+
+        if ( ui->limitAxis->currentIndex() == 0 ) { // Fitness; ignore direction
+            selection->minFitness = selection->getFitnessSizeLimit(ui->limit->value());
+            reFinalise = ui->minFitness->value() != selection->minFitness;
+            ui->minFitness->setValue(selection->minFitness);
+        } else { // MAPE Dimension
+            size_t dim = ui->limitAxis->currentIndex() - 1;
+            bool descending = ui->limitDirection->currentIndex()==0;
+            size_t lim = selection->getSizeLimit(ui->limit->value(), dim, descending);
+            if ( descending ) {
+                reFinalise = lim != selection->ranges[dim].min;
+                selection->ranges[dim].min = lim;
+                mins[dim]->setValue(selection->rmin(dim));
+            } else {
+                reFinalise = lim != selection->ranges[dim].max;
+                selection->ranges[dim].max = lim;
+                maxes[dim]->setValue(selection->rmax(dim));
+            }
+        }
+
+        if ( reFinalise )
+            selection->finalise();
+    }
+    if ( !flattenToPlot )
+        ui->limit->setValue(selection->nFinal);
+
     return true;
 }
 
