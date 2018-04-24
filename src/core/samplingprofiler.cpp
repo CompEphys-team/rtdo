@@ -67,6 +67,7 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     lib.push();
 
     lib.samplingInterval = prof.samplingInterval;
+    lib.dt = session.wavegenData().dt;
 
     iStimulation hold;
     hold.clear();
