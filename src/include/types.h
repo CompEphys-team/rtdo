@@ -16,12 +16,14 @@ typedef double scalar;
 #endif
 #define scalarmin(a,b) fmin(a,b)
 #define scalarmax(a,b) fmax(a,b)
+#define scalarfabs(a)  fabs(a)
 #else
 #ifndef scalar
 typedef float scalar;
 #endif
 #define scalarmin(a,b) fminf(a,b)
 #define scalarmax(a,b) fmaxf(a,b)
+#define scalarfabs(a)  fabsf(a)
 #endif
 
 #ifdef __CUDACC__
