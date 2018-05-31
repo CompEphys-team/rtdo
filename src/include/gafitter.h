@@ -66,14 +66,15 @@ protected:
 
     bool doFinish;
 
-    std::vector<Stimulation> stims;
+    std::vector<iStimulation> stims;
+    std::vector<Stimulation> astims;
     quint32 stimIdx;
     quint32 epoch;
     std::vector<double> bias;
 
     double getVariance();
     void populate();
-    void stimulate(const Stimulation &I);
+    void stimulate();
     void procreate();
     void finalise();
     quint32 findNextStim();

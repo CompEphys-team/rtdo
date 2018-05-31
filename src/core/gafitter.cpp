@@ -96,7 +96,10 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     qT = 0;
 
     // Prepare
-    stims = sanitiseDeck(output.deck.stimulations());
+    astims = sanitiseDeck(output.deck.stimulations());
+    stims.clear();
+    for ( Stimulation stim : astims )
+        stims.push_back(iStimulation(stim, session.runData().dt));
     stimIdx = 0;
 
     daq = new DAQFilter(session);
@@ -106,7 +109,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
             output.targets[i] = daq->getAdjustableParam(i);
         }
     } else if ( session.daqData().simulate < 0 ) {
-        daq->getCannedDAQ()->setRecord(stims, output.VCRecord);
+        daq->getCannedDAQ()->setRecord(astims, output.VCRecord);
     }
 
     output.variance = getVariance();
@@ -115,11 +118,9 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     // Fit
     populate();
     for ( epoch = 0; !finished(); epoch++ ) {
-        const Stimulation &stim = stims.at(stimIdx);
-
         // Stimulate
-        stimulate(stim);
-        simtime += stim.duration + session.runData().settleDuration;
+        stimulate();
+        simtime += astims.at(stimIdx).duration + session.runData().settleDuration;
 
         // Advance
         lib.pullErr();
@@ -328,7 +329,7 @@ void GAFitter::procreate()
 
     output.error[epoch] = settings.useLikelihood
             ? p_err[0].err // negative log likelihood
-            : std::sqrt(p_err[0].err / std::ceil((stims.at(stimIdx).tObsEnd-stims.at(stimIdx).tObsBegin)/session.runData().dt)); // RMSE
+            : std::sqrt(p_err[0].err / (stims.at(stimIdx).tObsEnd-stims.at(stimIdx).tObsBegin)); // RMSE
     output.stimIdx[epoch] = stimIdx;
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
@@ -340,7 +341,7 @@ void GAFitter::procreate()
         // In uncached use, this would just cause a busy loop and waste time that could be used to mutate/reinit
         if ( !session.daqData().cache.active )
             break;
-    } while ( daq->throttledFor(stims.at(stimIdx)) > 0 );
+    } while ( daq->throttledFor(astims.at(stimIdx)) > 0 );
 
     scalar sigma = lib.adjustableParams[stimIdx].adjustedSigma;
     if ( settings.decaySigma )
@@ -414,7 +415,7 @@ void GAFitter::procreate()
     }
 
     if ( !session.daqData().cache.active )
-        QThread::msleep(daq->throttledFor(stims.at(stimIdx)));
+        QThread::msleep(daq->throttledFor(astims.at(stimIdx)));
 }
 
 void GAFitter::finalise()
@@ -427,7 +428,7 @@ void GAFitter::finalise()
             continue;
 
         // Stimulate
-        stimulate(stims.at(stimIdx));
+        stimulate();
 
         // Gather and reset error
         lib.pullErr();
@@ -465,7 +466,7 @@ void GAFitter::finalise()
             if ( f_err[i][j].idx == sumRank[0].idx ) {
                 output.finalError[i] = settings.useLikelihood
                         ? f_err[i][j].err
-                        : std::sqrt(f_err[i][j].err / std::ceil((stims.at(i).tObsEnd-stims.at(i).tObsBegin)/session.runData().dt));
+                        : std::sqrt(f_err[i][j].err / (stims.at(i).tObsEnd-stims.at(i).tObsBegin));
                 break;
             }
         }
@@ -473,8 +474,10 @@ void GAFitter::finalise()
     output.final = true;
 }
 
-void GAFitter::stimulate(const Stimulation &I)
+void GAFitter::stimulate()
 {
+    const iStimulation &I = stims.at(stimIdx);
+    const Stimulation &aI = astims.at(stimIdx);
     bool &observe = settings.useLikelihood ? lib.getLikelihood : lib.getErr;
     const RunData &rd = session.runData();
 
@@ -491,46 +494,51 @@ void GAFitter::stimulate(const Stimulation &I)
     lib.dVClamp = 0;
     lib.step(rd.settleDuration, rd.simCycles * int(rd.settleDuration/rd.dt), true);
 
+    // Fast-forward library through unobserved period
+    lib.t = 0;
+    lib.iT = 0;
+    lib.setVariance = true; // Set variance immediately after settling
+    lib.variance = output.variance;
+    observe = false;
+    int iTStep = 0;
+    while ( (int)lib.iT < I.tObsBegin ) {
+        getiCommandSegment(I, lib.iT, I.tObsBegin - lib.iT, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
+        lib.step(iTStep * rd.dt, iTStep * rd.simCycles, false);
+        lib.iT += iTStep;
+        lib.setVariance = false;
+    }
+    std::cout << "lib ff " << lib.iT << " " << lib.t << std::endl;
+
     // Set up + settle DAQ
     daq->VC = true;
     daq->reset();
-    daq->run(I, rd.settleDuration);
+    daq->run(aI, rd.settleDuration);
     for ( size_t iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
         daq->next();
 
-    // Stimulate both
-    lib.t = 0;
-    lib.iT = 0;
-    lib.setVariance = true; // Set variance just after settling
-    lib.variance = output.variance;
-    bool chop;
-    scalar tStep = rd.dt, tStepCum, res = daq->outputResolution, res_t0 = -rd.settleDuration;
-    while ( lib.t < I.duration ) {
+    // Fast-forward DAQ through unobserved period
+    for ( size_t iT = 0; iT < lib.iT; iT++ ) {
         daq->next();
-
-        chop = getCommandSegment(I, lib.t, rd.dt, res, res_t0,
-                                 lib.VClamp0, lib.dVClamp, tStep);
-        pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
-
-        lib.Imem = daq->current;
-        observe = (lib.t >= I.tObsBegin && lib.t < I.tObsEnd); // collect error at step initiation
-        if ( chop )
-            lib.step(tStep, rd.simCycles, true);
-        else
-            lib.step();
-        lib.setVariance = false;
-
-        tStepCum = 0;
-        while ( chop ) {
-            tStepCum += tStep;
-            chop = getCommandSegment(I, lib.t, rd.dt - tStepCum, res, res_t0,
-                                     lib.VClamp0, lib.dVClamp, tStep);
-            observe = false; // No error collection within subdivided steps
-            lib.step(tStep, rd.simCycles, false);
-        }
+        pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iT*rd.dt));
     }
 
-    qT += I.duration;
+    // Step both through observed period -- assumes a properly truncated stim (tObsEnd==duration)
+    observe = true;
+    while ( (int)lib.iT < I.duration ) {
+        daq->next();
+        lib.Imem = daq->current;
+
+        // Populate VClamp0/dVClamp with the next "segment" of length tSpan = iTStep = 1
+        getiCommandSegment(I, lib.iT, 1, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
+
+        pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
+        std::cout << "step " << lib.iT << " " << lib.t << std::endl;
+
+        lib.step();
+        lib.setVariance = false; // In case tObsBegin==0
+    }
+
+    qT += aI.duration;
     daq->reset();
 }
 
@@ -547,7 +555,7 @@ void GAFitter::pushToQ(double t, double V, double I, double O)
 double GAFitter::getVariance()
 {
     daq->reset();
-    daq->run(stims.back(), session.runData().settleDuration);
+    daq->run(astims.back(), session.runData().settleDuration);
     for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.runData().dt; iT < iTEnd; iT++ )
         daq->next();
 
