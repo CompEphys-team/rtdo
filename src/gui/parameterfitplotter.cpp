@@ -357,6 +357,8 @@ void ParameterFitPlotter::updateFits()
         ui->fits->setItem(i, 6, new QTableWidgetItem(session->gaFitterSettings(fit.resultIndex).decaySigma ? "Y" : "N"));
         if ( session->daqData(fit.resultIndex).simulate == -1 ) {
             ui->fits->setItem(i, 7, new QTableWidgetItem(fit.VCRecord));
+            for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
+                ui->fits->setItem(i, 8+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
         } else if ( session->daqData(fit.resultIndex).simulate == 0 ) {
             ui->fits->setItem(i, 7, new QTableWidgetItem(QString("live DAQ")));
         } else if ( session->daqData(fit.resultIndex).simulate == 1 ) {
@@ -456,17 +458,17 @@ void ParameterFitPlotter::plotIndividual()
             QCPAxis *yAxis = axRects[i]->axis(QCPAxis::atLeft, 0);
             QCPAxis *yAxis2 = axRects[i]->axis(QCPAxis::atRight);
 
-            if ( session->daqData(fit.resultIndex).simulate == 1 ) {
-                QCPItemStraightLine *line = new QCPItemStraightLine(ui->panel);
-                line->setLayer("target");
-                line->setPen(QPen(getGraphColorBtn(row)->color));
-                line->point1->setAxes(xAxis, yAxis);
-                line->point2->setAxes(xAxis, yAxis);
-                line->point1->setCoords(0, fit.targets[i]);
-                line->point2->setCoords(1, fit.targets[i]);
-                line->setClipAxisRect(axRects[i]);
-                line->setClipToAxisRect(true);
-            }
+            QCPItemStraightLine *line = new QCPItemStraightLine(ui->panel);
+            QPen pen(getGraphColorBtn(row)->color);
+            pen.setStyle(Qt::DashLine);
+            line->setLayer("target");
+            line->setPen(pen);
+            line->point1->setAxes(xAxis, yAxis);
+            line->point2->setAxes(xAxis, yAxis);
+            line->point1->setCoords(0, fit.targets[i]);
+            line->point2->setCoords(1, fit.targets[i]);
+            line->setClipAxisRect(axRects[i]);
+            line->setClipToAxisRect(true);
 
             QVector<double> values(fit.epochs), errors, errKey;
             errors.reserve(fit.epochs);
@@ -571,7 +573,7 @@ ColorButton *ParameterFitPlotter::getGroupColorBtn(int row)
 void ParameterFitPlotter::progress(quint32 epoch)
 {
     GAFitter::Output fit = session->gaFitter().currentResults();
-    if ( epoch == 0 && session->daqData(fit.resultIndex).simulate == 1 ) {
+    if ( epoch == 0 ) {
         for ( size_t i = 0; i < axRects.size(); i++ ) {
             QCPItemStraightLine *line = new QCPItemStraightLine(ui->panel);
             line->setLayer("target");
@@ -751,21 +753,14 @@ void ParameterFitPlotter::plotSummary()
 
     ui->panel->layer("target")->setVisible(false);
 
-    // Fits against secondary models or live cells can't compare against fit target parameters directly; use base model params instead
-    std::vector<scalar> targets(session->project.model().adjustableParams.size());
-    for ( size_t i = 0; i < targets.size(); i++ )
-        targets[i] = session->project.model().adjustableParams[i].initial;
-
     Filter *filter = nullptr;
     if ( ui->filter->value() > 1 )
         filter = new Filter(FilterMethod::SavitzkyGolayEdge5, 2*int(ui->filter->value()/2) + 1);
 
     for ( int row : rows ) {
         quint32 epochs = 0;
-        bool hasTarget = true;
         for ( int fit : groups[row] ) {
             epochs = std::max(session->gaFitter().results().at(fit).epochs, epochs);
-            hasTarget &= (session->daqData(session->gaFitter().results().at(fit).resultIndex).simulate==1);
         }
         QVector<double> keys(epochs);
         for ( size_t i = 0; i < epochs; i++ )
@@ -777,12 +772,15 @@ void ParameterFitPlotter::plotSummary()
             if ( p.multiplicative ) {
                 getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
                     // Parameter error relative to target (%) :
-                    return 100 * std::fabs(1 - fit.params[ep][i] / (hasTarget ? fit.targets[i] : targets[i]));
+                    return 100 * std::fabs(1 - fit.params[ep][i] / fit.targets[i]);
                 }, mean, sem, median, max, filter);
             } else {
                 getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
                     // Parameter error relative to range (%) :
-                    return 100 * std::fabs((fit.params[ep][i] - (hasTarget ? fit.targets[i] : targets[i])) / (p.max - p.min));
+                    double range = session->gaFitterSettings(fit.resultIndex).constraints[i] == 1
+                            ? (session->gaFitterSettings(fit.resultIndex).max[i] - session->gaFitterSettings(fit.resultIndex).min[i])
+                            : (p.max - p.min);
+                    return 100 * std::fabs((fit.params[ep][i] - fit.targets[i]) / range);
                 }, mean, sem, median, max, filter);
             }
             getSummary(groups[row], [=](const GAFitter::Output &fit, int ep) -> double {
