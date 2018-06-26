@@ -104,12 +104,12 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     daq = new DAQFilter(session);
 
-    if ( session.daqData().simulate > 0 ) {
+    if ( session.daqData().simulate < 0 )
+        daq->getCannedDAQ()->setRecord(astims, output.VCRecord);
+    if ( session.daqData().simulate != 0 ) {
         for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
             output.targets[i] = daq->getAdjustableParam(i);
         }
-    } else if ( session.daqData().simulate < 0 ) {
-        daq->getCannedDAQ()->setRecord(astims, output.VCRecord);
     }
 
     output.variance = getVariance();
@@ -205,8 +205,15 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
         for ( scalar &e : out.finalError )
             is >> e;
     }
-    if ( ver >= 103 )
+    if ( ver >= 103 ) {
         is >> out.VCRecord;
+        if ( session.daqData().simulate < 0 ) {
+            CannedDAQ tmp(session);
+            tmp.setRecord(sanitiseDeck(out.deck.stimulations()), out.VCRecord, false, false);
+            for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+                out.targets[i] = tmp.getAdjustableParam(i);
+        }
+    }
     if ( ver >= 104 )
         is >> out.variance;
     m_results.push_back(std::move(out));
@@ -507,7 +514,6 @@ void GAFitter::stimulate()
         lib.iT += iTStep;
         lib.setVariance = false;
     }
-    std::cout << "lib ff " << lib.iT << " " << lib.t << std::endl;
 
     // Set up + settle DAQ
     daq->VC = true;
@@ -532,7 +538,6 @@ void GAFitter::stimulate()
         getiCommandSegment(I, lib.iT, 1, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
 
         pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
-        std::cout << "step " << lib.iT << " " << lib.t << std::endl;
 
         lib.step();
         lib.setVariance = false; // In case tObsBegin==0

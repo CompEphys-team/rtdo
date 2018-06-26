@@ -11,7 +11,7 @@ public:
     CannedDAQ(Session &s);
     ~CannedDAQ() = default;
 
-    double getAdjustableParam(size_t) { return 0; }
+    double getAdjustableParam(size_t);
     void setAdjustableParam(size_t, double) {}
     int throttledFor(const Stimulation &) { return 0; }
     void run(Stimulation s, double settleDuration = 0);
@@ -40,6 +40,9 @@ protected:
     size_t currentRecord;
     int recordIndex;
     double settleDuration;
+
+    void getReferenceParams(QString record);
+    std::vector<double> ref_params;
 };
 
 #endif // CANNEDDAQ_H

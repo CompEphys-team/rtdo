@@ -20,6 +20,11 @@ CannedDAQ::CannedDAQ(Session &s) :
 
 }
 
+double CannedDAQ::getAdjustableParam(size_t idx)
+{
+    return ref_params[idx];
+}
+
 void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool readData, bool useQueuedSettings)
 {
     QFileInfo finfo(record);
@@ -105,6 +110,32 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
                         compat.I.push_back(rec.I[j]);
                     }
                 }
+            }
+        }
+    }
+
+    getReferenceParams(record);
+}
+
+void CannedDAQ::getReferenceParams(QString record)
+{
+    ref_params.resize(session.project.model().adjustableParams.size());
+    for ( size_t i = 0; i < ref_params.size(); i++ )
+        ref_params[i] = session.project.model().adjustableParams[i].initial;
+
+    QString refname = record.replace(".atf", ".params");
+    if ( !QFileInfo(refname).exists() )
+        return;
+
+    std::ifstream is(refname.toStdString());
+    while ( is.good() ) {
+        std::string name, unit;
+        double value;
+        is >> name >> value >> unit;
+        for ( size_t i = 0; i < ref_params.size(); i++ ) {
+            if ( name == session.project.model().adjustableParams[i].name + ':' ) {
+                ref_params[i] = value;
+                break;
             }
         }
     }

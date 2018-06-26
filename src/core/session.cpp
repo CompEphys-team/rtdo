@@ -36,10 +36,9 @@ Session::Session(Project &p, const QString &sessiondir) :
     m_log.setLogFile(dir.filePath("session.log"));
     load(); // Load state from m_log
 
-    project.wavegen().setRunData(q_settings.rund);
-    project.experiment().setRunData(q_settings.rund);
-    project.profiler().setRunData(q_settings.rund);
-    m_settings = q_settings;
+    project.wavegen().setRunData(m_settings.rund);
+    project.experiment().setRunData(m_settings.rund);
+    project.profiler().setRunData(m_settings.rund);
 }
 
 void Session::crossloadConfig(const QString &crossSessionDir)
@@ -289,6 +288,7 @@ void Session::load()
             else if ( entry.actor == "Config" ) {
                 readConfig(file.fileName());
                 hist_settings.push_back(std::make_pair(row, q_settings));
+                m_settings = q_settings;
             } else if ( entry.actor == wavesets().actorName() ) {
                 wavesets().load(entry.action, entry.args, file, result);
             } else if ( entry.actor == gaFitter().actorName() ) {
