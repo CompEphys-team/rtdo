@@ -737,13 +737,15 @@ public:
 
     scalar getNextNoise(scalar I_t, scalar h)
     {
-        scalar Exp, A;
+        scalar Exp, A, var = state.state__variance(params);
         if ( h == noiseDefaultH || p.simd.noiseTau == 0 ) {
             Exp = noiseExp;
             A = noiseA;
         } else {
             getNoiseParams(h, Exp, A);
         }
+        if ( var > 0 )
+            A = std::sqrt(A*A + var);
         return I_t * Exp + A * RNG.variate<scalar>(0, 1); // I(t+h) = I0 + (I(t)-I0)*exp(-h/tau) + A*X(0,1), I0 = 0
     }
 
