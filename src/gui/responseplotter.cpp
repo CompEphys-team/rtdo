@@ -78,7 +78,16 @@ void ResponsePlotter::replot()
 
     for ( int i = 0; i < 3; i++ ) {
         while ( q[i]->pop_if(point) ) {
-            ui->plot->graph(i)->addData(point.t, point.value);
+            try {
+                ui->plot->graph(i)->addData(point.t, point.value);
+            } catch ( std::bad_alloc ) {
+                // Out of memory - remove half of all data to keep going
+                double middle = range.lower + (range.upper - range.lower) / 2;
+                for ( int j = 0; j < 3; j++ )
+                    ui->plot->graph(i)->data()->removeBefore(middle);
+                // Then try again
+                ui->plot->graph(i)->addData(point.t, point.value);
+            }
         }
     }
 
