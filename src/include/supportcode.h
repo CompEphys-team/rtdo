@@ -25,6 +25,18 @@ bool getCommandSegment(const Stimulation &I, scalar t, scalar dt, scalar res, sc
 __host__ __device__ bool getiCommandSegment(const iStimulation &I, int t, int tSpan, scalar dt,
                                             scalar &VClamp0, scalar &dVClamp, int &tStep);
 
+__host__ __device__ inline scalar clip(scalar value, scalar limit)
+{
+    if ( limit == 0 )
+        return value;
+    else if ( value > limit )
+        return limit;
+    else if ( value < -limit )
+        return -limit;
+    else
+        return value;
+}
+
 struct ClampParameters {
     scalar clampGain, accessResistance;
     scalar VClamp0; // = VClamp linearly extrapolated to t=0

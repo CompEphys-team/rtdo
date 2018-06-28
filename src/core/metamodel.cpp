@@ -836,7 +836,7 @@ public:
                                               clamp.VClamp0, clamp.dVClamp, tStep);
 
             voltage = state.V;
-            current = clamp.getCurrent(t, state.V);
+            current = clip(clamp.getCurrent(t, state.V), rund.Imax);
 
             if ( useRealism && p.simd.noise ) {
                 current += noiseI[2];

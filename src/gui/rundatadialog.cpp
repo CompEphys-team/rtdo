@@ -44,6 +44,7 @@ void RunDataDialog::importData()
     ui->simCycles->setValue(p.simCycles);
     ui->clampGain->setValue(p.clampGain);
     ui->accessResistance->setValue(p.accessResistance);
+    ui->Imax->setValue(p.Imax);
     ui->settleDuration->setValue(p.settleDuration);
     switch ( p.integrator ) {
     case IntegrationMethod::ForwardEuler:         ui->integrator->setCurrentIndex(0); break;
@@ -59,6 +60,7 @@ void RunDataDialog::exportData()
     p.simCycles = ui->simCycles->value();
     p.clampGain = ui->clampGain->value();
     p.accessResistance = ui->accessResistance->value();
+    p.Imax = ui->Imax->value();
     p.settleDuration = ui->settleDuration->value();
     switch ( ui->integrator->currentIndex() ) {
     case 0: p.integrator = IntegrationMethod::ForwardEuler;         break;

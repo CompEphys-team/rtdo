@@ -26,6 +26,7 @@ ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
     simCycles(*(pointers.simCycles)),
     clampGain(*(pointers.clampGain)),
     accessResistance(*(pointers.accessResistance)),
+    Imax(*pointers.Imax),
     integrator(*(pointers.integrator)),
     Vmem(*(pointers.Vmem)),
     Vprev(*(pointers.Vprev)),
@@ -107,6 +108,7 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("simCycles", "", "int"),
         Variable("clampGain"),
         Variable("accessResistance"),
+        Variable("Imax"),
         Variable("integrator", "", "int"),
         Variable("Vmem"),
         Variable("Vprev"),
@@ -162,10 +164,10 @@ if ( $(setVariance) ) {
 }
 
 if ( $(getErr) ) {
-    scalar tmp = clamp.getCurrent(t, $(V)) - $(Imem);
+    scalar tmp = clip(clamp.getCurrent(t, $(V)), $(Imax)) - $(Imem);
     $(err) += tmp*tmp;
 } else if ( $(getLikelihood) ) {
-    $(err) += state.state__negLogLikelihood(clamp.getCurrent(t, $(V)) - $(Imem), $(ext_variance), params);
+    $(err) += state.state__negLogLikelihood(clip(clamp.getCurrent(t, $(V)), $(Imax)) - $(Imem), $(ext_variance), params);
 }
 
 scalar mdt = $(tStep)/$(simCycles);
@@ -255,6 +257,7 @@ void ExperimentLibrary::setRunData(RunData rund)
 {
     clampGain = rund.clampGain;
     accessResistance = rund.accessResistance;
+    Imax = rund.Imax;
     simCycles = rund.simCycles;
     integrator = int(rund.integrator);
     tStep = rund.dt;

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>420</width>
-    <height>240</height>
+    <height>287</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,7 +34,7 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="2">
+   <item row="6" column="2">
     <widget class="QDoubleSpinBox" name="settleDuration">
      <property name="suffix">
       <string> ms</string>
@@ -59,7 +59,7 @@
      </property>
     </widget>
    </item>
-   <item row="7" column="1" colspan="2">
+   <item row="8" column="1" colspan="2">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
@@ -109,7 +109,7 @@
      </item>
     </widget>
    </item>
-   <item row="5" column="0" colspan="2">
+   <item row="6" column="0" colspan="2">
     <widget class="QLabel" name="label_4">
      <property name="text">
       <string>Settling duration</string>
@@ -146,6 +146,29 @@
     <widget class="QLabel" name="label_6">
      <property name="text">
       <string>Input resolution (dt)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="2">
+    <widget class="QDoubleSpinBox" name="Imax">
+     <property name="prefix">
+      <string>+/- </string>
+     </property>
+     <property name="suffix">
+      <string> nA</string>
+     </property>
+     <property name="decimals">
+      <number>0</number>
+     </property>
+     <property name="maximum">
+      <double>100000.000000000000000</double>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="2">
+    <widget class="QLabel" name="label_7">
+     <property name="text">
+      <string>Clamp current limit</string>
      </property>
     </widget>
    </item>

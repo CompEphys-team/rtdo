@@ -265,6 +265,7 @@ struct RunData
     double clampGain = 1000;
     double accessResistance = 15; // MOhm
     double settleDuration = 100; // msec
+    double Imax = 0; // Current ceiling (+-), nA
     IntegrationMethod integrator = IntegrationMethod::RungeKutta4;
     double dt = 0.25;
 };
