@@ -211,7 +211,8 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
             CannedDAQ tmp(session);
             tmp.setRecord(sanitiseDeck(out.deck.stimulations()), out.VCRecord, false, false);
             for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
-                out.targets[i] = tmp.getAdjustableParam(i);
+                if ( settings.constraints[i] != 3 ) // Never overwrite fixed target
+                    out.targets[i] = tmp.getAdjustableParam(i);
         }
     }
     if ( ver >= 104 )
@@ -228,9 +229,10 @@ bool GAFitter::finished()
 void GAFitter::populate()
 {
     for ( size_t j = 0; j < lib.adjustableParams.size(); j++ ) {
-        if ( settings.constraints[j] == 2 ) { // Fixed value
+        if ( settings.constraints[j] == 2 || settings.constraints[j] == 3 ) { // Fixed value
+            scalar value = settings.constraints[j] == 2 ? settings.fixedValue[j] : output.targets[j];
             for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ )
-                lib.adjustableParams[j][i] = settings.fixedValue[j];
+                lib.adjustableParams[j][i] = value;
         } else {
             scalar min, max;
             if ( settings.constraints[j] == 0 ) {
@@ -257,7 +259,7 @@ quint32 GAFitter::findNextStim()
     // translate stimIdx to point to a contiguous array of the actually used stimulations
     quint32 nStims = 0, previousStimIdx = 0;
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-        if ( settings.constraints[i] != 2 ) {
+        if ( settings.constraints[i] < 2 ) {
             ++nStims;
             if ( i < stimIdx )
                 ++previousStimIdx;
@@ -311,7 +313,7 @@ quint32 GAFitter::findNextStim()
 
     // Translate nextStimIdx back to index into full stim array
     for ( size_t i = 0; i <= nextStimIdx; i++ )
-        if ( settings.constraints[i] == 2 )
+        if ( settings.constraints[i] >= 2 )
             ++nextStimIdx;
 
     return nextStimIdx;
@@ -368,7 +370,7 @@ void GAFitter::procreate()
         for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
 
             // Ignore fixed-value parameters
-            if ( settings.constraints[iParam] == 2 )
+            if ( settings.constraints[iParam] >= 2 )
                 continue;
 
             // Parameter-wise crossover, implemented with minimal RNG use
@@ -407,7 +409,7 @@ void GAFitter::procreate()
     for ( size_t source = 0; source < settings.nReinit; source++ ) {
         size_t i = p_err.size() - source - 1;
         for ( size_t iParam = 0; iParam < lib.adjustableParams.size(); iParam++ ) {
-            if ( settings.constraints[iParam] == 2 )
+            if ( settings.constraints[iParam] >= 2 )
                 continue;
             AdjustableParam &p = lib.adjustableParams[iParam];
             if ( iParam == stimIdx ) {
@@ -431,7 +433,7 @@ void GAFitter::finalise()
 
     // Evaluate existing population on all stims
     for ( stimIdx = 0; stimIdx < lib.adjustableParams.size() && !isAborted(); stimIdx++ ) {
-        if ( settings.constraints[stimIdx] == 2 )
+        if ( settings.constraints[stimIdx] >= 2 )
             continue;
 
         // Stimulate
@@ -460,7 +462,7 @@ void GAFitter::finalise()
     // For each parameter set, add up the ranking across all stims
     for ( const std::vector<errTupel> &ranked : f_err ) {
         for ( size_t i = 0; i < sumRank.size(); i++ ) {
-            if ( settings.constraints[i] != 2 )
+            if ( settings.constraints[i] < 2 )
                 sumRank[ranked[i].idx].err += i;
         }
     }

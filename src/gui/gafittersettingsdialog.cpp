@@ -39,14 +39,14 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
             min->setEnabled(idx==1);
             max->setEnabled(idx==1);
             fixed->setEnabled(idx==2);
-            if ( idx == 3 ) { // Reset
+            if ( idx == 4 ) { // Reset
                 min->setValue(model.adjustableParams[i].min);
                 max->setValue(model.adjustableParams[i].max);
                 fixed->setValue(model.adjustableParams[i].initial);
                 cb->setCurrentIndex(0);
             }
         });
-        cb->addItems({"Original", "Range", "Fixed", "Reset"});
+        cb->addItems({"Original", "Range", "Fixed", "Target", "Reset"});
 
         ui->constraints->setCellWidget(i, 0, cb);
         ui->constraints->setCellWidget(i, 1, fixed);
