@@ -372,7 +372,7 @@ struct GAFitterSettings {
 
     /**
      * @brief constraints: Candidate parameter constraint mode
-     * 0: Model preset/initial
+     * 0: Model preset/initial range
      * 1: custom range (using min/max)
      * 2: fixed (manual, using fixedValue)
      * 3: target value (from DAQ; i.e. simulator value; canned .params file value; or model preset for live recording)

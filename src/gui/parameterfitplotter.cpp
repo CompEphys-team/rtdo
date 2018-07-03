@@ -333,6 +333,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
             summarising = true;
             replot();
         });
+        connect(ui->boxplot_epoch, SIGNAL(valueChanged(int)), this, SLOT(reBoxPlot()));
         updateFits();
     }
     QTimer::singleShot(10, this, &ParameterFitPlotter::resizePanel);
@@ -405,6 +406,8 @@ void ParameterFitPlotter::replot()
         plotIndividual();
 
     buildPlotLayout();
+
+    reBoxPlot();
 }
 
 void ParameterFitPlotter::buildPlotLayout()
@@ -509,6 +512,10 @@ void ParameterFitPlotter::plotIndividual()
                 if ( found && range.upper > yAxis2->range().upper )
                     yAxis2->setRangeUpper(range.upper);
             }
+            if ( session->gaFitterSettings(fit.resultIndex).useLikelihood )
+                yAxis2->setLabel("-log likelihood");
+            else
+                yAxis2->setLabel("RMS Error (nA)");
 
             if ( i == 0 ) {
                 graph->setName(QString("Fit %1").arg(row));
@@ -583,6 +590,10 @@ void ParameterFitPlotter::progress(quint32 epoch)
             line->point2->setCoords(1, fit.targets[i]);
             line->setClipAxisRect(axRects[i]);
             line->setClipToAxisRect(true);
+            if ( session->gaFitterSettings().useLikelihood )
+                axRects[i]->axis(QCPAxis::atRight)->setLabel("-log likelihood");
+            else
+                axRects[i]->axis(QCPAxis::atRight)->setLabel("RMS Error (nA)");
         }
     }
     for ( size_t i = 0; i < axRects.size(); i++ ) {
@@ -935,4 +946,166 @@ void ParameterFitPlotter::on_pdf_clicked()
     if ( !file.endsWith(".pdf") )
         file.append(".pdf");
     ui->panel->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), file);
+}
+
+
+// Interpolated quartiles -- https://stackoverflow.com/a/37708864
+template<typename T>
+static inline double Lerp(T v0, T v1, T t)
+{
+    return (1 - t)*v0 + t*v1;
+}
+
+template<typename T>
+static inline std::vector<T> Quantile(const std::vector<T>& inData, const std::vector<T>& probs)
+{
+    if (inData.empty())
+    {
+        return std::vector<T>();
+    }
+
+    if (1 == inData.size())
+    {
+        return std::vector<T>(1, inData[0]);
+    }
+
+    std::vector<T> data = inData;
+    std::sort(data.begin(), data.end());
+    std::vector<T> quantiles;
+
+    for (size_t i = 0; i < probs.size(); ++i)
+    {
+        T poi = Lerp<T>(-0.5, data.size() - 0.5, probs[i]);
+
+        size_t left = std::max(int64_t(std::floor(poi)), int64_t(0));
+        size_t right = std::min(int64_t(std::ceil(poi)), int64_t(data.size() - 1));
+
+        T datLeft = data.at(left);
+        T datRight = data.at(right);
+
+        T quantile = Lerp<T>(datLeft, datRight, poi - left);
+
+        quantiles.push_back(quantile);
+    }
+
+    return quantiles;
+}
+
+void ParameterFitPlotter::reBoxPlot()
+{
+    ui->boxplot->clearPlottables();
+
+    std::vector<std::vector<int>> selection;
+    std::vector<QColor> colors;
+    std::vector<QString> labels;
+    if ( summarising ) {
+        std::vector<int> rows = getSelectedRows(ui->groups);
+        for ( int row : rows ) {
+            selection.push_back(groups[row]);
+            colors.push_back(getGroupColorBtn(row)->color);
+            labels.push_back(ui->groups->item(row, 2)->text().isEmpty()
+                             ? ui->groups->item(row, 1)->text()
+                             : ui->groups->item(row, 2)->text());
+        }
+    } else {
+        std::vector<int> rows = getSelectedRows(ui->fits);
+        selection.push_back(rows);
+        colors.push_back(QColor(Qt::black));
+        labels.push_back("");
+    }
+
+    if ( selection.empty() || (selection.size() == 1 && selection[0].size() < 2) ) {
+        ui->boxplot->replot();
+        return;
+    }
+
+    // Find any parameters that aren't fitted at all
+    std::vector<bool> fitted(session->project.model().adjustableParams.size(), false);
+    int nFitted = 0;
+    for ( size_t i = 0; i < selection.size(); i++ )
+        for ( int f : selection[i] )
+            for ( size_t j = 0; j < fitted.size(); j++ )
+                fitted[j] = session->gaFitterSettings(session->gaFitter().results().at(f).resultIndex).constraints[j] < 2;
+    for ( const bool &b : fitted )
+        nFitted += b;
+
+    // Set up ticks
+    int stride = selection.size() + 1;
+    int tickOffset = selection.size() / 2;
+    double barOffset = selection.size()%2 ? 0 : 0.5;
+    ui->boxplot->xAxis->setSubTicks(false);
+    ui->boxplot->xAxis->setTickLength(0, 4);
+    ui->boxplot->xAxis->grid()->setVisible(false);
+    QSharedPointer<QCPAxisTickerText> textTicker(new QCPAxisTickerText);
+    for ( size_t i = 0, fi = 0; i < fitted.size(); fi += fitted[i], i++ ) {
+        const AdjustableParam &p = session->project.model().adjustableParams[i];
+        if ( fitted[i] )
+            textTicker->addTick(tickOffset + fi*stride, QString::fromStdString(p.name) + (p.multiplicative ? "¹" : "²"));
+    }
+    textTicker->addTick(tickOffset + nFitted*stride, "joint");
+    ui->boxplot->xAxis->setTicker(textTicker);
+    ui->boxplot->yAxis->setLabel("Deviation (¹ %, ² % range)");
+    ui->boxplot->legend->setVisible(summarising);
+
+    // Enter data group by group
+    quint32 epoch = ui->boxplot_epoch->value();
+    for ( size_t i = 0; i < selection.size(); i++ ) {
+        QCPStatisticalBox *box = new QCPStatisticalBox(ui->boxplot->xAxis, ui->boxplot->yAxis);
+        box->setName(labels[i]);
+        QPen whiskerPen(Qt::SolidLine);
+        whiskerPen.setCapStyle(Qt::FlatCap);
+        box->setWhiskerPen(whiskerPen);
+        box->setPen(QPen(colors[i]));
+        colors[i].setAlphaF(0.3);
+        box->setBrush(QBrush(colors[i]));
+        box->setWidth(0.8);
+
+        std::vector<std::vector<double>> outcomes(nFitted + 1);
+        for ( int f : selection[i] ) {
+            const GAFitter::Output &fit = session->gaFitter().results().at(f);
+            const std::vector<scalar> *params;
+            if ( fit.final && (epoch == 0 || epoch >= fit.epochs) )
+                params =& fit.finalParams;
+            else if ( epoch >= fit.epochs )
+                params =& fit.params[fit.epochs];
+            else
+                params =& fit.params[epoch];
+            double value, total = 0;
+            for ( size_t j = 0, fj = 0; j < fitted.size(); fj += fitted[j], j++ ) {
+                if ( !fitted[j] )
+                    continue;
+                const AdjustableParam &p = session->project.model().adjustableParams.at(j);
+                if ( p.multiplicative ) {
+                    value = 100 * std::fabs(1 - params->at(j) / fit.targets[j]);
+                } else {
+                    double range = session->gaFitterSettings(fit.resultIndex).constraints[j] == 1
+                            ? (session->gaFitterSettings(fit.resultIndex).max[j] - session->gaFitterSettings(fit.resultIndex).min[j])
+                            : (p.max - p.min);
+                    value = 100 * std::fabs((params->at(j) - fit.targets[j]) / range);
+                }
+                total += value;
+                outcomes[fj].push_back(value);
+            }
+            outcomes.back().push_back(total/nFitted);
+        }
+        for ( size_t j = 0; j < outcomes.size(); j++ ) {
+            std::vector<double> q = Quantile(outcomes[j], {0, 0.25, 0.5, 0.75, 1});
+            box->addData(j*stride + i + barOffset, q[0], q[1], q[2], q[3], q[4]);
+        }
+    }
+
+    ui->boxplot->rescaleAxes();
+    ui->boxplot->xAxis->setRange(-1, (nFitted+1)*stride - 1);
+
+    ui->boxplot->replot();
+}
+
+void ParameterFitPlotter::on_boxplot_pdf_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( file.isEmpty() )
+        return;
+    if ( !file.endsWith(".pdf") )
+        file.append(".pdf");
+    ui->boxplot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), file);
 }

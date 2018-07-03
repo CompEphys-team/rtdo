@@ -59,11 +59,15 @@ private slots:
     void addGroup(std::vector<int> group = {}, QString label = "");
     void removeGroup();
 
+    void reBoxPlot();
+
     void on_saveGroups_clicked();
 
     void on_loadGroups_clicked();
 
     void on_pdf_clicked();
+
+    void on_boxplot_pdf_clicked();
 
 private:
     Ui::ParameterFitPlotter *ui;
