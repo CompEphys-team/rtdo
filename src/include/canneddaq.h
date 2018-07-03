@@ -21,8 +21,12 @@ public:
     void setRecord(std::vector<Stimulation> stims, QString record, bool readData = true, bool useQueuedSettings = false);
     std::vector<QuotedString> channelNames;
 
-    static int Iidx, Vidx, V2idx;
-    static double Iscale, Vscale, V2scale;
+    struct ChannelAssociation {
+        int Iidx, Vidx, V2idx;
+        double Iscale, Vscale, V2scale;
+    };
+    static ChannelAssociation s_assoc; //!< UX legacy - not used internally
+    ChannelAssociation assoc; //!< This one is (during data reading in setRecord).
 
     void getSampleNumbers(const std::vector<Stimulation> &stims, double dt,
                           int *nTotal, int *nBuffer = nullptr, int *nSamples = nullptr);

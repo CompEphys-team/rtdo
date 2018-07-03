@@ -23,7 +23,7 @@ public:
 
     struct Output : public Result
     {
-        Output(WaveSource deck, QString VCRecord);
+        Output(WaveSource deck, QString VCRecord, CannedDAQ::ChannelAssociation assoc);
         Output(const GAFitter &fitter, Result r = Result());
 
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]
@@ -35,6 +35,7 @@ public:
         double variance;
 
         QString VCRecord;
+        CannedDAQ::ChannelAssociation assoc; //!< Runtime only: Channel association & scaling
 
         bool final;
         std::vector<scalar> finalParams; //!< Final best-performing model across all stimulations
@@ -50,7 +51,7 @@ public:
     std::vector<Stimulation> sanitiseDeck(std::vector<Stimulation> stimulations, bool useQueuedSettings = false);
 
 public slots:
-    void run(WaveSource src, QString VCRecord);
+    void run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc);
     void finish();
 
 signals:

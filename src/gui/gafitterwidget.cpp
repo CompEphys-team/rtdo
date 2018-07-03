@@ -72,7 +72,7 @@ void GAFitterWidget::on_start_clicked()
     ui->label_queued->setText(QString("%1 queued").arg(nQueued));
     WaveSource deck(session, WaveSource::Deck, currentDeck);
     for ( int i = 0; i < ui->repeats->value(); i++ )
-        session.gaFitter().run(deck, ui->VCRecord->text());
+        session.gaFitter().run(deck, ui->VCRecord->text(), CannedDAQ::s_assoc);
 }
 
 void GAFitterWidget::on_abort_clicked()

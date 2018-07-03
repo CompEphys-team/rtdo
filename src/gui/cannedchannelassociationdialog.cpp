@@ -16,12 +16,12 @@ CannedChannelAssociationDialog::CannedChannelAssociationDialog(Session &s, Canne
         ui->cbVoltage2->addItem(QString::fromStdString(name));
     }
 
-    ui->cbCurrent->setCurrentIndex(CannedDAQ::Iidx + 1);
-    ui->cbVoltage->setCurrentIndex(CannedDAQ::Vidx + 1);
-    ui->cbVoltage2->setCurrentIndex(CannedDAQ::V2idx + 1);
-    ui->scaleCurrent->setValue(CannedDAQ::Iscale);
-    ui->scaleVoltage->setValue(CannedDAQ::Vscale);
-    ui->scaleVoltage2->setValue(CannedDAQ::V2scale);
+    ui->cbCurrent->setCurrentIndex(CannedDAQ::s_assoc.Iidx + 1);
+    ui->cbVoltage->setCurrentIndex(CannedDAQ::s_assoc.Vidx + 1);
+    ui->cbVoltage2->setCurrentIndex(CannedDAQ::s_assoc.V2idx + 1);
+    ui->scaleCurrent->setValue(CannedDAQ::s_assoc.Iscale);
+    ui->scaleVoltage->setValue(CannedDAQ::s_assoc.Vscale);
+    ui->scaleVoltage2->setValue(CannedDAQ::s_assoc.V2scale);
 }
 
 CannedChannelAssociationDialog::~CannedChannelAssociationDialog()
@@ -31,11 +31,11 @@ CannedChannelAssociationDialog::~CannedChannelAssociationDialog()
 
 void CannedChannelAssociationDialog::on_CannedChannelAssociationDialog_accepted()
 {
-    CannedDAQ::Iidx = ui->cbCurrent->currentIndex() - 1;
-    CannedDAQ::Vidx = ui->cbVoltage->currentIndex() - 1;
-    CannedDAQ::V2idx = ui->cbVoltage2->currentIndex() - 1;
+    CannedDAQ::s_assoc.Iidx = ui->cbCurrent->currentIndex() - 1;
+    CannedDAQ::s_assoc.Vidx = ui->cbVoltage->currentIndex() - 1;
+    CannedDAQ::s_assoc.V2idx = ui->cbVoltage2->currentIndex() - 1;
 
-    CannedDAQ::Iscale = ui->scaleCurrent->value();
-    CannedDAQ::Vscale = ui->scaleVoltage->value();
-    CannedDAQ::V2scale = ui->scaleVoltage2->value();
+    CannedDAQ::s_assoc.Iscale = ui->scaleCurrent->value();
+    CannedDAQ::s_assoc.Vscale = ui->scaleVoltage->value();
+    CannedDAQ::s_assoc.V2scale = ui->scaleVoltage2->value();
 }

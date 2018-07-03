@@ -24,9 +24,10 @@ GAFitter::~GAFitter()
 {
 }
 
-GAFitter::Output::Output(WaveSource deck, QString VCRecord) :
+GAFitter::Output::Output(WaveSource deck, QString VCRecord, CannedDAQ::ChannelAssociation assoc) :
     deck(deck),
-    VCRecord(VCRecord)
+    VCRecord(VCRecord),
+    assoc(assoc)
 {}
 
 GAFitter::Output::Output(const GAFitter &f, Result r) :
@@ -46,11 +47,11 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
         targets[i] = f.lib.adjustableParams.at(i).initial;
 }
 
-void GAFitter::run(WaveSource src, QString VCRecord)
+void GAFitter::run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc)
 {
     if ( src.type != WaveSource::Deck )
         throw std::runtime_error("Wave source for GAFitter must be a deck.");
-    session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord));
+    session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord, assoc));
 }
 
 std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, bool useQueuedSettings)
@@ -87,6 +88,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     output = Output(*this, *res);
     output.deck = static_cast<Output*>(res)->deck;
     output.VCRecord = static_cast<Output*>(res)->VCRecord;
+    output.assoc = static_cast<Output*>(res)->assoc;
     delete res;
 
     emit starting();
@@ -104,8 +106,10 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     daq = new DAQFilter(session);
 
-    if ( session.daqData().simulate < 0 )
+    if ( session.daqData().simulate < 0 ) {
+        daq->getCannedDAQ()->assoc = output.assoc;
         daq->getCannedDAQ()->setRecord(astims, output.VCRecord);
+    }
     if ( session.daqData().simulate != 0 ) {
         for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
             output.targets[i] = daq->getAdjustableParam(i);

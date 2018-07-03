@@ -4,13 +4,10 @@
 #include "session.h"
 #include <QFileInfo>
 
-int CannedDAQ::Iidx = 0;
-int CannedDAQ::Vidx = -1;
-int CannedDAQ::V2idx = -1;
-
-double CannedDAQ::Iscale = 1;
-double CannedDAQ::Vscale = 1;
-double CannedDAQ::V2scale = 1;
+CannedDAQ::ChannelAssociation CannedDAQ::s_assoc = {
+    0, -1, -1,
+    1, 1, 1
+};
 
 CannedDAQ::CannedDAQ(Session &s) :
     DAQ(s),
@@ -59,7 +56,7 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
         is >> channelNames[i];
     std::getline(is, str);
 
-    if ( readData && (Iidx >= 0 || Vidx >= 0 || V2idx >= 0) ) {
+    if ( readData && (assoc.Iidx >= 0 || assoc.Vidx >= 0 || assoc.V2idx >= 0) ) {
         int recStart = records.size();
         int nRead = 0, nTotal;
         nTotal = prepareRecords(stims, useQueuedSettings);
@@ -71,9 +68,9 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
             for ( int i = 0, r = recStart; i < nSweeps; i++, r++ ) {
                 for ( double &sample : samples )
                     is >> sample;
-                if ( Iidx >= 0 )    records[r].I.push_back(samples[Iidx] * Iscale);
-                if ( Vidx >= 0 )    records[r].V.push_back(samples[Vidx] * Vscale);
-                if ( V2idx >= 0 )   records[r].V2.push_back(samples[V2idx] * V2scale);
+                if ( assoc.Iidx >= 0 )    records[r].I.push_back(samples[assoc.Iidx] * assoc.Iscale);
+                if ( assoc.Vidx >= 0 )    records[r].V.push_back(samples[assoc.Vidx] * assoc.Vscale);
+                if ( assoc.V2idx >= 0 )   records[r].V2.push_back(samples[assoc.V2idx] * assoc.V2scale);
             }
             is >> t; // advance to next line
         }
@@ -168,9 +165,9 @@ int CannedDAQ::prepareRecords(std::vector<Stimulation> stims, bool useQueuedSett
         rec.stim = stims[i];
         rec.nBuffer = nBuffer;
         rec.nTotal = nTotal;
-        if ( Iidx >= 0 )    rec.I.reserve(nTotal);
-        if ( Vidx >= 0 )    rec.V.reserve(nTotal);
-        if ( V2idx >= 0 )   rec.V2.reserve(nTotal);
+        if ( assoc.Iidx >= 0 )    rec.I.reserve(nTotal);
+        if ( assoc.Vidx >= 0 )    rec.V.reserve(nTotal);
+        if ( assoc.V2idx >= 0 )   rec.V2.reserve(nTotal);
         records.push_back(rec);
     }
 
