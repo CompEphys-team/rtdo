@@ -78,7 +78,8 @@ SOURCES += \
     src/core/calibrator.cpp \
     src/core/filter.cpp \
     src/gui/cannedchannelassociationdialog.cpp \
-    src/drivers/canneddaq.cpp
+    src/drivers/canneddaq.cpp \
+    src/core/clustering.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -140,7 +141,8 @@ HEADERS  += \
     src/include/calibrator.h \
     src/include/filter.h \
     src/include/cannedchannelassociationdialog.h \
-    src/include/canneddaq.h
+    src/include/canneddaq.h \
+    src/include/clustering.h
 
 FORMS    += \
     src/gui/mainwindow.ui \

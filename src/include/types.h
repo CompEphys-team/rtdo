@@ -397,4 +397,10 @@ struct Settings : public Result
     GAFitterSettings gafs;
 };
 
+struct Section
+{
+    int start, end;
+    std::vector<double> deviations; //!< Summed deviation per parameter
+};
+
 #endif // TYPES_H
