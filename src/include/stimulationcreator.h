@@ -30,6 +30,7 @@ protected slots:
     void updateStimulation();
     void redraw();
     void diagnose();
+    void clustering();
 
 private:
     Ui::StimulationCreator *ui;
