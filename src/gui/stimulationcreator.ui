@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>793</width>
-    <height>571</height>
+    <height>626</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,20 +27,6 @@
           <bool>false</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout">
-          <item row="0" column="0">
-           <widget class="QPushButton" name="randomise">
-            <property name="text">
-             <string>Randomise</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QSpinBox" name="nSteps">
-            <property name="suffix">
-             <string> steps</string>
-            </property>
-           </widget>
-          </item>
           <item row="3" column="0" colspan="3">
            <widget class="QTableWidget" name="steps">
             <attribute name="horizontalHeaderStretchLastSection">
@@ -69,30 +55,17 @@
             </column>
            </widget>
           </item>
-          <item row="1" column="1">
-           <widget class="QDoubleSpinBox" name="duration">
-            <property name="suffix">
-             <string> ms</string>
-            </property>
-            <property name="maximum">
-             <double>5000.000000000000000</double>
+          <item row="0" column="0">
+           <widget class="QPushButton" name="randomise">
+            <property name="text">
+             <string>Randomise</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="2">
-           <widget class="QDoubleSpinBox" name="baseV">
-            <property name="suffix">
-             <string> mV</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0" colspan="2">
-           <widget class="QDoubleSpinBox" name="tObsBegin">
-            <property name="prefix">
-             <string>Observe from </string>
-            </property>
-            <property name="suffix">
-             <string> ms</string>
+          <item row="0" column="2">
+           <widget class="QPushButton" name="paste">
+            <property name="text">
+             <string>Paste</string>
             </property>
            </widget>
           </item>
@@ -113,10 +86,44 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="2">
-           <widget class="QPushButton" name="paste">
+          <item row="2" column="0" colspan="2">
+           <widget class="QDoubleSpinBox" name="tObsBegin">
+            <property name="prefix">
+             <string>Observe from </string>
+            </property>
+            <property name="suffix">
+             <string> ms</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QDoubleSpinBox" name="duration">
+            <property name="suffix">
+             <string> ms</string>
+            </property>
+            <property name="maximum">
+             <double>5000.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QDoubleSpinBox" name="baseV">
+            <property name="suffix">
+             <string> mV</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QSpinBox" name="nSteps">
+            <property name="suffix">
+             <string> steps</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QPushButton" name="diagnose">
             <property name="text">
-             <string>Paste</string>
+             <string>Diagnose</string>
             </property>
            </widget>
           </item>

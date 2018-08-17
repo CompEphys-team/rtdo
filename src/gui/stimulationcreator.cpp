@@ -3,6 +3,17 @@
 #include "colorbutton.h"
 #include "stimulationgraph.h"
 
+QString colours[] = {
+    "#e41a1c",
+    "#377eb8",
+    "#4daf4a",
+    "#984ea3",
+    "#ff7f00",
+    "#ffff33",
+    "#a65628",
+    "#f781bf"
+};
+
 StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::StimulationCreator),
@@ -63,6 +74,24 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
         *stim = stimCopy;
         setStimulation();
     });
+
+    connect(ui->diagnose, &QPushButton::clicked, this, &StimulationCreator::diagnose);
+
+    ui->plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes | QCP::iSelectLegend);
+    ui->plot->legend->setSelectableParts(QCPLegend::spItems);
+    connect(ui->plot, &QCustomPlot::selectionChangedByUser, [=](){
+        QList<QCPAxis *> axes = ui->plot->selectedAxes();
+        if ( axes.isEmpty() )
+           axes = ui->plot->axisRect()->axes();
+        ui->plot->axisRect()->setRangeZoomAxes(axes);
+        ui->plot->axisRect()->setRangeDragAxes(axes);
+    });
+    connect(ui->plot, &QCustomPlot::axisDoubleClick, this, [=](QCPAxis *axis, QCPAxis::SelectablePart, QMouseEvent*) {
+        axis->rescale(true);
+        ui->plot->replot();
+    });
+    ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
+    ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
 }
 
 StimulationCreator::~StimulationCreator()
@@ -224,5 +253,99 @@ void StimulationCreator::redraw()
         tMax = std::max(tMax, double(stims[row].duration));
     }
     ui->plot->xAxis->setRange(0, tMax);
+    ui->plot->replot();
+}
+
+void StimulationCreator::makeHidable(QCPGraph *g)
+{
+    QCPPlottableLegendItem *item = ui->plot->legend->itemWithPlottable(g);
+    connect(item, &QCPPlottableLegendItem::selectionChanged, [=](bool on){
+        if ( !on ) return;
+        on = g->visible();
+        g->setVisible(!on);
+        item->setTextColor(on ? Qt::lightGray : Qt::black);
+        item->setSelected(false);
+        ui->plot->replot();
+    });
+}
+
+void StimulationCreator::diagnose()
+{
+    if ( session.busy() ) {
+        QMessageBox::warning(this, "Busy", "Other actions are currently in progress. Pause or cancel before diagnosing.");
+        return;
+    }
+    double dt = session.qRunData().dt;
+    int nGraphs = session.project.model().adjustableParams.size() + 1;
+    std::vector<double> norm(nGraphs-1, 1);
+
+    iStimulation iStim(*stim, dt);
+    session.wavegen().diagnose(iStim, dt);
+
+    redraw();
+    makeHidable(ui->plot->graph());
+
+    QVector<double> keys(iStim.duration);
+    QVector<double> mean(iStim.duration, 0), sd(iStim.duration, 0);
+    std::vector<QVector<double>> values(nGraphs, QVector<double>(iStim.duration));
+    scalar *delta = session.wavegen().lib.diagDelta;
+
+    for ( int t = 0; t < iStim.duration; t++ ) {
+        // Time
+        keys[t] = t * dt;
+
+        // (Normalised) deviations and mean
+        for ( int i = 0; i < nGraphs; i++, delta++ ) {
+            double val = *delta;// Pointer magic! Equivalent to lib.diagDelta[t * nGraphs + i]
+            if ( i > 0 ) {
+                val /= norm[i-1];
+                mean[t] += val;
+            }
+            values[i][t] = val;
+        }
+        mean[t] /= nGraphs-1;
+
+        // standard deviation
+        for ( int i = 1; i < nGraphs; i++ ) {
+            double val = mean[t] - values[i][t];
+            sd[t] += val*val;
+        }
+        sd[t] = sqrt(sd[t]/(nGraphs-1));
+    }
+
+    clustering();
+
+    QCPGraph *g = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
+    g->setName("Reference current");
+    g->setData(keys, values[0], true);
+    g->setPen(QPen(Qt::black));
+    makeHidable(g);
+
+    g = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
+    g->setName("Mean deviation");
+    g->setData(keys, mean, true);
+    g->setPen(QPen(Qt::gray));
+    makeHidable(g);
+
+    g = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
+    g->setName("Deviation s.d.");
+    g->setData(keys, sd, true);
+    g->setPen(QPen("#8888aa"));
+    g->setBrush(QBrush("#668888aa"));
+    makeHidable(g);
+
+    for ( int i = 1; i < nGraphs; i++ ) {
+        const AdjustableParam &p = session.wavegen().lib.adjustableParams[i-1];
+        g = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
+        g->setName(QString::fromStdString(p.name));
+        g->setData(keys, values[i], true);
+        g->setPen(QPen(QColor(colours[i % sizeof colours])));
+        makeHidable(g);
+    }
+
+    ui->plot->yAxis2->setVisible(true);
+    ui->plot->legend->setVisible(true);
+    ui->plot->yAxis2->rescale();
+
     ui->plot->replot();
 }

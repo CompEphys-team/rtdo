@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include "session.h"
+#include "qcustomplot.h"
 
 namespace Ui {
 class StimulationCreator;
@@ -16,6 +17,9 @@ public:
     explicit StimulationCreator(Session &session, QWidget *parent = 0);
     ~StimulationCreator();
 
+protected:
+    void makeHidable(QCPGraph *g);
+
 protected slots:
     void updateSources();
     void copySource();
@@ -25,6 +29,7 @@ protected slots:
     void setNSteps(int n);
     void updateStimulation();
     void redraw();
+    void diagnose();
 
 private:
     Ui::StimulationCreator *ui;
