@@ -52,7 +52,7 @@ public:
     inline QString actorName() const { return "Wavegen"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
 
-public slots:
+public slots: // Asynchronous calls that queue via Session
     /**
      * @brief adjustSigmas changes the perturbation factor for adjustableParams such that each perturbation causes
      * roughly the same error (current deviation, vs the corresponding tuned model, during a waveform injection).
@@ -76,6 +76,14 @@ public slots:
      * @brief recalcIstimd populates iStimd from the latest searchd/stimd. Called automatically on session-registered changes.
      */
     void recalcIstimd();
+
+public: // Synchronous calls
+    /**
+     * @brief getMeanParamError runs a number of randomly generated stimulations, returning the average error per cycle
+     * produced by each parameter detuning.
+     * Note, this standalone call does not do any preparatory work (initModels, detune, settle, ...)
+     */
+    std::vector<double> getMeanParamError();
 
 signals:
     void done(int arg = -1);
@@ -117,12 +125,6 @@ protected:
      * Changes: getErr to false, waveforms. Pushes full state to device, simulates, and saves final state on device.
      */
     void settle();
-
-    /**
-     * @brief getMeanParamError runs a number of randomly generated stimulations, returning the average error per cycle
-     * produced by each parameter detuning.
-     */
-    std::vector<double> getMeanParamError();
 
     /**
      * @brief pushStims pushes waveforms to the library, dispersing them as appropriate for the size of @p stim.
