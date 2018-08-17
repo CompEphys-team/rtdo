@@ -32,7 +32,8 @@ WavegenLibrary::WavegenLibrary(Project &p, bool compile) :
     getErr(*(pointers.getErr)),
     err(pointers.err),
     waveforms(pointers.waveforms),
-    bubbles(pointers.bubbles)
+    bubbles(pointers.bubbles),
+    diagDelta(pointers.diagDelta)
 {
 }
 
@@ -170,12 +171,17 @@ scalar value = 0.; // Dual use: As cumulative error when targetParam<0, and as l
 const iStimulation stim = dd_waveforms[group];
 Bubble bestBubble = {-1,0,0}, currentBubble = {-1,0,0};
 int mt = 0, tStep = 0;
+
+if ( $(targetParam) == TARGET_DIAG && group > 0 )
+    return;
+
 while ( mt < stim.duration ) {
     getiCommandSegment(stim, mt, stim.duration - mt, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
 
     // Butterfly reduction to get smallest tStep in warp -- also smallest tStep in block, because each warp has the same set of stims
-    for ( int i = 16; i >= 1; i /= 2 )
-        tStep = min(tStep, __shfl_xor_sync(0xffffffff, tStep, i, 32));
+    if ( $(targetParam) != TARGET_DIAG )
+        for ( int i = 16; i >= 1; i /= 2 )
+            tStep = min(tStep, __shfl_xor_sync(0xffffffff, tStep, i, 32));
 
     for ( int i = 0; i < tStep; i++ ) {
         t = mt * $(dt);
@@ -187,6 +193,9 @@ while ( mt < stim.duration ) {
             if ( !paramID )
                 errShare[groupID] = err;
             __syncthreads();
+
+          if ( group == 0 && $(targetParam) == TARGET_DIAG )
+              dd_diagDelta[mt*(NPARAM+1) + paramID] = paramID ? err - errShare[groupID] : err;
 
             // Get deviation from the base model
             if ( paramID ) {
@@ -315,6 +324,7 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
     ss << "    pointers.step =& stepTimeGPU;" << endl;
     ss << "    pointers.reset =& initialize;" << endl;
     ss << "    pointers.generateBubbles =& generateBubbles;" << endl;
+    ss << "    pointers.diagnose =& diagnose;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 

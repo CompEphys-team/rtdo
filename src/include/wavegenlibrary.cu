@@ -4,6 +4,8 @@
 #include "wavegenlibrary.h"
 #include "cuda_helper.h" // For syntax highlighting only
 
+#define TARGET_DIAG -2
+
 static __device__ iStimulation *dd_waveforms;
 
 static __device__ scalar dd_err[MM_NumModels];
@@ -16,6 +18,9 @@ static __constant__ scalar *dd_parfitBlock;
 static Bubble *bubblesTemp = nullptr, *bubblesFinal = nullptr;
 static unsigned int bubblesTempSz = 0, bubblesFinalSz = 0;
 static __constant__ Bubble *dd_bubbles;
+
+static __device__ scalar *dd_diagDelta;
+static unsigned int diagDeltaSz = 0;
 
 void allocateGroupMem(WavegenLibrary::Pointers &pointers)
 {
@@ -51,6 +56,8 @@ void libInit(WavegenLibrary::Pointers &pointers, size_t numGroups, size_t numMod
     };
     pointers.err = err;
 
+    pointers.diagDelta = pointers.d_diagDelta = nullptr;
+
     allocateMem();
     allocateGroupMem(pointers);
     initialize();
@@ -68,6 +75,10 @@ extern "C" void libExit(WavegenLibrary::Pointers &pointers)
     // pointers.d_bubbles points at either of the static bubbles*
     pointers.pullErr = pointers.pushErr = pointers.pullWaveforms = pointers.pushWaveforms = nullptr;
     pointers.pullBubbles = nullptr;
+
+    cudaFree(pointers.d_diagDelta);
+    cudaFreeHost(pointers.diagDelta);
+    pointers.diagnose = nullptr;
 }
 
 extern "C" void resetDevice()
@@ -333,6 +344,26 @@ extern "C" void generateBubbles(unsigned int nSamples, unsigned int nStim, Waveg
     // Clean up
     if ( reverseSwap )
         std::swap(bubblesTemp, bubblesFinal);
+}
+
+extern "C" void diagnose(WavegenLibrary::Pointers &pointers, iStimulation I)
+{
+    unsigned int tmp = diagDeltaSz, reqSz = I.duration * (NPARAM+1);
+    resizeArray(pointers.d_diagDelta, diagDeltaSz, reqSz);
+    resizeHostArray(pointers.diagDelta, tmp, reqSz);
+
+    void *devSymPtr;
+    CHECK_CUDA_ERRORS(cudaGetSymbolAddress(&devSymPtr, dd_diagDelta));
+    CHECK_CUDA_ERRORS(cudaMemcpy(devSymPtr, &pointers.d_diagDelta, sizeof(void*), cudaMemcpyHostToDevice));
+
+    pointers.waveforms[0] = I;
+    pointers.pushWaveforms();
+    *pointers.targetParam = TARGET_DIAG;
+    *pointers.getErr = true;
+
+    stepTimeGPU();
+
+    CHECK_CUDA_ERRORS(cudaMemcpy(pointers.diagDelta, pointers.d_diagDelta, reqSz * sizeof(scalar), cudaMemcpyDeviceToHost))
 }
 
 #endif

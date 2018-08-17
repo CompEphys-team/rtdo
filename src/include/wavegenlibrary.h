@@ -33,6 +33,8 @@ public:
 
         Bubble *bubbles, *d_bubbles;
 
+        scalar *diagDelta, *d_diagDelta;
+
         void (*push)(void);
         void (*pull)(void);
         void (*step)(void);
@@ -43,6 +45,7 @@ public:
         std::function<void(void)> pushErr;
         std::function<void(void)> pullErr;
         void (*generateBubbles)(unsigned int, unsigned int, Pointers&);
+        void (*diagnose)(Pointers&, iStimulation);
     };
 
     Project &project;
@@ -71,6 +74,8 @@ public:
     inline void pullErr() { pointers.pullErr(); }
 
     void generateBubbles(int iDuration);
+
+    inline void diagnose(iStimulation I) { pointers.diagnose(pointers, I); }
 
 private:
     void *load();
@@ -102,6 +107,8 @@ public:
     // Group vars
     iStimulation *waveforms;
     Bubble *&bubbles;
+
+    scalar *&diagDelta;
 };
 
 #endif // WAVEGENLIBRARY_H

@@ -296,3 +296,13 @@ void Wavegen::pushStims(const std::vector<iStimulation> &stim)
 
     lib.pushWaveforms();
 }
+
+void Wavegen::diagnose(iStimulation I, double dt)
+{
+    initModels();
+    detune();
+    settle();
+    lib.dt = dt;
+    lib.diagnose(I);
+    lib.dt = searchd.dt;
+}

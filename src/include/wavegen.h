@@ -79,6 +79,15 @@ public slots: // Asynchronous calls that queue via Session
 
 public: // Synchronous calls
     /**
+     * @brief diagnose runs an ad-hoc stimulation through a settled, detuned model group, populating lib.diagDelta with a time course of
+     * raw deltaI = I_detuned - I_reference. lib.diagDelta is sized and ordered as (nParams+1) x I.duration, I_reference on parameter index 0.
+     * Note, diagnose is performed synchronously and not logged.
+     * @param I : a stimulation from any source.
+     * @param dt : Temporarily overrides WavegenData::dt to allow diagnosis for ExperimentLib use
+     */
+    void diagnose(iStimulation I, double dt);
+
+    /**
      * @brief getMeanParamError runs a number of randomly generated stimulations, returning the average error per cycle
      * produced by each parameter detuning.
      * Note, this standalone call does not do any preparatory work (initModels, detune, settle, ...)
