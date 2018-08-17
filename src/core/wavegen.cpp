@@ -226,6 +226,7 @@ bool Wavegen::sigmaAdjust_exec(QFile &file, Result *dummy)
     // Apply
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
         lib.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma*sigmaAdjust[i];
+    propagateAdjustedSigma();
 
     // Report
     std::cout << "Perturbation adjustment complete." << std::endl;
@@ -265,6 +266,17 @@ void Wavegen::sigmaAdjust_load(QFile &file, Result)
     } else {
         for ( AdjustableParam &p : lib.adjustableParams )
             is >> p.adjustedSigma;
+    }
+    propagateAdjustedSigma();
+}
+
+void Wavegen::propagateAdjustedSigma()
+{
+    ExperimentLibrary &exp(session.project.experiment());
+    ProfilerLibrary &prof(session.project.profiler());
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+        exp.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma;
+        prof.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma;
     }
 }
 

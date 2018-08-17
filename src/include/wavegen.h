@@ -90,6 +90,7 @@ protected:
     bool sigmaAdjust_exec(QFile &file, Result *r);
     void sigmaAdjust_save(QFile &file);
     void sigmaAdjust_load(QFile &file, Result r);
+    void propagateAdjustedSigma();
 
     bool search_exec(QFile &file, Result *r);
     void search_save(QFile &file);
