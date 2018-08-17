@@ -79,6 +79,7 @@ SOURCES += \
     src/core/filter.cpp \
     src/gui/cannedchannelassociationdialog.cpp \
     src/drivers/canneddaq.cpp \
+    src/core/clusterfitter.cpp \
     src/core/clustering.cpp
 
 HEADERS  += \

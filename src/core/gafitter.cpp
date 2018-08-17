@@ -3,7 +3,10 @@
 #include "supportcode.h"
 #include "daqfilter.h"
 
-const QString GAFitter::action = QString("fit");
+const QString GAFitter::action_windowGA = QString("fit");
+const QString GAFitter::action_windowDE = QString("Window DE");
+const QString GAFitter::action_clusterGA = QString("Cluster GA");
+const QString GAFitter::action_clusterDE = QString("Cluster DE");
 const quint32 GAFitter::magic = 0xadb8d269;
 const quint32 GAFitter::version = 104;
 
@@ -47,10 +50,12 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
         targets[i] = f.lib.adjustableParams.at(i).initial;
 }
 
-void GAFitter::run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc)
+void GAFitter::run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc, QString action)
 {
     if ( src.type != WaveSource::Deck )
         throw std::runtime_error("Wave source for GAFitter must be a deck.");
+    if ( action != action_windowGA && action != action_windowDE && action != action_clusterGA && action != action_clusterDE )
+        throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord, assoc));
 }
 
@@ -76,9 +81,6 @@ std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimula
 
 bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 {
-    if ( action != this->action )
-        return false;
-
     {
         QMutexLocker locker(&mutex);
         doFinish = false;
@@ -120,19 +122,16 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     std::cout << "Baseline current noise s.d.: " << std::sqrt(output.variance) << " nA" << std::endl;
 
     // Fit
-    populate();
-    for ( epoch = 0; !finished(); epoch++ ) {
-        // Stimulate
-        stimulate();
-        simtime += astims.at(stimIdx).duration + session.runData().settleDuration;
-
-        // Advance
-        lib.pullErr();
-        procreate();
-        lib.push();
-
-        emit progress(epoch);
-    }
+    if ( action == action_windowGA )
+        simtime = windowedGA();
+    else if ( action == action_windowDE )
+        simtime = windowedDE();
+    else if ( action == action_clusterGA)
+        simtime = clusterGA();
+    else if ( action == action_clusterDE )
+        simtime = clusterDE();
+    else
+        return false;
 
     double wallclockms = wallclock.msecsTo(QTime::currentTime());
     std::cout << "ms elapsed: " << wallclockms << std::endl;
@@ -148,6 +147,34 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     emit done();
 
     // Save
+    save(file);
+
+    delete daq;
+    daq = nullptr;
+
+    return true;
+}
+
+double GAFitter::windowedGA()
+{
+    double simtime = 0;
+    populate();
+    for ( epoch = 0; !finished(); epoch++ ) {
+        // Stimulate
+        simtime += stimulate();
+
+        // Advance
+        lib.pullErr();
+        procreate();
+        lib.push();
+
+        emit progress(epoch);
+    }
+    return simtime;
+}
+
+void GAFitter::save(QFile &file)
+{
     QDataStream os;
     if ( openSaveStream(file, os, magic, version) ) {
         const Output &out = m_results.back();
@@ -167,11 +194,6 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
         os << out.VCRecord;
         os << out.variance;
     }
-
-    delete daq;
-    daq = nullptr;
-
-    return true;
 }
 
 void GAFitter::finish()
@@ -182,7 +204,7 @@ void GAFitter::finish()
 
 void GAFitter::load(const QString &act, const QString &, QFile &results, Result r)
 {
-    if ( act != action )
+    if ( act != action_windowGA && act != action_windowDE && act != action_clusterGA && act != action_clusterDE )
         throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
     QDataStream is;
     quint32 ver = openLoadStream(results, is, magic);
@@ -487,7 +509,7 @@ void GAFitter::finalise()
     output.final = true;
 }
 
-void GAFitter::stimulate()
+double GAFitter::stimulate()
 {
     const iStimulation &I = stims.at(stimIdx);
     const Stimulation &aI = astims.at(stimIdx);
@@ -551,6 +573,8 @@ void GAFitter::stimulate()
 
     qT += aI.duration;
     daq->reset();
+
+    return astims.at(stimIdx).duration + session.runData().settleDuration;
 }
 
 void GAFitter::pushToQ(double t, double V, double I, double O)

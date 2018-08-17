@@ -50,8 +50,10 @@ public:
 
     std::vector<Stimulation> sanitiseDeck(std::vector<Stimulation> stimulations, bool useQueuedSettings = false);
 
+    const static QString action_windowGA, action_windowDE, action_clusterGA, action_clusterDE;
+
 public slots:
-    void run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc);
+    void run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc, QString action);
     void finish();
 
 signals:
@@ -73,14 +75,21 @@ protected:
     quint32 epoch;
     std::vector<double> bias;
 
+    double windowedGA();
+    double windowedDE();
+    double clusterGA();
+    double clusterDE();
+
     double getVariance();
     void populate();
-    void stimulate();
+    double stimulate();
     void procreate();
     void finalise();
     quint32 findNextStim();
     bool finished();
     void pushToQ(double t, double V, double I, double O);
+
+    void save(QFile &file);
 
     struct errTupel {
         size_t idx = 0;
@@ -92,8 +101,19 @@ protected:
     std::vector<Output> m_results;
     Output output;
 
-    const static QString action;
     const static quint32 magic, version;
+
+
+
+// *************** cluster / DE stuff ************************ //
+    std::vector<std::vector<std::vector<Section>>> constructClustersByStim();
+
+    double stimulate_cluster(const std::vector<Section> &cluster);
+
+    void resetDE();
+    void procreateDE(const std::vector<double> &baseF);
+    std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
+    std::vector<double> DEpX;
 };
 
 #endif // GAFITTER_H
