@@ -72,6 +72,11 @@ public slots:
      */
     void search(int param);
 
+    /**
+     * @brief recalcIstimd populates iStimd from the latest searchd/stimd. Called automatically on session-registered changes.
+     */
+    void recalcIstimd();
+
 signals:
     void done(int arg = -1);
     void startedSearch(int param);

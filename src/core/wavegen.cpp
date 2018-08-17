@@ -21,6 +21,14 @@ Wavegen::Wavegen(Session &session) :
     stimd(session.stimulationData()),
     lib(session.project.wavegen())
 {
+    connect(&session, &Session::stimulationDataChanged, this, &Wavegen::recalcIstimd);
+    connect(&session, &Session::wavegenDataChanged, this, &Wavegen::recalcIstimd);
+}
+
+void Wavegen::recalcIstimd()
+{
+    istimd.iDuration = lrint(stimd.duration / searchd.dt);
+    istimd.iMinStep = lrint(stimd.minStepLength / searchd.dt);
 }
 
 void Wavegen::load(const QString &action, const QString &args, QFile &results, Result r)
@@ -36,8 +44,6 @@ void Wavegen::load(const QString &action, const QString &args, QFile &results, R
 bool Wavegen::execute(QString action, QString, Result *res, QFile &file)
 {
     clearAbort();
-    istimd.iDuration = lrint(stimd.duration / searchd.dt);
-    istimd.iMinStep = lrint(stimd.minStepLength / searchd.dt);
     if ( action == sigmaAdjust_action )
         return sigmaAdjust_exec(file, res);
     else if ( action == search_action )
