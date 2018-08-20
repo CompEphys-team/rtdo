@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>825</width>
+    <width>829</width>
     <height>520</height>
    </rect>
   </property>
@@ -86,7 +86,7 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>402</width>
+            <width>406</width>
             <height>453</height>
            </rect>
           </property>
@@ -174,7 +174,7 @@
            <enum>QAbstractItemView::ScrollPerPixel</enum>
           </property>
           <attribute name="horizontalHeaderDefaultSectionSize">
-           <number>24</number>
+           <number>26</number>
           </attribute>
           <attribute name="horizontalHeaderHighlightSections">
            <bool>false</bool>
@@ -252,6 +252,14 @@
             <string>Target type</string>
            </property>
           </column>
+          <column>
+           <property name="text">
+            <string>m</string>
+           </property>
+           <property name="toolTip">
+            <string>Method</string>
+           </property>
+          </column>
          </widget>
         </item>
         <item row="1" column="0" colspan="3">
@@ -309,7 +317,7 @@
        <property name="currentIndex">
         <number>0</number>
        </property>
-       <widget class="QWidget" name="tabWidget_2Page1" native="true">
+       <widget class="QWidget" name="tabWidget_2Page1">
         <attribute name="title">
          <string>Groups</string>
         </attribute>
