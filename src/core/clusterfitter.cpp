@@ -48,10 +48,12 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
         double err = lib.err[i];
         if ( lib.err[i] > lib.err[iOffspring] ) {
             err = lib.err[iOffspring];
-            for ( int j = 0; j < nParams; j++ )
+            for ( int j = 0; j < nParams; j++ ) // replace parent with more successful offspring
                 P[j][i] = P[j][iOffspring];
             ++DEMethodSuccess[DEMethodUsed[i]];
         } else {
+            for ( int j = 0; j < nParams; j++ ) // replace failed offspring with parent, ready for mutation
+                P[j][iOffspring] = P[j][i];
             ++DEMethodFailed[DEMethodUsed[i]];
             if ( DEMethodUsed[i] < 3 )
                 pXList[DEMethodUsed[i]].push_back(DEpX[i]);
@@ -94,53 +96,61 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
     for ( int i = 0; i < nPop; i++ ) {
         double method = session.RNG.uniform(0., successRateTotal);
         double F = session.RNG.variate<double>(0.5, 0.3);
-        int r1, r2, r3, r4, r5;
+        int r1, r2, r3, r4, r5, forcedJ;
         do { r1 = session.RNG.uniform<int>(0, nPop-1); } while ( r1 == i );
         do { r2 = session.RNG.uniform<int>(0, nPop-1); } while ( r2 == i || r2 == r1 );
         do { r3 = session.RNG.uniform<int>(0, nPop-1); } while ( r3 == i || r3 == r1 || r3 == r2 );
+        do { forcedJ = session.RNG.uniform<int>(0, nParams-1); } while ( settings.constraints[forcedJ] >= 2 );
 
         if ( method < methodCutoff[0] ) {
         // rand/1/bin
             DEMethodUsed[i] = 0;
-            int forcedJ = session.RNG.uniform(0, nParams-1);
             DEpX[i] = session.RNG.variate<double>(pXmed[0], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
-                if ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] )
+                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
                     P[j][i + nPop] = P[j][r1] + F * baseF[j] * (P[j][r2] - P[j][r3]);
-                else
-                    P[j][i + nPop] = P[j][i];
             }
         } else if ( method < methodCutoff[1] ) {
         // rand-to-best/2/bin
             DEMethodUsed[i] = 1;
             do { r4 = session.RNG.uniform<int>(0, nPop-1); } while ( r4 == i || r4 == r1 || r4 == r2 || r4 == r3 );
-            int forcedJ = session.RNG.uniform(0, nParams-1);
             DEpX[i] = session.RNG.variate<double>(pXmed[1], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
-                if ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] )
+                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
                     P[j][i + nPop] = P[j][i] + F * baseF[j] * (P[j][bestIdx] - P[j][i] + P[j][r1] - P[j][r2] + P[j][r3] - P[j][r4]);
-                else
-                    P[j][i + nPop] = P[j][i];
             }
         } else if ( method < methodCutoff[2] ) {
         // rand/2/bin
             DEMethodUsed[i] = 2;
             do { r4 = session.RNG.uniform<int>(0, nPop-1); } while ( r4 == i || r4 == r1 || r4 == r2 || r4 == r3 );
             do { r5 = session.RNG.uniform<int>(0, nPop-1); } while ( r5 == i || r5 == r1 || r5 == r2 || r5 == r3 || r5 == r4 );
-            int forcedJ = session.RNG.uniform(0, nParams-1);
             DEpX[i] = session.RNG.variate<double>(pXmed[2], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
-                if ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] )
+                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
                     P[j][i + nPop] = P[j][r1] + F * baseF[j] * (P[j][r2] - P[j][r3] + P[j][r4] - P[j][r5]);
-                else
-                    P[j][i + nPop] = P[j][i];
             }
         } else {
         // current-to-rand/1
             DEMethodUsed[i] = 3;
             double K = session.RNG.uniform(0.,1.);
             for ( int j = 0; j < nParams; j++ ) {
-                P[j][i + nPop] = P[j][i] + baseF[j] * K * ((P[j][r1] - P[j][i]) + F*(P[j][r2] - P[j][r3]));
+                if ( settings.constraints[j] < 2 )
+                    P[j][i + nPop] = P[j][i] + baseF[j] * K * ((P[j][r1] - P[j][i]) + F*(P[j][r2] - P[j][r3]));
+            }
+        }
+
+        // Apply limits
+        for ( int j = 0; j < nParams; j++ ) {
+            if ( settings.constraints[j] == 0 ) {
+                if ( P[j][i + nPop] < P[j].min )
+                    P[j][i + nPop] = P[j].min;
+                if ( P[j][i + nPop] > P[j].max )
+                    P[j][i + nPop] = P[j].max;
+            } else {
+                if ( P[j][i + nPop] < settings.min[j] )
+                    P[j][i + nPop] = settings.min[j];
+                if ( P[j][i + nPop] > settings.max[j] )
+                    P[j][i + nPop] = settings.max[j];
             }
         }
     }
