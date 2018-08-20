@@ -309,7 +309,7 @@ quint32 GAFitter::findNextStim()
         int choice = session.RNG.uniform<int>(0, cumBias.back()-1);
         for ( nextStimIdx = 0; choice >= cumBias[nextStimIdx]; nextStimIdx++ ) ;
     } else if ( settings.randomOrder == 2 ) { // Error-biased random
-        double cost = settings.useLikelihood ? exp(p_err[0].err) : p_err[0].err; // Ensure bias stays positive
+        double cost = settings.useLikelihood ? exp(output.error[epoch]) : output.error[epoch]; // Ensure bias stays positive
         if ( epoch == previousStimIdx ) // Initial: Full error
             bias[previousStimIdx] = cost;
         else // Recursively decay bias according to settings

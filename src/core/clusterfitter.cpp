@@ -30,7 +30,7 @@ void GAFitter::resetDE()
     DEpX.assign(session.project.expNumCandidates()/2, 0);
 }
 
-void GAFitter::procreateDE(const std::vector<double> &baseF)
+void GAFitter::procreateDE(int errNorm)
 {
     std::vector<AdjustableParam> &P = lib.adjustableParams;
     int nParams = P.size();
@@ -66,6 +66,15 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
 
         lib.err[i] = lib.err[iOffspring] = 0;
     }
+
+    // Populate output
+    for ( int i = 0; i < nParams; i++ )
+        output.params[epoch][i] = P[i][bestIdx];
+    output.error[epoch] = std::sqrt(bestErr/errNorm);
+    output.stimIdx[epoch] = stimIdx;
+
+    // Select new target
+    stimIdx = findNextStim();
 
     // Calculate mutation probabilities
     double successRateTotal = 0;
@@ -108,7 +117,7 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
             DEpX[i] = session.RNG.variate<double>(pXmed[0], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
                 if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
-                    P[j][i + nPop] = P[j][r1] + F * baseF[j] * (P[j][r2] - P[j][r3]);
+                    P[j][i + nPop] = P[j][r1] + F * baseF[stimIdx][j] * (P[j][r2] - P[j][r3]);
             }
         } else if ( method < methodCutoff[1] ) {
         // rand-to-best/2/bin
@@ -117,7 +126,7 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
             DEpX[i] = session.RNG.variate<double>(pXmed[1], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
                 if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
-                    P[j][i + nPop] = P[j][i] + F * baseF[j] * (P[j][bestIdx] - P[j][i] + P[j][r1] - P[j][r2] + P[j][r3] - P[j][r4]);
+                    P[j][i + nPop] = P[j][i] + F * baseF[stimIdx][j] * (P[j][bestIdx] - P[j][i] + P[j][r1] - P[j][r2] + P[j][r3] - P[j][r4]);
             }
         } else if ( method < methodCutoff[2] ) {
         // rand/2/bin
@@ -127,7 +136,7 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
             DEpX[i] = session.RNG.variate<double>(pXmed[2], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
                 if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
-                    P[j][i + nPop] = P[j][r1] + F * baseF[j] * (P[j][r2] - P[j][r3] + P[j][r4] - P[j][r5]);
+                    P[j][i + nPop] = P[j][r1] + F * baseF[stimIdx][j] * (P[j][r2] - P[j][r3] + P[j][r4] - P[j][r5]);
             }
         } else {
         // current-to-rand/1
@@ -135,7 +144,7 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
             double K = session.RNG.uniform(0.,1.);
             for ( int j = 0; j < nParams; j++ ) {
                 if ( settings.constraints[j] < 2 )
-                    P[j][i + nPop] = P[j][i] + baseF[j] * K * ((P[j][r1] - P[j][i]) + F*(P[j][r2] - P[j][r3]));
+                    P[j][i + nPop] = P[j][i] + baseF[stimIdx][j] * K * ((P[j][r1] - P[j][i]) + F*(P[j][r2] - P[j][r3]));
             }
         }
 
@@ -154,11 +163,6 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
             }
         }
     }
-
-    for ( int i = 0; i < nParams; i++ )
-        output.params[epoch][i] = P[i][bestIdx];
-    output.error[epoch] = bestErr;
-    output.stimIdx[epoch] = stimIdx;
 }
 
 double GAFitter::clusterDE()
@@ -170,15 +174,20 @@ double GAFitter::clusterDE()
     populate();
     resetDE();
 
+    std::vector<int> errNorm(lib.adjustableParams.size(), 0);
+    baseF.clear();
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+        baseF.push_back(std::get<1>(options[i]));
+        for ( Section &sec : std::get<2>(options[i]) )
+            errNorm[i] += sec.end - sec.start;
+    }
+
     double simtime = 0;
     for ( epoch = 0; !finished(); ++epoch ) {
-        const auto &choice = session.RNG.pick(options);
-        stimIdx = std::get<0>(choice);
-
-        simtime += stimulate_cluster(std::get<2>(choice));
+        simtime += stimulate_cluster(std::get<2>(options[stimIdx]), std::get<0>(options[stimIdx]));
 
         lib.pullErr();
-        procreateDE(std::get<1>(choice));
+        procreateDE(errNorm[stimIdx]);
         lib.push();
 
         emit progress(epoch);
@@ -200,7 +209,7 @@ double GAFitter::clusterGA()
     double simtime = 0;
     for ( epoch = 0; !finished(); epoch++ ) {
         // Stimulate
-        simtime += stimulate_cluster(std::get<2>(options[stimIdx]));
+        simtime += stimulate_cluster(std::get<2>(options[stimIdx]), std::get<0>(options[stimIdx]));
 
         // Advance
         lib.pullErr();
@@ -218,16 +227,18 @@ double GAFitter::windowedDE()
     populate();
     resetDE();
 
+    int nParams = lib.adjustableParams.size();
+    baseF.assign(nParams, std::vector<double>(nParams, 0));
+    for ( int i = 0; i < nParams; i++ ) {
+        baseF[i][i] = 1;
+    }
+
     double simtime = 0;
     for ( epoch = 0; !finished(); ++epoch ) {
         simtime += stimulate();
 
-        stimIdx = findNextStim();
-        std::vector<double> baseF(lib.adjustableParams.size(), 0);
-        baseF[stimIdx] = 1;
-
         lib.pullErr();
-        procreateDE(baseF);
+        procreateDE(stims[stimIdx].tObsEnd - stims[stimIdx].tObsBegin);
         lib.push();
 
         emit progress(epoch);
@@ -236,7 +247,7 @@ double GAFitter::windowedDE()
     return simtime;
 }
 
-double GAFitter::stimulate_cluster(const std::vector<Section> &cluster)
+double GAFitter::stimulate_cluster(const std::vector<Section> &cluster, int stimIdx)
 {
     const iStimulation &I = stims.at(stimIdx);
     const Stimulation &aI = astims.at(stimIdx);

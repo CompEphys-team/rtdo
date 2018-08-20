@@ -108,12 +108,13 @@ protected:
 // *************** cluster / DE stuff ************************ //
     std::vector<std::vector<std::vector<Section>>> constructClustersByStim();
 
-    double stimulate_cluster(const std::vector<Section> &cluster);
+    double stimulate_cluster(const std::vector<Section> &cluster, int stimIdx);
 
     void resetDE();
-    void procreateDE(const std::vector<double> &baseF);
+    void procreateDE(int errNorm);
     std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
     std::vector<double> DEpX;
+    std::vector<std::vector<double>> baseF;
 };
 
 #endif // GAFITTER_H
