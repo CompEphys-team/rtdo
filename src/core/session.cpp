@@ -126,6 +126,10 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.max[#]", &q_settings, &Settings::gafs, &GAFitterSettings::max);
     addAP(gafAP, "S.GAFitter.fixedValue[#]", &q_settings, &Settings::gafs, &GAFitterSettings::fixedValue);
     addAP(gafAP, "S.GAFitter.useLikelihood", &q_settings, &Settings::gafs, &GAFitterSettings::useLikelihood);
+    addAP(gafAP, "S.GAFitter.cluster_blank_after_step", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_blank_after_step);
+    addAP(gafAP, "S.GAFitter.cluster_min_dur", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_min_dur);
+    addAP(gafAP, "S.GAFitter.cluster_fragment_dur", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_fragment_dur);
+    addAP(gafAP, "S.GAFitter.cluster_threshold", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_threshold);
 
     Project::addDaqAPs(daqAP, &q_settings.daqd);
 

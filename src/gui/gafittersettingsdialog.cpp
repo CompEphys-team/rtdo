@@ -78,6 +78,10 @@ void GAFitterSettingsDialog::importData()
     ui->sigmaHalflife->setValue(p.sigmaHalflife);
     ui->sigmaInitial->setValue(p.sigmaInitial);
     ui->useLikelihood->setChecked(p.useLikelihood);
+    ui->cluster_blank->setValue(p.cluster_blank_after_step);
+    ui->cluster_dur->setValue(p.cluster_min_dur);
+    ui->cluster_res->setValue(p.cluster_fragment_dur);
+    ui->cluster_threshold->setValue(p.cluster_threshold);
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(p.constraints[i]);
@@ -101,6 +105,10 @@ void GAFitterSettingsDialog::exportData()
     p.sigmaHalflife = ui->sigmaHalflife->value();
     p.sigmaInitial = ui->sigmaInitial->value();
     p.useLikelihood = ui->useLikelihood->isChecked();
+    p.cluster_blank_after_step = ui->cluster_blank->value();
+    p.cluster_min_dur = ui->cluster_dur->value();
+    p.cluster_fragment_dur = ui->cluster_res->value();
+    p.cluster_threshold = ui->cluster_threshold->value();
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         p.constraints.push_back(static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex());

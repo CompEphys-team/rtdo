@@ -381,6 +381,11 @@ struct GAFitterSettings {
     std::vector<scalar> min, max, fixedValue;
 
     bool useLikelihood = false;
+
+    double cluster_blank_after_step = 5.;
+    double cluster_min_dur = 5.;
+    double cluster_fragment_dur = 0.5;
+    double cluster_threshold = 0.95;
 };
 
 

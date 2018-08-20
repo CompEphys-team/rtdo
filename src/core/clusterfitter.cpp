@@ -5,11 +5,6 @@
 
 std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim()
 {
-    double Milliseconds_Blank_After_Step = 5;
-    double Milliseconds_Min_Cluster_Len = 5;
-    double Milliseconds_Cluster_Fragment = 0.5;
-    double Similarity_Threshold = 0.95;
-
     double dt = session.runData().dt;
     int nParams = lib.adjustableParams.size();
     std::vector<double> norm(nParams, 1);
@@ -19,9 +14,9 @@ std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim
         iStimulation stim(astims[i], dt);
         session.wavegen().diagnose(stim, dt);
         clusters.push_back(constructClusters(
-                                     stim, session.wavegen().lib.diagDelta, Milliseconds_Blank_After_Step/dt,
-                                     nParams+1, norm, Milliseconds_Cluster_Fragment/dt, Similarity_Threshold,
-                                     Milliseconds_Min_Cluster_Len/Milliseconds_Cluster_Fragment));
+                                     stim, session.wavegen().lib.diagDelta, settings.cluster_blank_after_step/dt,
+                                     nParams+1, norm, settings.cluster_fragment_dur/dt, settings.cluster_threshold,
+                                     settings.cluster_min_dur/settings.cluster_fragment_dur));
     }
 
     return clusters;
@@ -155,11 +150,6 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
     output.error[epoch] = bestErr;
     output.stimIdx[epoch] = stimIdx;
 }
-
-
-
-
-
 
 double GAFitter::clusterDE()
 {
