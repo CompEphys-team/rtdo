@@ -50,9 +50,9 @@ void GAFitter::procreateDE(const std::vector<double> &baseF)
             err = lib.err[iOffspring];
             for ( int j = 0; j < nParams; j++ )
                 P[j][i] = P[j][iOffspring];
-            ++DEMethodFailed[DEMethodUsed[i]];
-        } else {
             ++DEMethodSuccess[DEMethodUsed[i]];
+        } else {
+            ++DEMethodFailed[DEMethodUsed[i]];
             if ( DEMethodUsed[i] < 3 )
                 pXList[DEMethodUsed[i]].push_back(DEpX[i]);
         }
