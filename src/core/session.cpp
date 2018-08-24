@@ -130,6 +130,9 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.cluster_min_dur", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_min_dur);
     addAP(gafAP, "S.GAFitter.cluster_fragment_dur", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_fragment_dur);
     addAP(gafAP, "S.GAFitter.cluster_threshold", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_threshold);
+    addAP(gafAP, "S.GAFitter.useDE", &q_settings, &Settings::gafs, &GAFitterSettings::useDE);
+    addAP(gafAP, "S.GAFitter.useClustering", &q_settings, &Settings::gafs, &GAFitterSettings::useClustering);
+    addAP(gafAP, "S.GAFitter.mutationSelectivity", &q_settings, &Settings::gafs, &GAFitterSettings::mutationSelectivity);
 
     Project::addDaqAPs(daqAP, &q_settings.daqd);
 
