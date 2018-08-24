@@ -25,6 +25,7 @@ public:
         scalar *ext_variance;
         bool *getErr;
         int *nGroupsPerStim;
+        int *simCycles;
 
         scalar *err;
 
@@ -98,6 +99,7 @@ public:
     scalar &deltaBar;
     scalar &ext_variance;
     bool &getErr;
+    int &simCycles;
 
     unsigned int nStim;
 

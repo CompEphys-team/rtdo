@@ -33,7 +33,8 @@ WavegenLibrary::WavegenLibrary(Project &p, bool compile) :
     err(pointers.err),
     waveforms(pointers.waveforms),
     bubbles(pointers.bubbles),
-    diagDelta(pointers.diagDelta)
+    diagDelta(pointers.diagDelta),
+    simCycles(*pointers.simCycles)
 {
 }
 
@@ -103,7 +104,8 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("settling", "", "bool"),
         Variable("nGroupsPerStim", "", "int"),
         Variable("deltaBar"),
-        Variable("ext_variance")
+        Variable("ext_variance"),
+        Variable("simCycles", "", "int")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -171,6 +173,7 @@ scalar value = 0.; // Dual use: As cumulative error when targetParam<0, and as l
 const iStimulation stim = dd_waveforms[group];
 Bubble bestBubble = {-1,0,0}, currentBubble = {-1,0,0};
 int mt = 0, tStep = 0;
+const double mdt = $(dt)/$(simCycles);
 
 if ( $(targetParam) == TARGET_DIAG && group > 0 )
     return;
@@ -240,7 +243,8 @@ while ( mt < stim.duration ) {
         }
 
         // Integrate
-        RK4(t, $(dt), state, params, clamp);
+        for ( int j = 0; j < $(simCycles); j++ )
+            RK4(t + j*mdt, mdt, state, params, clamp);
         ++mt;
     } // end for i from 0 to tStep
 } // end while mt < duration
@@ -337,6 +341,7 @@ std::string WavegenLibrary::supportCode(const std::vector<Variable> &globals, co
 void WavegenLibrary::generateBubbles(int iDuration)
 {
     getErr = true;
+    simCycles = 1;
     unsigned int nSamples = iDuration;
     pointers.generateBubbles(nSamples, nStim, pointers);
 }

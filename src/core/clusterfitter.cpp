@@ -12,7 +12,7 @@ std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim
     std::vector<std::vector<std::vector<Section>>> clusters;
     for ( int i = 0; i < nParams; i++ ) {
         iStimulation stim(astims[i], dt);
-        session.wavegen().diagnose(stim, dt);
+        session.wavegen().diagnose(stim, dt, session.runData().simCycles);
         clusters.push_back(constructClusters(
                                      stim, session.wavegen().lib.diagDelta, settings.cluster_blank_after_step/dt,
                                      nParams+1, norm, settings.cluster_fragment_dur/dt, settings.cluster_threshold,

@@ -84,8 +84,9 @@ public: // Synchronous calls
      * Note, diagnose is performed synchronously and not logged.
      * @param I : a stimulation from any source.
      * @param dt : Temporarily overrides WavegenData::dt to allow diagnosis for ExperimentLib use
+     * @param simCycles : Number of RK4 cycles per dt
      */
-    void diagnose(iStimulation I, double dt);
+    void diagnose(iStimulation I, double dt, int simCycles);
 
     /**
      * @brief getMeanParamError runs a number of randomly generated stimulations, returning the average error per cycle

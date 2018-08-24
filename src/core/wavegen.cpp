@@ -128,6 +128,7 @@ void Wavegen::settle()
     lib.getErr = false;
     lib.settling = true;
     lib.dt = searchd.dt;
+    lib.simCycles = 1;
     lib.push();
     lib.step();
     lib.settling = false;
@@ -297,12 +298,14 @@ void Wavegen::pushStims(const std::vector<iStimulation> &stim)
     lib.pushWaveforms();
 }
 
-void Wavegen::diagnose(iStimulation I, double dt)
+void Wavegen::diagnose(iStimulation I, double dt, int simCycles)
 {
     initModels();
     detune();
     settle();
     lib.dt = dt;
+    lib.simCycles = simCycles;
     lib.diagnose(I);
     lib.dt = searchd.dt;
+    lib.simCycles = 1;
 }

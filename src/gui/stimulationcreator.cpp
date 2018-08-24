@@ -281,7 +281,7 @@ void StimulationCreator::diagnose()
     std::vector<double> norm(nGraphs-1, 1);
 
     iStimulation iStim(*stim, dt);
-    session.wavegen().diagnose(iStim, dt);
+    session.wavegen().diagnose(iStim, dt, session.qRunData().simCycles);
 
     redraw();
     makeHidable(ui->plot->graph());
