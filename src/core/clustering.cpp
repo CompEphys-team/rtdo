@@ -10,7 +10,8 @@ double scalarProduct(const Section &a, const Section &b, int nParams)
         sumB += b.deviations[i] * b.deviations[i];
         dotp += a.deviations[i] * b.deviations[i];
     }
-    return dotp / (sqrt(sumA) * sqrt(sumB));
+    double denom = sqrt(sumA) * sqrt(sumB);
+    return denom==0 ? 0 : dotp/denom;
 }
 
 void constructSections(const scalar *diagDelta, int start, int end, int nTraces, std::vector<double> norm, int stride, std::vector<Section> &sections)
@@ -165,7 +166,7 @@ std::vector<std::vector<Section> > constructClusters(iStimulation iStim, scalar 
     std::vector<std::vector<Section>> clusters;
     while ( !sections.empty() ) {
         std::vector<Section> cluster = extractLargestCluster(similarity, sections, similarityThreshold);
-        if ( cluster.size() < int(minClusterSize) )
+        if ( int(cluster.size()) < minClusterSize )
             break;
 
         // compact it
