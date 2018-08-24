@@ -418,9 +418,7 @@ void GAFitter::procreate()
 
     stimIdx = findNextStim();
 
-    scalar sigma = lib.adjustableParams[stimIdx].adjustedSigma;
-    if ( settings.decaySigma )
-        sigma = settings.sigmaInitial * sigma * std::exp2(-double(epoch)/settings.sigmaHalflife);
+    double F = settings.decaySigma ? settings.sigmaInitial * std::exp2(-double(epoch)/settings.sigmaHalflife) : 1;
 
     // Mutate
     for ( size_t i = p_err.size()-settings.nReinit-1; i >= settings.nElite; i-- ) {
@@ -451,8 +449,10 @@ void GAFitter::procreate()
             if ( settings.mutationSelectivity < 2 || iParam == stimIdx ) {
                 // Mutate target param
                 p[p_err[i].idx] = p.multiplicative ?
-                            (p[p_err[source].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(0, baseF[stimIdx][iParam] * sigma)) :
-                            session.RNG.variate<scalar, std::normal_distribution>(p[p_err[source].idx], baseF[stimIdx][iParam] * sigma);
+                            (p[p_err[source].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(
+                                0, baseF[stimIdx][iParam] * F * lib.adjustableParams[iParam].adjustedSigma)) :
+                            session.RNG.variate<scalar, std::normal_distribution>(
+                                p[p_err[source].idx], baseF[stimIdx][iParam] * F * lib.adjustableParams[iParam].adjustedSigma);
                 if ( settings.constraints[iParam] == 0 ) {
                     if ( p[p_err[i].idx] < p.min )
                         p[p_err[i].idx] = p.min;
