@@ -18,7 +18,7 @@ void constructSections(const scalar *diagDelta, int start, int end, int nTraces,
 {
     const scalar *delta = diagDelta + start*nTraces;
     Section sec {start, 0, std::vector<double>(nTraces-1, 0)};
-    for ( int t = start; t < end; t++ ) {
+    for ( int t = start; t <= end; t++ ) {
         ++delta; // Skip current trace
 
         // Populate values
@@ -34,8 +34,8 @@ void constructSections(const scalar *diagDelta, int start, int end, int nTraces,
             sec.deviations.assign(nTraces-1, 0);
         }
     }
-    if ( sec.start < end-1 ) {
-        sec.end = end-1;
+    if ( sec.start < end ) {
+        sec.end = end;
         sections.push_back(sec);
     }
 }
@@ -107,15 +107,19 @@ std::vector<Section> constructSectionPrimitives(iStimulation iStim, scalar *diag
     int tStart = 0, nSec = 0;
     std::vector<std::pair<int,int>> segments;
     for ( const auto step : iStim ) {
-        if ( !step.ramp && tStart+stride <= step.t) {
-            segments.push_back(std::make_pair(tStart, step.t));
-            nSec += (step.t - tStart) / stride;
+        if ( step.t > iStim.duration )
+            break;
+        if ( !step.ramp ) {
+            if ( tStart < step.t ) {
+                segments.push_back(std::make_pair(tStart, step.t));
+                nSec += (step.t - tStart) / stride + 1;
+            }
             tStart = step.t + blankCycles;
         }
     }
-    if ( tStart+stride <= iStim.duration ) {
+    if ( tStart < iStim.duration ) {
         segments.push_back(std::make_pair(tStart, iStim.duration));
-        nSec += (iStim.duration - tStart) / stride;
+        nSec += (iStim.duration - tStart) / stride + 1;
     }
 
     std::vector<Section> sections;
