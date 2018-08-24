@@ -50,10 +50,8 @@ public:
 
     std::vector<Stimulation> sanitiseDeck(std::vector<Stimulation> stimulations, bool useQueuedSettings = false);
 
-    const static QString action_windowGA, action_windowDE, action_clusterGA, action_clusterDE;
-
 public slots:
-    void run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc, QString action);
+    void run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc);
     void finish();
 
 signals:
@@ -97,6 +95,7 @@ protected:
     std::vector<Output> m_results;
     Output output;
 
+    const static QString action;
     const static quint32 magic, version;
 
 

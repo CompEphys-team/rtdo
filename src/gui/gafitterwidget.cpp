@@ -72,16 +72,8 @@ void GAFitterWidget::on_start_clicked()
     ui->label_queued->setText(QString("%1 queued").arg(nQueued));
     WaveSource deck(session, WaveSource::Deck, currentDeck);
 
-    QString action;
-    switch ( ui->method->currentIndex() ) {
-    case 0: action = session.gaFitter().action_windowGA; break;
-    case 1: action = session.gaFitter().action_windowDE; break;
-    case 2: action = session.gaFitter().action_clusterGA; break;
-    case 3: action = session.gaFitter().action_clusterDE; break;
-    }
-
     for ( int i = 0; i < ui->repeats->value(); i++ )
-        session.gaFitter().run(deck, ui->VCRecord->text(), CannedDAQ::s_assoc, action);
+        session.gaFitter().run(deck, ui->VCRecord->text(), CannedDAQ::s_assoc);
 }
 
 void GAFitterWidget::on_abort_clicked()

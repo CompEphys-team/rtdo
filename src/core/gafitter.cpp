@@ -4,10 +4,7 @@
 #include "daqfilter.h"
 #include "clustering.h"
 
-const QString GAFitter::action_windowGA = QString("fit");
-const QString GAFitter::action_windowDE = QString("Window DE");
-const QString GAFitter::action_clusterGA = QString("Cluster GA");
-const QString GAFitter::action_clusterDE = QString("Cluster DE");
+const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
 const quint32 GAFitter::version = 104;
 
@@ -51,11 +48,11 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
         targets[i] = f.lib.adjustableParams.at(i).initial;
 }
 
-void GAFitter::run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc, QString action)
+void GAFitter::run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc)
 {
     if ( src.type != WaveSource::Deck )
         throw std::runtime_error("Wave source for GAFitter must be a deck.");
-    if ( action != action_windowGA && action != action_windowDE && action != action_clusterGA && action != action_clusterDE )
+    if ( action != this->action )
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord, assoc));
 }
@@ -82,7 +79,7 @@ std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimula
 
 bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 {
-    if ( action != action_windowGA && action != action_windowDE && action != action_clusterGA && action != action_clusterDE )
+    if ( action != this->action )
         return false;
 
     {
@@ -253,7 +250,7 @@ void GAFitter::finish()
 
 void GAFitter::load(const QString &act, const QString &, QFile &results, Result r)
 {
-    if ( act != action_windowGA && act != action_windowDE && act != action_clusterGA && act != action_clusterDE )
+    if ( act != action )
         throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
     QDataStream is;
     quint32 ver = openLoadStream(results, is, magic);

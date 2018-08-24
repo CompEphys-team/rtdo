@@ -82,6 +82,9 @@ void GAFitterSettingsDialog::importData()
     ui->cluster_dur->setValue(p.cluster_min_dur);
     ui->cluster_res->setValue(p.cluster_fragment_dur);
     ui->cluster_threshold->setValue(p.cluster_threshold);
+    ui->clustering->setChecked(p.useClustering);
+    ui->method->setCurrentIndex(p.useDE ? 1 : 0);
+    ui->selectivity->setCurrentIndex(p.mutationSelectivity);
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(p.constraints[i]);
@@ -109,6 +112,9 @@ void GAFitterSettingsDialog::exportData()
     p.cluster_min_dur = ui->cluster_dur->value();
     p.cluster_fragment_dur = ui->cluster_res->value();
     p.cluster_threshold = ui->cluster_threshold->value();
+    p.useClustering = ui->clustering->isChecked();
+    p.useDE = ui->method->currentIndex() == 1;
+    p.mutationSelectivity = ui->selectivity->currentIndex();
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         p.constraints.push_back(static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex());
