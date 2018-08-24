@@ -2,6 +2,7 @@
 #include "session.h"
 #include "supportcode.h"
 #include "daqfilter.h"
+#include "clustering.h"
 
 const QString GAFitter::action_windowGA = QString("fit");
 const QString GAFitter::action_windowDE = QString("Window DE");
@@ -81,6 +82,9 @@ std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimula
 
 bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 {
+    if ( action != action_windowGA && action != action_windowDE && action != action_clusterGA && action != action_clusterDE )
+        return false;
+
     {
         QMutexLocker locker(&mutex);
         doFinish = false;
@@ -100,10 +104,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     qT = 0;
 
     // Prepare
-    astims = sanitiseDeck(output.deck.stimulations());
-    stims.clear();
-    for ( Stimulation stim : astims )
-        stims.push_back(iStimulation(stim, session.runData().dt));
+    std::vector<Stimulation> astims = sanitiseDeck(output.deck.stimulations());
     stimIdx = 0;
 
     daq = new DAQFilter(session);
@@ -118,20 +119,14 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
         }
     }
 
-    output.variance = getVariance();
+    output.variance = getVariance(astims.back());
     std::cout << "Baseline current noise s.d.: " << std::sqrt(output.variance) << " nA" << std::endl;
 
-    // Fit
-    if ( action == action_windowGA )
-        simtime = windowedGA();
-    else if ( action == action_windowDE )
-        simtime = windowedDE();
-    else if ( action == action_clusterGA)
-        simtime = clusterGA();
-    else if ( action == action_clusterDE )
-        simtime = clusterDE();
-    else
-        return false;
+    setup(astims);
+    populate();
+    resetDE();
+
+    simtime = fit();
 
     double wallclockms = wallclock.msecsTo(QTime::currentTime());
     std::cout << "ms elapsed: " << wallclockms << std::endl;
@@ -155,21 +150,75 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     return true;
 }
 
-double GAFitter::windowedGA()
+void GAFitter::setup(const std::vector<Stimulation> &astims)
+{
+    int nParams = lib.adjustableParams.size();
+
+    stims.resize(nParams);
+    obsTimes.assign(nParams, {});
+    errNorm.assign(nParams, 0);
+
+    if ( settings.mutationSelectivity == 2 ) {
+        baseF.assign(nParams, std::vector<double>(nParams, 0));
+        for ( int i = 0; i < nParams; i++ )
+            baseF[i][i] = 1;
+    } else {
+        baseF.assign(nParams, std::vector<double>(nParams, 1));
+    }
+
+    if ( settings.useClustering ) {
+        auto options = extractSeparatingClusters(constructClustersByStim(astims), nParams);
+        for ( int i = 0; i < nParams; i++ ) {
+            stims[i] = astims[std::get<0>(options[i])];
+            for ( const Section &sec : std::get<2>(options[i]) ) {
+                errNorm[i] += sec.end - sec.start;
+                obsTimes[i].push_back(std::make_pair(sec.start, sec.end));
+            }
+
+            if ( settings.mutationSelectivity == 1 )
+                baseF[i] = std::get<1>(options[i]);
+        }
+    } else {
+        stims = astims;
+        for ( int i = 0; i < nParams; i++ ) {
+            iStimulation I(stims[i], session.runData().dt);
+            errNorm[i] = I.tObsEnd - I.tObsBegin;
+            obsTimes[i] = {std::make_pair(I.tObsBegin, I.tObsEnd)};
+
+            if ( settings.mutationSelectivity == 1 ) {
+                session.wavegen().diagnose(I, session.runData().dt, session.runData().simCycles);
+                std::vector<Section> tObs;
+                constructSections(session.wavegen().lib.diagDelta, I.tObsBegin, I.tObsEnd, nParams+1, std::vector<double>(nParams, 1),
+                                  I.tObsEnd-I.tObsBegin+1, tObs);
+                double norm = 0;
+                for ( int j = 0; j < nParams; j++ )
+                    if ( norm < fabs(tObs.front().deviations[j]) )
+                        norm = fabs(tObs.front().deviations[j]);
+                for ( int j = 0; j < nParams; j++ )
+                    baseF[i][j] = fabs(tObs.front().deviations[j])/norm;
+            }
+        }
+    }
+}
+
+double GAFitter::fit()
 {
     double simtime = 0;
-    populate();
     for ( epoch = 0; !finished(); epoch++ ) {
         // Stimulate
         simtime += stimulate();
 
         // Advance
         lib.pullErr();
-        procreate();
+        if ( settings.useDE )
+            procreateDE();
+        else
+            procreate();
         lib.push();
 
         emit progress(epoch);
     }
+
     return simtime;
 }
 
@@ -364,19 +413,13 @@ void GAFitter::procreate()
 
     output.error[epoch] = settings.useLikelihood
             ? p_err[0].err // negative log likelihood
-            : std::sqrt(p_err[0].err / (stims.at(stimIdx).tObsEnd-stims.at(stimIdx).tObsBegin)); // RMSE
+            : std::sqrt(p_err[0].err / errNorm[stimIdx]); // RMSE
     output.stimIdx[epoch] = stimIdx;
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
     }
 
-    do {
-        stimIdx = findNextStim();
-        // In cached use, searching for an available stim makes sense...
-        // In uncached use, this would just cause a busy loop and waste time that could be used to mutate/reinit
-        if ( !session.daqData().cache.active )
-            break;
-    } while ( daq->throttledFor(astims.at(stimIdx)) > 0 );
+    stimIdx = findNextStim();
 
     scalar sigma = lib.adjustableParams[stimIdx].adjustedSigma;
     if ( settings.decaySigma )
@@ -408,11 +451,11 @@ void GAFitter::procreate()
             }
 
             AdjustableParam &p = lib.adjustableParams[iParam];
-            if ( iParam == stimIdx ) {
+            if ( settings.mutationSelectivity < 2 || iParam == stimIdx ) {
                 // Mutate target param
                 p[p_err[i].idx] = p.multiplicative ?
-                            (p[p_err[source].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(0, sigma)) :
-                            session.RNG.variate<scalar, std::normal_distribution>(p[p_err[source].idx], sigma);
+                            (p[p_err[source].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(0, baseF[stimIdx][iParam] * sigma)) :
+                            session.RNG.variate<scalar, std::normal_distribution>(p[p_err[source].idx], baseF[stimIdx][iParam] * sigma);
                 if ( settings.constraints[iParam] == 0 ) {
                     if ( p[p_err[i].idx] < p.min )
                         p[p_err[i].idx] = p.min;
@@ -448,9 +491,6 @@ void GAFitter::procreate()
             }
         }
     }
-
-    if ( !session.daqData().cache.active )
-        QThread::msleep(daq->throttledFor(astims.at(stimIdx)));
 }
 
 void GAFitter::finalise()
@@ -501,7 +541,7 @@ void GAFitter::finalise()
             if ( f_err[i][j].idx == sumRank[0].idx ) {
                 output.finalError[i] = settings.useLikelihood
                         ? f_err[i][j].err
-                        : std::sqrt(f_err[i][j].err / (stims.at(i).tObsEnd-stims.at(i).tObsBegin));
+                        : std::sqrt(f_err[i][j].err / errNorm[i]);
                 break;
             }
         }
@@ -511,10 +551,12 @@ void GAFitter::finalise()
 
 double GAFitter::stimulate()
 {
-    const iStimulation &I = stims.at(stimIdx);
-    const Stimulation &aI = astims.at(stimIdx);
-    bool &observe = settings.useLikelihood ? lib.getLikelihood : lib.getErr;
     const RunData &rd = session.runData();
+    const Stimulation &aI = stims[stimIdx];
+    iStimulation I(aI, rd.dt);
+    const std::vector<std::pair<int,int>> &obs = obsTimes[stimIdx];
+    auto obsIter = obs.begin();
+    bool &observe = settings.useLikelihood ? lib.getLikelihood : lib.getErr;
 
     // Set up library
     lib.t = 0.;
@@ -529,20 +571,6 @@ double GAFitter::stimulate()
     lib.dVClamp = 0;
     lib.step(rd.settleDuration, rd.simCycles * int(rd.settleDuration/rd.dt), true);
 
-    // Fast-forward library through unobserved period
-    lib.t = 0;
-    lib.iT = 0;
-    lib.setVariance = true; // Set variance immediately after settling
-    lib.variance = output.variance;
-    observe = false;
-    int iTStep = 0;
-    while ( (int)lib.iT < I.tObsBegin ) {
-        getiCommandSegment(I, lib.iT, I.tObsBegin - lib.iT, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
-        lib.step(iTStep * rd.dt, iTStep * rd.simCycles, false);
-        lib.iT += iTStep;
-        lib.setVariance = false;
-    }
-
     // Set up + settle DAQ
     daq->VC = true;
     daq->reset();
@@ -550,31 +578,52 @@ double GAFitter::stimulate()
     for ( size_t iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
         daq->next();
 
-    // Fast-forward DAQ through unobserved period
-    for ( size_t iT = 0; iT < lib.iT; iT++ ) {
-        daq->next();
-        pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iT*rd.dt));
+    // Set up library for stimulation
+    lib.t = 0;
+    lib.iT = 0;
+    lib.setVariance = true; // Set variance immediately after settling
+    lib.variance = output.variance;
+
+    while ( obsIter != obs.end() && int(lib.iT) < obs.back().second ) {
+        // Fast-forward library through unobserved period
+        observe = false;
+        int iTStep = 0;
+        while ( (int)lib.iT < obsIter->first ) {
+            getiCommandSegment(I, lib.iT, I.tObsBegin - lib.iT, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
+            lib.step(iTStep * rd.dt, iTStep * rd.simCycles, false);
+            lib.iT += iTStep;
+            lib.setVariance = false;
+        }
+        lib.setVariance = false;
+
+        // Fast-forward DAQ through unobserved period
+        for ( size_t iT = 0; iT < lib.iT; iT++ ) {
+            daq->next();
+            pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iT*rd.dt));
+        }
+
+        // Step both through observed period
+        observe = true;
+        while ( (int)lib.iT < obsIter->second ) {
+            daq->next();
+            lib.Imem = daq->current;
+
+            // Populate VClamp0/dVClamp with the next "segment" of length tSpan = iTStep = 1
+            getiCommandSegment(I, lib.iT, 1, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
+
+            pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
+
+            lib.step();
+        }
+
+        // Advance to next observation period
+        ++obsIter;
     }
 
-    // Step both through observed period -- assumes a properly truncated stim (tObsEnd==duration)
-    observe = true;
-    while ( (int)lib.iT < I.duration ) {
-        daq->next();
-        lib.Imem = daq->current;
-
-        // Populate VClamp0/dVClamp with the next "segment" of length tSpan = iTStep = 1
-        getiCommandSegment(I, lib.iT, 1, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
-
-        pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
-
-        lib.step();
-        lib.setVariance = false; // In case tObsBegin==0
-    }
-
-    qT += aI.duration;
+    qT += lib.iT * rd.dt;
     daq->reset();
 
-    return astims.at(stimIdx).duration + session.runData().settleDuration;
+    return lib.iT * rd.dt + session.runData().settleDuration;
 }
 
 void GAFitter::pushToQ(double t, double V, double I, double O)
@@ -587,10 +636,10 @@ void GAFitter::pushToQ(double t, double V, double I, double O)
         qO->push({t,O});
 }
 
-double GAFitter::getVariance()
+double GAFitter::getVariance(Stimulation stim)
 {
     daq->reset();
-    daq->run(astims.back(), session.runData().settleDuration);
+    daq->run(stim, session.runData().settleDuration);
     for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.runData().dt; iT < iTEnd; iT++ )
         daq->next();
 
@@ -610,4 +659,166 @@ double GAFitter::getVariance()
         sse += deviation*deviation;
     }
     return sse / samples.size();
+}
+
+std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim(std::vector<Stimulation> astims)
+{
+    double dt = session.runData().dt;
+    int nParams = lib.adjustableParams.size();
+    std::vector<double> norm(nParams, 1);
+
+    std::vector<std::vector<std::vector<Section>>> clusters;
+    for ( int i = 0; i < nParams; i++ ) {
+        iStimulation stim(astims[i], dt);
+        session.wavegen().diagnose(stim, dt, session.runData().simCycles);
+        clusters.push_back(constructClusters(
+                                     stim, session.wavegen().lib.diagDelta, settings.cluster_blank_after_step/dt,
+                                     nParams+1, norm, settings.cluster_fragment_dur/dt, settings.cluster_threshold,
+                                     settings.cluster_min_dur/settings.cluster_fragment_dur));
+    }
+
+    return clusters;
+}
+
+void GAFitter::resetDE()
+{
+    DEMethodUsed.assign(session.project.expNumCandidates()/2, 0);
+    DEMethodSuccess.assign(4, 0);
+    DEMethodFailed.assign(4, 0);
+    DEpX.assign(session.project.expNumCandidates()/2, 0);
+}
+
+void GAFitter::procreateDE()
+{
+    std::vector<AdjustableParam> &P = lib.adjustableParams;
+    int nParams = P.size();
+    int nPop = session.project.expNumCandidates()/2;
+
+    std::vector<std::vector<double>> pXList(3);
+    std::vector<double> pXmed(3, 0.5);
+    std::vector<double> methodCutoff(4);
+
+    // Select the winners
+    double bestErr = lib.err[0];
+    int bestIdx = 0;
+    for ( int i = 0; i < nPop; i++ ) {
+        int iOffspring = i + nPop;
+        double err = lib.err[i];
+        if ( lib.err[i] > lib.err[iOffspring] ) {
+            err = lib.err[iOffspring];
+            for ( int j = 0; j < nParams; j++ ) // replace parent with more successful offspring
+                P[j][i] = P[j][iOffspring];
+            ++DEMethodSuccess[DEMethodUsed[i]];
+        } else {
+            for ( int j = 0; j < nParams; j++ ) // replace failed offspring with parent, ready for mutation
+                P[j][iOffspring] = P[j][i];
+            ++DEMethodFailed[DEMethodUsed[i]];
+            if ( DEMethodUsed[i] < 3 )
+                pXList[DEMethodUsed[i]].push_back(DEpX[i]);
+        }
+
+        if ( err < bestErr ) {
+            bestIdx = i;
+            bestErr = err;
+        }
+
+        lib.err[i] = lib.err[iOffspring] = 0;
+    }
+
+    // Populate output
+    for ( int i = 0; i < nParams; i++ )
+        output.params[epoch][i] = P[i][bestIdx];
+    output.error[epoch] = settings.useLikelihood ? bestErr : std::sqrt(bestErr/errNorm[stimIdx]);
+    output.stimIdx[epoch] = stimIdx;
+
+    // Select new target
+    stimIdx = findNextStim();
+
+    // Calculate mutation probabilities
+    double successRateTotal = 0;
+    if ( epoch == 0 ) {
+        for ( int i = 0; i < 4; i++ ) {
+            successRateTotal += 0.25;
+            methodCutoff[i] = successRateTotal;
+        }
+    } else {
+        for ( int i = 0; i < 4; i++ ) {
+            double successRate = DEMethodSuccess[i] / (DEMethodSuccess[i] + DEMethodFailed[i]) + 0.01;
+            successRateTotal += successRate;
+            methodCutoff[i] = successRateTotal;
+
+            if ( i < 3 ) {
+                auto nth = pXList[i].begin() + pXList[i].size()/2;
+                std::nth_element(pXList[i].begin(), nth, pXList[i].end());
+                if ( pXList[i].size() % 2 )
+                    pXmed[i] = *nth;
+                else
+                    pXmed[i] = (*nth + *std::max_element(pXList[i].begin(), nth))/2;
+                pXList[i].clear();
+            }
+        }
+    }
+
+    // Procreate
+    for ( int i = 0; i < nPop; i++ ) {
+        double method = session.RNG.uniform(0., successRateTotal);
+        double F = session.RNG.variate<double>(0.5, 0.3);
+        int r1, r2, r3, r4, r5, forcedJ;
+        do { r1 = session.RNG.uniform<int>(0, nPop-1); } while ( r1 == i );
+        do { r2 = session.RNG.uniform<int>(0, nPop-1); } while ( r2 == i || r2 == r1 );
+        do { r3 = session.RNG.uniform<int>(0, nPop-1); } while ( r3 == i || r3 == r1 || r3 == r2 );
+        do { forcedJ = session.RNG.uniform<int>(0, nParams-1); } while ( settings.constraints[forcedJ] >= 2 );
+
+        if ( method < methodCutoff[0] ) {
+        // rand/1/bin
+            DEMethodUsed[i] = 0;
+            DEpX[i] = session.RNG.variate<double>(pXmed[0], 0.1);
+            for ( int j = 0; j < nParams; j++ ) {
+                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
+                    P[j][i + nPop] = P[j][r1] + F * baseF[stimIdx][j] * (P[j][r2] - P[j][r3]);
+            }
+        } else if ( method < methodCutoff[1] ) {
+        // rand-to-best/2/bin
+            DEMethodUsed[i] = 1;
+            do { r4 = session.RNG.uniform<int>(0, nPop-1); } while ( r4 == i || r4 == r1 || r4 == r2 || r4 == r3 );
+            DEpX[i] = session.RNG.variate<double>(pXmed[1], 0.1);
+            for ( int j = 0; j < nParams; j++ ) {
+                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
+                    P[j][i + nPop] = P[j][i] + F * baseF[stimIdx][j] * (P[j][bestIdx] - P[j][i] + P[j][r1] - P[j][r2] + P[j][r3] - P[j][r4]);
+            }
+        } else if ( method < methodCutoff[2] ) {
+        // rand/2/bin
+            DEMethodUsed[i] = 2;
+            do { r4 = session.RNG.uniform<int>(0, nPop-1); } while ( r4 == i || r4 == r1 || r4 == r2 || r4 == r3 );
+            do { r5 = session.RNG.uniform<int>(0, nPop-1); } while ( r5 == i || r5 == r1 || r5 == r2 || r5 == r3 || r5 == r4 );
+            DEpX[i] = session.RNG.variate<double>(pXmed[2], 0.1);
+            for ( int j = 0; j < nParams; j++ ) {
+                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
+                    P[j][i + nPop] = P[j][r1] + F * baseF[stimIdx][j] * (P[j][r2] - P[j][r3] + P[j][r4] - P[j][r5]);
+            }
+        } else {
+        // current-to-rand/1
+            DEMethodUsed[i] = 3;
+            double K = session.RNG.uniform(0.,1.);
+            for ( int j = 0; j < nParams; j++ ) {
+                if ( settings.constraints[j] < 2 )
+                    P[j][i + nPop] = P[j][i] + baseF[stimIdx][j] * K * ((P[j][r1] - P[j][i]) + F*(P[j][r2] - P[j][r3]));
+            }
+        }
+
+        // Apply limits
+        for ( int j = 0; j < nParams; j++ ) {
+            if ( settings.constraints[j] == 0 ) {
+                if ( P[j][i + nPop] < P[j].min )
+                    P[j][i + nPop] = P[j].min;
+                if ( P[j][i + nPop] > P[j].max )
+                    P[j][i + nPop] = P[j].max;
+            } else {
+                if ( P[j][i + nPop] < settings.min[j] )
+                    P[j][i + nPop] = settings.min[j];
+                if ( P[j][i + nPop] > settings.max[j] )
+                    P[j][i + nPop] = settings.max[j];
+            }
+        }
+    }
 }

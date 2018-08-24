@@ -69,18 +69,14 @@ protected:
 
     bool doFinish;
 
-    std::vector<iStimulation> stims;
-    std::vector<Stimulation> astims;
     quint32 stimIdx;
     quint32 epoch;
     std::vector<double> bias;
 
-    double windowedGA();
-    double windowedDE();
-    double clusterGA();
-    double clusterDE();
+    void setup(const std::vector<Stimulation> &astims);
+    double fit();
 
-    double getVariance();
+    double getVariance(Stimulation stim);
     void populate();
     double stimulate();
     void procreate();
@@ -106,14 +102,18 @@ protected:
 
 
 // *************** cluster / DE stuff ************************ //
-    std::vector<std::vector<std::vector<Section>>> constructClustersByStim();
+    std::vector<std::vector<std::vector<Section>>> constructClustersByStim(std::vector<Stimulation> astims);
 
     double stimulate_cluster(const std::vector<Section> &cluster, int stimIdx);
 
     void resetDE();
-    void procreateDE(int errNorm);
+    void procreateDE();
     std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
     std::vector<double> DEpX;
+
+    std::vector<Stimulation> stims;
+    std::vector<std::vector<std::pair<int,int>>> obsTimes;
+    std::vector<int> errNorm;
     std::vector<std::vector<double>> baseF;
 };
 

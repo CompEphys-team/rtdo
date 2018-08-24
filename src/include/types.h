@@ -386,6 +386,10 @@ struct GAFitterSettings {
     double cluster_min_dur = 5.;
     double cluster_fragment_dur = 0.5;
     double cluster_threshold = 0.95;
+
+    bool useDE = false;
+    bool useClustering = false;
+    int mutationSelectivity = 2; // 0: Nonspecific mutation, 1: Graded mutation rates, 2: Target parameter only
 };
 
 
