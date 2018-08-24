@@ -585,8 +585,9 @@ double GAFitter::stimulate()
         // Fast-forward library through unobserved period
         observe = false;
         int iTStep = 0;
+        size_t iTDAQ = lib.iT;
         while ( (int)lib.iT < obsIter->first ) {
-            getiCommandSegment(I, lib.iT, I.tObsBegin - lib.iT, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
+            getiCommandSegment(I, lib.iT, obsIter->first - lib.iT, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
             lib.step(iTStep * rd.dt, iTStep * rd.simCycles, false);
             lib.iT += iTStep;
             lib.setVariance = false;
@@ -594,9 +595,9 @@ double GAFitter::stimulate()
         lib.setVariance = false;
 
         // Fast-forward DAQ through unobserved period
-        for ( size_t iT = 0; iT < lib.iT; iT++ ) {
+        for ( ; iTDAQ < lib.iT; iTDAQ++ ) {
             daq->next();
-            pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iT*rd.dt));
+            pushToQ(qT + iTDAQ*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iTDAQ*rd.dt));
         }
 
         // Step both through observed period
