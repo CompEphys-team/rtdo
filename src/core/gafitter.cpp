@@ -16,7 +16,6 @@ GAFitter::GAFitter(Session &session) :
     qI(nullptr),
     qO(nullptr),
     bias(lib.adjustableParams.size(), 0),
-    p_err(lib.project.expNumCandidates()),
     output(*this)
 {
 }
@@ -100,9 +99,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     double simtime = 0;
     qT = 0;
 
-    // Prepare
     std::vector<Stimulation> astims = sanitiseDeck(output.deck.stimulations());
-    targetParam = 0;
 
     daq = new DAQFilter(session);
 
@@ -120,18 +117,18 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     std::cout << "Baseline current noise s.d.: " << std::sqrt(output.variance) << " nA" << std::endl;
 
     setup(astims);
+
     populate();
-    resetDE();
 
     simtime = fit();
+
+    // Finalise ranking and select winning parameter set
+    simtime += finalise(astims);
 
     double wallclockms = wallclock.msecsTo(QTime::currentTime());
     std::cout << "ms elapsed: " << wallclockms << std::endl;
     std::cout << "ms simulated: " << simtime << std::endl;
     std::cout << "Ratio: " << (simtime/wallclockms) << std::endl;
-
-    // Finalise ranking and select winning parameter set
-    finalise(astims);
 
     // Finish
     output.epochs = epoch;
@@ -151,9 +148,19 @@ void GAFitter::setup(const std::vector<Stimulation> &astims)
 {
     int nParams = lib.adjustableParams.size();
 
+    DEMethodUsed.assign(session.project.expNumCandidates()/2, 0);
+    DEMethodSuccess.assign(4, 0);
+    DEMethodFailed.assign(4, 0);
+    DEpX.assign(session.project.expNumCandidates()/2, 0);
+
+    bias.assign(nParams, 0);
+
     stims.resize(nParams);
     obsTimes.assign(nParams, {});
     errNorm.assign(nParams, 0);
+
+    epoch = targetParam = 0;
+    targetParam = findNextStim();
 
     if ( settings.mutationSelectivity == 2 ) {
         baseF.assign(nParams, std::vector<double>(nParams, 0));
@@ -401,6 +408,7 @@ bool GAFitter::errTupelSort(const errTupel &x, const errTupel &y)
 
 void GAFitter::procreate()
 {
+    std::vector<errTupel> p_err(lib.project.expNumCandidates());
     for ( size_t i = 0; i < p_err.size(); i++ ) {
         p_err[i].idx = i;
         p_err[i].err = lib.err[i];
@@ -490,20 +498,20 @@ void GAFitter::procreate()
     }
 }
 
-void GAFitter::finalise(const std::vector<Stimulation> &astims)
+double GAFitter::finalise(const std::vector<Stimulation> &astims)
 {
     stims = astims;
 
     std::vector<errTupel> f_err(lib.project.expNumCandidates());
     int t = 0;
-    double dt = session.runData().dt;
+    double dt = session.runData().dt, simt = 0;
 
     // Evaluate existing population on all stims
     for ( targetParam = 0; targetParam < lib.adjustableParams.size() && !isAborted(); targetParam++ ) {
         obsTimes[targetParam] = observeNoSteps(iStimulation(astims[targetParam], dt), settings.cluster_blank_after_step/dt);
         for ( const std::pair<int,int> &p : obsTimes[targetParam] )
             t += p.second - p.first;
-        stimulate();
+        simt += stimulate();
     }
 
     // Pull & sort by total cumulative error across all stims
@@ -523,6 +531,8 @@ void GAFitter::finalise(const std::vector<Stimulation> &astims)
         output.finalError[i] = err;
     }
     output.final = true;
+
+    return simt;
 }
 
 double GAFitter::stimulate()
@@ -655,14 +665,6 @@ std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim
     }
 
     return clusters;
-}
-
-void GAFitter::resetDE()
-{
-    DEMethodUsed.assign(session.project.expNumCandidates()/2, 0);
-    DEMethodSuccess.assign(4, 0);
-    DEMethodFailed.assign(4, 0);
-    DEpX.assign(session.project.expNumCandidates()/2, 0);
 }
 
 void GAFitter::procreateDE()

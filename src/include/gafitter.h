@@ -78,7 +78,7 @@ protected:
     void populate();
     double stimulate();
     void procreate();
-    void finalise(const std::vector<Stimulation> &astims);
+    double finalise(const std::vector<Stimulation> &astims);
     quint32 findNextStim();
     bool finished();
     void pushToQ(double t, double V, double I, double O);
@@ -90,7 +90,6 @@ protected:
         scalar err = 0;
     };
     static bool errTupelSort(const errTupel &x, const errTupel &y);
-    std::vector<errTupel> p_err; //!< Sortable errTupels used in procreate()
 
     std::vector<Output> m_results;
     Output output;
@@ -105,7 +104,6 @@ protected:
 
     double stimulate_cluster(const std::vector<Section> &cluster, int targetParam);
 
-    void resetDE();
     void procreateDE();
     std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
     std::vector<double> DEpX;
