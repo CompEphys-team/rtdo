@@ -341,6 +341,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
 
 void ParameterFitPlotter::updateFits()
 {
+    int col0 = 11;
     for ( size_t i = ui->fits->rowCount(); i < session->gaFitter().results().size(); i++ ) {
         const GAFitter::Output &fit = session->gaFitter().results().at(i);
         ui->fits->insertRow(i);
@@ -356,21 +357,23 @@ void ParameterFitPlotter::updateFits()
         ui->fits->setItem(i, 4, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).randomOrder)));
         ui->fits->setItem(i, 5, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).crossover, 'g', 2)));
         ui->fits->setItem(i, 6, new QTableWidgetItem(session->gaFitterSettings(fit.resultIndex).decaySigma ? "Y" : "N"));
-        ui->fits->setItem(i, 8, new QTableWidgetItem(session->getLog()->entry(fit.resultIndex).action));
+        ui->fits->setItem(i, 8, new QTableWidgetItem(session->gaFitterSettings(fit.resultIndex).useDE ? "DE" : "GA"));
+        ui->fits->setItem(i, 9, new QTableWidgetItem(session->gaFitterSettings(fit.resultIndex).useClustering ? "Y" : "N"));
+        ui->fits->setItem(i, 10, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).mutationSelectivity)));
         if ( session->daqData(fit.resultIndex).simulate == -1 ) {
             ui->fits->setItem(i, 7, new QTableWidgetItem(fit.VCRecord));
             for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
-                ui->fits->setItem(i, 9+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
+                ui->fits->setItem(i, col0+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
         } else if ( session->daqData(fit.resultIndex).simulate == 0 ) {
             ui->fits->setItem(i, 7, new QTableWidgetItem(QString("live DAQ")));
         } else if ( session->daqData(fit.resultIndex).simulate == 1 ) {
             ui->fits->setItem(i, 7, new QTableWidgetItem(QString("%1-%2").arg(session->daqData(fit.resultIndex).simulate).arg(session->daqData(fit.resultIndex).simd.paramSet)));
             for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
-                ui->fits->setItem(i, 9+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
+                ui->fits->setItem(i, col0+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
         }
         if ( fit.final )
             for ( size_t j = 0, np = session->project.model().adjustableParams.size(); j < np; j++ )
-                ui->fits->setItem(i, 9+np+1+j, new QTableWidgetItem(QString::number(fit.finalParams[j], 'g', 3)));
+                ui->fits->setItem(i, col0+np+1+j, new QTableWidgetItem(QString::number(fit.finalParams[j], 'g', 3)));
     }
 }
 

@@ -260,6 +260,22 @@
             <string>Method</string>
            </property>
           </column>
+          <column>
+           <property name="text">
+            <string>c</string>
+           </property>
+           <property name="toolTip">
+            <string>Clustering</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>s</string>
+           </property>
+           <property name="toolTip">
+            <string>Mutation selectivity (0: nonspecific, 1: graded, 2: target only)</string>
+           </property>
+          </column>
          </widget>
         </item>
         <item row="1" column="0" colspan="3">
