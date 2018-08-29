@@ -35,7 +35,7 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
     Result(r),
     params(f.settings.maxEpochs, std::vector<scalar>(f.lib.adjustableParams.size())),
     error(f.settings.maxEpochs),
-    stimIdx(f.settings.maxEpochs),
+    targetParam(f.settings.maxEpochs),
     targets(f.lib.adjustableParams.size()),
     epochs(0),
     variance(0),
@@ -102,7 +102,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     // Prepare
     std::vector<Stimulation> astims = sanitiseDeck(output.deck.stimulations());
-    stimIdx = 0;
+    targetParam = 0;
 
     daq = new DAQFilter(session);
 
@@ -226,7 +226,7 @@ void GAFitter::save(QFile &file)
         const Output &out = m_results.back();
         os << out.deck << out.epochs;
         for ( quint32 i = 0; i < out.epochs; i++ ) {
-            os << out.stimIdx[i] << out.error[i];
+            os << out.targetParam[i] << out.error[i];
             for ( const scalar &p : out.params[i] )
                 os << p;
         }
@@ -259,11 +259,11 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
 
     Output out(*this, r);
     is >> out.deck >> out.epochs;
-    out.stimIdx.resize(out.epochs);
+    out.targetParam.resize(out.epochs);
     out.params.resize(out.epochs);
     out.error.resize(out.epochs);
     for ( quint32 i = 0; i < out.epochs; i++ ) {
-        is >> out.stimIdx[i] >> out.error[i];
+        is >> out.targetParam[i] >> out.error[i];
         for ( scalar &p : out.params[i] )
             is >> p;
     }
@@ -333,7 +333,7 @@ quint32 GAFitter::findNextStim()
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         if ( settings.constraints[i] < 2 ) {
             ++nStims;
-            if ( i < stimIdx )
+            if ( i < targetParam )
                 ++previousStimIdx;
         }
     }
@@ -410,13 +410,13 @@ void GAFitter::procreate()
 
     output.error[epoch] = settings.useLikelihood
             ? p_err[0].err // negative log likelihood
-            : std::sqrt(p_err[0].err / errNorm[stimIdx]); // RMSE
-    output.stimIdx[epoch] = stimIdx;
+            : std::sqrt(p_err[0].err / errNorm[targetParam]); // RMSE
+    output.targetParam[epoch] = targetParam;
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
     }
 
-    stimIdx = findNextStim();
+    targetParam = findNextStim();
 
     double F = settings.decaySigma ? settings.sigmaInitial * std::exp2(-double(epoch)/settings.sigmaHalflife) : 1;
 
@@ -446,13 +446,13 @@ void GAFitter::procreate()
             }
 
             AdjustableParam &p = lib.adjustableParams[iParam];
-            if ( settings.mutationSelectivity < 2 || iParam == stimIdx ) {
+            if ( settings.mutationSelectivity < 2 || iParam == targetParam ) {
                 // Mutate target param
                 p[p_err[i].idx] = p.multiplicative ?
                             (p[p_err[source].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(
-                                0, baseF[stimIdx][iParam] * F * lib.adjustableParams[iParam].adjustedSigma)) :
+                                0, baseF[targetParam][iParam] * F * lib.adjustableParams[iParam].adjustedSigma)) :
                             session.RNG.variate<scalar, std::normal_distribution>(
-                                p[p_err[source].idx], baseF[stimIdx][iParam] * F * lib.adjustableParams[iParam].adjustedSigma);
+                                p[p_err[source].idx], baseF[targetParam][iParam] * F * lib.adjustableParams[iParam].adjustedSigma);
                 if ( settings.constraints[iParam] == 0 ) {
                     if ( p[p_err[i].idx] < p.min )
                         p[p_err[i].idx] = p.min;
@@ -478,7 +478,7 @@ void GAFitter::procreate()
             if ( settings.constraints[iParam] >= 2 )
                 continue;
             AdjustableParam &p = lib.adjustableParams[iParam];
-            if ( iParam == stimIdx ) {
+            if ( iParam == targetParam ) {
                 if ( settings.constraints[iParam] == 0 )
                     p[p_err[i].idx] = session.RNG.uniform(p.min, p.max);
                 else
@@ -495,8 +495,8 @@ void GAFitter::finalise()
     std::vector<std::vector<errTupel>> f_err(lib.adjustableParams.size(), std::vector<errTupel>(lib.project.expNumCandidates()));
 
     // Evaluate existing population on all stims
-    for ( stimIdx = 0; stimIdx < lib.adjustableParams.size() && !isAborted(); stimIdx++ ) {
-        if ( settings.constraints[stimIdx] >= 2 )
+    for ( targetParam = 0; targetParam < lib.adjustableParams.size() && !isAborted(); targetParam++ ) {
+        if ( settings.constraints[targetParam] >= 2 )
             continue;
 
         // Stimulate
@@ -505,14 +505,14 @@ void GAFitter::finalise()
         // Gather and reset error
         lib.pullErr();
         for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
-            f_err[stimIdx][i].idx = i;
-            f_err[stimIdx][i].err = lib.err[i];
+            f_err[targetParam][i].idx = i;
+            f_err[targetParam][i].err = lib.err[i];
             lib.err[i] = 0;
         }
         lib.pushErr();
 
         // Sort
-        std::sort(f_err[stimIdx].begin(), f_err[stimIdx].end(), &errTupelSort);
+        std::sort(f_err[targetParam].begin(), f_err[targetParam].end(), &errTupelSort);
     }
 
     // Select final
@@ -549,9 +549,9 @@ void GAFitter::finalise()
 double GAFitter::stimulate()
 {
     const RunData &rd = session.runData();
-    const Stimulation &aI = stims[stimIdx];
+    const Stimulation &aI = stims[targetParam];
     iStimulation I(aI, rd.dt);
-    const std::vector<std::pair<int,int>> &obs = obsTimes[stimIdx];
+    const std::vector<std::pair<int,int>> &obs = obsTimes[targetParam];
     auto obsIter = obs.begin();
     bool &observe = settings.useLikelihood ? lib.getLikelihood : lib.getErr;
 
@@ -726,11 +726,11 @@ void GAFitter::procreateDE()
     // Populate output
     for ( int i = 0; i < nParams; i++ )
         output.params[epoch][i] = P[i][bestIdx];
-    output.error[epoch] = settings.useLikelihood ? bestErr : std::sqrt(bestErr/errNorm[stimIdx]);
-    output.stimIdx[epoch] = stimIdx;
+    output.error[epoch] = settings.useLikelihood ? bestErr : std::sqrt(bestErr/errNorm[targetParam]);
+    output.targetParam[epoch] = targetParam;
 
     // Select new target
-    stimIdx = findNextStim();
+    targetParam = findNextStim();
 
     // Calculate mutation probabilities
     double successRateTotal = 0;
@@ -773,7 +773,7 @@ void GAFitter::procreateDE()
             DEpX[i] = session.RNG.variate<double>(pXmed[0], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
                 if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
-                    P[j][i + nPop] = P[j][r1] + F * baseF[stimIdx][j] * (P[j][r2] - P[j][r3]);
+                    P[j][i + nPop] = P[j][r1] + F * baseF[targetParam][j] * (P[j][r2] - P[j][r3]);
             }
         } else if ( method < methodCutoff[1] ) {
         // rand-to-best/2/bin
@@ -782,7 +782,7 @@ void GAFitter::procreateDE()
             DEpX[i] = session.RNG.variate<double>(pXmed[1], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
                 if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
-                    P[j][i + nPop] = P[j][i] + F * baseF[stimIdx][j] * (P[j][bestIdx] - P[j][i] + P[j][r1] - P[j][r2] + P[j][r3] - P[j][r4]);
+                    P[j][i + nPop] = P[j][i] + F * baseF[targetParam][j] * (P[j][bestIdx] - P[j][i] + P[j][r1] - P[j][r2] + P[j][r3] - P[j][r4]);
             }
         } else if ( method < methodCutoff[2] ) {
         // rand/2/bin
@@ -792,7 +792,7 @@ void GAFitter::procreateDE()
             DEpX[i] = session.RNG.variate<double>(pXmed[2], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
                 if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
-                    P[j][i + nPop] = P[j][r1] + F * baseF[stimIdx][j] * (P[j][r2] - P[j][r3] + P[j][r4] - P[j][r5]);
+                    P[j][i + nPop] = P[j][r1] + F * baseF[targetParam][j] * (P[j][r2] - P[j][r3] + P[j][r4] - P[j][r5]);
             }
         } else {
         // current-to-rand/1
@@ -800,7 +800,7 @@ void GAFitter::procreateDE()
             double K = session.RNG.uniform(0.,1.);
             for ( int j = 0; j < nParams; j++ ) {
                 if ( settings.constraints[j] < 2 )
-                    P[j][i + nPop] = P[j][i] + baseF[stimIdx][j] * K * ((P[j][r1] - P[j][i]) + F*(P[j][r2] - P[j][r3]));
+                    P[j][i + nPop] = P[j][i] + baseF[targetParam][j] * K * ((P[j][r1] - P[j][i]) + F*(P[j][r2] - P[j][r3]));
             }
         }
 

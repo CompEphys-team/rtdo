@@ -28,7 +28,7 @@ public:
 
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]
         std::vector<scalar> error; //!< Best performing model's error in each epoch
-        std::vector<quint32> stimIdx; //!< Index of the stimulation at each epoch
+        std::vector<quint32> targetParam; //!< Index of the primary target parameter at each epoch
         std::vector<scalar> targets; //!< Simulator's parameters
         quint32 epochs;
         WaveSource deck;
@@ -67,7 +67,7 @@ protected:
 
     bool doFinish;
 
-    quint32 stimIdx;
+    quint32 targetParam;
     quint32 epoch;
     std::vector<double> bias;
 
@@ -103,7 +103,7 @@ protected:
 // *************** cluster / DE stuff ************************ //
     std::vector<std::vector<std::vector<Section>>> constructClustersByStim(std::vector<Stimulation> astims);
 
-    double stimulate_cluster(const std::vector<Section> &cluster, int stimIdx);
+    double stimulate_cluster(const std::vector<Section> &cluster, int targetParam);
 
     void resetDE();
     void procreateDE();
