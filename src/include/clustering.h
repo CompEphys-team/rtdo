@@ -24,6 +24,8 @@ std::vector<Section> extractLargestCluster(std::vector<std::vector<double>> &sim
 /// while excluding time points within @a blankCycles after a step in @a iStim.
 std::vector<Section> constructSectionPrimitives(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm, int stride);
 
+/// Extracts all observation times that exclude hard steps and @a blankCycles thereafter, as (start,end) pairs.
+std::vector<std::pair<int, int>> observeNoSteps(iStimulation iStim, int blankCycles);
 
 // ******************** High-level functions: ********************************
 

@@ -78,7 +78,7 @@ protected:
     void populate();
     double stimulate();
     void procreate();
-    void finalise();
+    void finalise(const std::vector<Stimulation> &astims);
     quint32 findNextStim();
     bool finished();
     void pushToQ(double t, double V, double I, double O);

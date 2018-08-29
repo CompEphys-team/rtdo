@@ -131,7 +131,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     std::cout << "Ratio: " << (simtime/wallclockms) << std::endl;
 
     // Finalise ranking and select winning parameter set
-    finalise();
+    finalise(astims);
 
     // Finish
     output.epochs = epoch;
@@ -490,58 +490,37 @@ void GAFitter::procreate()
     }
 }
 
-void GAFitter::finalise()
+void GAFitter::finalise(const std::vector<Stimulation> &astims)
 {
-    std::vector<std::vector<errTupel>> f_err(lib.adjustableParams.size(), std::vector<errTupel>(lib.project.expNumCandidates()));
+    stims = astims;
+
+    std::vector<errTupel> f_err(lib.project.expNumCandidates());
+    int t = 0;
+    double dt = session.runData().dt;
 
     // Evaluate existing population on all stims
     for ( targetParam = 0; targetParam < lib.adjustableParams.size() && !isAborted(); targetParam++ ) {
-        if ( settings.constraints[targetParam] >= 2 )
-            continue;
-
-        // Stimulate
+        obsTimes[targetParam] = observeNoSteps(iStimulation(astims[targetParam], dt), settings.cluster_blank_after_step/dt);
+        for ( const std::pair<int,int> &p : obsTimes[targetParam] )
+            t += p.second - p.first;
         stimulate();
-
-        // Gather and reset error
-        lib.pullErr();
-        for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
-            f_err[targetParam][i].idx = i;
-            f_err[targetParam][i].err = lib.err[i];
-            lib.err[i] = 0;
-        }
-        lib.pushErr();
-
-        // Sort
-        std::sort(f_err[targetParam].begin(), f_err[targetParam].end(), &errTupelSort);
     }
 
-    // Select final
-    std::vector<errTupel> sumRank(lib.project.expNumCandidates());
-    // Abusing errTupel (idx, err) as (idx, sumRank).
-    for ( size_t i = 0; i < sumRank.size(); i++ ) {
-        sumRank[i].idx = i;
-        sumRank[i].err = 0;
+    // Pull & sort by total cumulative error across all stims
+    lib.pullErr();
+    for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
+        f_err[i].idx = i;
+        f_err[i].err = lib.err[i];
     }
-    // For each parameter set, add up the ranking across all stims
-    for ( const std::vector<errTupel> &ranked : f_err ) {
-        for ( size_t i = 0; i < sumRank.size(); i++ ) {
-            if ( settings.constraints[i] < 2 )
-                sumRank[ranked[i].idx].err += i;
-        }
-    }
-    // Sort by sumRank, ascending
-    std::sort(sumRank.begin(), sumRank.end(), &errTupelSort);
+    auto winner = f_err.begin();
+    std::nth_element(f_err.begin(), winner, f_err.end(), &errTupelSort);
 
+    double err = settings.useLikelihood
+            ? winner->err
+            : std::sqrt(winner->err / t);
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-        output.finalParams[i] = lib.adjustableParams[i][sumRank[0].idx];
-        for ( size_t j = 0; j < sumRank.size(); j++ ) {
-            if ( f_err[i][j].idx == sumRank[0].idx ) {
-                output.finalError[i] = settings.useLikelihood
-                        ? f_err[i][j].err
-                        : std::sqrt(f_err[i][j].err / errNorm[i]);
-                break;
-            }
-        }
+        output.finalParams[i] = lib.adjustableParams[i][winner->idx];
+        output.finalError[i] = err;
     }
     output.final = true;
 }

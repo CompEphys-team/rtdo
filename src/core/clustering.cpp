@@ -102,25 +102,30 @@ std::vector<Section> extractLargestCluster(std::vector<std::vector<double> > &si
     return cluster;
 }
 
-std::vector<Section> constructSectionPrimitives(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm, int stride)
+std::vector<std::pair<int, int>> observeNoSteps(iStimulation iStim, int blankCycles)
 {
-    int tStart = 0, nSec = 0;
+    int tStart = 0;
     std::vector<std::pair<int,int>> segments;
     for ( const auto step : iStim ) {
         if ( step.t > iStim.duration )
             break;
         if ( !step.ramp ) {
-            if ( tStart < step.t ) {
+            if ( tStart < step.t )
                 segments.push_back(std::make_pair(tStart, step.t));
-                nSec += (step.t - tStart) / stride + 1;
-            }
             tStart = step.t + blankCycles;
         }
     }
-    if ( tStart < iStim.duration ) {
+    if ( tStart < iStim.duration )
         segments.push_back(std::make_pair(tStart, iStim.duration));
-        nSec += (iStim.duration - tStart) / stride + 1;
-    }
+    return segments;
+}
+
+std::vector<Section> constructSectionPrimitives(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm, int stride)
+{
+    std::vector<std::pair<int,int>> segments = observeNoSteps(iStim, blankCycles);
+    int nSec = 0;
+    for ( std::pair<int,int> const& seg : segments )
+        nSec += (seg.second-seg.first)/stride + 1;
 
     std::vector<Section> sections;
     sections.reserve(nSec);
