@@ -40,6 +40,10 @@ public:
         bool final;
         std::vector<scalar> finalParams; //!< Final best-performing model across all stimulations
         std::vector<scalar> finalError; //!< Error of the final model on each stimulation
+
+        QVector<Stimulation> stims; //!< Stimulations used by parameter
+        QVector<QVector<QPair<int,int>>> obsTimes; //!< Observation times by stim, in sets of [start,end] pairs
+        QVector<QVector<double>> baseF; //!< Mutation rate by stim
     };
 
     inline const std::vector<Output> &results() const { return m_results; }

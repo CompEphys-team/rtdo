@@ -6,7 +6,7 @@
 
 const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 104;
+const quint32 GAFitter::version = 105;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -203,6 +203,15 @@ void GAFitter::setup(const std::vector<Stimulation> &astims)
             }
         }
     }
+
+    output.stims = QVector<Stimulation>::fromStdVector(stims);
+    output.obsTimes.resize(nParams);
+    output.baseF.resize(nParams);
+    for ( int i = 0; i < nParams; i++ ) {
+        for ( const std::pair<int,int> &p : obsTimes[i] )
+            output.obsTimes[i].push_back(QPair<int,int>(p.first, p.second));
+        output.baseF[i] = QVector<double>::fromStdVector(baseF[i]);
+    }
 }
 
 double GAFitter::fit()
@@ -246,6 +255,9 @@ void GAFitter::save(QFile &file)
             os << e;
         os << out.VCRecord;
         os << out.variance;
+        os << out.stims;
+        os << out.obsTimes;
+        os << out.baseF;
     }
 }
 
@@ -296,6 +308,11 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
     }
     if ( ver >= 104 )
         is >> out.variance;
+    if ( ver >= 105 ) {
+        is >> out.stims;
+        is >> out.obsTimes;
+        is >> out.baseF;
+    }
     m_results.push_back(std::move(out));
 }
 
