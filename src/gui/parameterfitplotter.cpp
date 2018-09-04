@@ -352,7 +352,7 @@ void ParameterFitPlotter::updateFits()
         c = new ColorButton();
         c->setColor(ui->sepcols->isChecked() ? QColorDialog::standardColor(i%20 + 21) : Qt::magenta);
         ui->fits->setCellWidget(i, 1, c);
-        ui->fits->setItem(i, 2, new QTableWidgetItem(QString::number(fit.deck.idx)));
+        ui->fits->setItem(i, 2, new QTableWidgetItem(fit.stimSource.prettyName()));
         ui->fits->setItem(i, 3, new QTableWidgetItem(QString::number(fit.epochs)));
         ui->fits->setItem(i, 4, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).randomOrder)));
         ui->fits->setItem(i, 5, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).crossover, 'g', 2)));

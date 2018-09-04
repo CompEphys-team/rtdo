@@ -24,8 +24,8 @@ GAFitter::~GAFitter()
 {
 }
 
-GAFitter::Output::Output(WaveSource deck, QString VCRecord, CannedDAQ::ChannelAssociation assoc) :
-    deck(deck),
+GAFitter::Output::Output(WaveSource stimSource, QString VCRecord, CannedDAQ::ChannelAssociation assoc) :
+    stimSource(stimSource),
     VCRecord(VCRecord),
     assoc(assoc)
 {}
@@ -42,15 +42,15 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
     finalParams(f.lib.adjustableParams.size()),
     finalError(f.lib.adjustableParams.size())
 {
-    deck.session =& f.session;
+    stimSource.session =& f.session;
     for ( size_t i = 0; i < targets.size(); i++ ) // Initialise for back compat
         targets[i] = f.lib.adjustableParams.at(i).initial;
 }
 
 void GAFitter::run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc)
 {
-    if ( src.type != WaveSource::Deck )
-        throw std::runtime_error("Wave source for GAFitter must be a deck.");
+    if ( src.type != WaveSource::Deck && !session.qGaFitterSettings().useClustering )
+        std::cerr << "Warning: Fitting a non-deck wave source without clustering" << std::endl;
     if ( action != this->action )
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord, assoc));
@@ -88,7 +88,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     }
 
     output = Output(*this, *res);
-    output.deck = static_cast<Output*>(res)->deck;
+    output.stimSource = static_cast<Output*>(res)->stimSource;
     output.VCRecord = static_cast<Output*>(res)->VCRecord;
     output.assoc = static_cast<Output*>(res)->assoc;
     delete res;
@@ -99,7 +99,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     double simtime = 0;
     qT = 0;
 
-    std::vector<Stimulation> astims = sanitiseDeck(output.deck.stimulations());
+    std::vector<Stimulation> astims = sanitiseDeck(output.stimSource.stimulations());
 
     daq = new DAQFilter(session);
 
@@ -231,7 +231,7 @@ void GAFitter::save(QFile &file)
     QDataStream os;
     if ( openSaveStream(file, os, magic, version) ) {
         const Output &out = m_results.back();
-        os << out.deck << out.epochs;
+        os << out.stimSource << out.epochs;
         for ( quint32 i = 0; i < out.epochs; i++ ) {
             os << out.targetParam[i] << out.error[i];
             for ( const scalar &p : out.params[i] )
@@ -265,7 +265,7 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
         throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
     Output out(*this, r);
-    is >> out.deck >> out.epochs;
+    is >> out.stimSource >> out.epochs;
     out.targetParam.resize(out.epochs);
     out.params.resize(out.epochs);
     out.error.resize(out.epochs);
@@ -288,7 +288,7 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
         is >> out.VCRecord;
         if ( session.daqData().simulate < 0 ) {
             CannedDAQ tmp(session);
-            tmp.setRecord(sanitiseDeck(out.deck.stimulations()), out.VCRecord, false, false);
+            tmp.setRecord(sanitiseDeck(out.stimSource.stimulations()), out.VCRecord, false, false);
             for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
                 if ( settings.constraints[i] != 3 ) // Never overwrite fixed target
                     out.targets[i] = tmp.getAdjustableParam(i);
@@ -655,7 +655,7 @@ std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim
     std::vector<double> norm(nParams, 1);
 
     std::vector<std::vector<std::vector<Section>>> clusters;
-    for ( int i = 0; i < nParams; i++ ) {
+    for ( int i = 0, nStims = astims.size()-1; i < nStims; i++ ) { // nStims = size-1 to exclude noise sample added in sanitiseDeck()
         iStimulation stim(astims[i], dt);
         session.wavegen().diagnose(stim, dt, session.runData().simCycles);
         clusters.push_back(constructClusters(

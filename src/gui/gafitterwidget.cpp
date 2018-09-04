@@ -13,7 +13,7 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
 
     ui->params_plotter->init(&session, true);
 
-    connect(&session.wavesets(), SIGNAL(addedDeck()), this, SLOT(updateDecks()));
+    connect(&session.wavesets(), SIGNAL(addedSet()), this, SLOT(updateDecks()));
     connect(&session.gaFitter(), SIGNAL(done()), this, SLOT(done()));
     connect(&session.gaFitter(), SIGNAL(progress(quint32)), this, SLOT(progress(quint32)));
 
@@ -27,6 +27,7 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     });
     ui->records->setEnabled(this->session.qDaqData().simulate < 0);
 
+    connect(&session, &Session::GAFitterSettingsChanged, this, &GAFitterWidget::updateDecks);
     updateDecks();
 
     connect(ui->finish, SIGNAL(clicked(bool)), &session.gaFitter(), SLOT(finish()), Qt::DirectConnection);
@@ -41,8 +42,22 @@ void GAFitterWidget::updateDecks()
 {
     ui->VCCreate->setEnabled(!session.wavesets().decks().empty());
     ui->start->setEnabled(!session.wavesets().decks().empty());
-    for ( size_t i = ui->decks->count(); i < session.wavesets().decks().size(); i++ )
-        ui->decks->addItem(WaveSource(session, WaveSource::Deck, i).prettyName());
+
+    int idx = ui->decks->currentIndex();
+    ui->decks->clear();
+    QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->decks->model());
+    int i = 0;
+    for ( WaveSource &src : session.wavesets().sources() ) {
+        ui->decks->addItem(src.prettyName(), QVariant::fromValue(src));
+        if ( !session.qGaFitterSettings().useClustering ) {
+            if ( i == idx && src.type != WaveSource::Deck )
+                idx = -1;
+            model->item(i++)->setFlags(src.type == WaveSource::Deck
+                                       ? Qt::ItemIsEnabled | Qt::ItemIsSelectable
+                                       : Qt::NoItemFlags);
+        }
+    }
+    ui->decks->setCurrentIndex(idx);
 }
 
 void GAFitterWidget::progress(quint32 idx)

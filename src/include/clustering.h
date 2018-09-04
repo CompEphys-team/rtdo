@@ -43,10 +43,10 @@ std::vector<std::vector<Section>> constructClusters(iStimulation iStim, scalar *
 void printCluster(std::vector<Section> cluster, int nParams, double dt);
 
 
-/// Extracts the best-fit cluster for each stim/parameter, where fitness is defined as follows:
+/// Extracts the best-fit single-stimulation cluster for each parameter, where fitness is defined as follows:
 /// f = weight_target^2 / sum weight_offtarget^2
 /// where weight is the deviation across the cluster, normalised by the largest deviation.
-/// @returns a tuple for each stim/parameter, containing, in order:
+/// @returns a tuple for each parameter, containing, in order:
 /// * The stimulation index
 /// * The normalised weight of each parameter
 /// * The cluster itself.

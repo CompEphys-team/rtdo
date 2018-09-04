@@ -23,7 +23,7 @@ public:
 
     struct Output : public Result
     {
-        Output(WaveSource deck, QString VCRecord, CannedDAQ::ChannelAssociation assoc);
+        Output(WaveSource stimSource, QString VCRecord, CannedDAQ::ChannelAssociation assoc);
         Output(const GAFitter &fitter, Result r = Result());
 
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]
@@ -31,7 +31,7 @@ public:
         std::vector<quint32> targetParam; //!< Index of the primary target parameter at each epoch
         std::vector<scalar> targets; //!< Simulator's parameters
         quint32 epochs;
-        WaveSource deck;
+        WaveSource stimSource;
         double variance;
 
         QString VCRecord;

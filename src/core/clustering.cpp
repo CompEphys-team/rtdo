@@ -230,7 +230,7 @@ std::vector<std::tuple<int, std::vector<double>, std::vector<Section>>> extractS
     using T = std::tuple<int, std::vector<double>, std::vector<Section>>;
     std::vector<T> clusters, picks;
     std::vector<Section> bookkeeping;
-    for ( int i = 0; i < nParams; i++ ) {
+    for ( int i = 0, nStims = clustersByStim.size(); i < nStims; i++ ) {
         for ( auto it = clustersByStim[i].begin(); it != clustersByStim[i].end(); ++it ) {
             std::vector<double> F(nParams, 0);
             Section tmp {0, 0, std::vector<double>(nParams, 0)};
