@@ -104,6 +104,7 @@ void StimulationCreator::updateSources()
 {
     ui->sources->clear();
     ui->sources->addItem("Copy from...");
+    ui->sources->addItem("Import external...");
     for ( WaveSource &src : session.wavesets().sources() ) {
         ui->sources->addItem(src.prettyName(), QVariant::fromValue(src));
     }
@@ -112,13 +113,61 @@ void StimulationCreator::updateSources()
 
 void StimulationCreator::copySource()
 {
-    if ( ui->sources->currentIndex() == 0 )
+    if ( ui->sources->currentIndex() == 0 ) {
         return;
+    } else if ( ui->sources->currentIndex() == 1 ) {
+        QString dop = QFileDialog::getOpenFileName(this, "Select project...", "", "*.dop");
+        if ( dop.isEmpty() )
+            return;
+
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        setEnabled(false);
+        repaint();
+        Project proj(dop, true);
+        setEnabled(true);
+        QApplication::restoreOverrideCursor();
+
+        QStringList sessions = QDir(proj.dir() + "/sessions/").entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::Reversed);
+        if ( sessions.isEmpty() )
+            return;
+        bool ok;
+        QString selectedSession = QInputDialog::getItem(this, "Select session...", "Session:", sessions, 0, false, &ok);
+        if ( !ok || selectedSession.isEmpty() )
+            return;
+
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        setEnabled(false);
+        repaint();
+        Session ses(proj, proj.dir() + "/sessions/" + selectedSession);
+        setEnabled(true);
+        QApplication::restoreOverrideCursor();
+
+        QStringList sources;
+        int i = 0;
+        for ( WaveSource &src : ses.wavesets().sources() )
+            sources << QString("%1: %2").arg(QString::number(i++), src.prettyName());
+        if ( sources.isEmpty() )
+            return;
+        QString sel = QInputDialog::getItem(this, "Select source...", "Source:", sources, 0, false, &ok);
+        if ( !ok || sel.isEmpty() )
+            return;
+        i = sel.split(':').first().toInt();
+        stims = ses.wavesets().sources()[i].stimulations();
+    } else {
+        stims = ui->sources->currentData().value<WaveSource>().stimulations();
+    }
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    setEnabled(false);
+    repaint();
+
     loadingStims = true;
-    stims = ui->sources->currentData().value<WaveSource>().stimulations();
     ui->nStim->setValue(stims.size());
     loadingStims = false;
     setNStims(stims.size());
+
+    setEnabled(true);
+    QApplication::restoreOverrideCursor();
 }
 
 void StimulationCreator::setNStims(int n)

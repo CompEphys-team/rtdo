@@ -13,32 +13,33 @@
 static ExperimentLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
+ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile, bool light) :
     project(p),
     model(project.model()),
     stateVariables(model.stateVariables),
     adjustableParams(model.adjustableParams),
-    lib(compile ? compile_and_load() : load()),
-    populate((decltype(populate))dlsym(lib, "populate")),
-    pointers(populate(stateVariables, adjustableParams)),
-    t(*(pointers.t)),
-    iT(*(pointers.iT)),
-    simCycles(*(pointers.simCycles)),
-    clampGain(*(pointers.clampGain)),
-    accessResistance(*(pointers.accessResistance)),
-    Imax(*pointers.Imax),
-    integrator(*(pointers.integrator)),
-    Vmem(*(pointers.Vmem)),
-    Vprev(*(pointers.Vprev)),
-    Imem(*(pointers.Imem)),
-    VC(*(pointers.VC)),
-    getErr(*(pointers.getErr)),
-    VClamp0(*pointers.VClamp0),
-    dVClamp(*pointers.dVClamp),
-    tStep(*pointers.tStep),
-    setVariance(*pointers.setVariance),
-    variance(*pointers.variance),
-    getLikelihood(*pointers.getLikelihood),
+    lib(light ? nullptr : compile ? compile_and_load() : load()),
+    populate(light ? nullptr : (decltype(populate))dlsym(lib, "populate")),
+    pointers(light ? Pointers() : populate(stateVariables, adjustableParams)),
+    isLight(light),
+    t(light ? dummyScalar : *pointers.t),
+    iT(light ? dummyULL : *pointers.iT),
+    simCycles(light ? dummyInt : *pointers.simCycles),
+    clampGain(light ? dummyScalar : *pointers.clampGain),
+    accessResistance(light ? dummyScalar : *pointers.accessResistance),
+    Imax(light ? dummyScalar : *pointers.Imax),
+    integrator(light ? dummyInt : *pointers.integrator),
+    Vmem(light ? dummyScalar : *pointers.Vmem),
+    Vprev(light ? dummyScalar : *pointers.Vprev),
+    Imem(light ? dummyScalar : *pointers.Imem),
+    VC(light ? dummyBool : *pointers.VC),
+    getErr(light ? dummyBool : *pointers.getErr),
+    VClamp0(light ? dummyScalar : *pointers.VClamp0),
+    dVClamp(light ? dummyScalar : *pointers.dVClamp),
+    tStep(light ? dummyScalar : *pointers.tStep),
+    setVariance(light ? dummyBool : *pointers.setVariance),
+    variance(light ? dummyScalar : *pointers.variance),
+    getLikelihood(light ? dummyBool : *pointers.getLikelihood),
 
     err(pointers.err),
     meta_hP(pointers.meta_hP),
@@ -48,6 +49,8 @@ ExperimentLibrary::ExperimentLibrary(const Project & p, bool compile) :
 
 ExperimentLibrary::~ExperimentLibrary()
 {
+    if ( isLight )
+        return;
     void (*libExit)(Pointers&);
     if ( (libExit = (decltype(libExit))dlsym(lib, "libExit")) )
         libExit(pointers);

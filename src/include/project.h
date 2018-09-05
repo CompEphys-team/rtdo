@@ -14,8 +14,8 @@ public:
     /// Create a new project
     Project();
 
-    /// Load project from saved config
-    Project(QString const& projectfile);
+    /// Load project from saved config. Use @a light=true to load a non-functional project for crossloading purposes only
+    Project(QString const& projectfile, bool light = false);
 
     void loadSettings(QString const& projectfile); //!< Load settings from an existing file (but not the libraries, and not freezing)
 

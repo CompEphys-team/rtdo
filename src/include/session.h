@@ -44,6 +44,7 @@ public:
      * (c) an existing directory without a session.log, in which case a new session will be created in the directory named.
      */
     Session(Project &p, const QString &sessiondir = QString());
+    ~Session();
 
     Wavegen &wavegen();
     ErrorProfiler &profiler();

@@ -7,7 +7,7 @@
 class WavegenLibrary
 {
 public:
-    WavegenLibrary(Project &p, bool compile);
+    WavegenLibrary(Project &p, bool compile, bool light = false);
     ~WavegenLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -88,6 +88,11 @@ private:
 
     Pointers (*populate)(WavegenLibrary &);
     Pointers pointers;
+
+    bool isLight;
+    scalar dummyScalar;
+    int dummyInt;
+    bool dummyBool;
 
 public:
     // Model globals

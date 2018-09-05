@@ -7,7 +7,7 @@
 class ProfilerLibrary
 {
 public:
-    ProfilerLibrary(Project const& p, bool compile);
+    ProfilerLibrary(Project const& p, bool compile, bool light = false);
     virtual ~ProfilerLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
@@ -54,6 +54,10 @@ private:
 
     Pointers (*populate)(std::vector<StateVariable>&, std::vector<AdjustableParam>&);
     Pointers pointers;
+
+    bool isLight;
+    scalar dummyScalar;
+    int dummyInt;
 
 public:
     // Model globals

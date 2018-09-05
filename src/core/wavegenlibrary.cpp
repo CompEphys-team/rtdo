@@ -13,33 +13,38 @@
 static WavegenLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-WavegenLibrary::WavegenLibrary(Project &p, bool compile) :
+WavegenLibrary::WavegenLibrary(Project &p, bool compile, bool light) :
     project(p),
     model(p.model()),
     stateVariables(model.stateVariables),
     adjustableParams(model.adjustableParams),
     currents(model.currents),
-    lib(compile ? compile_and_load() : load()),
-    populate((decltype(populate))dlsym(lib, "populate")),
-    pointers(populate(*this)),
-    dt(*(pointers.dt)),
-    clampGain(*(pointers.clampGain)),
-    accessResistance(*(pointers.accessResistance)),
-    targetParam(*(pointers.targetParam)),
-    settling(*(pointers.settling)),
-    deltaBar(*(pointers.deltaBar)),
-    ext_variance(*(pointers.ext_variance)),
-    getErr(*(pointers.getErr)),
+    lib(light ? nullptr : compile ? compile_and_load() : load()),
+    populate(light ? nullptr : (decltype(populate))dlsym(lib, "populate")),
+    pointers(light ? Pointers() : populate(*this)),
+    isLight(light),
+    dt(light ? dummyScalar : *pointers.dt),
+    clampGain(light ? dummyScalar : *pointers.clampGain),
+    accessResistance(light ? dummyScalar : *pointers.accessResistance),
+    targetParam(light ? dummyInt : *pointers.targetParam),
+    settling(light ? dummyBool : *pointers.settling),
+    deltaBar(light ? dummyScalar : *pointers.deltaBar),
+    ext_variance(light ? dummyScalar : *pointers.ext_variance),
+    getErr(light ? dummyBool : *pointers.getErr),
+    simCycles(light ? dummyInt : *pointers.simCycles),
     err(pointers.err),
     waveforms(pointers.waveforms),
     bubbles(pointers.bubbles),
-    diagDelta(pointers.diagDelta),
-    simCycles(*pointers.simCycles)
+    diagDelta(pointers.diagDelta)
 {
+    if ( light )
+        numGroups = 1;
 }
 
 WavegenLibrary::~WavegenLibrary()
 {
+    if ( isLight )
+        return;
     void (*libExit)(Pointers&);
     if ( (libExit = (decltype(libExit))dlsym(lib, "libExit")) )
         libExit(pointers);

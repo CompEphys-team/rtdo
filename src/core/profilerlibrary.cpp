@@ -13,23 +13,26 @@
 static ProfilerLibrary *_this;
 static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 
-ProfilerLibrary::ProfilerLibrary(const Project & p, bool compile) :
+ProfilerLibrary::ProfilerLibrary(const Project & p, bool compile, bool light) :
     project(p),
     model(project.model()),
     stateVariables(model.stateVariables),
     adjustableParams(model.adjustableParams),
-    lib(compile ? compile_and_load() : load()),
-    populate((decltype(populate))dlsym(lib, "populate")),
-    pointers(populate(stateVariables, adjustableParams)),
-    dt(*(pointers.dt)),
-    samplingInterval(*(pointers.samplingInterval)),
-    clampGain(*(pointers.clampGain)),
-    accessResistance(*(pointers.accessResistance))
+    lib(light ? nullptr : compile ? compile_and_load() : load()),
+    populate(light ? nullptr : (decltype(populate))dlsym(lib, "populate")),
+    pointers(light ? Pointers() : populate(stateVariables, adjustableParams)),
+    isLight(light),
+    dt(light ? dummyScalar : *pointers.dt),
+    samplingInterval(light ? dummyInt : *pointers.samplingInterval),
+    clampGain(light ? dummyScalar : *pointers.clampGain),
+    accessResistance(light ? dummyScalar : *pointers.accessResistance)
 {
 }
 
 ProfilerLibrary::~ProfilerLibrary()
 {
+    if ( isLight )
+        return;
     void (*libExit)(Pointers&);
     if ( (libExit = (decltype(libExit))dlsym(lib, "libExit")) )
         libExit(pointers);

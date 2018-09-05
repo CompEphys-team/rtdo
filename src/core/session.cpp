@@ -41,6 +41,11 @@ Session::Session(Project &p, const QString &sessiondir) :
     project.profiler().setRunData(m_settings.rund);
 }
 
+Session::~Session()
+{
+    quit();
+}
+
 void Session::crossloadConfig(const QString &crossSessionDir)
 {
     SessionLog crosslog;

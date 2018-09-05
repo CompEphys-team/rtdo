@@ -8,7 +8,7 @@ Project::Project() :
     addAPs();
 }
 
-Project::Project(const QString &projectfile) :
+Project::Project(const QString &projectfile, bool light) :
     p_projectfile(projectfile),
     loadExisting(true)
 {
@@ -17,9 +17,9 @@ Project::Project(const QString &projectfile) :
     loadExtraModels();
 
     // Load libraries from existing files
-    wglib.reset(new WavegenLibrary(*this, false));
-    explib.reset(new ExperimentLibrary(*this, false));
-    proflib.reset(new ProfilerLibrary(*this, false));
+    wglib.reset(new WavegenLibrary(*this, false, light));
+    explib.reset(new ExperimentLibrary(*this, false, light));
+    proflib.reset(new ProfilerLibrary(*this, false, light));
 
     frozen = true;
 }

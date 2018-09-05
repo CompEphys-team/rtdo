@@ -8,13 +8,13 @@
 class ExperimentLibrary
 {
 public:
-    ExperimentLibrary(Project const& p, bool compile);
+    ExperimentLibrary(Project const& p, bool compile, bool light = false);
     virtual ~ExperimentLibrary();
 
     void GeNN_modelDefinition(NNmodel &);
 
-    inline DAQ *createSimulator(int simNo, Session &session, bool useRealismSettings) { return pointers.createSim(simNo, session, useRealismSettings); }
-    inline void destroySimulator(DAQ *sim) { pointers.destroySim(sim); }
+    inline DAQ *createSimulator(int simNo, Session &session, bool useRealismSettings) { return isLight ? nullptr : pointers.createSim(simNo, session, useRealismSettings); }
+    inline void destroySimulator(DAQ *sim) { if (!isLight ) pointers.destroySim(sim); }
 
     void setRunData(RunData rund); //!< Sets the RunData variables in the library, affecting all future calls to step().
 
@@ -84,6 +84,12 @@ private:
 
     Pointers (*populate)(std::vector<StateVariable>&, std::vector<AdjustableParam>&);
     Pointers pointers;
+
+    bool isLight;
+    scalar dummyScalar;
+    unsigned long long dummyULL;
+    int dummyInt;
+    bool dummyBool;
 
 public:
     scalar &t;
