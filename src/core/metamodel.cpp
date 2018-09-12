@@ -351,7 +351,7 @@ std::string MetaModel::resolveCode(const std::string &code) const
                       QString("params.%1").arg(QString::fromStdString(p.name)));
     for ( const Variable &p : _params )
         qcode.replace(QString("$(%1)").arg(QString::fromStdString(p.name)),
-                      QString::number(p.initial, 'e', 10));
+                      QString("(%1)").arg(QString::number(p.initial, 'e', 10)));
     return qcode.toStdString();
 }
 
