@@ -83,19 +83,15 @@ void GAFitterWidget::on_start_clicked()
         ui->params_plotter->clear();
         ui->label_epoch->setText("Starting...");
     }
-    nQueued += ui->repeats->value();
-    ui->label_queued->setText(QString("%1 queued").arg(nQueued));
     WaveSource src = session.wavesets().sources().at(currentSource);
 
-    if ( session.qDaqData().simulate == -1 && ui->VCReadCfg->isChecked() ) {
-        QString record = ui->VCRecord->text();
-        record.replace(".atf", ".cfg");
-        if ( QFileInfo(record).exists() )
-            session.loadConfig(record);
+    for ( const QString &record : ui->VCRecord->toPlainText().split('\n', QString::SkipEmptyParts) ) {
+        for ( int i = 0; i < ui->repeats->value(); i++ ) {
+            session.gaFitter().run(src, record.trimmed(), ui->VCReadCfg->isChecked());
+            ++nQueued;
+        }
     }
-
-    for ( int i = 0; i < ui->repeats->value(); i++ )
-        session.gaFitter().run(src, record.trimmed(), ui->VCReadCfg->isChecked());
+    ui->label_queued->setText(QString("%1 queued").arg(nQueued));
 }
 
 void GAFitterWidget::on_abort_clicked()
@@ -106,20 +102,37 @@ void GAFitterWidget::on_abort_clicked()
 
 void GAFitterWidget::on_VCBrowse_clicked()
 {
-    QString file = QFileDialog::getOpenFileName(this, "Select voltage clamp recording", ui->VCRecord->text(), "*.atf");
-    if ( file.isEmpty() )
-        return;
-    ui->VCRecord->setText(file);
+    QStringList items = ui->VCRecord->toPlainText().split('\n', QString::SkipEmptyParts);
+    QFileDialog dlg(this, "Select voltage clamp recording(s)", items.isEmpty()?"":items.first(), "Recordings and file lists (*.atf *.recs)");
+    dlg.setFileMode(QFileDialog::ExistingFiles);
+    if ( !items.isEmpty() )
+        dlg.selectFile(QString("\"") + items.join("\" \"") + "\"");
+    if ( dlg.exec() ) {
+        QString text = "";
+        for ( const QString &fname : dlg.selectedFiles() ) {
+            if ( fname.endsWith(".atf") ) {
+                text += fname.trimmed() + "\n";
+            } else {
+                QFile file(fname);
+                file.open(QIODevice::ReadOnly);
+                QString contents = file.readAll();
+                if ( !contents.trimmed().isEmpty() )
+                    text.append(contents + "\n");
+            }
+        }
+        ui->VCRecord->setPlainText(text.trimmed());
+    }
 }
 
 void GAFitterWidget::on_VCChannels_clicked()
 {
-    if ( !QFile(ui->VCRecord->text()).exists() || ui->decks->currentIndex() < 0 )
+    QString record = ui->VCRecord->toPlainText().split('\n', QString::SkipEmptyParts).first();
+    if ( !QFile(record).exists() || ui->decks->currentIndex() < 0 )
         return;
     CannedDAQ daq(session);
     WaveSource src = session.wavesets().sources().at(ui->decks->currentIndex());
     std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(src.stimulations());
-    daq.setRecord(stims, ui->VCRecord->text(), false, true);
+    daq.setRecord(stims, record, false, true);
     CannedChannelAssociationDialog *dlg = new CannedChannelAssociationDialog(session, &daq, this);
     dlg->open();
 }
