@@ -74,6 +74,12 @@ void Session::crossloadConfig(const QString &crossSessionDir)
     m_log.queue("Config", "cfg", "", new Settings(q_settings));
 }
 
+void Session::loadConfig(const QString &configFile)
+{
+    if ( readConfig(configFile, true) )
+        m_log.queue("Config", "cfg", "", new Settings(q_settings));
+}
+
 void Session::addAPs()
 {
     addAP(runAP, "S.Run.accessResistance", &q_settings, &Settings::rund, &RunData::accessResistance);
@@ -138,6 +144,13 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.useDE", &q_settings, &Settings::gafs, &GAFitterSettings::useDE);
     addAP(gafAP, "S.GAFitter.useClustering", &q_settings, &Settings::gafs, &GAFitterSettings::useClustering);
     addAP(gafAP, "S.GAFitter.mutationSelectivity", &q_settings, &Settings::gafs, &GAFitterSettings::mutationSelectivity);
+
+    addAP(cdaqAP, "rec.Iidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Iidx);
+    addAP(cdaqAP, "rec.Vidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Vidx);
+    addAP(cdaqAP, "rec.V2idx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::V2idx);
+    addAP(cdaqAP, "rec.Iscale", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Iscale);
+    addAP(cdaqAP, "rec.Vscale", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Vscale);
+    addAP(cdaqAP, "rec.V2scale", &cdaq_assoc, &CannedDAQ::ChannelAssociation::V2scale);
 
     Project::addDaqAPs(daqAP, &q_settings.daqd);
 
@@ -319,55 +332,68 @@ void Session::load()
     }
 }
 
-void Session::readConfig(const QString &filename)
+bool Session::readConfig(const QString &filename, bool incremental)
 {
     std::ifstream is(filename.toStdString());
     QString name;
     AP *it;
-    bool hasRun(false), hasSearch(false), hasStim(false), hasGafs(false), hasDaq(false);
+    bool hasRun(false), hasSearch(false), hasStim(false), hasGafs(false), hasDaq(false), hasCDaq(false);
+    bool chgRun(false), chgSearch(false), chgStim(false), chgGafs(false), chgDaq(false), chgCDaq(false);
     is >> name;
     while ( is.good() ) {
         if ( (it = AP::find(name, &runAP)) ) {
-            if ( !hasRun ) {
+            if ( !incremental && !hasRun ) {
                 q_settings.rund = RunData();
                 hasRun = true;
             }
+            chgRun |= it->readNow(name, is);
         } else if ( (it = AP::find(name, &searchAP)) ) {
             if ( !hasSearch ) {
                 q_settings.searchd = WavegenData();
                 hasSearch = true;
             }
+            chgSearch |= it->readNow(name, is);
         } else if ( (it = AP::find(name, &stimAP)) ) {
-            if ( !hasStim ) {
+            if ( !incremental && !hasStim ) {
                 q_settings.stimd = StimulationData();
                 hasStim = true;
             }
+            chgStim |= it->readNow(name, is);
         } else if ( (it = AP::find(name, &gafAP)) ) {
-            if ( !hasGafs ) {
+            if ( !incremental && !hasGafs ) {
                 q_settings.gafs = GAFitterSettings();
                 hasGafs = true;
             }
+            chgGafs |= it->readNow(name, is);
         } else if ( (it = AP::find(name, &daqAP)) ) {
-            if ( !hasDaq ) {
+            if ( !incremental && !hasDaq ) {
                 q_settings.daqd = DAQData();
                 hasDaq = true;
             }
+            chgDaq |= it->readNow(name, is);
+        } else if ( (it = AP::find(name, &cdaqAP)) ) {
+            if ( !hasCDaq ) {
+                cdaq_assoc = CannedDAQ::s_assoc;
+                hasCDaq = true;
+            }
+            chgCDaq |= it->readNow(name, is);
         }
-        if ( it )
-            it->readNow(name, is);
         is >> name;
     }
-    if ( hasRun )
+    if ( chgRun )
         emit runDataChanged();
-    if ( hasSearch )
+    if ( chgSearch )
         emit wavegenDataChanged();
-    if ( hasStim )
+    if ( chgStim )
         emit stimulationDataChanged();
-    if ( hasGafs )
+    if ( chgGafs )
         emit GAFitterSettingsChanged();
-    if ( hasDaq )
+    if ( chgDaq )
         emit DAQDataChanged();
+    if ( chgCDaq )
+        CannedDAQ::s_assoc = cdaq_assoc;
     sanitiseSettings(q_settings);
+    return chgRun || chgSearch || chgStim || chgGafs || chgDaq; // chgCDaq omitted intentionally, as CDaq does not enter *.cfg output
 }
 
 QString Session::results(int idx, const QString &actor, const QString &action)

@@ -87,6 +87,13 @@ void GAFitterWidget::on_start_clicked()
     ui->label_queued->setText(QString("%1 queued").arg(nQueued));
     WaveSource src = session.wavesets().sources().at(currentSource);
 
+    if ( session.qDaqData().simulate == -1 ) {
+        QString record = ui->VCRecord->text();
+        record.replace(".atf", ".cfg");
+        if ( QFileInfo(record).exists() )
+            session.loadConfig(record);
+    }
+
     for ( int i = 0; i < ui->repeats->value(); i++ )
         session.gaFitter().run(src, ui->VCRecord->text(), CannedDAQ::s_assoc);
 }

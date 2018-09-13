@@ -100,6 +100,7 @@ public:
     inline QString name() const { return dir.dirName(); }
 
     void crossloadConfig(const QString &crossSessionDir);
+    void loadConfig(const QString &configFile);
 
     inline void appropriate(QObject *worker) { worker->moveToThread(&thread); }
 
@@ -128,7 +129,8 @@ protected:
     std::vector<std::pair<int, Settings>> hist_settings;
     bool initial = true;
 
-    std::vector<std::unique_ptr<AP>> runAP, searchAP, stimAP, gafAP, daqAP;
+    std::vector<std::unique_ptr<AP>> runAP, searchAP, stimAP, gafAP, daqAP, cdaqAP;
+    CannedDAQ::ChannelAssociation cdaq_assoc;
 
     std::unique_ptr<Wavegen> m_wavegen;
     std::unique_ptr<ErrorProfiler> m_profiler;
@@ -142,7 +144,7 @@ protected:
 
     void addAPs();
     void load();
-    void readConfig(const QString &filename);
+    bool readConfig(const QString &filename, bool incremental = false);
 
     void sanitiseSettings(Settings &s);
 
