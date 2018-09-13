@@ -114,7 +114,7 @@ std::function<bool(T&)> getReadFunc(QString &, int, std::istream &is, bool *ok, 
         return [](T&){return false;};
     T val;
     is >> val;
-    return [=](T& v){ bool changed = (v==val); v = val; return changed;};
+    return [=](T& v){ bool changed = (v!=val); v = val; return changed;};
 }
 
 template <typename T, typename... Tail>
