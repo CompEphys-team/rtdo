@@ -53,7 +53,7 @@ void GAFitter::run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociati
         std::cerr << "Warning: Fitting a non-deck wave source without clustering" << std::endl;
     if ( action != this->action )
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
-    session.queue(actorName(), action, QString("Deck %1").arg(src.idx), new Output(src, VCRecord, assoc));
+    session.queue(actorName(), action, src.prettyName(), new Output(src, VCRecord, assoc));
 }
 
 std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, bool useQueuedSettings)
