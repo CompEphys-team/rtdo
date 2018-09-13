@@ -4,11 +4,6 @@
 #include "session.h"
 #include <QFileInfo>
 
-CannedDAQ::ChannelAssociation CannedDAQ::s_assoc = {
-    0, -1, -1,
-    1, 1, 1
-};
-
 CannedDAQ::CannedDAQ(Session &s) :
     DAQ(s),
     currentRecord(0),

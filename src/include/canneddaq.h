@@ -22,11 +22,10 @@ public:
     std::vector<QuotedString> channelNames;
 
     struct ChannelAssociation {
-        int Iidx, Vidx, V2idx;
-        double Iscale, Vscale, V2scale;
+        int Iidx = 0, Vidx = -1, V2idx = -1;
+        double Iscale = 1, Vscale = 1, V2scale = 1;
     };
-    static ChannelAssociation s_assoc; //!< UX legacy - not used internally
-    ChannelAssociation assoc; //!< This one is (during data reading in setRecord).
+    ChannelAssociation assoc;
 
     void getSampleNumbers(const std::vector<Stimulation> &stims, double dt,
                           int *nTotal, int *nBuffer = nullptr, int *nSamples = nullptr);

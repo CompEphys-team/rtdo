@@ -106,6 +106,8 @@ public:
 
     randutils::mt19937_rng RNG;
 
+    CannedDAQ::ChannelAssociation cdaq_assoc;
+
 public slots:
     /// Set runtime data
     void setRunData(RunData d);
@@ -130,7 +132,6 @@ protected:
     bool initial = true;
 
     std::vector<std::unique_ptr<AP>> runAP, searchAP, stimAP, gafAP, daqAP, cdaqAP;
-    CannedDAQ::ChannelAssociation cdaq_assoc;
 
     std::unique_ptr<Wavegen> m_wavegen;
     std::unique_ptr<ErrorProfiler> m_profiler;

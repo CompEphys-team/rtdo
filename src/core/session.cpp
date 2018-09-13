@@ -372,8 +372,8 @@ bool Session::readConfig(const QString &filename, bool incremental)
             }
             chgDaq |= it->readNow(name, is);
         } else if ( (it = AP::find(name, &cdaqAP)) ) {
-            if ( !hasCDaq ) {
-                cdaq_assoc = CannedDAQ::s_assoc;
+            if ( !incremental && !hasCDaq ) {
+                cdaq_assoc = CannedDAQ::ChannelAssociation();
                 hasCDaq = true;
             }
             chgCDaq |= it->readNow(name, is);
@@ -390,8 +390,6 @@ bool Session::readConfig(const QString &filename, bool incremental)
         emit GAFitterSettingsChanged();
     if ( chgDaq )
         emit DAQDataChanged();
-    if ( chgCDaq )
-        CannedDAQ::s_assoc = cdaq_assoc;
     sanitiseSettings(q_settings);
     return chgRun || chgSearch || chgStim || chgGafs || chgDaq; // chgCDaq omitted intentionally, as CDaq does not enter *.cfg output
 }
