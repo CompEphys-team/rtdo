@@ -87,7 +87,7 @@ void GAFitterWidget::on_start_clicked()
     ui->label_queued->setText(QString("%1 queued").arg(nQueued));
     WaveSource src = session.wavesets().sources().at(currentSource);
 
-    if ( session.qDaqData().simulate == -1 ) {
+    if ( session.qDaqData().simulate == -1 && ui->VCReadCfg->isChecked() ) {
         QString record = ui->VCRecord->text();
         record.replace(".atf", ".cfg");
         if ( QFileInfo(record).exists() )

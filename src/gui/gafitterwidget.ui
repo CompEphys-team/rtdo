@@ -67,6 +67,20 @@
       <bool>false</bool>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="3">
+       <widget class="QPushButton" name="VCChannels">
+        <property name="text">
+         <string>Channels...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QPushButton" name="VCCreate">
+        <property name="text">
+         <string>Create VC stim file</string>
+        </property>
+       </widget>
+      </item>
       <item row="0" column="2">
        <widget class="QToolButton" name="VCBrowse">
         <property name="text">
@@ -84,17 +98,13 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="3">
-       <widget class="QPushButton" name="VCChannels">
+      <item row="1" column="1">
+       <widget class="QCheckBox" name="VCReadCfg">
         <property name="text">
-         <string>Channels...</string>
+         <string>Read configuration from file, if possible</string>
         </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QPushButton" name="VCCreate">
-        <property name="text">
-         <string>Create VC stim file</string>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
