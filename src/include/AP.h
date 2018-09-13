@@ -41,9 +41,9 @@ inline AP* addDeprecatedAP(QString name, AP* target, int nIgnoredEarlyIndices = 
 class AP
 {
 public:
-    inline void readNow(QString &rawName, std::istream &is, bool *ok=nullptr)
+    inline bool readNow(QString &rawName, std::istream &is, bool *ok=nullptr)
     {
-        this->readLater(rawName, is, ok)();
+        return this->readLater(rawName, is, ok)();
     }
 
     /**
@@ -53,7 +53,7 @@ public:
      * distinct numbers as there are hashes in the parameter's name. rawName
      * is only used for index extraction; no name checking is performed.
      **/
-    virtual std::function<void()> readLater(QString &rawName, std::istream &is, bool *ok=nullptr) = 0;
+    virtual std::function<bool()> readLater(QString &rawName, std::istream &is, bool *ok=nullptr) = 0;
 
     /**
      * @brief Write all values of this parameter to @arg os.
@@ -90,35 +90,35 @@ protected:
 namespace APFunc {
 
 template <typename T, typename S, typename... Tail>
-std::function<void(T&)> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
+std::function<bool(T&)> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
                                     T &head, S T::* index, Tail... tail);
 template <typename T, size_t SZ, typename... Tail>
-std::function<void(T (&)[SZ])> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
+std::function<bool(T (&)[SZ])> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
                                            T (&head)[SZ], Tail... tail);
 template <typename T, typename... Tail>
-std::function<void(std::vector<T>&)> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
+std::function<bool(std::vector<T>&)> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
                                                  std::vector<T> &head, Tail... tail);
 
 template <typename T, typename Base, typename S, typename... Tail>
-typename std::enable_if<(std::is_base_of<Base, T>::value), std::function<void(T&)>>::type
+typename std::enable_if<(std::is_base_of<Base, T>::value), std::function<bool(T&)>>::type
   getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
               T &head, S Base::* index, Tail... tail);
 
 template <typename T>
-std::function<void(T&)> getReadFunc(QString &, int, std::istream &is, bool *ok, T&)
+std::function<bool(T&)> getReadFunc(QString &, int, std::istream &is, bool *ok, T&)
 {
     bool good = is.good();
     if ( ok )
         *ok = good;
     if ( !good )
-        return [](T&){};
+        return [](T&){return false;};
     T val;
     is >> val;
-    return [=](T& v){ v = val; };
+    return [=](T& v){ bool changed = (v==val); v = val; return changed;};
 }
 
 template <typename T, typename... Tail>
-std::function<void(std::vector<T>&)> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
+std::function<bool(std::vector<T>&)> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
                                                  std::vector<T> &head, Tail... tail)
 {
     QRegularExpressionMatch idxMatch = QRegularExpression("\\[(\\d+)\\]").match(name, offset);
@@ -127,16 +127,16 @@ std::function<void(std::vector<T>&)> getReadFunc(QString &name, int offset, std:
         size_t index = idxMatch.captured(1).toUInt();
         if ( index >= head.size() )
             head.resize(index+1);
-        std::function<void(T&)> func = getReadFunc(name, offset, is, ok, head[index], tail...);
-        return [=](std::vector<T>& v){ func(v[index]); };
+        std::function<bool(T&)> func = getReadFunc(name, offset, is, ok, head[index], tail...);
+        return [=](std::vector<T>& v){ return func(v[index]); };
     } else {
         if (ok) *ok = false;
-        return [](std::vector<T>&){};
+        return [](std::vector<T>&){return false;};
     }
 }
 
 template <typename T, size_t SZ, typename... Tail>
-std::function<void(T (&)[SZ])> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
+std::function<bool(T (&)[SZ])> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
                                            T (&head)[SZ], Tail... tail)
 {
     QRegularExpressionMatch idxMatch = QRegularExpression("\\[(\\d+)\\]").match(name, offset);
@@ -145,35 +145,35 @@ std::function<void(T (&)[SZ])> getReadFunc(QString &name, int offset, std::istre
         size_t index = idxMatch.captured(1).toUInt();
         if ( index >= SZ ) {
             if ( ok ) *ok = false;
-            return [](T (&)[SZ]){};
+            return [](T (&)[SZ]){return false;};
         }
-        std::function<void(T&)> func = getReadFunc(name, offset, is, ok, head[index], tail...);
-        return [=](T (&v)[SZ]){ func(v[index]); };
+        std::function<bool(T&)> func = getReadFunc(name, offset, is, ok, head[index], tail...);
+        return [=](T (&v)[SZ]){ return func(v[index]); };
     } else {
         if (ok) *ok = false;
-        return [](T (&)[SZ]){};
+        return [](T (&)[SZ]){return false;};
     }
 }
 
 template <typename T, typename S, typename... Tail>
-std::function<void(T&)> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
+std::function<bool(T&)> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
                                     T &head, S T::* index, Tail... tail)
 {
     QRegularExpressionMatch structIndex
             = QRegularExpression("\\.[a-zA-Z_][a-zA-Z0-9_]*").match(name, offset);
     if ( structIndex.hasMatch() ) {
         offset = structIndex.capturedEnd(0);
-        std::function<void(S&)> func = getReadFunc(name, offset, is, ok, head.*index, tail...);
-        return [=](T& v){ func(v.*index); };
+        std::function<bool(S&)> func = getReadFunc(name, offset, is, ok, head.*index, tail...);
+        return [=](T& v){ return func(v.*index); };
     } else {
         if (ok) *ok = false;
-        return [](T&){};
+        return [](T&){return false;};
     }
 }
 
 
 template <typename T, typename Base, typename S, typename... Tail>
-typename std::enable_if<(std::is_base_of<Base, T>::value), std::function<void(T&)>>::type
+typename std::enable_if<(std::is_base_of<Base, T>::value), std::function<bool(T&)>>::type
   getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
               T &head, S Base::* index, Tail... tail)
 {
@@ -181,11 +181,11 @@ typename std::enable_if<(std::is_base_of<Base, T>::value), std::function<void(T&
             = QRegularExpression("\\.[a-zA-Z_][a-zA-Z0-9_]*").match(name, offset);
     if ( structIndex.hasMatch() ) {
         offset = structIndex.capturedEnd(0);
-        std::function<void(S&)> func = getReadFunc(name, offset, is, ok, head.*index, tail...);
-        return [=](T& v){ func(v.*index); };
+        std::function<bool(S&)> func = getReadFunc(name, offset, is, ok, head.*index, tail...);
+        return [=](T& v){ return func(v.*index); };
     } else {
         if (ok) *ok = false;
-        return [](T&){};
+        return [](T&){return false;};
     }
 }
 
@@ -263,7 +263,7 @@ class APInst : public AP
 public:
     APInst(QString name, T *head, Tail... tail) : AP(name), head(head), tail(tail...) {}
 
-    virtual std::function<void()> readLater(QString &rawName, std::istream &is, bool *ok=nullptr)
+    virtual std::function<bool()> readLater(QString &rawName, std::istream &is, bool *ok=nullptr)
     {
         return getReadFunc(rawName, is, ok, APFunc::gen_seq<sizeof...(Tail)>{});
     }
@@ -278,13 +278,13 @@ private:
     std::tuple<Tail...> tail;
 
     template <int... Is>
-    std::function<void()> getReadFunc(QString &rawName, std::istream &is, bool *ok,
+    std::function<bool()> getReadFunc(QString &rawName, std::istream &is, bool *ok,
                                       APFunc::index<Is...>)
     {
         int offset = rawName.indexOf(QRegularExpression("[\\.\\[]"));
-        std::function<void(T&)> func = APFunc::getReadFunc(rawName, offset, is, ok,
+        std::function<bool(T&)> func = APFunc::getReadFunc(rawName, offset, is, ok,
                                                           *head, std::get<Is>(tail)...);
-        return [=](){ func(*head); };
+        return [=](){ return func(*head); };
     }
 
     template <int... Is>
@@ -299,7 +299,7 @@ class APDeprec : public AP
 {
 public:
     APDeprec(QString name, AP *target, int nIgnoredEarlyIndices=0) : AP(name), target(target), nIgnore(nIgnoredEarlyIndices) {}
-    virtual std::function<void()> readLater(QString &rawName, std::istream &is, bool *ok=nullptr)
+    virtual std::function<bool()> readLater(QString &rawName, std::istream &is, bool *ok=nullptr)
     {
         // Replace existing indices in order
         QString tName(target->name());
