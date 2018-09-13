@@ -55,7 +55,7 @@ public:
     std::vector<Stimulation> sanitiseDeck(std::vector<Stimulation> stimulations, bool useQueuedSettings = false);
 
 public slots:
-    void run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc);
+    void run(WaveSource src, QString VCRecord, bool readRecConfig);
     void finish();
 
 signals:

@@ -95,7 +95,7 @@ void GAFitterWidget::on_start_clicked()
     }
 
     for ( int i = 0; i < ui->repeats->value(); i++ )
-        session.gaFitter().run(src, ui->VCRecord->text(), session.cdaq_assoc);
+        session.gaFitter().run(src, record.trimmed(), ui->VCReadCfg->isChecked());
 }
 
 void GAFitterWidget::on_abort_clicked()

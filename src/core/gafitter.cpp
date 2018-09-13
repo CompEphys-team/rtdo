@@ -47,13 +47,19 @@ GAFitter::Output::Output(const GAFitter &f, Result r) :
         targets[i] = f.lib.adjustableParams.at(i).initial;
 }
 
-void GAFitter::run(WaveSource src, QString VCRecord, CannedDAQ::ChannelAssociation assoc)
+void GAFitter::run(WaveSource src, QString VCRecord, bool readRecConfig)
 {
-    if ( src.type != WaveSource::Deck && !session.qGaFitterSettings().useClustering )
-        std::cerr << "Warning: Fitting a non-deck wave source without clustering" << std::endl;
     if ( action != this->action )
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
-    session.queue(actorName(), action, src.prettyName(), new Output(src, VCRecord, assoc));
+    if ( src.type != WaveSource::Deck && !session.qGaFitterSettings().useClustering )
+        std::cerr << "Warning: Fitting a non-deck wave source without clustering" << std::endl;
+    if ( readRecConfig && session.qDaqData().simulate == -1 ) {
+        QString cfg = VCRecord;
+        cfg.replace(".atf", ".cfg");
+        if ( QFileInfo(cfg).exists() )
+            session.loadConfig(cfg);
+    }
+    session.queue(actorName(), action, src.prettyName(), new Output(src, VCRecord, session.cdaq_assoc));
 }
 
 std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, bool useQueuedSettings)
