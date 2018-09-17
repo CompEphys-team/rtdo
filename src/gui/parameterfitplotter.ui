@@ -170,8 +170,14 @@
           <property name="selectionBehavior">
            <enum>QAbstractItemView::SelectRows</enum>
           </property>
+          <property name="textElideMode">
+           <enum>Qt::ElideLeft</enum>
+          </property>
           <property name="horizontalScrollMode">
            <enum>QAbstractItemView::ScrollPerPixel</enum>
+          </property>
+          <property name="wordWrap">
+           <bool>false</bool>
           </property>
           <attribute name="horizontalHeaderDefaultSectionSize">
            <number>26</number>
