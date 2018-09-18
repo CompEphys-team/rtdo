@@ -629,7 +629,7 @@ void ParameterFitPlotter::addFinal(const GAFitter::Output &fit)
         g = ui->panel->addGraph(xAxis, yAxis2);
         g->setVisible(gErr->visible());
         g->setPen(gErr->pen());
-        g->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssPlusCircle));
+        g->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCrossCircle));
         g->addData(fit.epochs, fit.finalError[i]);
     }
     ui->panel->replot(QCustomPlot::rpQueuedReplot);
@@ -780,8 +780,10 @@ void ParameterFitPlotter::plotSummary()
 
     for ( int row : rows ) {
         quint32 epochs = 0;
+        bool hasFinal = true;
         for ( int fit : groups[row] ) {
             epochs = std::max(session->gaFitter().results().at(fit).epochs, epochs);
+            hasFinal &= session->gaFitter().results().at(fit).final;
         }
         QVector<double> keys(epochs);
         for ( size_t i = 0; i < epochs; i++ )
@@ -789,12 +791,18 @@ void ParameterFitPlotter::plotSummary()
         for ( size_t i = 0; i < axRects.size(); i++ ) {
             QVector<double> mean(epochs), sem(epochs), median(epochs), max(epochs);
             QVector<double> errMean(epochs), errSEM(epochs), errMedian(epochs), errMax(epochs);
+            QVector<double> fMean(1), fSem(1), fMedian(1), fMax(1);
+            QVector<double> fErrMean(1), fErrSEM(1), fErrMedian(1), fErrMax(1);
             const AdjustableParam &p = session->project.model().adjustableParams[i];
             if ( p.multiplicative ) {
                 getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
                     // Parameter error relative to target (%) :
                     return 100 * std::fabs(1 - fit.params[ep][i] / fit.targets[i]);
                 }, mean, sem, median, max, filter);
+                if ( hasFinal )
+                    getSummary(groups[row], [=](const GAFitter::Output &fit, int){
+                        return 100 * std::fabs(1 - fit.finalParams[i] / fit.targets[i]);
+                    }, fMean, fSem, fMedian, fMax);
             } else {
                 getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
                     // Parameter error relative to range (%) :
@@ -803,6 +811,13 @@ void ParameterFitPlotter::plotSummary()
                             : (p.max - p.min);
                     return 100 * std::fabs((fit.params[ep][i] - fit.targets[i]) / range);
                 }, mean, sem, median, max, filter);
+                if ( hasFinal )
+                    getSummary(groups[row], [=](const GAFitter::Output &fit, int){
+                        double range = session->gaFitterSettings(fit.resultIndex).constraints[i] == 1
+                                ? (session->gaFitterSettings(fit.resultIndex).max[i] - session->gaFitterSettings(fit.resultIndex).min[i])
+                                : (p.max - p.min);
+                        return 100 * std::fabs((fit.finalParams[i] - fit.targets[i]) / range);
+                    }, fMean, fSem, fMedian, fMax);
             }
             getSummary(groups[row], [=](const GAFitter::Output &fit, int ep) -> double {
                 for ( ; ep >= 0; ep-- )
@@ -810,6 +825,11 @@ void ParameterFitPlotter::plotSummary()
                         return fit.error[ep];
                 return 0;
             }, errMean, errSEM, errMedian, errMax, filter);
+            if ( hasFinal )
+                getSummary(groups[row], [=](const GAFitter::Output &fit, int){
+                    return fit.finalError[i];
+                }, fErrMean, fErrSEM, fErrMedian, fErrMax);
+
             QColor col(getGroupColorBtn(row)->color);
             double opacity = ui->opacity->value()/100.;
             col.setAlphaF(opacity);
@@ -820,15 +840,27 @@ void ParameterFitPlotter::plotSummary()
 
             // Mean
             QCPGraph *graph = addGraph(xAxis, yAxis3, col, keys, mean, "mean", ui->param->isChecked());
+            if ( hasFinal )
+                addGraph(xAxis, yAxis3, col, {double(epochs)}, fMean, "mean", ui->param->isChecked())
+                        ->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssPlusCircle));
 
             // Error mean
             QCPGraph *errGraph = addGraph(xAxis, yAxis2, col, keys, errMean, "mean", ui->error->isChecked());
+            if ( hasFinal )
+                addGraph(xAxis, yAxis2, col, {double(epochs)}, fErrMean, "mean", ui->error->isChecked())
+                        ->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCrossCircle));
 
             // Median
             addGraph(xAxis, yAxis3, col, keys, median, "median", ui->param->isChecked());
+            if ( hasFinal )
+                addGraph(xAxis, yAxis3, col, {double(epochs)}, fMedian, "median", ui->param->isChecked())
+                        ->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssPlusCircle));
 
             // Error median
             addGraph(xAxis, yAxis2, col, keys, errMedian, "median", ui->error->isChecked());
+            if ( hasFinal )
+                addGraph(xAxis, yAxis2, col, {double(epochs)}, fErrMedian, "median", ui->error->isChecked())
+                        ->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCrossCircle));
 
             // SEM
             col.setAlphaF(0.2*opacity);
@@ -837,18 +869,30 @@ void ParameterFitPlotter::plotSummary()
             QCPGraph *semGraph = addGraph(xAxis, yAxis3, col, keys, sem, "sem", ui->param->isChecked());
             semGraph->setBrush(brush);
             semGraph->setChannelFillGraph(graph);
+            if ( hasFinal )
+                addGraph(xAxis, yAxis3, col, {double(epochs)}, fSem, "sem", ui->param->isChecked())
+                        ->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssPlusSquare));
 
             // Error SEM
             QCPGraph *errSemGraph = addGraph(xAxis, yAxis2, col, keys, errSEM, "sem", ui->error->isChecked());
             errSemGraph->setBrush(brush);
             errSemGraph->setChannelFillGraph(errGraph);
+            if ( hasFinal )
+                addGraph(xAxis, yAxis2, col, {double(epochs)}, fErrSEM, "sem", ui->error->isChecked())
+                        ->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCrossSquare));
 
             // Max
             col.setAlphaF(opacity);
             addGraph(xAxis, yAxis3, col, keys, max, "max", ui->param->isChecked());
+            if ( hasFinal )
+                addGraph(xAxis, yAxis3, col, {double(epochs)}, fMax, "max", ui->param->isChecked())
+                        ->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssPlus));
 
             // Error max
             addGraph(xAxis, yAxis2, col, keys, errMax, "max", ui->error->isChecked());
+            if ( hasFinal )
+                addGraph(xAxis, yAxis2, col, {double(epochs)}, fErrMax, "max", ui->error->isChecked())
+                        ->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
 
             if ( i == 0 ) {
                 if ( ui->groups->item(row, 2)->text().isEmpty() )
