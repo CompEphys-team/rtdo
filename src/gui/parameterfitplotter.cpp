@@ -490,7 +490,7 @@ void ParameterFitPlotter::plotIndividual()
 
             QColor col(getGraphColorBtn(row)->color);
             col.setAlphaF(ui->opacity->value()/100.);
-            QCPGraph *graph = addGraph(xAxis, yAxis, col, keys, values, "", ui->param->isChecked());
+            QCPGraph *graph = addGraph(xAxis, yAxis, col, keys, values, "main", ui->param->isChecked());
             if ( ui->rescale->isChecked() ) {
                 xAxis->rescale();
                 yAxis->rescale();
@@ -498,7 +498,7 @@ void ParameterFitPlotter::plotIndividual()
 
             QColor errCol(getErrorColorBtn(row)->color);
             errCol.setAlphaF(ui->opacity->value()/100.);
-            QCPGraph *errGraph = addGraph(xAxis, yAxis2, errCol, errKey, errors, "", ui->error->isChecked());
+            QCPGraph *errGraph = addGraph(xAxis, yAxis2, errCol, errKey, errors, "main", ui->error->isChecked());
             errGraph->setLineStyle(QCPGraph::lsStepLeft);
             if ( ui->rescale->isChecked() ) {
                 if ( initial ) {
