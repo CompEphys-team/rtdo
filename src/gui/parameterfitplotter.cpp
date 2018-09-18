@@ -488,24 +488,18 @@ void ParameterFitPlotter::plotIndividual()
                 }
             }
 
-            QCPGraph *graph = ui->panel->addGraph(xAxis, yAxis);
             QColor col(getGraphColorBtn(row)->color);
             col.setAlphaF(ui->opacity->value()/100.);
-            graph->setPen(QPen(col));
-            graph->setData(keys, values, true);
-            graph->setVisible(ui->param->isChecked());
+            QCPGraph *graph = addGraph(xAxis, yAxis, col, keys, values, "", ui->param->isChecked());
             if ( ui->rescale->isChecked() ) {
                 xAxis->rescale();
                 yAxis->rescale();
             }
 
-            QCPGraph *errGraph = ui->panel->addGraph(xAxis, yAxis2);
             QColor errCol(getErrorColorBtn(row)->color);
             errCol.setAlphaF(ui->opacity->value()/100.);
-            errGraph->setPen(QPen(errCol));
+            QCPGraph *errGraph = addGraph(xAxis, yAxis2, errCol, errKey, errors, "", ui->error->isChecked());
             errGraph->setLineStyle(QCPGraph::lsStepLeft);
-            errGraph->setData(errKey, errors, true);
-            errGraph->setVisible(ui->error->isChecked());
             if ( ui->rescale->isChecked() ) {
                 if ( initial ) {
                     yAxis2->setRange(0,1); // Reset range when selecting a new fit
@@ -760,6 +754,18 @@ void ParameterFitPlotter::on_loadGroups_clicked()
     }
 }
 
+QCPGraph *ParameterFitPlotter::addGraph(QCPAxis *x, QCPAxis *y, const QColor &col,
+                                        const QVector<double> &keys, const QVector<double> &values,
+                                        const QString &layer, bool visible)
+{
+    QCPGraph *g = ui->panel->addGraph(x, y);
+    g->setPen(QPen(col));
+    g->setData(keys, values, true);
+    g->setLayer(layer);
+    g->setVisible(visible);
+    return g;
+}
+
 void ParameterFitPlotter::plotSummary()
 {
     std::vector<int> rows = getSelectedRows(ui->groups);
@@ -813,69 +819,36 @@ void ParameterFitPlotter::plotSummary()
             QCPAxis *yAxis3 = axRects[i]->axis(QCPAxis::atLeft, 1);
 
             // Mean
-            QCPGraph *graph = ui->panel->addGraph(xAxis, yAxis3);
-            graph->setPen(QPen(col));
-            graph->setData(keys, mean, true);
-            graph->setLayer("mean");
-            graph->setVisible(ui->param->isChecked());
+            QCPGraph *graph = addGraph(xAxis, yAxis3, col, keys, mean, "mean", ui->param->isChecked());
 
             // Error mean
-            QCPGraph *errGraph = ui->panel->addGraph(xAxis, yAxis2);
-            errGraph->setPen(QPen(col));
-            errGraph->setData(keys, errMean, true);
-            errGraph->setLayer("mean");
-            errGraph->setVisible(ui->error->isChecked());
+            QCPGraph *errGraph = addGraph(xAxis, yAxis2, col, keys, errMean, "mean", ui->error->isChecked());
 
             // Median
-            QCPGraph *medianGraph = ui->panel->addGraph(xAxis, yAxis3);
-            medianGraph->setPen(QPen(col));
-            medianGraph->setData(keys, median, true);
-            medianGraph->setLayer("median");
-            medianGraph->setVisible(ui->param->isChecked());
+            addGraph(xAxis, yAxis3, col, keys, median, "median", ui->param->isChecked());
 
             // Error median
-            QCPGraph *errMedianGraph = ui->panel->addGraph(xAxis, yAxis2);
-            errMedianGraph->setPen(QPen(col));
-            errMedianGraph->setData(keys, errMedian, true);
-            errMedianGraph->setLayer("median");
-            errMedianGraph->setVisible(ui->error->isChecked());
+            addGraph(xAxis, yAxis2, col, keys, errMedian, "median", ui->error->isChecked());
 
             // SEM
-            QCPGraph *semGraph = ui->panel->addGraph(xAxis, yAxis3);
             col.setAlphaF(0.2*opacity);
             QBrush brush(col);
             col.setAlphaF(0.4*opacity);
-            semGraph->setPen(QPen(col));
+            QCPGraph *semGraph = addGraph(xAxis, yAxis3, col, keys, sem, "sem", ui->param->isChecked());
             semGraph->setBrush(brush);
             semGraph->setChannelFillGraph(graph);
-            semGraph->setData(keys, sem, true);
-            semGraph->setLayer("sem");
-            semGraph->setVisible(ui->param->isChecked());
 
             // Error SEM
-            QCPGraph *errSemGraph = ui->panel->addGraph(xAxis, yAxis2);
-            errSemGraph->setPen(QPen(col));
+            QCPGraph *errSemGraph = addGraph(xAxis, yAxis2, col, keys, errSEM, "sem", ui->error->isChecked());
             errSemGraph->setBrush(brush);
             errSemGraph->setChannelFillGraph(errGraph);
-            errSemGraph->setData(keys, errSEM, true);
-            errSemGraph->setLayer("sem");
-            errSemGraph->setVisible(ui->error->isChecked());
 
             // Max
-            QCPGraph *maxGraph = ui->panel->addGraph(xAxis, yAxis3);
             col.setAlphaF(opacity);
-            QPen pen(col);
-            maxGraph->setPen(pen);
-            maxGraph->setData(keys, max, true);
-            maxGraph->setLayer("max");
-            maxGraph->setVisible(ui->param->isChecked());
+            addGraph(xAxis, yAxis3, col, keys, max, "max", ui->param->isChecked());
 
             // Error max
-            QCPGraph *errMaxGraph = ui->panel->addGraph(xAxis, yAxis2);
-            errMaxGraph->setPen(pen);
-            errMaxGraph->setData(keys, errMax, true);
-            errMaxGraph->setLayer("max");
-            errMaxGraph->setVisible(ui->error->isChecked());
+            addGraph(xAxis, yAxis2, col, keys, errMax, "max", ui->error->isChecked());
 
             if ( i == 0 ) {
                 if ( ui->groups->item(row, 2)->text().isEmpty() )

@@ -36,6 +36,9 @@ protected:
                     QVector<double> &median, //!< Return: the median value per epoch. Must be of appropriate size.
                     QVector<double> &max, //!< Return: The maximum value per epoch. Must be of appropriate size.
                     Filter *filter = nullptr);
+    QCPGraph *addGraph(QCPAxis *x, QCPAxis *y, const QColor &col,
+                       const QVector<double> &keys, const QVector<double> &values,
+                       const QString &layer, bool visible);
 
 protected slots:
     void resizeEvent(QResizeEvent *event);
