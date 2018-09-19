@@ -827,6 +827,7 @@ public:
 
     void next()
     {
+        --samplesRemaining;
         if ( skipSamples-- > 0 )
             return;
 
@@ -886,7 +887,6 @@ public:
             voltage = currentCacheEntry->_voltage[iT];
         }
         ++iT;
-        --samplesRemaining;
     }
 
     void reset()
