@@ -35,7 +35,7 @@ public:
         double variance;
 
         QString VCRecord;
-        CannedDAQ::ChannelAssociation assoc; //!< Runtime only: Channel association & scaling
+        CannedDAQ::ChannelAssociation assoc;
 
         bool final;
         std::vector<scalar> finalParams; //!< Final best-performing model across all stimulations

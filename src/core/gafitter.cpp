@@ -6,7 +6,7 @@
 
 const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 105;
+const quint32 GAFitter::version = 106;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -264,6 +264,8 @@ void GAFitter::save(QFile &file)
         os << out.stims;
         os << out.obsTimes;
         os << out.baseF;
+        os << qint32(out.assoc.Iidx) << qint32(out.assoc.Vidx) << qint32(out.assoc.V2idx);
+        os << out.assoc.Iscale << out.assoc.Vscale << out.assoc.V2scale;
     }
 }
 
@@ -318,6 +320,14 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
         is >> out.stims;
         is >> out.obsTimes;
         is >> out.baseF;
+    }
+    if ( ver >= 106 ) {
+        qint32 I, V, V2;
+        is >> I >> V >> V2;
+        out.assoc.Iidx = I;
+        out.assoc.Vidx = V;
+        out.assoc.V2idx = V2;
+        is >> out.assoc.Iscale >> out.assoc.Vscale >> out.assoc.V2scale;
     }
     m_results.push_back(std::move(out));
 }
