@@ -118,13 +118,21 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
         if ( this->session.gaFitter().results().empty() )
             return;
         int ep = ui->paramEpoch->value();
-        ui->paramEpoch->setMaximum(this->session.gaFitter().results().at(idx).epochs);
+        const GAFitter::Output &fit = this->session.gaFitter().results().at(idx);
+        ui->paramEpoch->setMaximum(fit.epochs);
+        ui->paramEpoch->setMinimum(this->session.daqData(fit.resultIndex).simulate == -1 ? -3 : -2);
         if ( ep == ui->paramEpoch->value() )
             emit ui->paramEpoch->valueChanged(ui->paramEpoch->value());
     });
     connect(ui->paramEpoch, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, [=](int val) {
         if ( this->session.gaFitter().results().empty() )
             return;
+        if ( val == -3 ) {
+            ui->params->setEnabled(false);
+            paramsSrc = SrcRec;
+            return;
+        }
+        ui->params->setEnabled(true);
         const GAFitter::Output &fit = this->session.gaFitter().results().at(ui->paramSource->value());
         const std::vector<scalar> *params;
         if ( val == -2 )
@@ -528,21 +536,44 @@ void StimulationCreator::on_paramTrace_clicked()
 {
     QApplication::setOverrideCursor(Qt::WaitCursor);
     int nParams = session.project.model().adjustableParams.size();
+    DAQ *daq = simulator;
+    Stimulation actualStim = *stim;
 
     Trace trace;
     trace.stim = *stim;
-    trace.params.resize(nParams);
-    trace.dt = simulator->rund.dt;
-    for ( int i = 0; i < nParams; i++ ) {
-        double p = qobject_cast<QDoubleSpinBox*>(ui->params->cellWidget(0, i))->value();
-        trace.params[i] = p;
-        simulator->setAdjustableParam(i, p);
+    trace.params.resize(nParams, 0);
+    if ( paramsSrc == SrcRec ) {
+        const GAFitter::Output &fit = session.gaFitter().results().at(qobject_cast<QSpinBox*>(ui->paramSource)->value());
+        DAQFilter *rec = new DAQFilter(session, session.getSettings(fit.resultIndex));
+        if ( session.getLog()->entry(fit.resultIndex).timestamp < QDateTime(QDate(2018,9,20)) ) {
+            std::cout << "Warning: Channel association and scaling may not reflect what the algorithm saw." << std::endl;
+            QString cfg = fit.VCRecord;
+            cfg.replace(".atf", ".cfg");
+            if ( QFileInfo(cfg).exists() )
+                session.loadConfig(cfg);
+            rec->getCannedDAQ()->assoc = session.cdaq_assoc;
+        } else {
+            rec->getCannedDAQ()->assoc = fit.assoc;
+        }
+        std::vector<Stimulation> sanitisedStims = session.gaFitter().sanitiseDeck(stims);
+        rec->getCannedDAQ()->setRecord(sanitisedStims, fit.VCRecord);
+        actualStim = sanitisedStims[stim - stims.begin()];
+        daq = rec;
+    } else {
+        for ( int i = 0; i < nParams; i++ ) {
+            double p = qobject_cast<QDoubleSpinBox*>(ui->params->cellWidget(0, i))->value();
+            trace.params[i] = p;
+            simulator->setAdjustableParam(i, p);
+        }
     }
+    trace.dt = daq->rund.dt;
 
     if ( paramsSrc == SrcBase )
         trace.label = "Base model";
     else if ( paramsSrc == SrcAlteredBase )
         trace.label = "Manual";
+    else if ( paramsSrc == SrcRec )
+        trace.label = QString("Fit %1, recording").arg(ui->paramSource->value());
     else {
         QString epStr;
         int ep = ui->paramEpoch->value(), src = ui->paramSource->value();
@@ -555,19 +586,22 @@ void StimulationCreator::on_paramTrace_clicked()
         trace.label = QString("%3Fit %1, %2").arg(QString::number(src), epStr, paramsSrc==SrcFit ? "" : "*");
     }
 
-    simulator->run(trace.stim, session.runData().settleDuration);
+    daq->run(actualStim, session.runData().settleDuration);
     for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.runData().dt; iT < iTEnd; iT++ )
-        simulator->next();
-    trace.current.reserve(simulator->samplesRemaining);
-    trace.voltage.reserve(simulator->samplesRemaining);
-    while ( simulator->samplesRemaining ) {
-        simulator->next();
-        trace.current.push_back(simulator->current);
-        trace.voltage.push_back(simulator->voltage);
+        daq->next();
+    trace.current.reserve(daq->samplesRemaining);
+    trace.voltage.reserve(daq->samplesRemaining);
+    while ( daq->samplesRemaining ) {
+        daq->next();
+        trace.current.push_back(daq->current);
+        trace.voltage.push_back(daq->voltage);
     }
 
     addTrace(trace, traces.size());
     traces.push_back(std::move(trace));
+
+    if ( paramsSrc == SrcRec )
+        delete daq;
 
     QApplication::restoreOverrideCursor();
 }

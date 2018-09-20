@@ -59,7 +59,7 @@ private:
 
     std::vector<Trace> traces;
     DAQ *simulator;
-    enum {SrcBase, SrcAlteredBase, SrcFit, SrcAlteredFit} paramsSrc = SrcBase;
+    enum {SrcBase, SrcAlteredBase, SrcFit, SrcAlteredFit, SrcRec} paramsSrc = SrcBase;
     bool addingTrace = false;
 };
 

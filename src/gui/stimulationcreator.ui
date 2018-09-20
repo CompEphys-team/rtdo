@@ -241,10 +241,7 @@
            <item row="0" column="2">
             <widget class="QSpinBox" name="paramEpoch">
              <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;-2: Target; -1: Final; 0+: Epoch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
-             <property name="specialValueText">
-              <string>Target</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;-3: Recorded trace&lt;/p&gt;&lt;p&gt;-2: Target&lt;/p&gt;&lt;p&gt;-1: Final&lt;/p&gt;&lt;p&gt;0+: Epoch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="minimum">
               <number>-2</number>
