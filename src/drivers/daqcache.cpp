@@ -3,16 +3,16 @@
 #include <algorithm>
 #include "session.h"
 
-DAQCache::DAQCache(Session &session) :
-    DAQ(session),
-    daq(p.simulate ? (DAQ*)(session.project.experiment().createSimulator(p.simulate, session, true)) : (DAQ*)(new RTMaybe::ComediDAQ(session)))
+DAQCache::DAQCache(Session &session, const Settings &settings) :
+    DAQ(session, settings),
+    daq(p.simulate ? project.experiment().createSimulator(p.simulate, session, settings, true) : new RTMaybe::ComediDAQ(session, settings))
 {
 
 }
 
 DAQCache::~DAQCache()
 {
-    session.project.experiment().destroySimulator(daq);
+    project.experiment().destroySimulator(daq);
 }
 
 double DAQCache::getAdjustableParam(size_t idx)

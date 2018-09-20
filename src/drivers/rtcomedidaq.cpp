@@ -4,8 +4,8 @@
 
 namespace RTMaybe {
 
-ComediDAQ::ComediDAQ(Session &session) :
-    DAQ(session),
+ComediDAQ::ComediDAQ(Session &session, const Settings &settings) :
+    DAQ(session, settings),
     live(true),
     ready(), set(), go(), finish(),
     qI(), qV(), qV2(),

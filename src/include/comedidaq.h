@@ -15,7 +15,7 @@ namespace RTMaybe {
 class RTMaybe::ComediDAQ : public DAQ
 {
 public:
-    ComediDAQ(Session &session);
+    ComediDAQ(Session &session, const Settings &settings);
     ~ComediDAQ();
 
     inline double getAdjustableParam(size_t) { return 0; }

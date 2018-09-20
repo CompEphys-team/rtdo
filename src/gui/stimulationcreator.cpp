@@ -21,7 +21,7 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     session(session),
     loadingStims(false),
     updatingStim(false),
-    simulator(session.project.experiment().createSimulator(0, session, false))
+    simulator(session.project.experiment().createSimulator(0, session, session.qSettings(), false))
 {
     ui->setupUi(this);
     ui->splitter->setStretchFactor(0,0);

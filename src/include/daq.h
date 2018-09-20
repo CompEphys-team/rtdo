@@ -7,7 +7,7 @@
 class DAQ
 {
 public:
-    DAQ(Session &session);
+    DAQ(Session &session, const Settings &settings);
     virtual ~DAQ();
 
     /// For simulator instances only: Get/set the model parameters. For analog DAQs, this should be a return 0 / no-op.
@@ -33,13 +33,12 @@ public:
     /// Stop stimulation/acquisition, discarding any acquired inputs
     virtual void reset() = 0;
 
-    Session &session;
+    Project &project;
     const DAQData &p;
 
     /// Voltage clamp flag. Affects the choice of output channel (VC command or current output)
     bool VC;
 
-    /// For Simulator use:
     const RunData &rund;
     randutils::mt19937_rng &RNG;
 

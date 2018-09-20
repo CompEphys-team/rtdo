@@ -4,21 +4,21 @@
 #include "session.h"
 #include "canneddaq.h"
 
-DAQFilter::DAQFilter(Session &s) :
-    DAQ(s),
+DAQFilter::DAQFilter(Session &s, const Settings &settings) :
+    DAQ(s, settings),
     currentBuffer(p.filter.width),
     voltageBuffer(p.filter.width),
     V2Buffer(p.filter.width),
     filter(p.filter.method, p.filter.width)
 {
     if ( p.simulate == -1 )
-        daq = new CannedDAQ(session);
+        daq = new CannedDAQ(s, settings);
     else if ( p.cache.active )
-        daq = new DAQCache(session);
+        daq = new DAQCache(s, settings);
     else if ( p.simulate )
-        daq = s.project.experiment().createSimulator(p.simulate, s, true);
+        daq = project.experiment().createSimulator(p.simulate, s, settings, true);
     else
-        daq = new RTMaybe::ComediDAQ(session);
+        daq = new RTMaybe::ComediDAQ(s, settings);
 
     if ( !p.filter.active )
         return;
@@ -26,7 +26,7 @@ DAQFilter::DAQFilter(Session &s) :
 
 DAQFilter::~DAQFilter()
 {
-    session.project.experiment().destroySimulator(daq);
+    project.experiment().destroySimulator(daq);
 }
 
 void DAQFilter::run(Stimulation s, double settlingDuration)

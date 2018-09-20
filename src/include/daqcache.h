@@ -13,7 +13,7 @@
 class DAQCache : public DAQ
 {
 public:
-    DAQCache(Session &session);
+    DAQCache(Session &session, const Settings &settings);
     ~DAQCache();
 
     double getAdjustableParam(size_t idx);

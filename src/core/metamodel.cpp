@@ -704,7 +704,7 @@ string MetaModel::daqCode(int ordinal) const
     ClampParameters clamp;
 
 public:
-    Simulator_numbered(Session &session, bool useRealism) : DAQ(session), useRealism(useRealism)
+    Simulator_numbered(Session &session, const Settings &settings, bool useRealism) : DAQ(session, settings), useRealism(useRealism)
     {
         if ( p.simd.paramSet == 1 ) {
 )EOF";

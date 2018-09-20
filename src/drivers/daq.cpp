@@ -1,13 +1,13 @@
 #include "daq.h"
 #include "session.h"
 
-DAQ::DAQ(Session &session) :
+DAQ::DAQ(Session &session, const Settings &settings) :
     current(0.0),
     voltage(0.0),
     voltage_2(0.0),
-    session(session),
-    p(session.daqData()),
-    rund(session.runData()),
+    project(session.project),
+    p(settings.daqd),
+    rund(settings.rund),
     RNG(session.RNG),
     running(false)
 {

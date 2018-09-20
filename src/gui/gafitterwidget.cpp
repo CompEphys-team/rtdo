@@ -129,10 +129,10 @@ void GAFitterWidget::on_VCChannels_clicked()
     QString record = ui->VCRecord->toPlainText().split('\n', QString::SkipEmptyParts).first();
     if ( !QFile(record).exists() || ui->decks->currentIndex() < 0 )
         return;
-    CannedDAQ daq(session);
+    CannedDAQ daq(session, session.qSettings());
     WaveSource src = session.wavesets().sources().at(ui->decks->currentIndex());
     std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(src.stimulations());
-    daq.setRecord(stims, record, false, true);
+    daq.setRecord(stims, record, false);
     CannedChannelAssociationDialog *dlg = new CannedChannelAssociationDialog(session, &daq, this);
     dlg->open();
 }
@@ -155,7 +155,7 @@ void GAFitterWidget::on_VCCreate_clicked()
     double dt = session.qRunData().dt;
     if ( session.qDaqData().filter.active )
         dt /= session.qDaqData().filter.samplesPerDt;
-    CannedDAQ(session).getSampleNumbers(stims, dt, &nTotal, &nBuffer, &nSamples);
+    CannedDAQ(session, session.qSettings()).getSampleNumbers(stims, dt, &nTotal, &nBuffer, &nSamples);
 
     // For details on the ATF format used as a stimulation file, see http://mdc.custhelp.com/app/answers/detail/a_id/17029
     // Note, the time column's values are ignored for stimulation.

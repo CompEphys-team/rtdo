@@ -8,7 +8,7 @@
 class CannedDAQ : public DAQ
 {
 public:
-    CannedDAQ(Session &s);
+    CannedDAQ(Session &s, const Settings &settings);
     ~CannedDAQ() = default;
 
     double getAdjustableParam(size_t);
@@ -18,7 +18,7 @@ public:
     void next();
     void reset();
 
-    void setRecord(std::vector<Stimulation> stims, QString record, bool readData = true, bool useQueuedSettings = false);
+    void setRecord(std::vector<Stimulation> stims, QString record, bool readData = true);
     std::vector<QuotedString> channelNames;
 
     struct ChannelAssociation {
@@ -31,7 +31,7 @@ public:
                           int *nTotal, int *nBuffer = nullptr, int *nSamples = nullptr);
 
 protected:
-    int prepareRecords(std::vector<Stimulation> stims, bool useQueuedSettings);
+    int prepareRecords(std::vector<Stimulation> stims);
 
     struct Record
     {

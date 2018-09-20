@@ -17,7 +17,7 @@ void Calibrator::zeroV1(DAQData p)
     session.setDAQData(p);
 
     // Initialise
-    DAQFilter daq(session);
+    DAQFilter daq(session, session.qSettings());
     daq.VC = true;
     Stimulation stim;
     stim.duration = 1000;
@@ -52,7 +52,7 @@ void Calibrator::zeroV2(DAQData p)
     session.setDAQData(p);
 
     // Initialise
-    DAQFilter daq(session);
+    DAQFilter daq(session, session.qSettings());
     daq.VC = false;
     Stimulation stim;
     stim.duration = 1000;
@@ -85,7 +85,7 @@ void Calibrator::zeroIin(DAQData p)
     session.setDAQData(p);
 
     // Initialise
-    DAQFilter daq(session);
+    DAQFilter daq(session, session.qSettings());
     daq.VC = false;
     Stimulation stim;
     stim.duration = 1000;
@@ -118,7 +118,7 @@ void Calibrator::zeroVout(DAQData p)
     session.setDAQData(p);
 
     // Initialise
-    DAQFilter daq(session);
+    DAQFilter daq(session, session.qSettings());
     daq.VC = true;
     Stimulation stim;
     stim.duration = 1000;
@@ -150,7 +150,7 @@ void Calibrator::findAccessResistance()
 {
     emit findingAccessResistance(false);
 
-    DAQFilter daq(session);
+    DAQFilter daq(session, session.qSettings());
     daq.VC = false;
     Stimulation stim;
     stim.duration = 2000;

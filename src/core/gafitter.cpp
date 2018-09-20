@@ -107,7 +107,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     std::vector<Stimulation> astims = sanitiseDeck(output.stimSource.stimulations());
 
-    daq = new DAQFilter(session);
+    daq = new DAQFilter(session, session.getSettings());
 
     if ( session.daqData().simulate < 0 ) {
         daq->getCannedDAQ()->assoc = output.assoc;
@@ -305,8 +305,8 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
     if ( ver >= 103 ) {
         is >> out.VCRecord;
         if ( session.daqData().simulate < 0 ) {
-            CannedDAQ tmp(session);
-            tmp.setRecord(sanitiseDeck(out.stimSource.stimulations()), out.VCRecord, false, false);
+            CannedDAQ tmp(session, session.getSettings());
+            tmp.setRecord(sanitiseDeck(out.stimSource.stimulations()), out.VCRecord, false);
             for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
                 if ( settings.constraints[i] != 3 ) // Never overwrite fixed target
                     out.targets[i] = tmp.getAdjustableParam(i);

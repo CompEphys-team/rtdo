@@ -8,7 +8,7 @@
 class DAQFilter : public DAQ
 {
 public:
-    DAQFilter(Session &s);
+    DAQFilter(Session &s, const Settings &settings);
     ~DAQFilter();
 
     inline double getAdjustableParam(size_t idx) { return daq->getAdjustableParam(idx); }

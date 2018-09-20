@@ -4,8 +4,8 @@
 #include "session.h"
 #include <QFileInfo>
 
-CannedDAQ::CannedDAQ(Session &s) :
-    DAQ(s),
+CannedDAQ::CannedDAQ(Session &s, const Settings &settings) :
+    DAQ(s, settings),
     currentRecord(0),
     settleDuration(0)
 {
@@ -17,7 +17,7 @@ double CannedDAQ::getAdjustableParam(size_t idx)
     return ref_params[idx];
 }
 
-void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool readData, bool useQueuedSettings)
+void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool readData)
 {
     QFileInfo finfo(record);
     bool backcompat_noise = finfo.baseName().startsWith("2017");
@@ -54,7 +54,7 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
     if ( readData && (assoc.Iidx >= 0 || assoc.Vidx >= 0 || assoc.V2idx >= 0) ) {
         int recStart = records.size();
         int nRead = 0, nTotal;
-        nTotal = prepareRecords(stims, useQueuedSettings);
+        nTotal = prepareRecords(stims);
         std::vector<double> samples(nChannels);
         double t;
         is >> t;
@@ -111,9 +111,9 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
 
 void CannedDAQ::getReferenceParams(QString record)
 {
-    ref_params.resize(session.project.model().adjustableParams.size());
+    ref_params.resize(project.model().adjustableParams.size());
     for ( size_t i = 0; i < ref_params.size(); i++ )
-        ref_params[i] = session.project.model().adjustableParams[i].initial;
+        ref_params[i] = project.model().adjustableParams[i].initial;
 
     QString refname = record.replace(".atf", ".params");
     if ( !QFileInfo(refname).exists() )
@@ -125,7 +125,7 @@ void CannedDAQ::getReferenceParams(QString record)
         double value;
         is >> name >> value >> unit;
         for ( size_t i = 0; i < ref_params.size(); i++ ) {
-            if ( name == session.project.model().adjustableParams[i].name + ':' ) {
+            if ( name == project.model().adjustableParams[i].name + ':' ) {
                 ref_params[i] = value;
                 break;
             }
@@ -147,13 +147,12 @@ void CannedDAQ::getSampleNumbers(const std::vector<Stimulation> &stims, double d
     if ( nBuffer )  *nBuffer  = _nBuffer;
 }
 
-int CannedDAQ::prepareRecords(std::vector<Stimulation> stims, bool useQueuedSettings)
+int CannedDAQ::prepareRecords(std::vector<Stimulation> stims)
 {
     int nTotal, nBuffer;
-    const DAQData &dd = useQueuedSettings ? session.qDaqData() : p;
-    double dt = useQueuedSettings ? session.qRunData().dt : session.runData().dt;
-    if ( dd.filter.active )
-        dt /= dd.filter.samplesPerDt;
+    double dt = rund.dt;
+    if ( p.filter.active )
+        dt /= p.filter.samplesPerDt;
     getSampleNumbers(stims, dt, &nTotal, &nBuffer);
     for ( size_t i = 0; i < stims.size(); i++ ) {
         Record rec;
@@ -166,8 +165,8 @@ int CannedDAQ::prepareRecords(std::vector<Stimulation> stims, bool useQueuedSett
         records.push_back(rec);
     }
 
-    if ( nBuffer < dd.filter.width/2 )
-        std::cerr << "Warning: Filter width exceeds available data by " << 2*(dd.filter.width/2 - nBuffer) << " points." << std::endl;
+    if ( nBuffer < p.filter.width/2 )
+        std::cerr << "Warning: Filter width exceeds available data by " << 2*(p.filter.width/2 - nBuffer) << " points." << std::endl;
 
     return nTotal;
 }

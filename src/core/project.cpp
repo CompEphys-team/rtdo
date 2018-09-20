@@ -140,11 +140,11 @@ std::string Project::simulatorCode() const
     ss << endl;
     for ( size_t i = 0; i < m_extraModels.size(); i++ )
         ss << m_extraModels.at(i).daqCode(i+2) << endl;
-    ss << "inline DAQ *createSim(int simNo, Session &session, bool useRealism) {" << endl;
+    ss << "inline DAQ *createSim(int simNo, Session &session, const Settings &settings, bool useRealism) {" << endl;
     ss << "    switch ( simNo ) {" << endl;
     ss << "    default:" << endl;
     for ( size_t i = 0; i < m_extraModels.size()+1; i++ )
-        ss << "    case " << (i+1) << " : return new Simulator_" << (i+1) << "(session, useRealism);" << endl;
+        ss << "    case " << (i+1) << " : return new Simulator_" << (i+1) << "(session, settings, useRealism);" << endl;
     ss << "    }" << endl;
     ss << "}" << endl;
     ss << "inline void destroySim(DAQ *sim) { delete sim; }" << endl << endl;
