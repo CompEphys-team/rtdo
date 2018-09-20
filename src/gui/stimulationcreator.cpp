@@ -20,7 +20,8 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     ui(new Ui::StimulationCreator),
     session(session),
     loadingStims(false),
-    updatingStim(false)
+    updatingStim(false),
+    simulator(session.project.experiment().createSimulator(0, session, false))
 {
     ui->setupUi(this);
     ui->splitter->setStretchFactor(0,0);
@@ -93,11 +94,68 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     });
     ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
     ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
+
+    // *** Traces ***
+    int n = session.project.model().adjustableParams.size();
+    ui->params->setColumnCount(n);
+    ui->traceTable->setColumnCount(n+1);
+    QStringList labels;
+    for ( int i = 0; i < n; i++ ) {
+        const AdjustableParam &p = session.project.model().adjustableParams.at(i);
+        labels << QString::fromStdString(p.name);
+        QDoubleSpinBox *widget = new QDoubleSpinBox;
+        widget->setRange(-999999,999999);
+        widget->setDecimals(3);
+        widget->setValue(p.initial);
+        ui->params->setCellWidget(0, i, widget);
+    }
+    ui->params->setHorizontalHeaderLabels(labels);
+    labels.push_front("Source");
+    ui->traceTable->setHorizontalHeaderLabels(labels);
+    ui->tab_traces->setEnabled(false);
+
+    connect(ui->paramSource, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, [=](int idx) {
+        if ( this->session.gaFitter().results().empty() )
+            return;
+        int ep = ui->paramEpoch->value();
+        ui->paramEpoch->setMaximum(this->session.gaFitter().results().at(idx).epochs);
+        if ( ep == ui->paramEpoch->value() )
+            emit ui->paramEpoch->valueChanged(ui->paramEpoch->value());
+    });
+    connect(ui->paramEpoch, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, [=](int val) {
+        if ( this->session.gaFitter().results().empty() )
+            return;
+        const GAFitter::Output &fit = this->session.gaFitter().results().at(ui->paramSource->value());
+        const std::vector<scalar> *params;
+        if ( val == -2 )
+            params =& fit.targets;
+        else if ( val == -1 || val >= int(fit.epochs) )
+            params =& fit.finalParams;
+        else
+            params =& fit.params[val];
+        for ( size_t i = 0; i < params->size(); i++ )
+            qobject_cast<QDoubleSpinBox*>(ui->params->cellWidget(0, i))->setValue(params->at(i));
+        paramsSrc = SrcFit;
+    });
+    connect(ui->paramReset, &QPushButton::clicked, this, [=](){
+        for ( size_t i = 0; i < this->session.project.model().adjustableParams.size(); i++ )
+            qobject_cast<QDoubleSpinBox*>(ui->params->cellWidget(0, i))->setValue(this->session.project.model().adjustableParams[i].initial);
+        paramsSrc = SrcBase;
+    });
+    auto updateParamSources = [=](){
+        ui->paramSource->setMaximum(this->session.gaFitter().results().size()-1);
+    };
+    connect(&session.gaFitter(), &GAFitter::done, this, updateParamSources);
+    updateParamSources();
+
+    connect(ui->traceTable, &QTableWidget::itemChanged, this, &StimulationCreator::traceEdited);
 }
 
 StimulationCreator::~StimulationCreator()
 {
     delete ui;
+    session.project.experiment().destroySimulator(simulator);
+    simulator = nullptr;
 }
 
 void StimulationCreator::updateSources()
@@ -224,11 +282,17 @@ void StimulationCreator::setStimulation()
         ui->tObsEnd->setValue(stim->tObsEnd);
         updatingStim = false;
         setNSteps(stim->size());
+
+        ui->tab_traces->setEnabled(true);
     } else {
         ui->editor->setEnabled(false);
+        ui->tab_traces->setEnabled(false);
     }
 
     redraw();
+
+    if ( rows.size() == 1 )
+        setupTraces();
 }
 
 void StimulationCreator::setNSteps(int n)
@@ -445,4 +509,117 @@ void StimulationCreator::clustering()
         std::cout << "\n*** No sympathetic sections found.\n";
     }
     std::cout << std::endl;
+}
+
+
+
+void StimulationCreator::setupTraces()
+{
+    ui->traceTable->clearContents();
+    ui->traceTable->setRowCount(0);
+    for ( size_t i = 0; i < traces.size(); i++ ) {
+        if ( traces[i].stim == *stim ) {
+            addTrace(traces[i], i);
+        }
+    }
+}
+
+void StimulationCreator::on_paramTrace_clicked()
+{
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    int nParams = session.project.model().adjustableParams.size();
+
+    Trace trace;
+    trace.stim = *stim;
+    trace.params.resize(nParams);
+    trace.dt = simulator->rund.dt;
+    for ( int i = 0; i < nParams; i++ ) {
+        double p = qobject_cast<QDoubleSpinBox*>(ui->params->cellWidget(0, i))->value();
+        trace.params[i] = p;
+        simulator->setAdjustableParam(i, p);
+    }
+
+    if ( paramsSrc == SrcBase )
+        trace.label = "Base model";
+    else if ( paramsSrc == SrcAlteredBase )
+        trace.label = "Manual";
+    else {
+        QString epStr;
+        int ep = ui->paramEpoch->value(), src = ui->paramSource->value();
+        if ( ep == -2 )
+            epStr = "target";
+        else if ( ep == -1 || ep >= int(session.gaFitter().results().at(src).epochs) )
+            epStr = "final";
+        else
+            epStr = QString("epoch %1").arg(ep);
+        trace.label = QString("%3Fit %1, %2").arg(QString::number(src), epStr, paramsSrc==SrcFit ? "" : "*");
+    }
+
+    simulator->run(trace.stim, session.runData().settleDuration);
+    for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.runData().dt; iT < iTEnd; iT++ )
+        simulator->next();
+    trace.current.reserve(simulator->samplesRemaining);
+    trace.voltage.reserve(simulator->samplesRemaining);
+    while ( simulator->samplesRemaining ) {
+        simulator->next();
+        trace.current.push_back(simulator->current);
+        trace.voltage.push_back(simulator->voltage);
+    }
+
+    addTrace(trace, traces.size());
+    traces.push_back(std::move(trace));
+
+    QApplication::restoreOverrideCursor();
+}
+
+void StimulationCreator::addTrace(Trace &trace, int idx)
+{
+    addingTrace = true;
+
+    int nRows = ui->traceTable->rowCount();
+    ui->traceTable->setRowCount(nRows + 1);
+    QTableWidgetItem *label = new QTableWidgetItem(trace.label);
+    label->setData(Qt::UserRole, idx);
+    ui->traceTable->setItem(nRows, 0, label);
+    for ( size_t i = 0; i < session.project.model().adjustableParams.size(); i++ )
+        ui->traceTable->setItem(nRows, i+1, new QTableWidgetItem(QString::number(trace.params[i])));
+
+    QVector<double> keys(trace.current.size());
+    for ( int i = 0; i < keys.size(); i++ )
+        keys[i] = i * trace.dt;
+
+    trace.gI = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
+    trace.gI->setName(QString("%1, current").arg(trace.label));
+    trace.gI->setData(keys, trace.current, true);
+    trace.gI->setPen(QPen(QColorDialog::standardColor(idx%20)));
+    makeHidable(trace.gI);
+
+    trace.gV = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis);
+    trace.gV->setName(QString("%1, voltage").arg(trace.label));
+    trace.gV->setData(keys, trace.voltage, true);
+    trace.gV->setPen(QPen(QColorDialog::standardColor(idx%20 + 21)));
+    makeHidable(trace.gV);
+
+    ui->plot->yAxis2->setVisible(true);
+    ui->plot->legend->setVisible(true);
+    ui->plot->yAxis2->rescale();
+    ui->plot->replot();
+
+    addingTrace = false;
+}
+
+void StimulationCreator::traceEdited(QTableWidgetItem *item)
+{
+    if ( addingTrace )
+        return;
+    if ( item->column() == 0 ) {
+        Trace &trace = traces[item->data(Qt::UserRole).toInt()];
+        trace.label = item->text();
+        trace.gI->setName(QString("%1, current").arg(trace.label));
+        trace.gV->setName(QString("%1, voltage").arg(trace.label));
+        ui->plot->replot();
+    } else if ( paramsSrc == SrcBase )
+        paramsSrc = SrcAlteredBase;
+    else if ( paramsSrc == SrcFit )
+        paramsSrc = SrcAlteredFit;
 }

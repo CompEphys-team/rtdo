@@ -13,12 +13,25 @@ class StimulationCreator : public QWidget
 {
     Q_OBJECT
 
+    struct Trace
+    {
+        Stimulation stim;
+        QString label;
+        std::vector<double> params;
+        QVector<double> current, voltage;
+        double dt;
+        QCPGraph *gI, *gV;
+    };
+
 public:
     explicit StimulationCreator(Session &session, QWidget *parent = 0);
     ~StimulationCreator();
 
 protected:
     void makeHidable(QCPGraph *g);
+
+    void setupTraces();
+    void addTrace(Trace &trace, int idx);
 
 protected slots:
     void updateSources();
@@ -31,6 +44,10 @@ protected slots:
     void redraw();
     void diagnose();
     void clustering();
+    void traceEdited(QTableWidgetItem *item);
+
+private slots:
+    void on_paramTrace_clicked();
 
 private:
     Ui::StimulationCreator *ui;
@@ -39,6 +56,11 @@ private:
     std::vector<Stimulation>::iterator stim;
     Stimulation stimCopy;
     bool loadingStims, updatingStim;
+
+    std::vector<Trace> traces;
+    DAQ *simulator;
+    enum {SrcBase, SrcAlteredBase, SrcFit, SrcAlteredFit} paramsSrc = SrcBase;
+    bool addingTrace = false;
 };
 
 #endif // STIMULATIONCREATOR_H
