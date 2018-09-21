@@ -108,7 +108,11 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
         widget->setDecimals(3);
         widget->setValue(p.initial);
         ui->params->setCellWidget(0, i, widget);
+        connect(widget, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, [=](double){
+            paramsSrc = SrcManual;
+        });
     }
+    paramsSrc = SrcBase;
     ui->params->setHorizontalHeaderLabels(labels);
     labels.push_front("Source");
     ui->traceTable->setHorizontalHeaderLabels(labels);
@@ -155,6 +159,7 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     };
     connect(&session.gaFitter(), &GAFitter::done, this, updateParamSources);
     updateParamSources();
+    emit ui->paramSource->valueChanged(0); // ensure paramSource minimum is correctly set up
 
     connect(ui->traceTable, &QTableWidget::itemChanged, this, &StimulationCreator::traceEdited);
 }
@@ -570,7 +575,7 @@ void StimulationCreator::on_paramTrace_clicked()
 
     if ( paramsSrc == SrcBase )
         trace.label = "Base model";
-    else if ( paramsSrc == SrcAlteredBase )
+    else if ( paramsSrc == SrcManual )
         trace.label = "Manual";
     else if ( paramsSrc == SrcRec )
         trace.label = QString("Fit %1, recording").arg(ui->paramSource->value());
@@ -583,7 +588,7 @@ void StimulationCreator::on_paramTrace_clicked()
             epStr = "final";
         else
             epStr = QString("epoch %1").arg(ep);
-        trace.label = QString("%3Fit %1, %2").arg(QString::number(src), epStr, paramsSrc==SrcFit ? "" : "*");
+        trace.label = QString("Fit %1, %2").arg(QString::number(src), epStr);
     }
 
     daq->run(actualStim, session.runData().settleDuration);
@@ -644,16 +649,11 @@ void StimulationCreator::addTrace(Trace &trace, int idx)
 
 void StimulationCreator::traceEdited(QTableWidgetItem *item)
 {
-    if ( addingTrace )
-        return;
-    if ( item->column() == 0 ) {
+    if ( !addingTrace && item->column() == 0 ) {
         Trace &trace = traces[item->data(Qt::UserRole).toInt()];
         trace.label = item->text();
         trace.gI->setName(QString("%1, current").arg(trace.label));
         trace.gV->setName(QString("%1, voltage").arg(trace.label));
         ui->plot->replot();
-    } else if ( paramsSrc == SrcBase )
-        paramsSrc = SrcAlteredBase;
-    else if ( paramsSrc == SrcFit )
-        paramsSrc = SrcAlteredFit;
+    }
 }
