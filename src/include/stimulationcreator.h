@@ -49,6 +49,8 @@ protected slots:
 private slots:
     void on_paramTrace_clicked();
 
+    void on_pdf_clicked();
+
 private:
     Ui::StimulationCreator *ui;
     Session &session;

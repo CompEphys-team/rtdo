@@ -127,6 +127,13 @@
             </property>
            </widget>
           </item>
+          <item row="4" column="2">
+           <widget class="QPushButton" name="pdf">
+            <property name="text">
+             <string>PDF</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -135,7 +142,7 @@
          <property name="currentIndex">
           <number>0</number>
          </property>
-         <widget class="QWidget" name="tabWidgetPage1" native="true">
+         <widget class="QWidget" name="tabWidgetPage1">
           <attribute name="title">
            <string>Stimulations</string>
           </attribute>

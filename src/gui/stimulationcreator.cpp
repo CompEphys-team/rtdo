@@ -94,6 +94,9 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     });
     ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
     ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
+    ui->plot->xAxis->setLabel("Time [ms]");
+    ui->plot->yAxis->setLabel("Voltage [mV]");
+    ui->plot->yAxis2->setLabel("Current [nA]");
 
     // *** Traces ***
     int n = session.project.model().adjustableParams.size();
@@ -653,4 +656,16 @@ void StimulationCreator::traceEdited(QTableWidgetItem *item)
         trace.gV->setName(QString("%1, voltage").arg(trace.label));
         ui->plot->replot();
     }
+}
+
+
+
+void StimulationCreator::on_pdf_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( file.isEmpty() )
+        return;
+    if ( !file.endsWith(".pdf") )
+        file.append(".pdf");
+    ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), file);
 }
