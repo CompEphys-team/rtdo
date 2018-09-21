@@ -602,8 +602,8 @@ void StimulationCreator::on_paramTrace_clicked()
         trace.voltage.push_back(daq->voltage);
     }
 
-    addTrace(trace, traces.size());
     traces.push_back(std::move(trace));
+    addTrace(traces.back(), traces.size()-1);
 
     if ( paramsSrc == SrcRec )
         delete daq;
@@ -613,28 +613,16 @@ void StimulationCreator::on_paramTrace_clicked()
 
 void StimulationCreator::addTrace(Trace &trace, int idx)
 {
-    addingTrace = true;
-
-    int nRows = ui->traceTable->rowCount();
-    ui->traceTable->setRowCount(nRows + 1);
-    QTableWidgetItem *label = new QTableWidgetItem(trace.label);
-    label->setData(Qt::UserRole, idx);
-    ui->traceTable->setItem(nRows, 0, label);
-    for ( size_t i = 0; i < session.project.model().adjustableParams.size(); i++ )
-        ui->traceTable->setItem(nRows, i+1, new QTableWidgetItem(QString::number(trace.params[i])));
-
     QVector<double> keys(trace.current.size());
     for ( int i = 0; i < keys.size(); i++ )
         keys[i] = i * trace.dt;
 
     trace.gI = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
-    trace.gI->setName(QString("%1, current").arg(trace.label));
     trace.gI->setData(keys, trace.current, true);
     trace.gI->setPen(QPen(QColorDialog::standardColor(idx%20)));
     makeHidable(trace.gI);
 
     trace.gV = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis);
-    trace.gV->setName(QString("%1, voltage").arg(trace.label));
     trace.gV->setData(keys, trace.voltage, true);
     trace.gV->setPen(QPen(QColorDialog::standardColor(idx%20 + 21)));
     makeHidable(trace.gV);
@@ -642,14 +630,23 @@ void StimulationCreator::addTrace(Trace &trace, int idx)
     ui->plot->yAxis2->setVisible(true);
     ui->plot->legend->setVisible(true);
     ui->plot->yAxis2->rescale();
-    ui->plot->replot();
+    // Replot deferred to traceEdited()
 
-    addingTrace = false;
+    int nRows = ui->traceTable->rowCount();
+    ui->traceTable->setRowCount(nRows + 1);
+    QTableWidgetItem *label = new QTableWidgetItem(trace.label);
+    label->setData(Qt::UserRole, idx);
+    ui->traceTable->setItem(nRows, 0, label);
+    for ( size_t i = 0; i < session.project.model().adjustableParams.size(); i++ ) {
+        QTableWidgetItem *item = new QTableWidgetItem(QString::number(trace.params[i]));
+        item->setFlags(Qt::ItemIsEnabled);
+        ui->traceTable->setItem(nRows, i+1, item);
+    }
 }
 
 void StimulationCreator::traceEdited(QTableWidgetItem *item)
 {
-    if ( !addingTrace && item->column() == 0 ) {
+    if ( item->column() == 0 ) {
         Trace &trace = traces[item->data(Qt::UserRole).toInt()];
         trace.label = item->text();
         trace.gI->setName(QString("%1, current").arg(trace.label));

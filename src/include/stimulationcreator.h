@@ -60,7 +60,6 @@ private:
     std::vector<Trace> traces;
     DAQ *simulator;
     enum {SrcBase, SrcFit, SrcManual, SrcRec} paramsSrc;
-    bool addingTrace = false;
 };
 
 #endif // STIMULATIONCREATOR_H
