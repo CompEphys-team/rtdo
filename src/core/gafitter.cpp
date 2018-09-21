@@ -534,13 +534,14 @@ void GAFitter::procreate()
 double GAFitter::finalise(const std::vector<Stimulation> &astims)
 {
     stims = astims;
+    obsTimes.resize(stims.size());
 
     std::vector<errTupel> f_err(lib.project.expNumCandidates());
     int t = 0;
     double dt = session.runData().dt, simt = 0;
 
     // Evaluate existing population on all stims
-    for ( targetParam = 0; targetParam < lib.adjustableParams.size() && !isAborted(); targetParam++ ) {
+    for ( targetParam = 0; targetParam < stims.size() && !isAborted(); targetParam++ ) {
         obsTimes[targetParam] = observeNoSteps(iStimulation(astims[targetParam], dt), settings.cluster_blank_after_step/dt);
         for ( const std::pair<int,int> &p : obsTimes[targetParam] )
             t += p.second - p.first;
