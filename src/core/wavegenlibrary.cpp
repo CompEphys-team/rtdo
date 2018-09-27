@@ -64,14 +64,10 @@ void *WavegenLibrary::compile_and_load()
     // Generate code
     _this = this;
     MetaModel::modelDef = redirect;
-    std::string name = model.name(ModuleType::Wavegen);
-    std::string dir = directory + "/" + name + "_CODE";
-    std::string arg1 = std::string("generating ") + name + " in";
-    char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(directory.c_str())};
+    std::string dir = directory + "/" + model.name(ModuleType::Wavegen) + "_CODE";
 
     do {
-        if ( generateAll(2, argv) )
-            throw std::runtime_error("Code generation failed.");
+        generateCode(directory, model);
 
         // Compile
         std::ofstream makefile(dir + "/Makefile", std::ios_base::app);
@@ -203,8 +199,7 @@ std::string WavegenLibrary::simCode()
 {
     stringstream ss;
     ss << endl << "#ifndef _" << model.name(ModuleType::Wavegen) << "_neuronFnct_cc" << endl; // No Wavegen on the CPU
-
-    ss << model.populateStructs() << endl;
+    ss << "// Mention $(clampGain) and $(accessResistance) to ensure they are present." << endl;
 
     ss << R"EOF(
 const int groupID = id % MM_NumGroupsPerBlock;                                  // Block-local group id
@@ -244,7 +239,7 @@ while ( mt < stim.duration ) {
             __shared__ double errShare[MM_NumModelsPerBlock];
             scalar err = clamp.getCurrent(t, state.V);
 
-            // Make base model (paramID==0) Isyn available
+            // Make base model (paramID==0) err available
             if ( !paramID )
                 errShare[groupID] = err;
             __syncthreads();
@@ -315,9 +310,7 @@ if ( !$(settling) )
     return;
 )EOF";
 
-    ss << model.extractState();
-
-    ss << "#endif\nIsyn += 0.;";
+    ss << "#endif";
 
     return ss.str();
 }

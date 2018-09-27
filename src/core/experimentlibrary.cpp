@@ -69,14 +69,10 @@ void *ExperimentLibrary::compile_and_load()
     // Generate code
     _this = this;
     MetaModel::modelDef = redirect;
-    std::string name = model.name(ModuleType::Experiment);
-    std::string arg1 = std::string("generating ") + name + " in";
-    char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(directory.c_str())};
-    if ( generateAll(2, argv) )
-        throw std::runtime_error("Code generation failed.");
+    generateCode(directory, model);
 
     // Compile
-    std::string dir = directory + "/" + name + "_CODE";
+    std::string dir = directory + "/" + model.name(ModuleType::Experiment) + "_CODE";
     std::ofstream makefile(dir + "/Makefile", std::ios_base::app);
     makefile << endl;
     makefile << "runner.so: runner.o" << endl;
@@ -155,8 +151,8 @@ void ExperimentLibrary::GeNN_modelDefinition(NNmodel &nn)
 std::string ExperimentLibrary::simCode()
 {
     std::stringstream ss;
-
-    ss << model.populateStructs() << endl;
+    ss << endl << "#ifndef _" << model.name(ModuleType::Experiment) << "_neuronFnct_cc" << endl;
+    ss << "// Mention $(clampGain) and $(accessResistance) to ensure they are present." << endl;
 
     ss << R"EOF(
 clamp.VClamp0 = $(VClamp0);
@@ -167,10 +163,10 @@ if ( $(setVariance) ) {
 }
 
 if ( $(getErr) ) {
-    scalar tmp = clip(clamp.getCurrent(t, $(V)), $(Imax)) - $(Imem);
+    scalar tmp = clip(clamp.getCurrent(t, state.V), $(Imax)) - $(Imem);
     $(err) += tmp*tmp;
 } else if ( $(getLikelihood) ) {
-    $(err) += state.state__negLogLikelihood(clip(clamp.getCurrent(t, $(V)), $(Imax)) - $(Imem), $(ext_variance), params);
+    $(err) += state.state__negLogLikelihood(clip(clamp.getCurrent(t, state.V), $(Imax)) - $(Imem), $(ext_variance), params);
 }
 
 scalar mdt = $(tStep)/$(simCycles);
@@ -184,9 +180,8 @@ if ( $(integrator) == (int)IntegrationMethod::RungeKutta4 ) {
 } else /*if ( $(integrator) == (int)IntegrationMethod::RungeKuttaFehlberg45 )*/ {
     RKF45(t, t+$(tStep), mdt, $(tStep), $(meta_hP), state, params, clamp);
 }
+#endif
 )EOF";
-
-    ss << model.extractState();
 
     return ss.str();
 

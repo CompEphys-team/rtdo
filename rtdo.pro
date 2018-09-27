@@ -193,7 +193,6 @@ INCLUDEPATH += \
     $$(CUDA_PATH)/include
 SOURCES += \
     $$libGENN.path/lib/src/generateCPU.cc \
-    $$libGENN.path/lib/src/generateKernels.cc \
     $$libGENN.path/lib/src/generateRunner.cc \
     src/core/generateAllNoMain.cpp
 DEFINES += NVCC=\\\"\"$$(CUDA_PATH)/bin/nvcc\"\\\"

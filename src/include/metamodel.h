@@ -68,4 +68,8 @@ int generateAll(int argc, char *argv[]);
 // The model definition that GeNN expects to be dropped into genn-buildmodel.sh:
 inline void modelDefinition(NNmodel &n) { MetaModel::modelDef(n); }
 
+// A copy of generateAll that correctly invokes the modified genNeuronKernel
+// See core/generateAllNoMain.cpp
+void generateCode(std::string path, const MetaModel &metamodel);
+
 #endif // METAMODEL_H

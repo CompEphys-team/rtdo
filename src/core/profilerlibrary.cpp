@@ -51,14 +51,10 @@ void *ProfilerLibrary::compile_and_load()
     // Generate code
     _this = this;
     MetaModel::modelDef = redirect;
-    std::string name = model.name(ModuleType::Profiler);
-    std::string arg1 = std::string("generating ") + name + " in";
-    char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(directory.c_str())};
-    if ( generateAll(2, argv) )
-        throw std::runtime_error("Code generation failed.");
+    generateCode(directory, model);
 
     // Compile
-    std::string dir = directory + "/" + name + "_CODE";
+    std::string dir = directory + "/" + model.name(ModuleType::Profiler) + "_CODE";
     std::ofstream makefile(dir + "/Makefile", std::ios_base::app);
     makefile << endl;
     makefile << "runner.so: runner.o" << endl;
@@ -117,7 +113,7 @@ std::string ProfilerLibrary::simCode()
 {
     std::stringstream ss;
     ss << std::string("\n#ifndef _") + model.name(ModuleType::Profiler) + "_neuronFnct_cc\n";
-    ss << model.populateStructs() << endl;
+    ss << "// Mention $(clampGain) and $(accessResistance) to ensure they are present." << endl;
     ss << R"EOF(
 unsigned int samples = 0;
 int mt = 0, tStep = 0;
@@ -139,8 +135,7 @@ if ( !$(settling) )
     return; // do not overwrite settled initial state
 )EOF";
 
-    ss << model.extractState() << endl;
-    ss << "#endif\nIsyn += 0.;";
+    ss << "#endif";
     return ss.str();
 }
 
