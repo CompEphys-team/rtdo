@@ -4,9 +4,11 @@
 #include <sstream>
 #include <fstream>
 #include "global.h"
+#include "utils.h"
 #include "cuda_helper.h"
 #include <dlfcn.h>
 #include "project.h"
+#include <stdio.h>
 
 #define SUFFIX "WG"
 
@@ -63,17 +65,48 @@ void *WavegenLibrary::compile_and_load()
     _this = this;
     MetaModel::modelDef = redirect;
     std::string name = model.name(ModuleType::Wavegen);
+    std::string dir = directory + "/" + name + "_CODE";
     std::string arg1 = std::string("generating ") + name + " in";
     char *argv[2] = {const_cast<char*>(arg1.c_str()), const_cast<char*>(directory.c_str())};
-    if ( generateAll(2, argv) )
-        throw std::runtime_error("Code generation failed.");
 
-    // Compile
-    std::string dir = directory + "/" + name + "_CODE";
-    std::ofstream makefile(dir + "/Makefile", std::ios_base::app);
-    makefile << endl;
-    makefile << "runner.so: runner.o" << endl;
-    makefile << "\t$(CXX) -o $@ $< -shared" << endl;
+    do {
+        if ( generateAll(2, argv) )
+            throw std::runtime_error("Code generation failed.");
+
+        // Compile
+        std::ofstream makefile(dir + "/Makefile", std::ios_base::app);
+        makefile << endl;
+        makefile << "runner.so: runner.o" << endl;
+        makefile << "\t$(CXX) -o $@ $< -shared" << endl;
+        makefile << endl;
+        makefile << "runner.cubin: runner.cc" << endl;
+        makefile << "\t$(NVCC) -cubin $(NVCCFLAGS) $(INCLUDEFLAGS) runner.cc" << endl;
+
+        if ( system((std::string("cd ") + dir + " && make runner.cubin").c_str()) )
+            throw std::runtime_error("Cubin compile failed.");
+        std::string cubinfile = dir + "/runner.cubin";
+        CUdevice device;
+        CUcontext ctx;
+        CUmodule module;
+        CUfunction kern;
+        int numRegs, maxRegs;
+        CHECK_CU_ERRORS(cuDeviceGet(&device, GENN_PREFERENCES::defaultDevice))
+        CHECK_CU_ERRORS(cuCtxCreate(&ctx, 0, device))
+        CHECK_CU_ERRORS(cuModuleLoad(&module, cubinfile.c_str()))
+        CHECK_CU_ERRORS(cuModuleGetFunction(&kern, module, "calcNeurons"))
+        CHECK_CU_ERRORS(cuFuncGetAttribute(&numRegs, CU_FUNC_ATTRIBUTE_NUM_REGS, kern))
+        CHECK_CU_ERRORS(cuDeviceGetAttribute(&maxRegs, CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK, device))
+        CHECK_CU_ERRORS(cuCtxDestroy(ctx))
+
+        std::cout << numRegs << std::endl;
+
+        if ( numRegs * numModelsPerBlock > maxRegs )
+            groupsPerBlockRegcountDivisor *= 2;
+        else
+            break;
+    } while ( true );
+
+
     std::stringstream cmd;
     cmd << "cd " << dir << " && make runner.so";
     if ( system(cmd.str().c_str()) )
@@ -141,6 +174,9 @@ void WavegenLibrary::GeNN_modelDefinition(NNmodel &nn)
     }
     while ( (int)model.adjustableParams.size() + 1 > maxThreadsPerBlock / numGroupsPerBlock )
         numGroupsPerBlock /= 2;
+
+    numGroupsPerBlock /= groupsPerBlockRegcountDivisor;
+
     numModelsPerBlock = numGroupsPerBlock * (model.adjustableParams.size() + 1);
     GENN_PREFERENCES::autoChooseDevice = 0;
     GENN_PREFERENCES::optimiseBlockSize = 0;
@@ -187,10 +223,21 @@ while ( mt < stim.duration ) {
     getiCommandSegment(stim, mt, stim.duration - mt, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
 
     // Butterfly reduction to get smallest tStep in warp -- also smallest tStep in block, because each warp has the same set of stims
-    if ( $(targetParam) != TARGET_DIAG )
-        for ( int i = 16; i >= 1; i /= 2 )
-            tStep = min(tStep, __shfl_xor_sync(0xffffffff, tStep, i, 32));
-
+    if ( $(targetParam) != TARGET_DIAG ) {
+        if ( threadIdx.x >= (blockDim.x/32)*32 ) {
+            unsigned nProblematicThreads = blockDim.x%32;
+            for ( unsigned i = 1; i < nProblematicThreads; i *= 2 ) {
+                if ( (threadIdx.x%32)^i < nProblematicThreads ) {
+                    int s = __shfl_xor_sync(__activemask(), tStep, i, 32);
+                    tStep = min(tStep, s);
+                }
+            }
+        } else {
+            for ( int i = 16; i >= 1; i /= 2 ) {
+                tStep = min(tStep, __shfl_xor_sync(0xffffffff, tStep, i, 32));
+            }
+        }
+    }
     for ( int i = 0; i < tStep; i++ ) {
         t = mt * $(dt);
         if ( $(getErr) ) {
