@@ -94,7 +94,7 @@ void *WavegenLibrary::compile_and_load()
         CHECK_CU_ERRORS(cuDeviceGetAttribute(&maxRegs, CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK, device))
         CHECK_CU_ERRORS(cuCtxDestroy(ctx))
 
-        std::cout << numRegs << std::endl;
+        std::cout << numRegs << " registers" << std::endl;
 
         if ( numRegs * numModelsPerBlock > maxRegs )
             groupsPerBlockRegcountDivisor *= 2;
@@ -217,22 +217,11 @@ if ( $(targetParam) == TARGET_DIAG && group > 0 )
 while ( mt < stim.duration ) {
     getiCommandSegment(stim, mt, stim.duration - mt, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
 
-    // Butterfly reduction to get smallest tStep in warp -- also smallest tStep in block, because each warp has the same set of stims
-    if ( $(targetParam) != TARGET_DIAG ) {
-        if ( threadIdx.x >= (blockDim.x/32)*32 ) {
-            unsigned nProblematicThreads = blockDim.x%32;
-            for ( unsigned i = 1; i < nProblematicThreads; i *= 2 ) {
-                if ( (threadIdx.x%32)^i < nProblematicThreads ) {
-                    int s = __shfl_xor_sync(__activemask(), tStep, i, 32);
-                    tStep = min(tStep, s);
-                }
-            }
-        } else {
-            for ( int i = 16; i >= 1; i /= 2 ) {
-                tStep = min(tStep, __shfl_xor_sync(0xffffffff, tStep, i, 32));
-            }
-        }
-    }
+    // Butterfly reduction to get smallest tStep in warp (except partially active warps, because fuck 'em)
+    if ( $(targetParam) != TARGET_DIAG && threadIdx.x < blockDim.x & (~0x1f) )
+        for ( int i = 16; i >= 1; i /= 2 )
+            tStep = min(tStep, __shfl_xor_sync(0xffffffff, tStep, i, 32));
+
     for ( int i = 0; i < tStep; i++ ) {
         t = mt * $(dt);
         if ( $(getErr) ) {
