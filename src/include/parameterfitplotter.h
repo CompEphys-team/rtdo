@@ -4,7 +4,7 @@
 #include <QWidget>
 #include "session.h"
 #include "qcustomplot.h"
-#include "colorbutton.h"
+#include "fitinspector.h"
 #include "filter.h"
 
 namespace Ui {
@@ -23,13 +23,11 @@ public:
     void init(Session *session, bool enslave);
     void clear();
 
-protected:
-    std::vector<int> getSelectedRows(QTableWidget *table);
-    ColorButton *getGraphColorBtn(int row);
-    ColorButton *getErrorColorBtn(int row);
-    ColorButton *getGroupColorBtn(int row);
+    void setData(std::vector<FitInspector::Group> data, bool summarising);
 
-    void getSummary(std::vector<int> fits, //!< Integers identifying the fits to be used
+protected:
+
+    void getSummary(std::vector<FitInspector::Fit> fits, //!< The fits to be used
                     std::function<double (const GAFitter::Output &, int)> value, //!< Function to extract the value to be analysed (eg param residual or error)
                     QVector<double> &mean, //!< Return: the mean value per epoch. Must be of appropriate size.
                     QVector<double> &meanPlusSEM, //!< Return: The SEM added onto the mean. Must be of appropriate size.
@@ -48,7 +46,6 @@ protected slots:
     void buildPlotLayout();
 
 private slots:
-    void updateFits();
 
     void replot();
     void plotIndividual();
@@ -59,18 +56,8 @@ private slots:
     void percentileRangeChanged(QCPRange range);
 
     void plotSummary();
-    void addGroup(std::vector<int> group = {}, QString label = "");
-    void removeGroup();
-
-    void reBoxPlot();
-
-    void on_saveGroups_clicked();
-
-    void on_loadGroups_clicked();
 
     void on_pdf_clicked();
-
-    void on_boxplot_pdf_clicked();
 
 private:
     Ui::ParameterFitPlotter *ui;
@@ -79,10 +66,7 @@ private:
     std::vector<QCPAxisRect*> axRects;
 
     bool enslaved, summarising;
-
-    std::vector<QColor> clipboard;
-
-    std::vector<std::vector<int>> groups;
+    std::vector<FitInspector::Group> data;
 };
 
 #endif // PARAMETERFITPLOTTER_H

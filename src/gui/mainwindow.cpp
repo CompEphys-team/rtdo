@@ -6,7 +6,7 @@
 #include <QCloseEvent>
 #include "wavegenfitnessmapper.h"
 #include "profileplotter.h"
-#include "parameterfitplotter.h"
+#include "fitinspector.h"
 #include "stimulationplotter.h"
 #include "stimulationcreator.h"
 #include "gafittersettingsdialog.h"
@@ -254,7 +254,7 @@ void MainWindow::on_actionError_profiles_triggered()
 
 void MainWindow::on_actionFitting_Parameters_triggered()
 {
-    ParameterFitPlotter *figure = new ParameterFitPlotter(*session);
+    FitInspector *figure = new FitInspector(*session);
     figure->setWindowTitle(figure->windowTitle() + " : " + title);
     figure->show();
 }

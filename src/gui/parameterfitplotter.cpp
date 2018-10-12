@@ -1,9 +1,6 @@
 #include "parameterfitplotter.h"
 #include "ui_parameterfitplotter.h"
 #include "colorbutton.h"
-#include "rundatadialog.h"
-#include "daqdialog.h"
-#include "gafittersettingsdialog.h"
 #include <QTimer>
 
 ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
@@ -17,8 +14,7 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
     connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(buildPlotLayout()));
     connect(ui->legend, SIGNAL(stateChanged(int)), this, SLOT(replot()));
     connect(ui->filter, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), [=](int){
-        if ( summarising )
-            replot();
+        replot();
     });
     connect(ui->param, &QCheckBox::stateChanged, [=](int state) {
         bool on = state == Qt::Checked;
@@ -81,64 +77,6 @@ ParameterFitPlotter::ParameterFitPlotter(QWidget *parent) :
         ui->panel->layer("max")->setVisible(on);
         ui->panel->replot();
     });
-    connect(ui->sepcols, &QPushButton::clicked, [=](bool on) {
-        for ( int i = 0; i < ui->fits->rowCount(); i++ ) {
-            getGraphColorBtn(i)->setColor(on ? QColorDialog::standardColor(i%20) : Qt::blue);
-            getErrorColorBtn(i)->setColor(on ? QColorDialog::standardColor(i%20 + 21) : Qt::magenta);
-        }
-        replot();
-    });
-    connect(ui->copy, &QPushButton::clicked, [=]() {
-        std::vector<int> rows = getSelectedRows(ui->fits);
-        clipboard.clear();
-        clipboard.reserve(2*rows.size());
-        for ( int row : rows ) {
-            clipboard.push_back(getGraphColorBtn(row)->color);
-            clipboard.push_back(getErrorColorBtn(row)->color);
-        }
-    });
-    connect(ui->paste, &QPushButton::clicked, [=]() {
-        std::vector<int> rows = getSelectedRows(ui->fits);
-        for ( size_t i = 0; i < rows.size() && 2*i < clipboard.size(); i++ ) {
-            getGraphColorBtn(rows[i])->setColor(clipboard[2*i]);
-            getErrorColorBtn(rows[i])->setColor(clipboard[2*i+1]);
-        }
-        replot();
-    });
-
-    connect(ui->addGroup, SIGNAL(clicked(bool)), this, SLOT(addGroup()));
-    connect(ui->delGroup, SIGNAL(clicked(bool)), this, SLOT(removeGroup()));
-
-    connect(ui->fits, &QTableWidget::itemSelectionChanged, [=]() {
-        QList<QTableWidgetSelectionRange> rlist = ui->fits->selectedRanges();
-        ui->settingsButtons->setEnabled(rlist.size() == 1 && rlist.first().rowCount() == 1);
-    });
-
-    connect(ui->rundata, &QPushButton::clicked, [=](bool){
-        std::vector<int> rows = getSelectedRows(ui->fits);
-        if ( rows.size() != 1 )
-            return;
-        RunDataDialog *dlg = new RunDataDialog(*session, session->gaFitter().results().at(rows[0]).resultIndex);
-        dlg->setWindowTitle(QString("%1 for fit %2").arg(dlg->windowTitle()).arg(rows[0]));
-        dlg->show();
-    });
-    connect(ui->daqdata, &QPushButton::clicked, [=](bool){
-        std::vector<int> rows = getSelectedRows(ui->fits);
-        if ( rows.size() != 1 )
-            return;
-        DAQDialog *dlg = new DAQDialog(*session, session->gaFitter().results().at(rows[0]).resultIndex);
-        dlg->setWindowTitle(QString("%1 for fit %2").arg(dlg->windowTitle()).arg(rows[0]));
-        dlg->show();
-    });
-    connect(ui->fittersettings, &QPushButton::clicked, [=](bool){
-        std::vector<int> rows = getSelectedRows(ui->fits);
-        if ( rows.size() != 1 )
-            return;
-        GAFitterSettingsDialog *dlg = new GAFitterSettingsDialog(*session, session->gaFitter().results().at(rows[0]).resultIndex);
-        dlg->setWindowTitle(QString("%1 for fit %2").arg(dlg->windowTitle()).arg(rows[0]));
-        dlg->show();
-    });
-
 
     ui->panel->addLayer("mean");
     ui->panel->layer("mean")->setVisible(ui->mean->isChecked());
@@ -221,6 +159,8 @@ void ParameterFitPlotter::resizePanel()
     if ( ui->panel->plotLayout()->columnCount() > 1 )
         legendWidth = ui->panel->plotLayout()->element(0, 1)->outerRect().width();
     ui->panel->setFixedWidth(ui->scrollArea->childrenRect().width() + legendWidth);
+
+    ui->panel->replot();
 }
 
 void ParameterFitPlotter::setGridAndAxVisibility()
@@ -291,8 +231,9 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
 
     // Enslave to GAFitterWidget
     if ( enslave ) {
-        ui->sidebar->setVisible(false);
         ui->legend->setVisible(false);
+        ui->opacity->setVisible(false);
+        ui->summary_plot_controls->setVisible(false);
         connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
         connect(&session->gaFitter(), &GAFitter::done, this, [=](){
             const GAFitter::Output &o = session->gaFitter().results().back();
@@ -300,81 +241,15 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
                 addFinal(o);
         });
         clear();
-    } else {
-        for ( int i = 0; i < 2; i++ ) {
-            int c = ui->fits->columnCount();
-            for ( const AdjustableParam &p : session->project.model().adjustableParams ) {
-                ui->fits->insertColumn(c);
-                QTableWidgetItem *item = new QTableWidgetItem(QString::fromStdString(p.name));
-                item->setToolTip(i ? "Final value" : "Target value");
-                ui->fits->setHorizontalHeaderItem(c, item);
-                ui->fits->setColumnWidth(c, 70);
-                ++c;
-            }
-            if ( !i ) {
-                ui->fits->insertColumn(c);
-                ui->fits->setHorizontalHeaderItem(c, new QTableWidgetItem(""));
-                ui->fits->setColumnWidth(c, 10);
-            }
-        }
-        ui->fits->setColumnWidth(0, 15);
-        ui->fits->setColumnWidth(1, 15);
-        ui->fits->setColumnWidth(3, 40);
-        ui->fits->setColumnWidth(5, 40);
-        ui->groups->setColumnWidth(1, 80);
-        ui->groups->horizontalHeader()->setFixedHeight(5);
-        ui->groups->verticalHeader()->setSectionsMovable(true);
-        connect(&session->gaFitter(), SIGNAL(done()), this, SLOT(updateFits()));
-        connect(ui->fits, &QTableWidget::itemSelectionChanged, [=]{
-            summarising = false;
-            replot();
-        });
-        connect(ui->groups, &QTableWidget::itemSelectionChanged, [=]{
-            summarising = true;
-            replot();
-        });
-        connect(ui->boxplot_epoch, SIGNAL(valueChanged(int)), this, SLOT(reBoxPlot()));
-        updateFits();
     }
     QTimer::singleShot(10, this, &ParameterFitPlotter::resizePanel);
 }
 
-void ParameterFitPlotter::updateFits()
+void ParameterFitPlotter::setData(std::vector<FitInspector::Group> data, bool summarising)
 {
-    int col0 = 11;
-    for ( size_t i = ui->fits->rowCount(); i < session->gaFitter().results().size(); i++ ) {
-        const GAFitter::Output &fit = session->gaFitter().results().at(i);
-        ui->fits->insertRow(i);
-        ui->fits->setVerticalHeaderItem(i, new QTableWidgetItem(QString::number(i)));
-        ColorButton *c = new ColorButton();
-        c->setColor(ui->sepcols->isChecked() ? QColorDialog::standardColor(i%20) : Qt::blue);
-        ui->fits->setCellWidget(i, 0, c);
-        c = new ColorButton();
-        c->setColor(ui->sepcols->isChecked() ? QColorDialog::standardColor(i%20 + 21) : Qt::magenta);
-        ui->fits->setCellWidget(i, 1, c);
-        ui->fits->setItem(i, 2, new QTableWidgetItem(fit.stimSource.prettyName()));
-        ui->fits->setItem(i, 3, new QTableWidgetItem(QString::number(fit.epochs)));
-        ui->fits->setItem(i, 4, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).randomOrder)));
-        ui->fits->setItem(i, 5, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).crossover, 'g', 2)));
-        ui->fits->setItem(i, 6, new QTableWidgetItem(session->gaFitterSettings(fit.resultIndex).decaySigma ? "Y" : "N"));
-        ui->fits->setItem(i, 8, new QTableWidgetItem(session->gaFitterSettings(fit.resultIndex).useDE ? "DE" : "GA"));
-        ui->fits->setItem(i, 9, new QTableWidgetItem(session->gaFitterSettings(fit.resultIndex).useClustering ? "Y" : "N"));
-        ui->fits->setItem(i, 10, new QTableWidgetItem(QString::number(session->gaFitterSettings(fit.resultIndex).mutationSelectivity)));
-        if ( session->daqData(fit.resultIndex).simulate == -1 ) {
-            ui->fits->setItem(i, 7, new QTableWidgetItem(fit.VCRecord));
-            for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
-                ui->fits->setItem(i, col0+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
-        } else if ( session->daqData(fit.resultIndex).simulate == 0 ) {
-            ui->fits->setItem(i, 7, new QTableWidgetItem(QString("live DAQ")));
-        } else if ( session->daqData(fit.resultIndex).simulate == 1 ) {
-            ui->fits->setItem(i, 7, new QTableWidgetItem(QString("%1-%2").arg(session->daqData(fit.resultIndex).simulate).arg(session->daqData(fit.resultIndex).simd.paramSet)));
-            for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
-                ui->fits->setItem(i, col0+j, new QTableWidgetItem(QString::number(fit.targets[j], 'g', 3)));
-        }
-        if ( fit.final )
-            for ( size_t j = 0, np = session->project.model().adjustableParams.size(); j < np; j++ )
-                ui->fits->setItem(i, col0+np+1+j, new QTableWidgetItem(QString::number(fit.finalParams[j], 'g', 3)));
-    }
+    this->data = data;
+    this->summarising = summarising;
+    replot();
 }
 
 void ParameterFitPlotter::clearPlotLayout()
@@ -409,9 +284,9 @@ void ParameterFitPlotter::replot()
     else
         plotIndividual();
 
-    buildPlotLayout();
+    ui->summary_plot_controls->setEnabled(summarising);
 
-    reBoxPlot();
+    buildPlotLayout();
 }
 
 void ParameterFitPlotter::buildPlotLayout()
@@ -448,15 +323,13 @@ void ParameterFitPlotter::buildPlotLayout()
 
 void ParameterFitPlotter::plotIndividual()
 {
-    bool initial = true;
-    std::vector<int> rows = getSelectedRows(ui->fits);
-    if ( rows.empty() )
+    if ( data.empty() || data[0].fits.empty() )
         return;
 
     ui->panel->layer("target")->setVisible(ui->param->isChecked());
 
-    for ( int row : rows ) {
-        const GAFitter::Output fit = session->gaFitter().results().at(row);
+    for ( const FitInspector::Fit &f : data[0].fits ) {
+        const GAFitter::Output fit = f.fit();
         QVector<double> keys(fit.epochs);
         for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ )
             keys[epoch] = epoch;
@@ -466,7 +339,7 @@ void ParameterFitPlotter::plotIndividual()
             QCPAxis *yAxis2 = axRects[i]->axis(QCPAxis::atRight);
 
             QCPItemStraightLine *line = new QCPItemStraightLine(ui->panel);
-            QPen pen(getGraphColorBtn(row)->color);
+            QPen pen(f.color);
             pen.setStyle(Qt::DashLine);
             line->setLayer("target");
             line->setPen(pen);
@@ -488,35 +361,22 @@ void ParameterFitPlotter::plotIndividual()
                 }
             }
 
-            QColor col(getGraphColorBtn(row)->color);
+            QColor col(f.color);
             col.setAlphaF(ui->opacity->value()/100.);
             QCPGraph *graph = addGraph(xAxis, yAxis, col, keys, values, "main", ui->param->isChecked());
-            if ( ui->rescale->isChecked() ) {
-                xAxis->rescale();
-                yAxis->rescale();
-            }
 
-            QColor errCol(getErrorColorBtn(row)->color);
+            QColor errCol(f.errColor);
             errCol.setAlphaF(ui->opacity->value()/100.);
             QCPGraph *errGraph = addGraph(xAxis, yAxis2, errCol, errKey, errors, "main", ui->error->isChecked());
             errGraph->setLineStyle(QCPGraph::lsStepLeft);
-            if ( ui->rescale->isChecked() ) {
-                if ( initial ) {
-                    yAxis2->setRange(0,1); // Reset range when selecting a new fit
-                    initial = false;
-                }
-                bool found;
-                QCPRange range = errGraph->getValueRange(found);
-                if ( found && range.upper > yAxis2->range().upper )
-                    yAxis2->setRangeUpper(range.upper);
-            }
+
             if ( session->gaFitterSettings(fit.resultIndex).useLikelihood )
                 yAxis2->setLabel("-log likelihood");
             else
                 yAxis2->setLabel("RMS Error (nA)");
 
             if ( i == 0 ) {
-                graph->setName(QString("Fit %1").arg(row));
+                graph->setName(f.label);
                 errGraph->setName("");
                 graph->addToLegend();
                 errGraph->addToLegend();
@@ -548,31 +408,6 @@ void ParameterFitPlotter::clear()
         xAxis->moveRange(-xAxis->range().lower);
     }
     ui->panel->replot();
-}
-
-std::vector<int> ParameterFitPlotter::getSelectedRows(QTableWidget* table)
-{
-    QList<QTableWidgetSelectionRange> selection = table->selectedRanges();
-    std::vector<int> rows;
-    for ( auto range : selection )
-        for ( int i = range.topRow(); i <= range.bottomRow(); i++)
-            rows.push_back(i);
-    return rows;
-}
-
-ColorButton *ParameterFitPlotter::getGraphColorBtn(int row)
-{
-    return qobject_cast<ColorButton*>(ui->fits->cellWidget(row, 0));
-}
-
-ColorButton *ParameterFitPlotter::getErrorColorBtn(int row)
-{
-    return qobject_cast<ColorButton*>(ui->fits->cellWidget(row, 1));
-}
-
-ColorButton *ParameterFitPlotter::getGroupColorBtn(int row)
-{
-    return qobject_cast<ColorButton*>(ui->groups->cellWidget(row, 0));
 }
 
 void ParameterFitPlotter::progress(quint32 epoch)
@@ -670,90 +505,6 @@ void ParameterFitPlotter::percentileRangeChanged(QCPRange range)
 
 //***************************************** summaries *******************************************************
 
-void ParameterFitPlotter::addGroup(std::vector<int> group, QString label)
-{
-    if ( group.empty() ) {
-        group = getSelectedRows(ui->fits);
-        if ( group.empty() )
-            return;
-        std::sort(group.begin(), group.end());
-    }
-    groups.push_back(group);
-
-    int row = ui->groups->rowCount();
-    ui->groups->insertRow(row);
-    ColorButton *c = new ColorButton();
-    c->setColor(QColorDialog::standardColor(row % 20));
-    ui->groups->setCellWidget(row, 0, c);
-    connect(c, SIGNAL(colorChanged(QColor)), this, SLOT(replot()));
-
-    QString numbers;
-    for ( int i = 0, last = group.size()-1; i <= last; i++ ) {
-        int beginning = group[i];
-        while ( i < last && group[i+1] == group[i] + 1 )
-            ++i;
-        if ( group[i] > beginning )
-            numbers.append(QString("%1-%2").arg(beginning).arg(group[i]));
-        else
-            numbers.append(QString::number(group[i]));
-        if ( i < last )
-            numbers.append("; ");
-    }
-    ui->groups->setItem(row, 1, new QTableWidgetItem(numbers));
-
-    QTableWidgetItem *item = new QTableWidgetItem(label);
-    ui->groups->setItem(row, 2, item);
-}
-
-void ParameterFitPlotter::removeGroup()
-{
-    std::vector<int> rows = getSelectedRows(ui->groups);
-    std::sort(rows.begin(), rows.end(), [](int a, int b){return a > b;}); // descending
-    for ( int row : rows ) {
-        ui->groups->removeRow(row);
-        groups.erase(groups.begin() + row);
-    }
-}
-
-void ParameterFitPlotter::on_saveGroups_clicked()
-{
-    if ( groups.empty() )
-        return;
-    QString file = QFileDialog::getSaveFileName(this, "Save groups to file...", session->directory());
-    if ( file.isEmpty() )
-        return;
-    std::ofstream os(file.toStdString());
-    for ( size_t vi = 0; vi < groups.size(); vi++ ) {
-        int i = ui->groups->verticalHeader()->logicalIndex(vi);
-        os << groups[i].size() << ':';
-        for ( int f : groups[i] )
-            os << f << ',';
-        os << ui->groups->item(i, 2)->text().toStdString() << std::endl;
-    }
-}
-
-void ParameterFitPlotter::on_loadGroups_clicked()
-{
-    QString file = QFileDialog::getOpenFileName(this, "Select saved groups file...", session->directory());
-    if ( file.isEmpty() )
-        return;
-    std::ifstream is(file.toStdString());
-    int size;
-    std::vector<int> group;
-    char tmp;
-    std::string label;
-    is >> size;
-    while ( is.good() ) {
-        is >> tmp;
-        group.resize(size);
-        for ( int i = 0; i < size; i++ )
-            is >> group[i] >> tmp;
-        std::getline(is, label);
-        addGroup(group, QString::fromStdString(label));
-        is >> size;
-    }
-}
-
 QCPGraph *ParameterFitPlotter::addGraph(QCPAxis *x, QCPAxis *y, const QColor &col,
                                         const QVector<double> &keys, const QVector<double> &values,
                                         const QString &layer, bool visible)
@@ -768,8 +519,7 @@ QCPGraph *ParameterFitPlotter::addGraph(QCPAxis *x, QCPAxis *y, const QColor &co
 
 void ParameterFitPlotter::plotSummary()
 {
-    std::vector<int> rows = getSelectedRows(ui->groups);
-    if ( rows.empty() )
+    if ( data.empty() )
         return;
 
     ui->panel->layer("target")->setVisible(false);
@@ -778,12 +528,12 @@ void ParameterFitPlotter::plotSummary()
     if ( ui->filter->value() > 1 )
         filter = new Filter(FilterMethod::SavitzkyGolayEdge5, 2*int(ui->filter->value()/2) + 1);
 
-    for ( int row : rows ) {
+    for ( const FitInspector::Group &group : data ) {
         quint32 epochs = 0;
         bool hasFinal = true;
-        for ( int fit : groups[row] ) {
-            epochs = std::max(session->gaFitter().results().at(fit).epochs, epochs);
-            hasFinal &= session->gaFitter().results().at(fit).final;
+        for ( const FitInspector::Fit &f : group.fits ) {
+            epochs = std::max(f.fit().epochs, epochs);
+            hasFinal &= f.fit().final;
         }
         QVector<double> keys(epochs);
         for ( size_t i = 0; i < epochs; i++ )
@@ -795,16 +545,16 @@ void ParameterFitPlotter::plotSummary()
             QVector<double> fErrMean(1), fErrSEM(1), fErrMedian(1), fErrMax(1);
             const AdjustableParam &p = session->project.model().adjustableParams[i];
             if ( p.multiplicative ) {
-                getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
+                getSummary(group.fits, [=](const GAFitter::Output &fit, int ep){
                     // Parameter error relative to target (%) :
                     return 100 * std::fabs(1 - fit.params[ep][i] / fit.targets[i]);
                 }, mean, sem, median, max, filter);
                 if ( hasFinal )
-                    getSummary(groups[row], [=](const GAFitter::Output &fit, int){
+                    getSummary(group.fits, [=](const GAFitter::Output &fit, int){
                         return 100 * std::fabs(1 - fit.finalParams[i] / fit.targets[i]);
                     }, fMean, fSem, fMedian, fMax);
             } else {
-                getSummary(groups[row], [=](const GAFitter::Output &fit, int ep){
+                getSummary(group.fits, [=](const GAFitter::Output &fit, int ep){
                     // Parameter error relative to range (%) :
                     double range = session->gaFitterSettings(fit.resultIndex).constraints[i] == 1
                             ? (session->gaFitterSettings(fit.resultIndex).max[i] - session->gaFitterSettings(fit.resultIndex).min[i])
@@ -812,25 +562,25 @@ void ParameterFitPlotter::plotSummary()
                     return 100 * std::fabs((fit.params[ep][i] - fit.targets[i]) / range);
                 }, mean, sem, median, max, filter);
                 if ( hasFinal )
-                    getSummary(groups[row], [=](const GAFitter::Output &fit, int){
+                    getSummary(group.fits, [=](const GAFitter::Output &fit, int){
                         double range = session->gaFitterSettings(fit.resultIndex).constraints[i] == 1
                                 ? (session->gaFitterSettings(fit.resultIndex).max[i] - session->gaFitterSettings(fit.resultIndex).min[i])
                                 : (p.max - p.min);
                         return 100 * std::fabs((fit.finalParams[i] - fit.targets[i]) / range);
                     }, fMean, fSem, fMedian, fMax);
             }
-            getSummary(groups[row], [=](const GAFitter::Output &fit, int ep) -> double {
+            getSummary(group.fits, [=](const GAFitter::Output &fit, int ep) -> double {
                 for ( ; ep >= 0; ep-- )
                     if ( fit.targetParam[ep] == i )
                         return fit.error[ep];
                 return 0;
             }, errMean, errSEM, errMedian, errMax, filter);
             if ( hasFinal )
-                getSummary(groups[row], [=](const GAFitter::Output &fit, int){
+                getSummary(group.fits, [=](const GAFitter::Output &fit, int){
                     return fit.finalError[i];
                 }, fErrMean, fErrSEM, fErrMedian, fErrMax);
 
-            QColor col(getGroupColorBtn(row)->color);
+            QColor col(group.color);
             double opacity = ui->opacity->value()/100.;
             col.setAlphaF(opacity);
 
@@ -895,10 +645,7 @@ void ParameterFitPlotter::plotSummary()
                         ->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCross));
 
             if ( i == 0 ) {
-                if ( ui->groups->item(row, 2)->text().isEmpty() )
-                    graph->setName(ui->groups->item(row, 1)->text());
-                else
-                    graph->setName(ui->groups->item(row, 2)->text());
+                graph->setName(group.label);
                 errGraph->setName("");
                 graph->addToLegend();
                 errGraph->addToLegend();
@@ -907,7 +654,7 @@ void ParameterFitPlotter::plotSummary()
     }
 }
 
-void ParameterFitPlotter::getSummary(std::vector<int> fits,
+void ParameterFitPlotter::getSummary(std::vector<FitInspector::Fit> fits,
                                      std::function<double(const GAFitter::Output &fit, int epoch)> value,
                                      QVector<double> &mean,
                                      QVector<double> &meanPlusSEM,
@@ -920,10 +667,9 @@ void ParameterFitPlotter::getSummary(std::vector<int> fits,
         values.reserve(fits.size());
         int n = 0;
         double sum = 0;
-        for ( int row : fits ) {
-            const GAFitter::Output &fit = session->gaFitter().results().at(row);
-            if ( i < (int)fit.epochs ) {
-                double v = value(fit, i);
+        for ( const FitInspector::Fit &f : fits ) {
+            if ( i < int(f.fit().epochs) ) {
+                double v = value(f.fit(), i);
                 values.push_back(v);
                 sum += v;
                 n++;
@@ -967,166 +713,4 @@ void ParameterFitPlotter::on_pdf_clicked()
     if ( !file.endsWith(".pdf") )
         file.append(".pdf");
     ui->panel->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), file);
-}
-
-
-// Interpolated quartiles -- https://stackoverflow.com/a/37708864
-template<typename T>
-static inline double Lerp(T v0, T v1, T t)
-{
-    return (1 - t)*v0 + t*v1;
-}
-
-template<typename T>
-static inline std::vector<T> Quantile(const std::vector<T>& inData, const std::vector<T>& probs)
-{
-    if (inData.empty())
-    {
-        return std::vector<T>();
-    }
-
-    if (1 == inData.size())
-    {
-        return std::vector<T>(1, inData[0]);
-    }
-
-    std::vector<T> data = inData;
-    std::sort(data.begin(), data.end());
-    std::vector<T> quantiles;
-
-    for (size_t i = 0; i < probs.size(); ++i)
-    {
-        T poi = Lerp<T>(-0.5, data.size() - 0.5, probs[i]);
-
-        size_t left = std::max(int64_t(std::floor(poi)), int64_t(0));
-        size_t right = std::min(int64_t(std::ceil(poi)), int64_t(data.size() - 1));
-
-        T datLeft = data.at(left);
-        T datRight = data.at(right);
-
-        T quantile = Lerp<T>(datLeft, datRight, poi - left);
-
-        quantiles.push_back(quantile);
-    }
-
-    return quantiles;
-}
-
-void ParameterFitPlotter::reBoxPlot()
-{
-    ui->boxplot->clearPlottables();
-
-    std::vector<std::vector<int>> selection;
-    std::vector<QColor> colors;
-    std::vector<QString> labels;
-    if ( summarising ) {
-        std::vector<int> rows = getSelectedRows(ui->groups);
-        for ( int row : rows ) {
-            selection.push_back(groups[row]);
-            colors.push_back(getGroupColorBtn(row)->color);
-            labels.push_back(ui->groups->item(row, 2)->text().isEmpty()
-                             ? ui->groups->item(row, 1)->text()
-                             : ui->groups->item(row, 2)->text());
-        }
-    } else {
-        std::vector<int> rows = getSelectedRows(ui->fits);
-        selection.push_back(rows);
-        colors.push_back(QColor(Qt::black));
-        labels.push_back("");
-    }
-
-    if ( selection.empty() || (selection.size() == 1 && selection[0].size() < 2) ) {
-        ui->boxplot->replot();
-        return;
-    }
-
-    // Find any parameters that aren't fitted at all
-    std::vector<bool> fitted(session->project.model().adjustableParams.size(), false);
-    int nFitted = 0;
-    for ( size_t i = 0; i < selection.size(); i++ )
-        for ( int f : selection[i] )
-            for ( size_t j = 0; j < fitted.size(); j++ )
-                fitted[j] = session->gaFitterSettings(session->gaFitter().results().at(f).resultIndex).constraints[j] < 2;
-    for ( const bool &b : fitted )
-        nFitted += b;
-
-    // Set up ticks
-    int stride = selection.size() + 1;
-    int tickOffset = selection.size() / 2;
-    double barOffset = selection.size()%2 ? 0 : 0.5;
-    ui->boxplot->xAxis->setSubTicks(false);
-    ui->boxplot->xAxis->setTickLength(0, 4);
-    ui->boxplot->xAxis->grid()->setVisible(false);
-    QSharedPointer<QCPAxisTickerText> textTicker(new QCPAxisTickerText);
-    for ( size_t i = 0, fi = 0; i < fitted.size(); fi += fitted[i], i++ ) {
-        const AdjustableParam &p = session->project.model().adjustableParams[i];
-        if ( fitted[i] )
-            textTicker->addTick(tickOffset + fi*stride, QString::fromStdString(p.name) + (p.multiplicative ? "¹" : "²"));
-    }
-    textTicker->addTick(tickOffset + nFitted*stride, "joint");
-    ui->boxplot->xAxis->setTicker(textTicker);
-    ui->boxplot->yAxis->setLabel("Deviation (¹ %, ² % range)");
-    ui->boxplot->legend->setVisible(summarising);
-
-    // Enter data group by group
-    quint32 epoch = ui->boxplot_epoch->value();
-    for ( size_t i = 0; i < selection.size(); i++ ) {
-        QCPStatisticalBox *box = new QCPStatisticalBox(ui->boxplot->xAxis, ui->boxplot->yAxis);
-        box->setName(labels[i]);
-        QPen whiskerPen(Qt::SolidLine);
-        whiskerPen.setCapStyle(Qt::FlatCap);
-        box->setWhiskerPen(whiskerPen);
-        box->setPen(QPen(colors[i]));
-        colors[i].setAlphaF(0.3);
-        box->setBrush(QBrush(colors[i]));
-        box->setWidth(0.8);
-
-        std::vector<std::vector<double>> outcomes(nFitted + 1);
-        for ( int f : selection[i] ) {
-            const GAFitter::Output &fit = session->gaFitter().results().at(f);
-            const std::vector<scalar> *params;
-            if ( fit.final && (epoch == 0 || epoch >= fit.epochs) )
-                params =& fit.finalParams;
-            else if ( epoch >= fit.epochs )
-                params =& fit.params[fit.epochs];
-            else
-                params =& fit.params[epoch];
-            double value, total = 0;
-            for ( size_t j = 0, fj = 0; j < fitted.size(); fj += fitted[j], j++ ) {
-                if ( !fitted[j] )
-                    continue;
-                const AdjustableParam &p = session->project.model().adjustableParams.at(j);
-                if ( p.multiplicative ) {
-                    value = 100 * std::fabs(1 - params->at(j) / fit.targets[j]);
-                } else {
-                    double range = session->gaFitterSettings(fit.resultIndex).constraints[j] == 1
-                            ? (session->gaFitterSettings(fit.resultIndex).max[j] - session->gaFitterSettings(fit.resultIndex).min[j])
-                            : (p.max - p.min);
-                    value = 100 * std::fabs((params->at(j) - fit.targets[j]) / range);
-                }
-                total += value;
-                outcomes[fj].push_back(value);
-            }
-            outcomes.back().push_back(total/nFitted);
-        }
-        for ( size_t j = 0; j < outcomes.size(); j++ ) {
-            std::vector<double> q = Quantile(outcomes[j], {0, 0.25, 0.5, 0.75, 1});
-            box->addData(j*stride + i + barOffset, q[0], q[1], q[2], q[3], q[4]);
-        }
-    }
-
-    ui->boxplot->rescaleAxes();
-    ui->boxplot->xAxis->setRange(-1, (nFitted+1)*stride - 1);
-
-    ui->boxplot->replot();
-}
-
-void ParameterFitPlotter::on_boxplot_pdf_clicked()
-{
-    QString file = QFileDialog::getSaveFileName(this, "Select output file");
-    if ( file.isEmpty() )
-        return;
-    if ( !file.endsWith(".pdf") )
-        file.append(".pdf");
-    ui->boxplot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), file);
 }

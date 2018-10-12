@@ -79,7 +79,9 @@ SOURCES += \
     src/core/filter.cpp \
     src/gui/cannedchannelassociationdialog.cpp \
     src/drivers/canneddaq.cpp \
-    src/core/clustering.cpp
+    src/core/clustering.cpp \
+    src/gui/fitinspector.cpp \
+    src/gui/deviationboxplot.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -142,7 +144,9 @@ HEADERS  += \
     src/include/filter.h \
     src/include/cannedchannelassociationdialog.h \
     src/include/canneddaq.h \
-    src/include/clustering.h
+    src/include/clustering.h \
+    src/include/fitinspector.h \
+    src/include/deviationboxplot.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -165,7 +169,9 @@ FORMS    += \
     src/gui/wavegenprogressplotter.ui \
     src/gui/responseplotter.ui \
     src/gui/daqdialog.ui \
-    src/gui/cannedchannelassociationdialog.ui
+    src/gui/cannedchannelassociationdialog.ui \
+    src/gui/fitinspector.ui \
+    src/gui/deviationboxplot.ui \
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 
