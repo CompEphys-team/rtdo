@@ -21,6 +21,10 @@ public:
     bool execute(QString action, QString args, Result *res, QFile &file);
     const static QString actionSelect, actionSubset, actionDeck, actionManual, actionManualDeck;
 
+    // Read/write stimulation (meta-)data, including sampling and oversampling rates
+    static void writeStims(std::vector<Stimulation> stims, std::ostream &file, Settings settings);
+    static void readStims(std::vector<Stimulation> &stims, std::istream &file, Settings &settings);
+
 signals:
     void addedSet(); //!< Notifies addition of any WaveSource, including Wavegen::Archive additions
     void addedSelection();

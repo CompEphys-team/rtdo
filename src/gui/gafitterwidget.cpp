@@ -196,4 +196,12 @@ void GAFitterWidget::on_VCCreate_clicked()
             of << '\t' << stim.baseV;
         of << "\r\n";
     }
+
+    std::ofstream meta(file.append(".stims").toStdString());
+    if ( !meta.good() )
+        return;
+    WavesetCreator::writeStims(stims, meta, session.qSettings());
+    meta << "\n\n######\n\n";
+    for ( const Stimulation &I : stims )
+        meta << I << std::endl;
 }

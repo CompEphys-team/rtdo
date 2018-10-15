@@ -55,6 +55,7 @@ struct Stimulation
 
     static constexpr size_t maxSteps = 10;
     Step steps[maxSteps];
+    size_t numSteps;
 
     // Some functions that simplify handling steps ... almost as though it were a vector.
     CUDA_CALLABLE_MEMBER inline Step* begin() { return steps; }
@@ -71,10 +72,6 @@ struct Stimulation
 
     Stimulation() = default;
     Stimulation(const iStimulation &I, double dt);
-
-private:
-    size_t numSteps;
-    friend struct iStimulation;
 };
 std::ostream &operator<<(std::ostream&, const Stimulation&);
 std::ostream &operator<<(std::ostream&, const Stimulation::Step&);
@@ -95,6 +92,7 @@ struct iStimulation
     };
 
     Step steps[Stimulation::maxSteps];
+    size_t numSteps;
 
     // Some functions that simplify handling steps ... almost as though it were a vector.
     CUDA_CALLABLE_MEMBER inline Step* begin() { return steps; }
@@ -111,10 +109,6 @@ struct iStimulation
 
     iStimulation() = default;
     iStimulation(const Stimulation &I, double dt);
-
-private:
-    size_t numSteps;
-    friend struct Stimulation;
 };
 
 struct ChnData

@@ -211,3 +211,44 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     }
 }
+
+
+std::vector<std::unique_ptr<AP>> getStimAPs(std::vector<Stimulation> &stims, double &dt, int &samplesPerDt)
+{
+    std::vector<std::unique_ptr<AP>> ap;
+    addAP(ap, "dt", &dt);
+    addAP(ap, "samplesPerDt", &samplesPerDt);
+    addAP(ap, "stim[#].duration", &stims, &Stimulation::duration);
+    addAP(ap, "stim[#].tObsBegin", &stims, &Stimulation::tObsBegin);
+    addAP(ap, "stim[#].tObsEnd", &stims, &Stimulation::tObsEnd);
+    addAP(ap, "stim[#].baseV", &stims, &Stimulation::baseV);
+    addAP(ap, "stim[#].numSteps", &stims, &Stimulation::numSteps);
+    addAP(ap, "stim[#].step[#].t", &stims, &Stimulation::steps, &Stimulation::Step::t);
+    addAP(ap, "stim[#].step[#].V", &stims, &Stimulation::steps, &Stimulation::Step::V);
+    addAP(ap, "stim[#].step[#].ramp", &stims, &Stimulation::steps, &Stimulation::Step::ramp);
+    return ap;
+}
+
+void WavesetCreator::writeStims(std::vector<Stimulation> stims, std::ostream &file, Settings settings)
+{
+    if ( !settings.daqd.filter.active )
+        settings.daqd.filter.samplesPerDt = 1;
+    for ( auto const& ap : getStimAPs(stims, settings.rund.dt, settings.daqd.filter.samplesPerDt) )
+        ap->write(file);
+}
+
+void WavesetCreator::readStims(std::vector<Stimulation> &stims, std::istream &is, Settings &settings)
+{
+    std::vector<std::unique_ptr<AP>> ap = getStimAPs(stims, settings.rund.dt, settings.daqd.filter.samplesPerDt);
+    QString name;
+    AP *it;
+    is >> name;
+    while ( is.good() ) {
+        if ( (it = AP::find(name, &ap)) ) {
+            it->readNow(name, is);
+            if ( name == "samplesPerDt" && settings.daqd.filter.samplesPerDt > 1 )
+                settings.daqd.filter.active = true;
+        }
+        is >> name;
+    }
+}
