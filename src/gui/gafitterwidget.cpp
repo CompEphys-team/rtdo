@@ -166,7 +166,7 @@ void GAFitterWidget::on_VCCreate_clicked()
     of << "\"Use=Use as stimulation file with sampling interval " << (1000*dt) << " us (" << (1/dt) << " kHz) and "
        << nTotal << " total samples (" << (nTotal*dt/1000) << " s including buffers).\"\r\n";
     of << "\"Time (s)\"";
-        for ( size_t i = 0; i < stims.size(); i++ ) {
+        for ( size_t i = 0; i < stims.size() - 1; i++ ) {
             if ( src.type == WaveSource::Deck )
                 of << "\t\"" << session.project.model().adjustableParams[i].name << " (mV)\"";
             else
