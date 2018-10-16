@@ -32,7 +32,7 @@ public:
         std::vector<scalar> targets; //!< Simulator's parameters
         quint32 epochs;
         WaveSource stimSource;
-        double variance;
+        double variance = 0;
 
         QString VCRecord;
         CannedDAQ::ChannelAssociation assoc;

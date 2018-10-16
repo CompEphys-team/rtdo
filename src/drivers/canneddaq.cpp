@@ -20,7 +20,7 @@ double CannedDAQ::getAdjustableParam(size_t idx)
 void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool readData)
 {
     QFileInfo finfo(record);
-    bool backcompat_noise = finfo.baseName().startsWith("2017");
+    bool backcompat_noise = finfo.baseName().startsWith("2018_05_03"), hasVariance = false;
 
     std::ifstream is(record.toStdString());
     std::string str;
@@ -30,9 +30,14 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
         return;
     }
     std::getline(is, str);
-    int nHeaderLines, nColumns, nChannels, nSweeps = stims.size() - backcompat_noise;
+    int nHeaderLines, nColumns, nChannels, nSweeps = stims.size();
     char cr;
     is >> nHeaderLines >> nColumns >> cr;
+    if ( backcompat_noise && nColumns == 3 + 2*int(stims.size()) ) {
+        // Account for the variance stimulation added to algorithmic stimuli used in May 2018
+        nColumns -= 2;
+        hasVariance = true;
+    }
     nChannels = (nColumns-1) / nSweeps;
 
     // First column is time. Subsequent columns should be n channels by m sweeps, clustered by channel.
@@ -55,6 +60,7 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
         int recStart = records.size();
         int nRead = 0, nTotal;
         nTotal = prepareRecords(stims);
+        std::vector<double> noise;
         std::vector<double> samples(nChannels);
         double t;
         is >> t;
@@ -67,6 +73,12 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
                 if ( assoc.Vidx >= 0 )    records[r].V.push_back(samples[assoc.Vidx] * assoc.Vscale);
                 if ( assoc.V2idx >= 0 )   records[r].V2.push_back(samples[assoc.V2idx] * assoc.V2scale);
             }
+            if ( hasVariance && assoc.Iidx >= 0 ) {
+                noise.reserve(nTotal);
+                for ( double &sample : samples )
+                    is >> sample;
+                noise.push_back(samples[assoc.Iidx] * assoc.Iscale);
+            }
             is >> t; // advance to next line
         }
 
@@ -77,32 +89,27 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
                 records[r].nTotal = nRead;
         }
 
-        // 2017 recordings did not have a noise sample. Use initial buffers and any flat initial stim segments to replace this shortfall.
-        if ( backcompat_noise ) {
-            Record &compat = records.back();
-            std::vector<Record> sortedRecs = records;
-            sortedRecs.pop_back(); // Remove the noise-associated, but not yet initialised record
-            // Sort stimulations by length of undisturbed initial segment, descending
-            std::sort(sortedRecs.begin(), sortedRecs.end(), [](const Record &a, const Record &b){
-                if ( a.stim.begin()->ramp )
-                    return false;
-                if ( b.stim.begin()->ramp )
-                    return true;
-                return a.stim.begin()->t > b.stim.begin()->t;
-            });
-
-            int i, iMax = compat.nTotal - compat.nBuffer;
-            for ( i = 0; i < compat.nBuffer && i < iMax; i++ )
-                compat.I.push_back(0);
-
-            while ( i < iMax ) {
-                for ( const Record &rec: sortedRecs ) {
-                    int jMax = rec.nBuffer + (rec.stim.begin()->ramp ? 0 : rec.stim.begin()->t/samplingDt());
-                    for ( int j = 0; j < jMax && i < iMax; i++, j++ ) {
-                        compat.I.push_back(rec.I[j]);
-                    }
-                }
+        // Add noise from initial flat segment to variance tool
+        if ( assoc.Iidx >= 0 ) {
+            for ( Record &rec : records ) {
+                int nQuiet = rec.stim.empty() ? rec.nTotal
+                                              : rec.stim.begin()->ramp ? rec.nBuffer
+                                                                       : rec.nBuffer + rec.stim.begin()->t/samplingDt();
+                noise.insert(noise.end(), rec.I.begin(), rec.I.begin() + nQuiet);
             }
+        }
+
+        // Calculate noise variance
+        if ( !noise.empty() ) {
+            double mean = 0, sse = 0;
+            for ( double &n : noise )
+                mean += n;
+            mean /= noise.size();
+            for ( double &n : noise ) {
+                double deviation = n - mean;
+                sse += deviation*deviation;
+            }
+            variance = sse / noise.size();
         }
     }
 

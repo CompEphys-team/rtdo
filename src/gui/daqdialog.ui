@@ -7,13 +7,69 @@
     <x>0</x>
     <y>0</y>
     <width>463</width>
-    <height>634</height>
+    <height>620</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Data acquisition setup</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_6">
+   <item row="3" column="0" colspan="2">
+    <widget class="QGroupBox" name="cache">
+     <property name="title">
+      <string>Buffered acquisition</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Traces per stimulation</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSpinBox" name="numTraces"/>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QCheckBox" name="useMedian">
+        <property name="text">
+         <string>Use median instead of mean</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="timeout">
+        <property name="suffix">
+         <string> s</string>
+        </property>
+        <property name="maximum">
+         <number>600</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_22">
+        <property name="text">
+         <string>Approx. cache timeout</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="2">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
    <item row="2" column="0" colspan="2">
     <widget class="QStackedWidget" name="sourceStack">
      <property name="currentIndex">
@@ -760,50 +816,33 @@
      </widget>
     </widget>
    </item>
-   <item row="3" column="0" colspan="2">
-    <widget class="QGroupBox" name="cache">
-     <property name="title">
-      <string>Buffered acquisition</string>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_36">
+     <property name="text">
+      <string>Data source:</string>
      </property>
-     <property name="checkable">
-      <bool>true</bool>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QComboBox" name="source">
+     <property name="currentIndex">
+      <number>1</number>
      </property>
-     <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Traces per stimulation</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QSpinBox" name="numTraces"/>
-      </item>
-      <item row="2" column="0" colspan="2">
-       <widget class="QCheckBox" name="useMedian">
-        <property name="text">
-         <string>Use median instead of mean</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="timeout">
-        <property name="suffix">
-         <string> s</string>
-        </property>
-        <property name="maximum">
-         <number>600</number>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_22">
-        <property name="text">
-         <string>Approx. cache timeout</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <item>
+      <property name="text">
+       <string>Recorded data</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Analog data acquisition device</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Native model simulation</string>
+      </property>
+     </item>
     </widget>
    </item>
    <item row="4" column="0" colspan="2">
@@ -869,65 +908,6 @@
        </widget>
       </item>
      </layout>
-    </widget>
-   </item>
-   <item row="6" column="0" colspan="2">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="QComboBox" name="source">
-     <property name="currentIndex">
-      <number>1</number>
-     </property>
-     <item>
-      <property name="text">
-       <string>Recorded data</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Analog data acquisition device</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Native model simulation</string>
-      </property>
-     </item>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_36">
-     <property name="text">
-      <string>Data source:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="0">
-    <widget class="QLabel" name="label_39">
-     <property name="text">
-      <string>Noise sample duration</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="1">
-    <widget class="QDoubleSpinBox" name="varianceDuration">
-     <property name="suffix">
-      <string> ms</string>
-     </property>
-     <property name="maximum">
-      <double>10000.000000000000000</double>
-     </property>
-     <property name="singleStep">
-      <double>10.000000000000000</double>
-     </property>
     </widget>
    </item>
   </layout>

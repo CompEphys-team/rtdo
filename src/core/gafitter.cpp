@@ -73,12 +73,6 @@ std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimula
         stim.duration = stim.tObsEnd;
     }
 
-    // Add a stimulation for noise sampling
-    Stimulation noiseSample = stimulations.front();
-    noiseSample.clear();
-    noiseSample.duration = (useQueuedSettings ? session.qDaqData().varianceDuration : session.daqData().varianceDuration);
-    stimulations.push_back(noiseSample);
-
     return stimulations;
 }
 
@@ -112,15 +106,14 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     if ( session.daqData().simulate < 0 ) {
         daq->getCannedDAQ()->assoc = output.assoc;
         daq->getCannedDAQ()->setRecord(astims, output.VCRecord);
+        output.variance = daq->getCannedDAQ()->variance;
+        std::cout << "Baseline current noise s.d.: " << std::sqrt(output.variance) << " nA" << std::endl;
     }
     if ( session.daqData().simulate != 0 ) {
         for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
             output.targets[i] = daq->getAdjustableParam(i);
         }
     }
-
-    output.variance = getVariance(astims.back());
-    std::cout << "Baseline current noise s.d.: " << std::sqrt(output.variance) << " nA" << std::endl;
 
     setup(astims);
 
@@ -657,31 +650,6 @@ void GAFitter::pushToQ(double t, double V, double I, double O)
         qO->push({t,O});
 }
 
-double GAFitter::getVariance(Stimulation stim)
-{
-    daq->reset();
-    daq->run(stim, session.runData().settleDuration);
-    for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.runData().dt; iT < iTEnd; iT++ )
-        daq->next();
-
-    double mean = 0, sse = 0;
-    std::vector<double> samples;
-    samples.reserve(daq->samplesRemaining);
-
-    while ( daq->samplesRemaining ) {
-        daq->next();
-        samples.push_back(daq->current);
-        mean += daq->current;
-    }
-    mean /= samples.size();
-
-    for ( double sample : samples ) {
-        double deviation = sample - mean;
-        sse += deviation*deviation;
-    }
-    return sse / samples.size();
-}
-
 std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim(std::vector<Stimulation> astims)
 {
     double dt = session.runData().dt;
@@ -689,7 +657,7 @@ std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim
     std::vector<double> norm(nParams, 1);
 
     std::vector<std::vector<std::vector<Section>>> clusters;
-    for ( int i = 0, nStims = astims.size()-1; i < nStims; i++ ) { // nStims = size-1 to exclude noise sample added in sanitiseDeck()
+    for ( int i = 0, nStims = astims.size(); i < nStims; i++ ) {
         iStimulation stim(astims[i], dt);
         session.wavegen().diagnose(stim, dt, session.runData().simCycles);
         clusters.push_back(constructClusters(

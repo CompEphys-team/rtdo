@@ -30,6 +30,8 @@ public:
     void getSampleNumbers(const std::vector<Stimulation> &stims, double dt,
                           int *nTotal, int *nBuffer = nullptr, int *nSamples = nullptr);
 
+    double variance = 0;
+
 protected:
     int prepareRecords(std::vector<Stimulation> stims);
 
