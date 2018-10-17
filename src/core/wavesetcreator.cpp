@@ -213,11 +213,10 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
 }
 
 
-std::vector<std::unique_ptr<AP>> getStimAPs(std::vector<Stimulation> &stims, double &dt, int &samplesPerDt)
+std::vector<std::unique_ptr<AP>> getStimAPs(std::vector<Stimulation> &stims, double &dt)
 {
     std::vector<std::unique_ptr<AP>> ap;
     addAP(ap, "dt", &dt);
-    addAP(ap, "samplesPerDt", &samplesPerDt);
     addAP(ap, "stim[#].duration", &stims, &Stimulation::duration);
     addAP(ap, "stim[#].tObsBegin", &stims, &Stimulation::tObsBegin);
     addAP(ap, "stim[#].tObsEnd", &stims, &Stimulation::tObsEnd);
@@ -229,26 +228,24 @@ std::vector<std::unique_ptr<AP>> getStimAPs(std::vector<Stimulation> &stims, dou
     return ap;
 }
 
-void WavesetCreator::writeStims(std::vector<Stimulation> stims, std::ostream &file, Settings settings)
+void WavesetCreator::writeStims(std::vector<Stimulation> stims, std::ostream &file, double dt)
 {
-    if ( !settings.daqd.filter.active )
-        settings.daqd.filter.samplesPerDt = 1;
-    for ( auto const& ap : getStimAPs(stims, settings.rund.dt, settings.daqd.filter.samplesPerDt) )
+    for ( auto const& ap : getStimAPs(stims, dt) )
         ap->write(file);
 }
 
-void WavesetCreator::readStims(std::vector<Stimulation> &stims, std::istream &is, Settings &settings)
+void WavesetCreator::readStims(std::vector<Stimulation> &stims, std::istream &is, double &dt)
 {
-    std::vector<std::unique_ptr<AP>> ap = getStimAPs(stims, settings.rund.dt, settings.daqd.filter.samplesPerDt);
+    std::vector<std::unique_ptr<AP>> ap = getStimAPs(stims, dt);
     QString name;
     AP *it;
     is >> name;
     while ( is.good() ) {
         if ( (it = AP::find(name, &ap)) ) {
             it->readNow(name, is);
-            if ( name == "samplesPerDt" && settings.daqd.filter.samplesPerDt > 1 )
-                settings.daqd.filter.active = true;
         }
         is >> name;
+        if ( name == "######" )
+            break;
     }
 }

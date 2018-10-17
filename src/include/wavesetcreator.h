@@ -22,8 +22,8 @@ public:
     const static QString actionSelect, actionSubset, actionDeck, actionManual, actionManualDeck;
 
     // Read/write stimulation (meta-)data, including sampling and oversampling rates
-    static void writeStims(std::vector<Stimulation> stims, std::ostream &file, Settings settings);
-    static void readStims(std::vector<Stimulation> &stims, std::istream &file, Settings &settings);
+    static void writeStims(std::vector<Stimulation> stims, std::ostream &file, double dt);
+    static void readStims(std::vector<Stimulation> &stims, std::istream &file, double &dt);
 
 signals:
     void addedSet(); //!< Notifies addition of any WaveSource, including Wavegen::Archive additions
