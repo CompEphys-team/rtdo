@@ -45,6 +45,11 @@ public:
 
     static size_t numLibs; //!< Count the number of open Wavegen/Experiment libraries
 
+    bool individual_clamp_settings = false;
+    std::string save_state_condition = "";
+    bool save_selectively = false;
+    std::vector<std::string> save_selection;
+
 protected:
     const Project &project;
     std::string _name;

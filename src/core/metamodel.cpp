@@ -505,9 +505,12 @@ std::string MetaModel::populateStructs(std::string paramPre, std::string paramPo
     }
     ss << endl;
 
+    std::string clampPre = individual_clamp_settings ? paramPre : rundPre;
+    std::string clampPost = individual_clamp_settings ? paramPost : rundPost;
+
     ss << "ClampParameters clamp;" << endl;
-    ss << "    clamp.clampGain = " << rundPre << "clampGain" << rundPost << ";" << endl;
-    ss << "    clamp.accessResistance = " << rundPre << "accessResistance" << rundPost << ";" << endl;
+    ss << "    clamp.clampGain = " << clampPre << "clampGain" << clampPost << ";" << endl;
+    ss << "    clamp.accessResistance = " << clampPre << "accessResistance" << clampPost << ";" << endl;
     // Note, params.VClamp0 and params.dVClamp to be populated by caller.
 
     return ss.str();

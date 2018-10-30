@@ -45,6 +45,19 @@ void generateCode(std::string path, const MetaModel &metamodel)
 // Additionally, synapse functionality and related synchronisations are removed, as RTDO does not require them.
 void genNeuronKernel(NNmodel &model, string &path)
 {
+    /// Hacking into definitions.h to add types.h inclusion
+    std::string def_name_old = path + "/" + model.name + "_CODE/definitions.h";
+    std::string def_name_new = def_name_old + ".new";
+    ifstream definitions_old(def_name_old);
+    ofstream definitions_new(def_name_new);
+    definitions_new << "#include \"types.h\"\n\n";
+    definitions_new << definitions_old.rdbuf();
+    definitions_new.close();
+    definitions_old.close();
+    std::remove(def_name_old.c_str());
+    std::rename(def_name_new.c_str(), def_name_old.c_str());
+    /// Done.
+
     string name, localID;
     unsigned int nt;
     ofstream os;
@@ -112,7 +125,7 @@ void genNeuronKernel(NNmodel &model, string &path)
 
 
 /// *********************** RTDO edit: reading state & params ***********************************
-        os << std::endl << pModel->populateStructs("dd_", model.neuronName[i] + "[" + localID + "]", "", model.neuronName[i]);
+        os << std::endl << pModel->populateStructs("dd_", model.neuronName[i] + "[" + localID + "]", "", model.neuronName[i]) << ENDL;
 
         for (size_t k = 0; k < nModels[nt].varNames.size(); k++) {
             bool include = true;
@@ -122,6 +135,8 @@ void genNeuronKernel(NNmodel &model, string &path)
             for ( const AdjustableParam &param : pModel->adjustableParams )
                 if ( param.name == nModels[nt].varNames[k] )
                     include = false;
+            if ( pModel->individual_clamp_settings && (nModels[nt].varNames[k] == "clampGain" || nModels[nt].varNames[k] == "accessResistance") )
+                include = false;
             if ( include ) {
                 os << nModels[nt].varTypes[k] << " l" << nModels[nt].varNames[k] << " = dd_";
                 os << nModels[nt].varNames[k] << model.neuronName[i] << "[" << localID << "];" << ENDL;
@@ -154,16 +169,34 @@ void genNeuronKernel(NNmodel &model, string &path)
 
 
 /// *********************** RTDO edit: storing state *******************************************
-        os << std::endl << pModel->extractState("dd_", model.neuronName[i] + "[" + localID + "]");
+        if ( !pModel->save_state_condition.empty() ) {
+            std::string condCode = pModel->save_state_condition;
+            substitute(condCode, tS("$(id)"), localID);
+            name_substitutions(condCode, tS("l"), nModels[nt].varNames, tS(""));
+            name_substitutions(condCode, tS(""), nModels[nt].extraGlobalNeuronKernelParameters, model.neuronName[i]);
+            checkUnreplacedVariables(condCode,tS("neuron simCode"));
+            os << ENDL << "if ( " << condCode << " )" << OB(30);
+        }
+        os << std::endl << pModel->extractState("dd_", model.neuronName[i] + "[" + localID + "]") << ENDL;
+        if ( !pModel->save_state_condition.empty() )
+            os << CB(30);
 
         for (size_t k = 0; k < nModels[nt].varNames.size(); k++) {
-            bool include = true;
-            for ( const StateVariable &var : pModel->stateVariables )
-                if ( var.name == nModels[nt].varNames[k] )
-                    include = false;
-            for ( const AdjustableParam &param : pModel->adjustableParams )
-                if ( param.name == nModels[nt].varNames[k] )
-                    include = false;
+            bool include;
+            if ( pModel->save_selectively ) {
+                include = false;
+                for ( const std::string &varname : pModel->save_selection )
+                    if ( varname == nModels[nt].varNames[k] )
+                        include = true;
+            } else {
+                include = true;
+                for ( const StateVariable &var : pModel->stateVariables )
+                    if ( var.name == nModels[nt].varNames[k] )
+                        include = false;
+                for ( const AdjustableParam &param : pModel->adjustableParams )
+                    if ( param.name == nModels[nt].varNames[k] )
+                        include = false;
+            }
             if ( include ) {
                 os << "dd_" << nModels[nt].varNames[k] << model.neuronName[i] << "[" << localID << "] = l" << nModels[nt].varNames[k] << ";" << ENDL;
             }
