@@ -200,18 +200,26 @@ struct ModelData {
     QuotedString dirpath;
 };
 
-struct Variable {
-    Variable() {}
-    Variable(std::string n, std::string c = "", std::string t = "scalar") : name(n), type(t), code(c), initial(0.) {}
+template <typename T>
+struct TypedVariable
+{
+    TypedVariable() {}
+    TypedVariable(std::string n, std::string t = "scalar") : name(n), type(t) {}
     std::string name;
     std::string type;
+
+    T *v, *d_v;
+    inline T &operator[](std::size_t i) { return v[i]; }
+};
+
+struct Variable : public TypedVariable<scalar>
+{
+    Variable() {}
+    Variable(std::string n, std::string c = "", std::string t = "scalar") : TypedVariable<scalar>(n,t), code(c), initial(0.) {}
     std::string code;
     double initial;
     double min = 0;
     double max = 0;
-
-    scalar *v, *d_v;
-    inline scalar &operator[](std::size_t i) { return v[i]; }
 };
 
 struct StateVariable : public Variable {
