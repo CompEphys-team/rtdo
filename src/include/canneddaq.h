@@ -18,7 +18,7 @@ public:
     void next();
     void reset();
 
-    void setRecord(std::vector<Stimulation> stims, QString record, bool readData = true);
+    bool setRecord(std::vector<Stimulation> stims, QString record, bool readData = true);
     std::vector<QuotedString> channelNames;
 
     struct ChannelAssociation {

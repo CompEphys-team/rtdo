@@ -17,7 +17,7 @@ double CannedDAQ::getAdjustableParam(size_t idx)
     return ref_params[idx];
 }
 
-void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool readData)
+bool CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool readData)
 {
     QFileInfo finfo(record);
     bool backcompat_noise = finfo.baseName().startsWith("2018_05_03"), hasVariance = false;
@@ -27,7 +27,7 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
     is >> str;
     if ( str != "ATF" ) {
         std::cerr << "Invalid file (start should be 'ATF', not '" << str << "'" << std::endl;
-        return;
+        return false;
     }
     std::getline(is, str);
     int nHeaderLines, nColumns, nChannels, nSweeps = stims.size();
@@ -43,7 +43,7 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
     // First column is time. Subsequent columns should be n channels by m sweeps, clustered by channel.
     if ( nColumns <= 1 || (nColumns-1) % nSweeps != 0 ) {
         std::cerr << "Wrong number of columns: " << nColumns << ", expected 1 + nChannels*" << nSweeps << std::endl;
-        return;
+        return false;
     }
 
     for ( int i = 0; i < nHeaderLines; i++ )
@@ -114,6 +114,8 @@ void CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
     }
 
     getReferenceParams(record);
+
+    return true;
 }
 
 void CannedDAQ::getReferenceParams(QString record)
