@@ -109,6 +109,15 @@ struct iStimulation
 
     iStimulation() = default;
     iStimulation(const Stimulation &I, double dt);
+    iStimulation(int) : iStimulation() {}
+};
+
+struct iObservations
+{
+    static constexpr size_t maxObs = 10;
+    int start[maxObs];
+    int stop[maxObs];
+    iObservations(int = 0) : start {}, stop {} {}
 };
 
 struct ChnData
