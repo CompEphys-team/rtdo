@@ -37,17 +37,6 @@ __host__ __device__ inline scalar clip(scalar value, scalar limit)
         return value;
 }
 
-struct ClampParameters {
-    scalar clampGain, accessResistance;
-    scalar VClamp0; // = VClamp linearly extrapolated to t=0
-    scalar dVClamp; // = VClamp gradient, mV/ms
-
-    __host__ __device__ inline scalar getCurrent(scalar t, scalar V) const
-    {
-        return (clampGain * (VClamp0 + t*dVClamp - V) - V) / accessResistance;
-    }
-};
-
 namespace RKF45_Constants {
     constexpr scalar c2 = 1./4.;
     constexpr scalar c3 = 3./8.;

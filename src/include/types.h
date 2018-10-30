@@ -406,4 +406,16 @@ struct Section
     std::vector<double> deviations; //!< Summed deviation per parameter
 };
 
+struct ClampParameters
+{
+    scalar clampGain, accessResistance;
+    scalar VClamp0; // = VClamp linearly extrapolated to t=0
+    scalar dVClamp; // = VClamp gradient, mV/ms
+
+    CUDA_CALLABLE_MEMBER inline scalar getCurrent(scalar t, scalar V) const
+    {
+        return (clampGain * (VClamp0 + t*dVClamp - V) - V) / accessResistance;
+    }
+};
+
 #endif // TYPES_H
