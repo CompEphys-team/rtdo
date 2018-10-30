@@ -81,7 +81,8 @@ SOURCES += \
     src/drivers/canneddaq.cpp \
     src/core/clustering.cpp \
     src/gui/fitinspector.cpp \
-    src/gui/deviationboxplot.cpp
+    src/gui/deviationboxplot.cpp \
+    src/core/universallibrary.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -146,7 +147,8 @@ HEADERS  += \
     src/include/canneddaq.h \
     src/include/clustering.h \
     src/include/fitinspector.h \
-    src/include/deviationboxplot.h
+    src/include/deviationboxplot.h \
+    src/include/universallibrary.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -274,4 +276,5 @@ SOURCES += \
 DISTFILES += \
     src/include/experimentlibrary.cu \
     src/include/wavegenlibrary.cu \
-    src/include/profilerlibrary.cu
+    src/include/profilerlibrary.cu \
+    src/include/universallibrary.cu

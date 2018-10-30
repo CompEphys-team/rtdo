@@ -335,6 +335,8 @@ string MetaModel::name(ModuleType type) const
         break;
     case ModuleType::Profiler:
         return _name + "_profiler";
+    case ModuleType::Universal:
+        return _name + "_universal";
     default:
         return _name + "_no_such_type";
     }

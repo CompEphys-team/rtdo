@@ -6,6 +6,7 @@
 #include "wavegen.h"
 #include "experimentlibrary.h"
 #include "profilerlibrary.h"
+#include "universallibrary.h"
 #include "AP.h"
 
 class Project
@@ -50,10 +51,12 @@ public:
 
     /// Get the project objects
     const MetaModel &model(int simNo = 0) const { return simNo==0 ? *m_model : m_extraModels.at(simNo-1); }
+    MetaModel &model(int simNo = 0) { return simNo==0 ? *m_model : m_extraModels.at(simNo-1); }
     const std::vector<MetaModel> &extraModels() const { return m_extraModels; }
     WavegenLibrary &wavegen() const { return *wglib; }
     ExperimentLibrary &experiment() const { return *explib; }
     ProfilerLibrary &profiler() const { return *proflib; }
+    UniversalLibrary &universal() const { return *unilib; }
 
     /// Get/Set project default DAQ settings
     const DAQData &daqData() const { return daqd; }
@@ -89,6 +92,7 @@ protected:
     std::unique_ptr<WavegenLibrary> wglib;
     std::unique_ptr<ExperimentLibrary> explib;
     std::unique_ptr<ProfilerLibrary> proflib;
+    std::unique_ptr<UniversalLibrary> unilib;
 
     std::vector<QString> m_extraModelFiles;
     std::vector<MetaModel> m_extraModels;
