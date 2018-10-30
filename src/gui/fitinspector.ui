@@ -33,6 +33,11 @@
         <string>Param deviation summary</string>
        </attribute>
       </widget>
+      <widget class="FitErrorPlotter" name="error_plotter">
+       <attribute name="title">
+        <string>Compare to data</string>
+       </attribute>
+      </widget>
      </widget>
      <widget class="QSplitter" name="sidebar">
       <property name="orientation">
@@ -312,6 +317,12 @@
    <class>DeviationBoxPlot</class>
    <extends>QWidget</extends>
    <header>deviationboxplot.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FitErrorPlotter</class>
+   <extends>QWidget</extends>
+   <header>fiterrorplotter.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

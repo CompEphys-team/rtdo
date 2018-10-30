@@ -82,6 +82,7 @@ SOURCES += \
     src/core/clustering.cpp \
     src/gui/fitinspector.cpp \
     src/gui/deviationboxplot.cpp \
+    src/gui/fiterrorplotter.cpp \
     src/core/universallibrary.cpp
 
 HEADERS  += \
@@ -148,6 +149,7 @@ HEADERS  += \
     src/include/clustering.h \
     src/include/fitinspector.h \
     src/include/deviationboxplot.h \
+    src/include/fiterrorplotter.h \
     src/include/universallibrary.h
 
 FORMS    += \
@@ -174,6 +176,7 @@ FORMS    += \
     src/gui/cannedchannelassociationdialog.ui \
     src/gui/fitinspector.ui \
     src/gui/deviationboxplot.ui \
+    src/gui/fiterrorplotter.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 

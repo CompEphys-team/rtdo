@@ -104,6 +104,7 @@ FitInspector::FitInspector(Session &session, QWidget *parent) :
 
     ui->fit_plots->init(&session, false);
     ui->deviation_boxplot->init(&session);
+    ui->error_plotter->init(&session);
 }
 
 FitInspector::~FitInspector()
@@ -149,6 +150,7 @@ void FitInspector::replot(bool summarising)
 
     ui->fit_plots->setData(selection, summarising);
     ui->deviation_boxplot->setData(selection, summarising);
+    ui->error_plotter->setData(selection, summarising);
 }
 
 ColorButton *FitInspector::getGraphColorBtn(int row)
