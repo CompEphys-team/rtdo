@@ -37,8 +37,6 @@ void generateCode(std::string path, const MetaModel &metamodel)
     chooseDevice(*model, path);
 #endif // CPU_ONLY
     generate_model_runner(*model, path);
-
-    genNeuronKernel(*model, path);
 }
 
 // This is a stripped down version of GeNN::genNeuronKernel (see genn/lib/src/generateKernels.cc, which is no longer included in RTDO source)
