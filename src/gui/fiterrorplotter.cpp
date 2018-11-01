@@ -761,3 +761,13 @@ int FitErrorPlotter::get_parameter_selection()
         parameterSourceSelection = ui->epoch->value();
     return parameterSourceSelection;
 }
+
+void FitErrorPlotter::on_pdf_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( file.isEmpty() )
+        return;
+    if ( !file.endsWith(".pdf") )
+        file.append(".pdf");
+    ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), file);
+}

@@ -53,6 +53,8 @@ private slots:
 
     void on_run_clicked();
 
+    void on_pdf_clicked();
+
 private:
     Ui::FitErrorPlotter *ui;
     Session *session;

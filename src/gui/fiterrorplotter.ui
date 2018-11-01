@@ -28,31 +28,6 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="4" rowspan="4">
-        <widget class="QTableWidget" name="protocols">
-         <attribute name="horizontalHeaderDefaultSectionSize">
-          <number>40</number>
-         </attribute>
-         <attribute name="horizontalHeaderStretchLastSection">
-          <bool>true</bool>
-         </attribute>
-         <column>
-          <property name="text">
-           <string/>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>Avail</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>Protocol</string>
-          </property>
-         </column>
-        </widget>
-       </item>
        <item row="2" column="0">
         <widget class="QComboBox" name="params">
          <property name="currentIndex">
@@ -215,6 +190,38 @@
          <property name="text">
           <string>Fits matched against register: 100/100</string>
          </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QPushButton" name="pdf">
+         <property name="text">
+          <string>PDF...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="4" rowspan="5">
+        <widget class="QTableWidget" name="protocols">
+         <attribute name="horizontalHeaderDefaultSectionSize">
+          <number>40</number>
+         </attribute>
+         <attribute name="horizontalHeaderStretchLastSection">
+          <bool>true</bool>
+         </attribute>
+         <column>
+          <property name="text">
+           <string/>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Avail</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Protocol</string>
+          </property>
+         </column>
         </widget>
        </item>
       </layout>
