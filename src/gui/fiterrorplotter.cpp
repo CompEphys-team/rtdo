@@ -5,6 +5,18 @@
 
 #include "supportcode.h"
 
+constexpr static int nColours = 8;
+static QString colours[nColours] = {
+    "#e41a1c",
+    "#377eb8",
+    "#4daf4a",
+    "#984ea3",
+    "#ff7f00",
+    "#ffff33",
+    "#a65628",
+    "#f781bf"
+};
+
 FitErrorPlotter::FitErrorPlotter(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::FitErrorPlotter)
@@ -17,6 +29,7 @@ FitErrorPlotter::FitErrorPlotter(QWidget *parent) :
     });
     connect(ui->params, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [=](int idx){
         ui->epoch->setEnabled(idx==2);
+        replot();
     });
 
     ui->protocols->setColumnWidth(0, 22);
@@ -37,6 +50,12 @@ FitErrorPlotter::FitErrorPlotter(QWidget *parent) :
     connect(ui->trace_single, &QRadioButton::toggled, this, &FitErrorPlotter::replot);
     connect(ui->trace_single, &QRadioButton::toggled, ui->trace_stimidx, &QSpinBox::setEnabled);
 
+    connect(ui->flipCats, &QCheckBox::stateChanged, this, &FitErrorPlotter::replot);
+    connect(ui->groupCat, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &FitErrorPlotter::replot);
+    connect(ui->splitTarget, &QCheckBox::stateChanged, this, &FitErrorPlotter::replot);
+    connect(ui->protocolMeans, &QCheckBox::stateChanged, this, &FitErrorPlotter::replot);
+    connect(ui->groupMeans, &QCheckBox::stateChanged, this, &FitErrorPlotter::replot);
+
     ui->plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
     connect(ui->plot, &QCustomPlot::selectionChangedByUser, [=](){
         QList<QCPAxis *> axes = ui->plot->selectedAxes();
@@ -48,11 +67,6 @@ FitErrorPlotter::FitErrorPlotter(QWidget *parent) :
     });
     ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
     ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
-
-    ui->plot->yAxis2->setVisible(true);
-    ui->plot->yAxis->setLabel("Current (nA)");
-    ui->plot->yAxis2->setLabel("Voltage (mV)");
-    ui->plot->xAxis->setLabel("Time (ms)");
 }
 
 FitErrorPlotter::~FitErrorPlotter()
@@ -417,7 +431,7 @@ void FitErrorPlotter::push_run_pull(std::vector<ResultKey> keys, size_t keySz)
         QVector<double> trace(lib.stim[k].duration);
         for ( int i = 0; i < trace.size(); i++ )
             trace[i] = lib.output[i*lib.project.expNumCandidates() + k];
-        results[keys[k]] = std::make_pair(lib.summary[k], std::move(trace));
+        results[keys[k]] = std::make_pair(std::sqrt(lib.summary[k]), std::move(trace));
     }
 }
 
@@ -429,9 +443,9 @@ void FitErrorPlotter::replot()
     bool traces_possible = protocol_indices.size() == 1 && data.size() == 1 && data[0].fits.size() == 1;
     ui->trace_tab->setEnabled(traces_possible);
 
-    ui->plot->clearGraphs();
+    ui->plot->clearPlottables();
 
-    if ( !protocol_indices.empty() ) {
+    if ( !protocol_indices.empty() && !data.empty() ) {
         if ( ui->tabWidget->currentWidget() == ui->trace_tab ) {
             if ( traces_possible )
                 plot_traces(protocols[protocol_indices[0]]);
@@ -444,6 +458,15 @@ void FitErrorPlotter::replot()
 
 void FitErrorPlotter::plot_traces(Protocol &prot)
 {
+    ui->plot->yAxis2->setVisible(true);
+    ui->plot->yAxis->setLabel("Current (nA)");
+    ui->plot->yAxis2->setLabel("Voltage (mV)");
+    ui->plot->xAxis->setLabel("Time (ms)");
+    ui->plot->xAxis->setSubTicks(true);
+    ui->plot->xAxis->setTickLength(5, 0);
+    ui->plot->xAxis->grid()->setVisible(true);
+    ui->plot->legend->setVisible(false);
+
     std::vector<int> stim_indices;
     if ( ui->trace_single->isChecked() )
         stim_indices.push_back(ui->trace_stimidx->value());
@@ -529,7 +552,195 @@ void FitErrorPlotter::plot_traces(Protocol &prot)
 
 void FitErrorPlotter::plot_boxes(std::vector<int> protocol_indices)
 {
+    using std::swap;
 
+    ui->plot->yAxis2->setVisible(false);
+    ui->plot->yAxis->setLabel("Current s.d. (nA)");
+    ui->plot->xAxis->setLabel("");
+    ui->plot->xAxis->setSubTicks(false);
+    ui->plot->xAxis->setTickLength(0, 4);
+    ui->plot->xAxis->grid()->setVisible(false);
+    ui->plot->legend->setVisible(true);
+
+    bool targetvsfinal = ui->splitTarget->isChecked();
+
+    // Set up lists of global fit indices (one for each major group [cell or group/fit])
+    QStringList fit_labels;
+    std::vector<std::vector<int>> fits;
+    std::vector<QColor> fit_colours;
+    if ( ui->groupCat->currentIndex() == 0 && summarising ) {
+        fits.reserve(data.size());
+        for ( const FitInspector::Group &g : data ) {
+            fits.emplace_back();
+            fits.back().reserve(g.fits.size());
+            for ( const FitInspector::Fit &f : g.fits )
+                fits.back().push_back(f.idx);
+            fit_labels.push_back(g.label);
+            fit_colours.push_back(g.color);
+        }
+    } else if ( ui->groupCat->currentIndex() == 0 && !summarising ) {
+        fits.reserve(data[0].fits.size());
+        for ( const FitInspector::Fit &f : data[0].fits ) {
+            fits.push_back({f.idx});
+            fit_labels.push_back(f.label);
+            fit_colours.push_back(f.color);
+        }
+    } else if ( ui->groupCat->currentIndex() == 1 ) {
+        QStringList cells;
+        std::vector<std::vector<int>> fits_sparse;
+        for ( auto &reg_iter : register_map ) {
+            int cellIdx;
+            QString cell = reg_iter.first.first;
+            if ( !cells.contains(cell) ) {
+                cells.push_back(cell);
+                fits_sparse.emplace_back();
+                cellIdx = cells.size()-1;
+            } else {
+                cellIdx = cells.indexOf(QRegExp::escape(cell));
+            }
+
+            for ( const FitInspector::Group &g : data )
+                for ( const FitInspector::Fit &f : g.fits )
+                    if ( f.fit().VCRecord.endsWith(reg_iter.second.file) )
+                        fits_sparse[cellIdx].push_back(f.idx);
+        }
+        for ( size_t i = 0; i < fits_sparse.size(); i++ ) {
+            if ( !fits_sparse[i].empty() ) {
+                fits.push_back(std::move(fits_sparse[i]));
+                fit_labels.push_back(cells[i]);
+                fit_colours.push_back(colours[i%nColours]);
+            }
+        }
+    }
+
+    // Collect all RMSE values at each [fits x protocol] intersection
+    bool groupMeans = ui->groupMeans->isChecked();
+    bool protMeans = ui->protocolMeans->isChecked();
+    int source_selection = get_parameter_selection();
+    int nFits = targetvsfinal ? fits.size()*2 : fits.size();
+    if ( groupMeans )
+        nFits += targetvsfinal ? 3 : 1;
+    int nProtocols = protocol_indices.size() + int(protMeans);
+    std::vector<std::vector<std::vector<double>>> rmse(nFits, std::vector<std::vector<double>>(nProtocols));
+    for ( size_t i = 0; i < fits.size(); i++ ) {
+        for ( size_t j = 0; j < protocol_indices.size(); j++ ) {
+            for ( int k = 0; k < (targetvsfinal ? 2 : 1); k++ ) {
+                std::vector<double> errors;
+                for ( int fitIdx : fits[i] ) {
+                    for ( size_t stimIdx = 0; stimIdx < protocols[protocol_indices[j]].stims.size(); stimIdx++ ) {
+                        ResultKey key(protocol_indices[j], stimIdx, fitIdx, targetvsfinal ? k-2 : source_selection);
+                        auto res_iter = results.find(key);
+                        if ( res_iter != results.end() )
+                            errors.push_back(res_iter->second.first);
+                    }
+                }
+                rmse[targetvsfinal ? 2*i+k : i][j] = Quantile(errors, {0, 0.25, 0.5, 0.75, 1});
+
+                // Accumulate errors across groups/protocols for means
+                if ( groupMeans ) {
+                    std::vector<double> *vec;
+                    if ( targetvsfinal )
+                        vec =& rmse[nFits - 3 + k][j];
+                    else
+                        vec =& rmse[nFits - 1][j];
+                    vec->insert(vec->end(), errors.begin(), errors.end());
+                }
+                if ( protMeans ) {
+                    std::vector<double> *vec =& rmse[targetvsfinal ? 2*i+k : i][nProtocols - 1];
+                    vec->insert(vec->end(), errors.begin(), errors.end());
+                }
+            }
+        }
+    }
+
+    // Consume the means in the margins
+    if ( groupMeans ) {
+        for ( size_t j = 0; j < protocol_indices.size(); j++ ) {
+            if ( targetvsfinal ) {
+                if ( protMeans ) {
+                    rmse[nFits-3][nProtocols-1].insert(rmse[nFits-3][nProtocols-1].end(), rmse[nFits-3][j].begin(), rmse[nFits-3][j].end());
+                    rmse[nFits-2][nProtocols-1].insert(rmse[nFits-2][nProtocols-1].end(), rmse[nFits-2][j].begin(), rmse[nFits-2][j].end());
+                }
+                std::vector<double> tmp;
+                swap(rmse[nFits-3][j], tmp); // Fill tmp with "target" errors
+                rmse[nFits-3][j] = Quantile(tmp, {0, 0.25, 0.5, 0.75, 1});
+                tmp.insert(tmp.end(), rmse[nFits-2][j].begin(), rmse[nFits-2][j].end()); // add "fit" errors to tmp
+                swap(rmse[nFits-1][j], tmp); // Fill overall mean vec with tmp for processing in the general section below
+                rmse[nFits-2][j] = Quantile(rmse[nFits-2][j], {0, 0.25, 0.5, 0.75, 1});
+            }
+            if ( protMeans )
+                rmse[nFits-1][nProtocols-1].insert(rmse[nFits-1][nProtocols-1].end(), rmse[nFits-1][j].begin(), rmse[nFits-1][j].end());
+            rmse[nFits-1][j] = Quantile(rmse[nFits-1][j], {0, 0.25, 0.5, 0.75, 1});
+        }
+    }
+    if ( protMeans )
+        for ( int i = 0; i < nFits; i++ )
+            rmse[i][nProtocols-1] = Quantile(rmse[i][nProtocols-1], {0, 0.25, 0.5, 0.75, 1});
+
+    // Deal with major/minor flip
+    bool flip = ui->flipCats->isChecked();
+    auto el = [&rmse, flip](int minorIdx, int majorIdx) -> std::vector<double> {
+        return flip ? rmse[minorIdx][majorIdx] : rmse[majorIdx][minorIdx];
+    };
+    int nMajor = flip ? nProtocols : nFits;
+    int nMinor = flip ? nFits : nProtocols;
+
+    QStringList majorLabels, minorLabels;
+    for ( int iPro : protocol_indices )
+        minorLabels.push_back(protocols[iPro].name.split('.').front());
+    if ( protMeans )
+        minorLabels.push_back("all");
+
+    if ( targetvsfinal ) {
+        for ( QString label : fit_labels )
+            majorLabels << label + " target" << label + " fit";
+        if ( groupMeans )
+            majorLabels << "all target" << "all fit";
+    } else {
+        swap(majorLabels, fit_labels);
+    }
+    if ( groupMeans )
+        majorLabels << "all";
+
+    if ( flip )
+        swap(minorLabels, majorLabels);
+
+    std::vector<QColor> minorCols(nMinor);
+    if ( flip )
+        for ( int i = 0; i < nMinor; i++ )
+            minorCols[i] = (targetvsfinal && i%2) ? fit_colours[i/2].lighter() : fit_colours[targetvsfinal ? i/2 : i];
+    else
+        for ( int i = 0; i < nMinor; i++ )
+            minorCols[i] = QColor(colours[i%nColours]);
+
+    // Set up ticks
+    int stride = nMinor + 1;
+    int tickOffset = nMinor/2;
+    double barOffset = nMinor%2 ? 0 : 0.5;
+    QSharedPointer<QCPAxisTickerText> textTicker(new QCPAxisTickerText);
+    for ( int i = 0; i < majorLabels.size(); i++ )
+        textTicker->addTick(tickOffset + i*stride, majorLabels[i]);
+    ui->plot->xAxis->setTicker(textTicker);
+
+    for ( int i = 0; i < nMinor; i++ ) {
+        QCPStatisticalBox *box = new QCPStatisticalBox(ui->plot->xAxis, ui->plot->yAxis);
+        box->setName(minorLabels[i]);
+        QPen whiskerPen(Qt::SolidLine);
+        whiskerPen.setCapStyle(Qt::FlatCap);
+        box->setWhiskerPen(whiskerPen);
+        box->setPen(QPen(minorCols[i]));
+        QColor brushCol = minorCols[i];
+        brushCol.setAlphaF(0.3);
+        box->setBrush(QBrush(brushCol));
+        box->setWidth(0.8);
+
+        for ( int j = 0; j < nMajor; j++ )
+            if ( !el(i,j).empty() )
+                box->addData(j*stride + i + barOffset, el(i,j)[0], el(i,j)[1], el(i,j)[2], el(i,j)[3], el(i,j)[4]);
+    }
+
+    ui->plot->rescaleAxes();
+    ui->plot->xAxis->setRange(-1, nMajor*stride - 1);
 }
 
 std::vector<int> FitErrorPlotter::get_protocol_indices()
