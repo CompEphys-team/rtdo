@@ -249,7 +249,8 @@ void ParameterFitPlotter::setData(std::vector<FitInspector::Group> data, bool su
 {
     this->data = data;
     this->summarising = summarising;
-    replot();
+    if ( isVisible() )
+        replot();
 }
 
 void ParameterFitPlotter::clearPlotLayout()

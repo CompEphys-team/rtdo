@@ -116,7 +116,8 @@ void FitErrorPlotter::setData(std::vector<FitInspector::Group> data, bool summar
         ui->protocols->setItem(i, 1, new QTableWidgetItem(QString("%1/%2").arg(nProtocolHits[i]).arg(nFound)));
     ui->epoch->setMaximum(maxEpoch);
 
-    replot();
+    if ( isVisible() )
+        replot();
 }
 
 

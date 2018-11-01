@@ -25,6 +25,9 @@ public:
 
     void setData(std::vector<FitInspector::Group> data, bool summarising);
 
+public slots:
+    void replot();
+
 protected:
 
     void getSummary(std::vector<FitInspector::Fit> fits, //!< The fits to be used
@@ -46,8 +49,6 @@ protected slots:
     void buildPlotLayout();
 
 private slots:
-
-    void replot();
     void plotIndividual();
     void progress(quint32);
     void addFinal(const GAFitter::Output &);

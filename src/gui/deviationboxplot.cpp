@@ -23,7 +23,8 @@ void DeviationBoxPlot::setData(std::vector<FitInspector::Group> data, bool summa
 {
     this->data = data;
     this->summarising = summarising;
-    replot();
+    if ( isVisible() )
+        replot();
 }
 
 void DeviationBoxPlot::replot()

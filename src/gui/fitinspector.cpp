@@ -102,6 +102,15 @@ FitInspector::FitInspector(Session &session, QWidget *parent) :
     });
     updateFits();
 
+    connect(ui->plot_tabs, &QTabWidget::currentChanged, this, [=](){
+        if ( ui->plot_tabs->currentWidget() == ui->fit_plots )
+            ui->fit_plots->replot();
+        else if ( ui->plot_tabs->currentWidget() == ui->deviation_boxplot )
+            ui->deviation_boxplot->replot();
+        else
+            ui->error_plotter->replot();
+    });
+
     ui->fit_plots->init(&session, false);
     ui->deviation_boxplot->init(&session);
     ui->error_plotter->init(&session);
