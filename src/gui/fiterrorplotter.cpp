@@ -264,6 +264,8 @@ void FitErrorPlotter::on_run_clicked()
     if ( protocol_indices.empty() )
         return;
 
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
     // Adjust observations to potentially changed settings, and find longest stim duration
     int maxStimLen = 0;
     for ( int iProtocol : protocol_indices ) {
@@ -411,6 +413,8 @@ void FitErrorPlotter::on_run_clicked()
     }
 
     replot();
+
+    QApplication::restoreOverrideCursor();
 }
 
 void FitErrorPlotter::push_run_pull(std::vector<ResultKey> keys, size_t keySz)
