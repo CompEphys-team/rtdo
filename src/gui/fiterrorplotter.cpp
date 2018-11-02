@@ -32,14 +32,11 @@ FitErrorPlotter::FitErrorPlotter(QWidget *parent) :
         replot();
     });
 
-    ui->protocols->setColumnWidth(0, 22);
-    connect(ui->protocols, &QTableWidget::cellChanged, this, [=](int, int col){
-        if ( col == 0 ) {
-            std::vector<int> pidx = get_protocol_indices();
-            if ( pidx.size() == 1 )
-                ui->trace_stimidx->setMaximum(protocols[pidx[0]].stims.size()-1);
-            replot();
-        }
+    connect(ui->protocols, &QTableWidget::itemSelectionChanged, this, [=](){
+        std::vector<int> pidx = get_protocol_indices();
+        if ( pidx.size() == 1 )
+            ui->trace_stimidx->setMaximum(protocols[pidx[0]].stims.size()-1);
+        replot();
     });
 
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &FitErrorPlotter::replot);
@@ -113,7 +110,7 @@ void FitErrorPlotter::setData(std::vector<FitInspector::Group> data, bool summar
 
     ui->matchedLabel->setText(QString("Fits matched against register: %1/%2").arg(nFound).arg(n));
     for ( size_t i = 0; i < protocols.size(); i++ )
-        ui->protocols->setItem(i, 1, new QTableWidgetItem(QString("%1/%2").arg(nProtocolHits[i]).arg(nFound)));
+        ui->protocols->setItem(i, 0, new QTableWidgetItem(QString("%1/%2").arg(nProtocolHits[i]).arg(nFound)));
     ui->epoch->setMaximum(maxEpoch);
 
     if ( isVisible() )
@@ -210,12 +207,7 @@ void FitErrorPlotter::on_register_path_textChanged(const QString &arg1)
         ui->protocols->clearContents();
         ui->protocols->setRowCount(protocols.size());
         for ( size_t i = 0; i < protocols.size(); i++ ) {
-            QTableWidgetItem *cb = new QTableWidgetItem();
-            cb->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
-            cb->setCheckState(Qt::Unchecked);
-            ui->protocols->setItem(i, 0, cb);
-
-            ui->protocols->setItem(i, 2, new QTableWidgetItem(protocols[i].name));
+            ui->protocols->setItem(i, 1, new QTableWidgetItem(protocols[i].name));
         }
     }
 
@@ -463,6 +455,7 @@ void FitErrorPlotter::plot_traces(Protocol &prot)
     ui->plot->yAxis->setLabel("Current (nA)");
     ui->plot->yAxis2->setLabel("Voltage (mV)");
     ui->plot->xAxis->setLabel("Time (ms)");
+    ui->plot->xAxis->setTicker(QSharedPointer<QCPAxisTicker>(new QCPAxisTicker));
     ui->plot->xAxis->setSubTicks(true);
     ui->plot->xAxis->setTickLength(5, 0);
     ui->plot->xAxis->grid()->setVisible(true);
@@ -723,6 +716,7 @@ void FitErrorPlotter::plot_boxes(std::vector<int> protocol_indices)
         textTicker->addTick(tickOffset + i*stride, majorLabels[i]);
     ui->plot->xAxis->setTicker(textTicker);
 
+    // Plot it!
     for ( int i = 0; i < nMinor; i++ ) {
         QCPStatisticalBox *box = new QCPStatisticalBox(ui->plot->xAxis, ui->plot->yAxis);
         box->setName(minorLabels[i]);
@@ -746,13 +740,12 @@ void FitErrorPlotter::plot_boxes(std::vector<int> protocol_indices)
 
 std::vector<int> FitErrorPlotter::get_protocol_indices()
 {
-    std::vector<int> protocol_indices;
-    for ( size_t i = 0; i < protocols.size(); i++ ) {
-        if ( ui->protocols->item(i, 0)->checkState() == Qt::Checked ){
-            protocol_indices.push_back(i);
-        }
-    }
-    return protocol_indices;
+    QList<QTableWidgetSelectionRange> selection = ui->protocols->selectedRanges();
+    std::vector<int> rows;
+    for ( auto range : selection )
+        for ( int i = range.topRow(); i <= range.bottomRow(); i++ )
+            rows.push_back(i);
+    return rows;
 }
 
 int FitErrorPlotter::get_parameter_selection()
