@@ -556,7 +556,7 @@ void FitErrorPlotter::plot_boxes(std::vector<int> protocol_indices)
     using std::swap;
 
     ui->plot->yAxis2->setVisible(false);
-    ui->plot->yAxis->setLabel("Current s.d. (nA)");
+    ui->plot->yAxis->setLabel("RMS current error (nA)");
     ui->plot->xAxis->setLabel("");
     ui->plot->xAxis->setSubTicks(false);
     ui->plot->xAxis->setTickLength(0, 4);
