@@ -58,6 +58,7 @@ private slots:
 private:
     Ui::FitErrorPlotter *ui;
     Session *session;
+    UniversalLibrary *lib = nullptr;
 
     bool summarising = false;
     std::vector<FitInspector::Group> data;

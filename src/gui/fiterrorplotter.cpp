@@ -68,6 +68,7 @@ FitErrorPlotter::FitErrorPlotter(QWidget *parent) :
 
 FitErrorPlotter::~FitErrorPlotter()
 {
+    delete lib;
     delete ui;
 }
 
@@ -328,13 +329,14 @@ void FitErrorPlotter::on_run_clicked()
     }
 
     // Prepare lib
-    UniversalLibrary &lib = session->project.universal();
-    lib.resizeTarget(nTraces, maxStimLen);
-    lib.resizeOutput(maxStimLen);
+    if ( lib == nullptr )
+        lib = new UniversalLibrary(session->project, false);
+    lib->resizeTarget(nTraces, maxStimLen);
+    lib->resizeOutput(maxStimLen);
 
-    lib.simCycles = session->qRunData().simCycles;
-    lib.integrator = session->qRunData().integrator;
-    lib.assignment =
+    lib->simCycles = session->qRunData().simCycles;
+    lib->integrator = session->qRunData().integrator;
+    lib->assignment =
             ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE
             | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES;
 
@@ -343,7 +345,7 @@ void FitErrorPlotter::on_run_clicked()
     // Load models into lib
     size_t modelIdx = 0;
     size_t targetOffset = 0;
-    std::vector<ResultKey> keys(lib.project.expNumCandidates());
+    std::vector<ResultKey> keys(lib->project.expNumCandidates());
     for ( RecStruct &rec : recordings) {
         RegisterEntry &reg = *rec.reg;
         loadRecording(reg);
@@ -351,7 +353,7 @@ void FitErrorPlotter::on_run_clicked()
         for ( size_t stimIdx = 0; stimIdx < reg.pprotocol->stims.size(); stimIdx++ ) {
             // Write target traces to lib
             for ( int iSample = 0; iSample < reg.data[stimIdx].size(); iSample++ )
-                lib.target[targetOffset + stimIdx + iSample*lib.targetStride] = reg.data[stimIdx][iSample];
+                lib->target[targetOffset + stimIdx + iSample*lib->targetStride] = reg.data[stimIdx][iSample];
 
             // Write model parameters and settings
             for ( const std::pair<size_t,size_t> fit_coords : rec.fit_coords ) {
@@ -378,19 +380,19 @@ void FitErrorPlotter::on_run_clicked()
                 else
                     paramValues = fit.params.back();
                 for ( size_t i = 0; i < paramValues.size(); i++ )
-                    lib.adjustableParams[i][modelIdx] = paramValues[i];
+                    lib->adjustableParams[i][modelIdx] = paramValues[i];
 
                 // Write settings
-                lib.setRundata(modelIdx, reg.rund);
-                lib.stim[modelIdx] = reg.pprotocol->istims[stimIdx];
-                lib.obs[modelIdx] = reg.pprotocol->iObs[stimIdx];
-                lib.targetOffset[modelIdx] = targetOffset + stimIdx;
+                lib->setRundata(modelIdx, reg.rund);
+                lib->stim[modelIdx] = reg.pprotocol->istims[stimIdx];
+                lib->obs[modelIdx] = reg.pprotocol->iObs[stimIdx];
+                lib->targetOffset[modelIdx] = targetOffset + stimIdx;
 
                 // Increment
                 ++modelIdx;
 
                 // Run a batch as soon as the model bucket is full
-                if ( modelIdx == lib.project.expNumCandidates() ) {
+                if ( modelIdx == lib->project.expNumCandidates() ) {
                     push_run_pull(keys, modelIdx);
                     modelIdx = 0;
                 }
@@ -401,9 +403,9 @@ void FitErrorPlotter::on_run_clicked()
 
     // push-run-pull the remaining models
     if ( modelIdx > 0 ) {
-        for ( size_t i = modelIdx; i < lib.project.expNumCandidates(); i++ ) {
-            lib.stim[i].duration = 0;
-            lib.iSettleDuration[i] = 0;
+        for ( size_t i = modelIdx; i < lib->project.expNumCandidates(); i++ ) {
+            lib->stim[i].duration = 0;
+            lib->iSettleDuration[i] = 0;
         }
         push_run_pull(keys, modelIdx);
     }
@@ -413,18 +415,17 @@ void FitErrorPlotter::on_run_clicked()
 
 void FitErrorPlotter::push_run_pull(std::vector<ResultKey> keys, size_t keySz)
 {
-    UniversalLibrary &lib = session->project.universal();
-    lib.pushTarget();
-    lib.push();
-    lib.run();
-    lib.pull(lib.summary);
-    lib.pullOutput();
+    lib->pushTarget();
+    lib->push();
+    lib->run();
+    lib->pull(lib->summary);
+    lib->pullOutput();
 
     for ( size_t k = 0; k < keySz; k++ ) {
-        QVector<double> trace(lib.stim[k].duration);
+        QVector<double> trace(lib->stim[k].duration);
         for ( int i = 0; i < trace.size(); i++ )
-            trace[i] = lib.output[i*lib.project.expNumCandidates() + k];
-        results[keys[k]] = std::make_pair(std::sqrt(lib.summary[k]), std::move(trace));
+            trace[i] = lib->output[i*lib->project.expNumCandidates() + k];
+        results[keys[k]] = std::make_pair(std::sqrt(lib->summary[k]), std::move(trace));
     }
 }
 
