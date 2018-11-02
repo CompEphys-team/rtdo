@@ -210,7 +210,9 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
             RKF45(t, t + tStep*$(dt), mdt, tStep*$(dt), hP, state, params, clamp);
         }
 
-        if ( !($(assignment)&ASSIGNMENT_TIMESERIES_COMPACT) && ($(assignment)&ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES) )
+        if ( ($(assignment) & ASSIGNMENT_REPORT_TIMESERIES)
+          && !($(assignment) & ASSIGNMENT_TIMESERIES_COMPACT)
+          && ($(assignment) & ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES) )
             for ( int i = 0; i < tStep; i++ )
                 dd_timeseries[id + NMODELS*(iT+i)] = 0.;
 
