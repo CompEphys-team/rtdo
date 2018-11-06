@@ -28,7 +28,7 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
         labels << QString::fromStdString(p.name);
 
         QSpinBox *n = new QSpinBox();
-        n->setRange(0, session.project.expNumCandidates());
+        n->setRange(0, session.project.universal().NMODELS);
         n->setSingleStep(10);
         ui->table->setCellWidget(i, 0, n);
         ns[i] = n;
@@ -62,7 +62,7 @@ ProfileDialog::ProfileDialog(Session &s, QWidget *parent) :
             double perms = 1;
             for ( QSpinBox *box : ns ) {
                 if ( box && box->value() == 0 )
-                    perms *= session.project.expNumCandidates();
+                    perms *= session.project.universal().NMODELS;
                 else if ( box )
                     perms *= box->value();
             }
@@ -192,7 +192,7 @@ void ProfileDialog::on_btnPreset_clicked()
         const ErrorProfile &ep = session.profiler().profiles().at(preset - nHardPresets);
         for ( size_t i = 0; i < ep.permutations().size(); i++ ) {
             const ErrorProfile::Permutation &perm = ep.permutations().at(i);
-            if ( perm.n == session.project.expNumCandidates() ) {
+            if ( perm.n == session.project.universal().NMODELS ) {
                 ns[i]->setValue(0);
             } else {
                 ns[i]->setValue(perm.n);

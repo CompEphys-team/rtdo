@@ -2,7 +2,7 @@
 #define ERRORPROFILER_H
 
 #include "sessionworker.h"
-#include "experimentlibrary.h"
+#include "universallibrary.h"
 #include "errorprofile.h"
 
 
@@ -47,11 +47,10 @@ protected:
     void load(const QString &action, const QString &args, QFile &results, Result r);
 
     friend class ErrorProfile;
-    void settle(scalar baseV, scalar settleDuration);
     void stimulate(const Stimulation &stim);
 
 private:
-    ExperimentLibrary &lib;
+    UniversalLibrary &lib;
     DAQ *daq;
 
     std::list<ErrorProfile> m_queue;

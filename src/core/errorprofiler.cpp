@@ -3,21 +3,20 @@
 #include "util.h"
 #include "session.h"
 
-
 const QString ErrorProfiler::action = QString("generate");
 const quint32 ErrorProfiler::magic = 0x2be4e5cb;
 const quint32 ErrorProfiler::version = 103;
 
 ErrorProfiler::ErrorProfiler(Session &session) :
     SessionWorker(session),
-    lib(session.project.experiment()),
+    lib(session.project.universal()),
     daq(lib.createSimulator(0, session, session.getSettings(), false))
 {
 }
 
 ErrorProfiler::~ErrorProfiler()
 {
-    session.project.experiment().destroySimulator(daq);
+    lib.destroySimulator(daq);
 }
 
 void ErrorProfiler::load(const QString &act, const QString &, QFile &results, Result r)
@@ -84,55 +83,47 @@ bool ErrorProfiler::execute(QString action, QString, Result *result, QFile &file
 }
 
 
-void ErrorProfiler::settle(scalar baseV, scalar settleDuration)
-{
-    // Create holding stimulation
-    Stimulation I {};
-    I.duration = settleDuration;
-    I.baseV = baseV;
-
-    // Set up library
-    lib.t = 0.;
-    lib.iT = 0;
-    lib.getErr = false;
-    lib.getLikelihood = false;
-    lib.VC = true;
-    lib.Vmem = I.baseV;
-
-    // Set up DAQ
-    daq->VC = true;
-    daq->reset();
-    daq->run(I);
-
-    // Run
-    while ( lib.t < I.duration ) {
-        daq->next();
-        lib.step();
-    }
-
-    daq->reset();
-}
-
 void ErrorProfiler::stimulate(const Stimulation &stim)
 {
-    // Set up library
-    lib.t = 0.;
-    lib.iT = 0;
-    lib.VC = true;
+    const RunData &rd = session.runData();
+    iStimulation I(stim, rd.dt);
+    I.duration = I.tObsEnd;
+
+    // Set up lib
+    lib.setSingularRund();
+    lib.simCycles = rd.simCycles;
+    lib.integrator = rd.integrator;
+    lib.setRundata(0, rd);
+
+    lib.setSingularStim();
+    lib.assignment = lib.assignment_base
+            | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET
+            | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE;
+    lib.stim[0] = I;
+    lib.obs[0] = iObservations {{}, {}};
+    lib.obs[0].start[0] = I.tObsBegin;
+    lib.obs[0].stop[0] = I.tObsEnd;
+
+    lib.setSingularTarget();
+    lib.resizeTarget(1, I.duration);
+    lib.targetOffset[0] = 0;
+    lib.push();
 
     // Set up DAQ
     daq->VC = true;
     daq->reset();
-    daq->run(stim);
+    daq->run(stim, rd.settleDuration);
 
-    // Stimulate both
-    while ( lib.t < stim.duration ) {
+    // Settle DAQ
+    for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
         daq->next();
-        lib.Imem = daq->current;
-        lib.Vmem = getCommandVoltage(stim, lib.t);
-        lib.getErr = (lib.t > stim.tObsBegin && lib.t < stim.tObsEnd);
-        lib.step();
+    // Run DAQ
+    for ( int iT = 0; iT < I.duration; iT++ ) {
+        daq->next();
+        lib.target[iT] = daq->current;
     }
 
-    daq->reset();
+    // Run lib against target
+    lib.pushTarget();
+    lib.run();
 }

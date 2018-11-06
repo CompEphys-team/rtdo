@@ -4,7 +4,7 @@
 
 ErrorProfile::ErrorProfile(Session &session, Result r) :
     Result(r),
-    lib(session.project.experiment()),
+    lib(session.project.universal()),
     m_permutations(lib.adjustableParams.size()),
     m_stats(lib.adjustableParams.size(), ProfileStats(session)),
     session(session)
@@ -26,7 +26,7 @@ void ErrorProfile::setPermutation(size_t param, ErrorProfile::Permutation perm)
     if ( perm.fixed )
         perm.n = 1;
     if ( perm.n == 0 )
-        perm.n = lib.project.expNumCandidates();
+        perm.n = lib.NMODELS;
     if ( perm.n == 1 )
         perm.min = perm.max = 0;
     m_permutations[param] = perm;
@@ -49,7 +49,7 @@ size_t ErrorProfile::numPermutations() const
 
 size_t ErrorProfile::numSimulations() const
 {
-    size_t nCand = lib.project.expNumCandidates();
+    size_t nCand = lib.NMODELS;
     return (numPermutations() + nCand - 1) / nCand; // Get nearest multiple of nCand, rounded up
 }
 
@@ -209,10 +209,10 @@ void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors
         stride *= m_permutations[param].n;
     }
 
-    for ( size_t sim = 0, offset = 0; sim < nSimulations; sim++, offset += lib.project.expNumCandidates() ) {
-        size_t batchSize = lib.project.expNumCandidates();
+    for ( size_t sim = 0, offset = 0; sim < nSimulations; sim++, offset += lib.NMODELS ) {
+        size_t batchSize = lib.NMODELS;
         if ( sim == nSimulations-1 )
-            batchSize = nPermutations - sim*lib.project.expNumCandidates(); // Last round does leftovers
+            batchSize = nPermutations - sim*lib.NMODELS; // Last round does leftovers
 
         // Populate lib.adjustableParams from values
         for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
@@ -223,21 +223,13 @@ void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors
             }
         }
 
-        // Reset err
-        for ( size_t iM = 0; iM < batchSize; iM++ )
-            lib.err[iM] = 0;
-
-        // Settle
-        lib.push();
-        session.profiler().settle(stim.baseV, session.runData().settleDuration);
-
         // Stimulate
         session.profiler().stimulate(stim);
-        lib.pullErr();
+        lib.pull(lib.summary);
 
         // Store errors
         for ( size_t iM = 0; iM < batchSize; iM++ ) {
-            errors[iM + offset] = std::sqrt(lib.err[iM]/std::ceil((stim.tObsEnd-stim.tObsBegin)/session.runData().dt)); // RMSE
+            errors[iM + offset] = std::sqrt(lib.summary[iM]); // RMSE (profiler assigns SUMMARY_AVERAGE, so only sqrt needed)
         }
     }
 }

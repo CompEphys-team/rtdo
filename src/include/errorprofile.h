@@ -3,7 +3,7 @@
 
 #include "types.h"
 #include "wavesource.h"
-#include "experimentlibrary.h"
+#include "universallibrary.h"
 #include "profilestats.h"
 
 class ErrorProfile : public Result
@@ -113,7 +113,7 @@ public:
     };
 
 private:
-    ExperimentLibrary &lib;
+    UniversalLibrary &lib;
     std::vector<Permutation> m_permutations; //!< Input: Describes how each parameter is perturbed
     std::vector<Stimulation> m_stimulations; //!< Derived input: The waveforms under consideration, provided via m_src
     WaveSource m_src; //!< Input: waveform source
