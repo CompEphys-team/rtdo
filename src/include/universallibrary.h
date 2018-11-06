@@ -47,6 +47,11 @@
 #define ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD        static_cast<unsigned int>(0x3 << 11) /* compare against preceding lane in warp */
 #define ASSIGNMENT_TIMESERIES_COMPARE_MASK              static_cast<unsigned int>(0x3 << 11) /* (mask) */
 
+// Bits 14-16: Singular stim/rund/target
+#define ASSIGNMENT_SINGULAR_STIM                 static_cast<unsigned int>(0x1 << 14) /* Load stim/obs from singular __constant__ var */
+#define ASSIGNMENT_SINGULAR_RUND                 static_cast<unsigned int>(0x1 << 15) /* Load rundata from singular __constant__ var */
+#define ASSIGNMENT_SINGULAR_TARGET                 static_cast<unsigned int>(0x1 << 16) /* Load target from singular __constant__ var */
+
 class UniversalLibrary
 {
 public:
@@ -67,8 +72,6 @@ public:
         unsigned int *assignment;
         int *targetStride;
 
-        void (*push)(void);
-        void (*pull)(void);
         std::function<void(void*, void*, size_t)> pushV;
         std::function<void(void*, void*, size_t)> pullV;
         void (*run)(void);
@@ -87,27 +90,53 @@ public:
 
     Project &project;
     MetaModel &model;
+    const size_t NMODELS;
 
     std::vector<StateVariable> stateVariables;
     std::vector<AdjustableParam> adjustableParams;
 
     // Library-defined model variables
+    // Setting singular_* on turns these into single-value __constant__ parameters rather than one-per-model.
+    // When set thus, access the single value through var[0] or *var. Pushing remains necessary, but is automagically delegated.
     TypedVariable<iStimulation> stim;
     TypedVariable<iObservations> obs;
+    inline void setSingularStim(bool on = true) {
+        stim.singular = obs.singular = on;
+        assignment_base = on ? (assignment_base | ASSIGNMENT_SINGULAR_STIM) : (assignment_base & ~ASSIGNMENT_SINGULAR_STIM);
+    }
+
     TypedVariable<scalar> clampGain;
     TypedVariable<scalar> accessResistance;
     TypedVariable<int> iSettleDuration;
     TypedVariable<scalar> Imax;
     TypedVariable<scalar> dt;
+    inline void setSingularRund(bool on = true) {
+        clampGain.singular = accessResistance.singular = iSettleDuration.singular = Imax.singular = dt.singular = on;
+        assignment_base = on ? (assignment_base | ASSIGNMENT_SINGULAR_RUND) : (assignment_base & ~ASSIGNMENT_SINGULAR_RUND);
+    }
+
     TypedVariable<size_t> targetOffset;
+    inline void setSingularTarget(bool on = true) {
+        targetOffset.singular = on;
+        assignment_base = on ? (assignment_base | ASSIGNMENT_SINGULAR_TARGET) : (assignment_base & ~ASSIGNMENT_SINGULAR_TARGET);
+    }
+
     TypedVariable<double> summary;
 
-    inline void push() { pointers.push(); }
-    inline void pull() { pointers.pull(); }
+    void push();
+    void pull();
     template <typename T>
-    inline void push(TypedVariable<T> &var) { pointers.pushV(var.v, var.d_v, sizeof(T)); }
+    inline void push(TypedVariable<T> &var) {
+        pointers.pushV(var.v,
+                       var.singular ? var.singular_v : var.d_v,
+                       sizeof(T) * (var.singular ? 1 : NMODELS) );
+    }
     template <typename T>
-    inline void pull(TypedVariable<T> &var) { pointers.pullV(var.v, var.d_v, sizeof(T)); }
+    inline void pull(TypedVariable<T> &var) {
+        pointers.pullV(var.v,
+                       var.singular ? var.singular_v : var.d_v,
+                       sizeof(T) * (var.singular ? 1 : NMODELS) );
+    }
     inline void run() { pointers.run(); }
     inline void reset() { pointers.reset(); }
 
@@ -115,7 +144,7 @@ public:
     void resizeTarget(size_t nTraces, size_t nSamples);
     inline void pushTarget() { pointers.pushTarget(); }
 
-    /// Allocates space for project.expNumCandidates traces of length nSamples
+    /// Allocates space for NMODELS traces of length nSamples
     void resizeOutput(size_t nSamples);
     inline void pullOutput() { pointers.pullOutput(); }
 
@@ -147,6 +176,8 @@ public:
 
     scalar *&target;
     scalar *&output;
+
+    unsigned int assignment_base = 0;
 };
 
 #endif // UNIVERSALLIBRARY_H

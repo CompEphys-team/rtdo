@@ -117,7 +117,8 @@ struct iObservations
     static constexpr size_t maxObs = 10;
     int start[maxObs];
     int stop[maxObs];
-    iObservations(int = 0) : start {}, stop {} {}
+
+    inline void operator=(double) {}
 };
 
 struct ChnData
@@ -200,16 +201,27 @@ struct ModelData {
     QuotedString dirpath;
 };
 
-template <typename T>
-struct TypedVariable
+struct TypedVariableBase
 {
-    TypedVariable() {}
-    TypedVariable(std::string n, std::string t = "scalar") : name(n), type(t) {}
+    TypedVariableBase() {}
+    TypedVariableBase(std::string n, std::string t) : name(n), type(t) {}
     std::string name;
     std::string type;
+};
+
+template <typename T>
+struct TypedVariable : TypedVariableBase
+{
+    TypedVariable() {}
+    TypedVariable(std::string n, std::string t = "scalar") : TypedVariableBase(n,t) {}
 
     T *v, *d_v;
+
+    T *singular_v = nullptr;
+    bool singular = false;
+
     inline T &operator[](std::size_t i) { return v[i]; }
+    inline T &operator*() { return v[0]; }
 };
 
 struct Variable : public TypedVariable<scalar>

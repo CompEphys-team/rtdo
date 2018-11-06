@@ -333,6 +333,9 @@ void FitErrorPlotter::on_run_clicked()
     // Prepare lib
     if ( lib == nullptr )
         lib = new UniversalLibrary(session->project, false);
+    lib->setSingularRund(false);
+    lib->setSingularStim(false);
+    lib->setSingularTarget(false);
     lib->resizeTarget(nTraces, maxStimLen);
     lib->resizeOutput(maxStimLen);
 

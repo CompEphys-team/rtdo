@@ -12,13 +12,24 @@ static scalar *timeseries = nullptr, *d_timeseries = nullptr;
 static __device__ scalar *dd_timeseries = nullptr;
 static unsigned int timeseries_size = 0, latest_timeseries_size = 0;
 
-void libInit(UniversalLibrary::Pointers &pointers, size_t numModels)
+static __constant__ iStimulation singular_stim;
+static __constant__ iObservations singular_obs;
+
+static __constant__ scalar singular_clampGain;
+static __constant__ scalar singular_accessResistance;
+static __constant__ int singular_iSettleDuration;
+static __constant__ scalar singular_Imax;
+static __constant__ scalar singular_dt;
+
+static __constant__ size_t singular_targetOffset;
+
+void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 {
-    pointers.pushV = [numModels](void *hostptr, void *devptr, size_t size){
-        CHECK_CUDA_ERRORS(cudaMemcpy(devptr, hostptr, numModels * size, cudaMemcpyHostToDevice))
+    pointers.pushV = [](void *hostptr, void *devptr, size_t size){
+        CHECK_CUDA_ERRORS(cudaMemcpy(devptr, hostptr, size, cudaMemcpyHostToDevice))
     };
-    pointers.pullV = [numModels](void *hostptr, void *devptr, size_t size){
-        CHECK_CUDA_ERRORS(cudaMemcpy(hostptr, devptr, numModels * size, cudaMemcpyDeviceToHost));
+    pointers.pullV = [](void *hostptr, void *devptr, size_t size){
+        CHECK_CUDA_ERRORS(cudaMemcpy(hostptr, devptr, size, cudaMemcpyDeviceToHost));
     };
 
     pointers.target =& target;
@@ -26,6 +37,17 @@ void libInit(UniversalLibrary::Pointers &pointers, size_t numModels)
 
     allocateMem();
     initialize();
+
+    cudaGetSymbolAddress((void **)&lib.stim.singular_v, singular_stim);
+    cudaGetSymbolAddress((void **)&lib.obs.singular_v, singular_obs);
+
+    cudaGetSymbolAddress((void **)&lib.clampGain.singular_v, singular_clampGain);
+    cudaGetSymbolAddress((void **)&lib.accessResistance.singular_v, singular_accessResistance);
+    cudaGetSymbolAddress((void **)&lib.iSettleDuration.singular_v, singular_iSettleDuration);
+    cudaGetSymbolAddress((void **)&lib.Imax.singular_v, singular_Imax);
+    cudaGetSymbolAddress((void **)&lib.dt.singular_v, singular_dt);
+
+    cudaGetSymbolAddress((void **)&lib.targetOffset.singular_v, singular_targetOffset);
 }
 
 extern "C" void libExit(UniversalLibrary::Pointers &pointers)

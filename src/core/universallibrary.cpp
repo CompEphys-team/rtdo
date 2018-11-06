@@ -16,6 +16,7 @@ static void redirect(NNmodel &n) { _this->GeNN_modelDefinition(n); }
 UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     project(p),
     model(project.model()),
+    NMODELS(p.expNumCandidates()),
     stateVariables(model.stateVariables),
     adjustableParams(model.adjustableParams),
 
@@ -67,14 +68,18 @@ void *UniversalLibrary::compile_and_load()
     _this = this;
     MetaModel::modelDef = redirect;
 
-    model.individual_clamp_settings = true;
+    model.isUniversalLib = true;
     model.save_state_condition = "$(assignment) & ASSIGNMENT_MAINTAIN_STATE";
     model.save_selectively = true;
     model.save_selection = {"summary"};
+    model.singular_stim_vars = {&stim, &obs};
+    model.singular_clamp_vars = {&clampGain, &accessResistance};
+    model.singular_rund_vars = {&iSettleDuration, &Imax, &dt};
+    model.singular_target_vars = {&targetOffset};
 
     generateCode(directory, model);
 
-    model.individual_clamp_settings = false;
+    model.isUniversalLib = false;
     model.save_state_condition = "";
     model.save_selectively = false;
 
@@ -155,7 +160,7 @@ void UniversalLibrary::GeNN_modelDefinition(NNmodel &nn)
     int numModels = nModels.size();
     nModels.push_back(n);
     nn.setName(model.name(ModuleType::Universal));
-    nn.addNeuronPopulation(SUFFIX, project.expNumCandidates(), numModels, fixedParamIni, variableIni);
+    nn.addNeuronPopulation(SUFFIX, NMODELS, numModels, fixedParamIni, variableIni);
 
     nn.finalize();
 }
@@ -314,7 +319,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "#include \"universallibrary.h\"" << endl;
     ss << "#include \"../core/supportcode.cpp\"" << endl;
     ss << "#include \"universallibrary.cu\"" << endl;
-    ss << "#define NMODELS " << project.expNumCandidates() << endl;
+    ss << "#define NMODELS " << NMODELS << endl;
     ss << endl;
 
     ss << model.supportCode() << endl;
@@ -323,7 +328,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
 
     ss << "extern \"C\" UniversalLibrary::Pointers populate(UniversalLibrary &lib) {" << endl;
     ss << "    UniversalLibrary::Pointers pointers;" << endl;
-    ss << "    libInit(pointers, " << project.expNumCandidates() << ");" << endl;
+    ss << "    libInit(lib, pointers);" << endl;
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
         ss << "    lib.stateVariables[" << i << "].v = " << v.name << SUFFIX << ";" << endl;
@@ -361,8 +366,6 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    lib.summary.d_v = d_summary" << SUFFIX << ";" << endl;
 
     ss << endl;
-    ss << "    pointers.push =& push" << SUFFIX << "StateToDevice;" << endl;
-    ss << "    pointers.pull =& pull" << SUFFIX << "StateFromDevice;" << endl;
     ss << "    pointers.run =& stepTimeGPU;" << endl;
     ss << "    pointers.reset =& initialize;" << endl;
     ss << "    pointers.createSim =& createSim;" << endl;
@@ -388,7 +391,7 @@ void UniversalLibrary::resizeTarget(size_t nTraces, size_t nSamples)
 
 void UniversalLibrary::resizeOutput(size_t nSamples)
 {
-    pointers.resizeOutput(nSamples * project.expNumCandidates());
+    pointers.resizeOutput(nSamples * NMODELS);
 }
 
 void UniversalLibrary::setRundata(size_t modelIndex, const RunData &rund)
@@ -398,4 +401,38 @@ void UniversalLibrary::setRundata(size_t modelIndex, const RunData &rund)
     iSettleDuration[modelIndex] = rund.settleDuration/rund.dt;
     Imax[modelIndex] = rund.Imax;
     dt[modelIndex] = rund.dt;
+}
+
+void UniversalLibrary::push()
+{
+    for ( Variable &v : stateVariables )
+        push(v);
+    for ( Variable &v : adjustableParams )
+        push(v);
+    push(stim);
+    push(obs);
+    push(clampGain);
+    push(accessResistance);
+    push(iSettleDuration);
+    push(Imax);
+    push(dt);
+    push(targetOffset);
+    push(summary);
+}
+
+void UniversalLibrary::pull()
+{
+    for ( Variable &v : stateVariables )
+        pull(v);
+    for ( Variable &v : adjustableParams )
+        pull(v);
+    pull(stim);
+    pull(obs);
+    pull(clampGain);
+    pull(accessResistance);
+    pull(iSettleDuration);
+    pull(Imax);
+    pull(dt);
+    pull(targetOffset);
+    pull(summary);
 }

@@ -45,10 +45,11 @@ public:
 
     static size_t numLibs; //!< Count the number of open Wavegen/Experiment libraries
 
-    bool individual_clamp_settings = false;
+    bool isUniversalLib = false;
     std::string save_state_condition = "";
     bool save_selectively = false;
     std::vector<std::string> save_selection;
+    std::vector<TypedVariableBase*> singular_stim_vars, singular_clamp_vars, singular_rund_vars, singular_target_vars;
 
 protected:
     const Project &project;

@@ -135,12 +135,36 @@ void genNeuronKernel(NNmodel &model, string &path)
             for ( const AdjustableParam &param : pModel->adjustableParams )
                 if ( param.name == nModels[nt].varNames[k] )
                     include = false;
-            if ( pModel->individual_clamp_settings && (nModels[nt].varNames[k] == "clampGain" || nModels[nt].varNames[k] == "accessResistance") )
-                include = false;
+            if ( pModel->isUniversalLib ) {
+                for ( const TypedVariableBase *var : pModel->singular_stim_vars )
+                    if ( var->name == nModels[nt].varNames[k] )
+                        include = false;
+                for ( const TypedVariableBase *var : pModel->singular_rund_vars )
+                    if ( var->name == nModels[nt].varNames[k] )
+                        include = false;
+                for ( const TypedVariableBase *var : pModel->singular_clamp_vars )
+                    if ( var->name == nModels[nt].varNames[k] )
+                        include = false;
+                for ( const TypedVariableBase *var : pModel->singular_target_vars )
+                    if ( var->name == nModels[nt].varNames[k] )
+                        include = false;
+            }
             if ( include ) {
                 os << nModels[nt].varTypes[k] << " l" << nModels[nt].varNames[k] << " = dd_";
                 os << nModels[nt].varNames[k] << model.neuronName[i] << "[" << localID << "];" << ENDL;
             }
+        }
+        if ( pModel->isUniversalLib ) {
+            std::string ass = std::string("assignment") + model.neuronName[i];
+            for ( const TypedVariableBase *var : pModel->singular_stim_vars )
+                os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_STIM) ? singular_" << var->name << " : dd_"
+                   << var->name << model.neuronName[i] << "[" << localID << "];" << ENDL;
+            for ( const TypedVariableBase *var : pModel->singular_rund_vars )
+                os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_RUND) ? singular_" << var->name << " : dd_"
+                   << var->name << model.neuronName[i] << "[" << localID << "];" << ENDL;
+            for ( const TypedVariableBase *var : pModel->singular_target_vars )
+                os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_TARGET) ? singular_" << var->name << " : dd_"
+                   << var->name << model.neuronName[i] << "[" << localID << "];" << ENDL;
         }
         os << ENDL;
 /// ************************** RTDO edit ends **************************************************

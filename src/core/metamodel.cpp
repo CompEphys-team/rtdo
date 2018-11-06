@@ -507,13 +507,20 @@ std::string MetaModel::populateStructs(std::string paramPre, std::string paramPo
     }
     ss << endl;
 
-    std::string clampPre = individual_clamp_settings ? paramPre : rundPre;
-    std::string clampPost = individual_clamp_settings ? paramPost : rundPost;
-
     ss << "ClampParameters clamp;" << endl;
-    ss << "    clamp.clampGain = " << clampPre << "clampGain" << clampPost << ";" << endl;
-    ss << "    clamp.accessResistance = " << clampPre << "accessResistance" << clampPost << ";" << endl;
-    // Note, params.VClamp0 and params.dVClamp to be populated by caller.
+    if ( isUniversalLib ) {
+        ss << "    clamp.clampGain = ("
+           << rundPre << "assignment" << rundPost << " & ASSIGNMENT_SINGULAR_RUND) ? singular_clampGain : "
+           << paramPre << "clampGain" << paramPost << ";" << endl;
+        ss << "    clamp.accessResistance = ("
+           << rundPre << "assignment" << rundPost << " & ASSIGNMENT_SINGULAR_RUND) ? singular_accessResistance : "
+           << paramPre << "accessResistance" << paramPost << ";" << endl;
+
+    } else {
+        ss << "    clamp.clampGain = " << rundPre << "clampGain" << rundPost << ";" << endl;
+        ss << "    clamp.accessResistance = " << rundPre << "accessResistance" << rundPost << ";" << endl;
+    }
+    // Note, clamp.VClamp0 and clamp.dVClamp to be populated by kernel.
 
     return ss.str();
 }
