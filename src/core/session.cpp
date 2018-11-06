@@ -37,7 +37,6 @@ Session::Session(Project &p, const QString &sessiondir) :
     load(); // Load state from m_log
 
     project.wavegen().setRunData(m_settings.rund);
-    project.experiment().setRunData(m_settings.rund);
     project.profiler().setRunData(m_settings.rund);
 }
 
@@ -486,7 +485,6 @@ void Dispatcher::dispatch()
             swap(s.m_settings, s.q_settings);
 
             s.project.wavegen().setRunData(s.m_settings.rund);
-            s.project.experiment().setRunData(s.m_settings.rund);
             s.project.profiler().setRunData(s.m_settings.rund);
             s.hist_settings.push_back(std::make_pair(s.m_settings.resultIndex, s.m_settings));
             success = true;

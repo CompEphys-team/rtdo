@@ -4,7 +4,6 @@
 #include <QString>
 #include <memory>
 #include "wavegen.h"
-#include "experimentlibrary.h"
 #include "profilerlibrary.h"
 #include "universallibrary.h"
 #include "AP.h"
@@ -54,7 +53,6 @@ public:
     MetaModel &model(int simNo = 0) { return simNo==0 ? *m_model : m_extraModels.at(simNo-1); }
     const std::vector<MetaModel> &extraModels() const { return m_extraModels; }
     WavegenLibrary &wavegen() const { return *wglib; }
-    ExperimentLibrary &experiment() const { return *explib; }
     ProfilerLibrary &profiler() const { return *proflib; }
     UniversalLibrary &universal() const { return *unilib; }
 
@@ -90,7 +88,6 @@ protected:
 
     std::unique_ptr<MetaModel> m_model;
     std::unique_ptr<WavegenLibrary> wglib;
-    std::unique_ptr<ExperimentLibrary> explib;
     std::unique_ptr<ProfilerLibrary> proflib;
     std::unique_ptr<UniversalLibrary> unilib;
 
