@@ -77,7 +77,7 @@ void GAFitterSettingsDialog::importData()
     ui->decaySigma->setChecked(p.decaySigma);
     ui->sigmaHalflife->setValue(p.sigmaHalflife);
     ui->sigmaInitial->setValue(p.sigmaInitial);
-    ui->useLikelihood->setChecked(p.useLikelihood);
+    ui->useLikelihood->setChecked(historicIndex < 0 ? false : p.useLikelihood);
     ui->cluster_blank->setValue(p.cluster_blank_after_step);
     ui->cluster_dur->setValue(p.cluster_min_dur);
     ui->cluster_res->setValue(p.cluster_fragment_dur);
@@ -107,7 +107,7 @@ void GAFitterSettingsDialog::exportData()
     p.decaySigma = ui->decaySigma->isChecked();
     p.sigmaHalflife = ui->sigmaHalflife->value();
     p.sigmaInitial = ui->sigmaInitial->value();
-    p.useLikelihood = ui->useLikelihood->isChecked();
+    p.useLikelihood = false;
     p.cluster_blank_after_step = ui->cluster_blank->value();
     p.cluster_min_dur = ui->cluster_dur->value();
     p.cluster_fragment_dur = ui->cluster_res->value();

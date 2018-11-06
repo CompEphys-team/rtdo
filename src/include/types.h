@@ -403,7 +403,7 @@ struct GAFitterSettings {
     std::vector<int> constraints;
     std::vector<scalar> min, max, fixedValue;
 
-    bool useLikelihood = false;
+    bool useLikelihood = false; // Retired 6 Nov 2018
 
     double cluster_blank_after_step = 5.;
     double cluster_min_dur = 5.;
