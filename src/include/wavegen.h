@@ -83,7 +83,7 @@ public: // Synchronous calls
      * raw deltaI = I_detuned - I_reference. lib.diagDelta is sized and ordered as (nParams+1) x I.duration, I_reference on parameter index 0.
      * Note, diagnose is performed synchronously and not logged.
      * @param I : a stimulation from any source.
-     * @param dt : Temporarily overrides WavegenData::dt to allow diagnosis for ExperimentLib use
+     * @param dt : Temporarily overrides WavegenData::dt
      * @param simCycles : Number of RK4 cycles per dt
      */
     void diagnose(iStimulation I, double dt, int simCycles);

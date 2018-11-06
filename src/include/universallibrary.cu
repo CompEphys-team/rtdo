@@ -1,5 +1,5 @@
-#ifndef EXPERIMENT_CU
-#define EXPERIMENT_CU
+#ifndef UNIVERSAL_CU
+#define UNIVERSAL_CU
 
 #include "universallibrary.h"
 #include "cuda_helper.h"

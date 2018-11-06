@@ -43,7 +43,7 @@ public:
 
     static void (*modelDef)(NNmodel&);
 
-    static size_t numLibs; //!< Count the number of open Wavegen/Experiment libraries
+    static size_t numLibs; //!< Count the number of open libraries
 
     bool isUniversalLib = false;
     std::string save_state_condition = "";
