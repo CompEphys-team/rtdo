@@ -194,8 +194,9 @@ int iT = 0;
 int tStep = 0;
 int nSamples = 0;
 int nextObs = 0;
-$(summary) = 0;
 t = 0.;
+if ( !($(assignment)&ASSIGNMENT_SUMMARY_PERSIST) )
+    $(summary) = 0;
 
 while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
         && iT < $(stim).duration
