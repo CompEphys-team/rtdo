@@ -327,9 +327,6 @@ std::string MetaModel::name() const
 string MetaModel::name(ModuleType type) const
 {
     switch ( type ) {
-    case ModuleType::Experiment:
-        return _name + "_experiment";
-        break;
     case ModuleType::Wavegen:
         return _name + "_wavegen";
         break;
