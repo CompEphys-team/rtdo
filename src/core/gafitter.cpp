@@ -10,7 +10,7 @@ const quint32 GAFitter::version = 106;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
-    lib(session.project.experiment()),
+    lib(session.project.universal()),
     settings(session.gaFitterSettings()),
     qV(nullptr),
     qI(nullptr),
@@ -211,6 +211,10 @@ void GAFitter::setup(const std::vector<Stimulation> &astims)
             output.obsTimes[i].push_back(QPair<int,int>(p.first, p.second));
         output.baseF[i] = QVector<double>::fromStdVector(baseF[i]);
     }
+
+    lib.setSingularRund();
+    lib.setSingularStim();
+    lib.setSingularTarget();
 }
 
 double GAFitter::fit()
@@ -221,12 +225,11 @@ double GAFitter::fit()
         simtime += stimulate();
 
         // Advance
-        lib.pullErr();
+        lib.pull(lib.summary);
         if ( settings.useDE )
             procreateDE();
         else
             procreate();
-        lib.push();
 
         emit progress(epoch);
     }
@@ -352,9 +355,6 @@ void GAFitter::populate()
             }
         }
     }
-    for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
-        lib.err[i] = 0;
-    }
     lib.push();
 }
 
@@ -388,7 +388,7 @@ quint32 GAFitter::findNextStim()
         int choice = session.RNG.uniform<int>(0, cumBias.back()-1);
         for ( nextStimIdx = 0; choice >= cumBias[nextStimIdx]; nextStimIdx++ ) ;
     } else if ( settings.randomOrder == 2 ) { // Error-biased random
-        double cost = settings.useLikelihood ? exp(output.error[epoch]) : output.error[epoch]; // Ensure bias stays positive
+        double cost = output.error[epoch];
         if ( epoch == previousStimIdx ) // Initial: Full error
             bias[previousStimIdx] = cost;
         else // Recursively decay bias according to settings
@@ -437,14 +437,11 @@ void GAFitter::procreate()
     std::vector<errTupel> p_err(lib.project.expNumCandidates());
     for ( size_t i = 0; i < p_err.size(); i++ ) {
         p_err[i].idx = i;
-        p_err[i].err = lib.err[i];
-        lib.err[i] = 0;
+        p_err[i].err = lib.summary[i];
     }
     std::sort(p_err.begin(), p_err.end(), &errTupelSort);
 
-    output.error[epoch] = settings.useLikelihood
-            ? p_err[0].err // negative log likelihood
-            : std::sqrt(p_err[0].err / errNorm[targetParam]); // RMSE
+    output.error[epoch] = std::sqrt(p_err[0].err / errNorm[targetParam]); // RMSE
     output.targetParam[epoch] = targetParam;
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         output.params[epoch][i] = lib.adjustableParams[i][p_err[0].idx];
@@ -538,21 +535,19 @@ double GAFitter::finalise(const std::vector<Stimulation> &astims)
         obsTimes[targetParam] = observeNoSteps(iStimulation(astims[targetParam], dt), settings.cluster_blank_after_step/dt);
         for ( const std::pair<int,int> &p : obsTimes[targetParam] )
             t += p.second - p.first;
-        simt += stimulate();
+        simt += stimulate(targetParam>0 ? ASSIGNMENT_SUMMARY_PERSIST : 0);
     }
 
     // Pull & sort by total cumulative error across all stims
-    lib.pullErr();
+    lib.pull(lib.summary);
     for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
         f_err[i].idx = i;
-        f_err[i].err = lib.err[i];
+        f_err[i].err = lib.summary[i];
     }
     auto winner = f_err.begin();
     std::nth_element(f_err.begin(), winner, f_err.end(), &errTupelSort);
 
-    double err = settings.useLikelihood
-            ? winner->err
-            : std::sqrt(winner->err / t);
+    double err = std::sqrt(winner->err / t);
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         output.finalParams[i] = lib.adjustableParams[i][winner->idx];
         output.finalError[i] = err;
@@ -562,82 +557,53 @@ double GAFitter::finalise(const std::vector<Stimulation> &astims)
     return simt;
 }
 
-double GAFitter::stimulate()
+double GAFitter::stimulate(unsigned int extra_assignments)
 {
     const RunData &rd = session.runData();
     const Stimulation &aI = stims[targetParam];
     iStimulation I(aI, rd.dt);
-    const std::vector<std::pair<int,int>> &obs = obsTimes[targetParam];
-    auto obsIter = obs.begin();
-    bool &observe = settings.useLikelihood ? lib.getLikelihood : lib.getErr;
+    for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
+        if ( i < obsTimes[targetParam].size() ) {
+            lib.obs[0].start[i] = obsTimes[targetParam][i].first;
+            lib.obs[0].stop[i] = obsTimes[targetParam][i].second;
+        } else {
+            lib.obs[0].start[i] = lib.obs[0].stop[i] = 0;
+        }
+    }
 
     // Set up library
-    lib.t = 0.;
-    lib.iT = 0;
-    lib.VC = true;
-
-    // Settle library
-    lib.getErr = false;
-    lib.getLikelihood = false;
-    lib.setVariance = false;
-    lib.VClamp0 = I.baseV;
-    lib.dVClamp = 0;
-    lib.step(rd.settleDuration, rd.simCycles * int(rd.settleDuration/rd.dt), true);
+    lib.assignment = lib.assignment_base | extra_assignments
+            | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED;
+    lib.simCycles = rd.simCycles;
+    lib.integrator = rd.integrator;
+    lib.setRundata(0, rd);
+    lib.stim[0] = I;
+    lib.targetOffset[0] = 0;
+    lib.resizeTarget(1, I.duration);
+    lib.push();
 
     // Set up + settle DAQ
     daq->VC = true;
     daq->reset();
     daq->run(aI, rd.settleDuration);
-    for ( size_t iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
+    for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
         daq->next();
 
-    // Set up library for stimulation
-    lib.t = 0;
-    lib.iT = 0;
-    lib.setVariance = true; // Set variance immediately after settling
-    lib.variance = output.variance;
-
-    while ( obsIter != obs.end() && int(lib.iT) < obs.back().second ) {
-        // Fast-forward library through unobserved period
-        observe = false;
-        int iTStep = 0;
-        size_t iTDAQ = lib.iT;
-        while ( (int)lib.iT < obsIter->first ) {
-            getiCommandSegment(I, lib.iT, obsIter->first - lib.iT, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
-            lib.step(iTStep * rd.dt, iTStep * rd.simCycles, false);
-            lib.iT += iTStep;
-            lib.setVariance = false;
-        }
-        lib.setVariance = false;
-
-        // Fast-forward DAQ through unobserved period
-        for ( ; iTDAQ < lib.iT; iTDAQ++ ) {
-            daq->next();
-            pushToQ(qT + iTDAQ*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iTDAQ*rd.dt));
-        }
-
-        // Step both through observed period
-        observe = true;
-        while ( (int)lib.iT < obsIter->second ) {
-            daq->next();
-            lib.Imem = daq->current;
-
-            // Populate VClamp0/dVClamp with the next "segment" of length tSpan = iTStep = 1
-            getiCommandSegment(I, lib.iT, 1, rd.dt, lib.VClamp0, lib.dVClamp, iTStep);
-
-            pushToQ(qT + lib.t, daq->voltage, daq->current, lib.VClamp0+lib.t*lib.dVClamp);
-
-            lib.step();
-        }
-
-        // Advance to next observation period
-        ++obsIter;
+    // Step DAQ through full stimulation
+    for ( int iT = 0; iT < I.duration; iT++ ) {
+        daq->next();
+        pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iT*rd.dt));
+        lib.target[iT] = daq->current;
     }
-
-    qT += lib.iT * rd.dt;
     daq->reset();
 
-    return lib.iT * rd.dt + session.runData().settleDuration;
+    // Run lib against target
+    lib.pushTarget();
+    lib.run();
+
+    qT += I.duration * rd.dt;
+
+    return I.duration * rd.dt + rd.settleDuration;
 }
 
 void GAFitter::pushToQ(double t, double V, double I, double O)
@@ -680,13 +646,13 @@ void GAFitter::procreateDE()
     std::vector<double> methodCutoff(4);
 
     // Select the winners
-    double bestErr = lib.err[0];
+    double bestErr = lib.summary[0];
     int bestIdx = 0;
     for ( int i = 0; i < nPop; i++ ) {
         int iOffspring = i + nPop;
-        double err = lib.err[i];
-        if ( lib.err[i] > lib.err[iOffspring] ) {
-            err = lib.err[iOffspring];
+        double err = lib.summary[i];
+        if ( lib.summary[i] > lib.summary[iOffspring] ) {
+            err = lib.summary[iOffspring];
             for ( int j = 0; j < nParams; j++ ) // replace parent with more successful offspring
                 P[j][i] = P[j][iOffspring];
             ++DEMethodSuccess[DEMethodUsed[i]];
@@ -703,13 +669,13 @@ void GAFitter::procreateDE()
             bestErr = err;
         }
 
-        lib.err[i] = lib.err[iOffspring] = 0;
+        lib.summary[i] = lib.summary[iOffspring] = 0;
     }
 
     // Populate output
     for ( int i = 0; i < nParams; i++ )
         output.params[epoch][i] = P[i][bestIdx];
-    output.error[epoch] = settings.useLikelihood ? bestErr : std::sqrt(bestErr/errNorm[targetParam]);
+    output.error[epoch] = std::sqrt(bestErr/errNorm[targetParam]);
     output.targetParam[epoch] = targetParam;
 
     // Select new target

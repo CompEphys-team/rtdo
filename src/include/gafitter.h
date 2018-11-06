@@ -2,7 +2,7 @@
 #define GAFITTER_H
 
 #include "sessionworker.h"
-#include "experimentlibrary.h"
+#include "universallibrary.h"
 #include "wavesubsets.h"
 #include "queue.h"
 #include "daqfilter.h"
@@ -14,7 +14,7 @@ public:
     GAFitter(Session &session);
     ~GAFitter();
 
-    ExperimentLibrary &lib;
+    UniversalLibrary &lib;
 
     const GAFitterSettings &settings;
 
@@ -80,7 +80,7 @@ protected:
 
     double getVariance(Stimulation stim);
     void populate();
-    double stimulate();
+    double stimulate(unsigned int extra_assignments = 0);
     void procreate();
     double finalise(const std::vector<Stimulation> &astims);
     quint32 findNextStim();
