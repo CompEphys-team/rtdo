@@ -11,6 +11,7 @@ FitInspector::FitInspector(Session &session, QWidget *parent) :
     session(session)
 {
     ui->setupUi(this);
+    setAttribute(Qt::WA_DeleteOnClose);
 
     connect(ui->sepcols, &QPushButton::clicked, [=](bool on) {
         for ( int i = 0; i < ui->fits->rowCount(); i++ ) {
