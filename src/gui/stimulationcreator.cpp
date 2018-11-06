@@ -21,7 +21,7 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     session(session),
     loadingStims(false),
     updatingStim(false),
-    simulator(session.project.experiment().createSimulator(0, session, session.qSettings(), false))
+    simulator(session.project.universal().createSimulator(0, session, session.qSettings(), false))
 {
     ui->setupUi(this);
     ui->splitter->setStretchFactor(0,0);
@@ -170,7 +170,7 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
 StimulationCreator::~StimulationCreator()
 {
     delete ui;
-    session.project.experiment().destroySimulator(simulator);
+    session.project.universal().destroySimulator(simulator);
     simulator = nullptr;
 }
 

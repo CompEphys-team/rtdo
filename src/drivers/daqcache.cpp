@@ -5,14 +5,14 @@
 
 DAQCache::DAQCache(Session &session, const Settings &settings) :
     DAQ(session, settings),
-    daq(p.simulate ? project.experiment().createSimulator(p.simulate, session, settings, true) : new RTMaybe::ComediDAQ(session, settings))
+    daq(p.simulate ? project.universal().createSimulator(p.simulate, session, settings, true) : new RTMaybe::ComediDAQ(session, settings))
 {
 
 }
 
 DAQCache::~DAQCache()
 {
-    project.experiment().destroySimulator(daq);
+    project.universal().destroySimulator(daq);
 }
 
 double DAQCache::getAdjustableParam(size_t idx)

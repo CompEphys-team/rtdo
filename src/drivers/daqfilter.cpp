@@ -16,7 +16,7 @@ DAQFilter::DAQFilter(Session &s, const Settings &settings) :
     else if ( p.cache.active )
         daq = new DAQCache(s, settings);
     else if ( p.simulate )
-        daq = project.experiment().createSimulator(p.simulate, s, settings, true);
+        daq = project.universal().createSimulator(p.simulate, s, settings, true);
     else
         daq = new RTMaybe::ComediDAQ(s, settings);
 
@@ -26,7 +26,7 @@ DAQFilter::DAQFilter(Session &s, const Settings &settings) :
 
 DAQFilter::~DAQFilter()
 {
-    project.experiment().destroySimulator(daq);
+    project.universal().destroySimulator(daq);
 }
 
 void DAQFilter::run(Stimulation s, double settlingDuration)
