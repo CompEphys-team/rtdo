@@ -147,10 +147,10 @@ void GAFitter::setup(const std::vector<Stimulation> &astims)
 {
     int nParams = lib.adjustableParams.size();
 
-    DEMethodUsed.assign(session.project.expNumCandidates()/2, 0);
+    DEMethodUsed.assign(lib.NMODELS/2, 0);
     DEMethodSuccess.assign(4, 0);
     DEMethodFailed.assign(4, 0);
-    DEpX.assign(session.project.expNumCandidates()/2, 0);
+    DEpX.assign(lib.NMODELS/2, 0);
 
     bias.assign(nParams, 0);
 
@@ -339,7 +339,7 @@ void GAFitter::populate()
     for ( size_t j = 0; j < lib.adjustableParams.size(); j++ ) {
         if ( settings.constraints[j] == 2 || settings.constraints[j] == 3 ) { // Fixed value
             scalar value = settings.constraints[j] == 2 ? settings.fixedValue[j] : output.targets[j];
-            for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ )
+            for ( size_t i = 0; i < lib.NMODELS; i++ )
                 lib.adjustableParams[j][i] = value;
         } else {
             scalar min, max;
@@ -350,7 +350,7 @@ void GAFitter::populate()
                 min = settings.min[j];
                 max = settings.max[j];
             }
-            for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
+            for ( size_t i = 0; i < lib.NMODELS; i++ ) {
                 lib.adjustableParams[j][i] = session.RNG.uniform<scalar>(min, max);
             }
         }
@@ -434,7 +434,7 @@ bool GAFitter::errTupelSort(const errTupel &x, const errTupel &y)
 
 void GAFitter::procreate()
 {
-    std::vector<errTupel> p_err(lib.project.expNumCandidates());
+    std::vector<errTupel> p_err(lib.NMODELS);
     for ( size_t i = 0; i < p_err.size(); i++ ) {
         p_err[i].idx = i;
         p_err[i].err = lib.summary[i];
@@ -526,7 +526,7 @@ double GAFitter::finalise(const std::vector<Stimulation> &astims)
     stims = astims;
     obsTimes.resize(stims.size());
 
-    std::vector<errTupel> f_err(lib.project.expNumCandidates());
+    std::vector<errTupel> f_err(lib.NMODELS);
     int t = 0;
     double dt = session.runData().dt, simt = 0;
 
@@ -540,7 +540,7 @@ double GAFitter::finalise(const std::vector<Stimulation> &astims)
 
     // Pull & sort by total cumulative error across all stims
     lib.pull(lib.summary);
-    for ( size_t i = 0; i < lib.project.expNumCandidates(); i++ ) {
+    for ( size_t i = 0; i < lib.NMODELS; i++ ) {
         f_err[i].idx = i;
         f_err[i].err = lib.summary[i];
     }
@@ -639,7 +639,7 @@ void GAFitter::procreateDE()
 {
     std::vector<AdjustableParam> &P = lib.adjustableParams;
     int nParams = P.size();
-    int nPop = session.project.expNumCandidates()/2;
+    int nPop = lib.NMODELS/2;
 
     std::vector<std::vector<double>> pXList(3);
     std::vector<double> pXmed(3, 0.5);

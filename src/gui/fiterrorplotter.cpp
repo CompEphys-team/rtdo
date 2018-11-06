@@ -350,7 +350,7 @@ void FitErrorPlotter::on_run_clicked()
     // Load models into lib
     size_t modelIdx = 0;
     size_t targetOffset = 0;
-    std::vector<ResultKey> keys(lib->project.expNumCandidates());
+    std::vector<ResultKey> keys(lib->NMODELS);
     for ( RecStruct &rec : recordings) {
         RegisterEntry &reg = *rec.reg;
         loadRecording(reg);
@@ -397,7 +397,7 @@ void FitErrorPlotter::on_run_clicked()
                 ++modelIdx;
 
                 // Run a batch as soon as the model bucket is full
-                if ( modelIdx == lib->project.expNumCandidates() ) {
+                if ( modelIdx == lib->NMODELS ) {
                     push_run_pull(keys, modelIdx);
                     modelIdx = 0;
                 }
@@ -408,7 +408,7 @@ void FitErrorPlotter::on_run_clicked()
 
     // push-run-pull the remaining models
     if ( modelIdx > 0 ) {
-        for ( size_t i = modelIdx; i < lib->project.expNumCandidates(); i++ ) {
+        for ( size_t i = modelIdx; i < lib->NMODELS; i++ ) {
             lib->stim[i].duration = 0;
             lib->iSettleDuration[i] = 0;
         }
@@ -431,7 +431,7 @@ void FitErrorPlotter::push_run_pull(std::vector<ResultKey> keys, size_t keySz)
     for ( size_t k = 0; k < keySz; k++ ) {
         QVector<double> trace(lib->stim[k].duration);
         for ( int i = 0; i < trace.size(); i++ )
-            trace[i] = lib->output[i*lib->project.expNumCandidates() + k];
+            trace[i] = lib->output[i*lib->NMODELS + k];
         results[keys[k]] = std::make_pair(std::sqrt(lib->summary[k]), std::move(trace));
     }
 }
