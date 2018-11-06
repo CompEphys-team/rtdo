@@ -275,9 +275,11 @@ void Wavegen::propagateAdjustedSigma()
 {
     ExperimentLibrary &exp(session.project.experiment());
     ProfilerLibrary &prof(session.project.profiler());
+    UniversalLibrary &uni(session.project.universal());
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         exp.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma;
         prof.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma;
+        uni.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma;
     }
 }
 
