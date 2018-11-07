@@ -2,7 +2,7 @@
 #define SAMPLINGPROFILER_H
 
 #include "sessionworker.h"
-#include "profilerlibrary.h"
+#include "universallibrary.h"
 #include "wavesource.h"
 
 class SamplingProfiler : public SessionWorker
@@ -47,7 +47,7 @@ protected:
     void load(const QString &action, const QString &args, QFile &results, Result r);
 
 private:
-    ProfilerLibrary &lib;
+    UniversalLibrary &lib;
 
     std::vector<Profile> m_profiles;
 

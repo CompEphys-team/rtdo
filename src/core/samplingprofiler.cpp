@@ -10,7 +10,7 @@ QDataStream &operator>>(QDataStream &is, SamplingProfiler::Profile &);
 
 SamplingProfiler::SamplingProfiler(Session &session) :
     SessionWorker(session),
-    lib(session.project.profiler())
+    lib(session.project.universal())
 {
     qRegisterMetaType<Profile>();
 }
@@ -42,6 +42,7 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     if ( action != this->action )
         return false;
 
+    const RunData &rd = session.runData();
     Profile &prof = *static_cast<Profile*>(res);
 
     // Populate
@@ -51,33 +52,44 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
         std::function<scalar(void)> gaussian = [=](){ return session.RNG.variate<scalar, std::normal_distribution>(prof.value1[param], prof.value2[param]); };
         auto gen = prof.uniform[param] ? uniform : gaussian;
         if ( param == prof.target ) {
-            for ( size_t pair = 0; pair < lib.project.profNumPairs(); pair++ ) {
+            for ( size_t pair = 0; pair < lib.NMODELS/2; pair++ ) {
                 double value = gen();
                 p[2*pair] = value;
                 p[2*pair+1] = value + prof.sigma;
             }
         } else {
-            for ( size_t pair = 0; pair < lib.project.profNumPairs(); pair++ ) {
+            for ( size_t pair = 0; pair < lib.NMODELS/2; pair++ ) {
                 double value = gen();
                 p[2*pair] = value;
                 p[2*pair+1] = value;
             }
         }
     }
+
+    // Set up library
+    lib.setSingularRund();
+    lib.simCycles = rd.simCycles;
+    lib.integrator = rd.integrator;
+    lib.setRundata(0, rd);
+
+    lib.setSingularStim();
+    lib.stim[0].baseV = NAN;
+    lib.obs[0] = {{}, {}};
+
     lib.push();
 
-    lib.samplingInterval = prof.samplingInterval;
-    lib.dt = session.wavegenData().dt;
-
-    iStimulation hold;
-    hold.clear();
-    hold.duration = lrint(session.runData().settleDuration / session.wavegenData().dt);
-    hold.baseV = NAN;
+    unsigned int assignment = lib.assignment_base
+            | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPACT | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
 
     std::vector<iStimulation> stims = prof.src.iStimulations(session.wavegenData().dt);
     size_t total = stims.size();
     prof.gradient.resize(total);
     prof.accuracy.resize(total);
+
+    int maxObsDuration = 0;
+    for ( const iStimulation &stim : stims )
+        maxObsDuration = std::max(maxObsDuration, stim.tObsEnd-stim.tObsBegin);
+    lib.resizeOutput(maxObsDuration);
 
     // Run
     for ( size_t i = 0; i < total; i++ ) {
@@ -85,14 +97,32 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
             delete res;
             return false;
         }
+
+        lib.stim[0] = stims[i];
+        lib.obs[0].start[0] = stims[i].tObsBegin;
+        lib.obs[0].stop[0] = stims[i].tObsEnd;
+        lib.push(lib.stim);
+        lib.push(lib.obs);
+
         // Settle, if necessary - lib maintains settled state
-        if ( hold.baseV != stims[i].baseV ) {
-            hold.baseV = stims[i].baseV;
-            lib.settle(hold);
+        if ( i == 0 || stims[i-1].baseV != stims[i].baseV ) {
+            lib.iSettleDuration[0] = rd.settleDuration / rd.dt;
+            lib.push(lib.iSettleDuration);
+
+            lib.assignment = assignment | ASSIGNMENT_SETTLE_ONLY;
+            lib.run();
+
+            lib.iSettleDuration[0] = 0;
+            lib.push(lib.iSettleDuration);
         }
 
         // Stimulate
-        lib.profile(stims[i], prof.target, prof.accuracy[i], prof.gradient[i]);
+        lib.assignment = assignment;
+        lib.run();
+
+        // Profile
+        int nSamples = stims[i].tObsEnd - stims[i].tObsBegin;
+        lib.profile(nSamples, prof.samplingInterval, prof.target, prof.accuracy[i], prof.gradient[i]);
         prof.gradient[i] /= prof.sigma;
         emit progress(i, total);
     }
