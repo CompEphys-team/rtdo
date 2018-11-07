@@ -273,10 +273,8 @@ void Wavegen::sigmaAdjust_load(QFile &file, Result)
 
 void Wavegen::propagateAdjustedSigma()
 {
-    ProfilerLibrary &prof(session.project.profiler());
     UniversalLibrary &uni(session.project.universal());
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-        prof.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma;
         uni.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma;
     }
 }

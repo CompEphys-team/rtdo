@@ -62,7 +62,6 @@ SOURCES += \
     src/gui/stimulationcreator.cpp \
     src/gui/gafittersettingsdialog.cpp \
     src/core/errorprofile.cpp \
-    src/core/profilerlibrary.cpp \
     src/core/samplingprofiler.cpp \
     src/gui/samplingprofiledialog.cpp \
     src/gui/samplingprofileplotter.cpp \
@@ -128,7 +127,6 @@ HEADERS  += \
     src/include/stimulationcreator.h \
     src/include/gafittersettingsdialog.h \
     src/include/errorprofile.h \
-    src/include/profilerlibrary.h \
     src/include/samplingprofiler.h \
     src/include/samplingprofiledialog.h \
     src/include/samplingprofileplotter.h \
@@ -276,5 +274,4 @@ SOURCES += \
 
 DISTFILES += \
     src/include/wavegenlibrary.cu \
-    src/include/profilerlibrary.cu \
     src/include/universallibrary.cu
