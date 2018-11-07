@@ -106,8 +106,6 @@ protected:
 // *************** cluster / DE stuff ************************ //
     std::vector<std::vector<std::vector<Section>>> constructClustersByStim(std::vector<Stimulation> astims);
 
-    double stimulate_cluster(const std::vector<Section> &cluster, int targetParam);
-
     void procreateDE();
     std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
     std::vector<double> DEpX;
