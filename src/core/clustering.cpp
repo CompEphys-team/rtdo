@@ -38,14 +38,6 @@ void constructSections(const std::vector<scalar*> pDelta, int dStride, int tStar
     }
 }
 
-void constructSections(scalar *diagDelta, int start, int end, int nTraces, std::vector<double> norm, int stride, std::vector<Section> &sections)
-{
-    std::vector<scalar*> pDelta(nTraces-1);
-    for ( int i = 0; i < nTraces-1; i++ )
-        pDelta[i] = diagDelta + i + 1;
-    constructSections(pDelta, nTraces, start, end, norm, stride, sections);
-}
-
 std::vector<std::vector<double> > constructSimilarityTable(const std::vector<Section> &sections, int nParams)
 {
     std::vector<std::vector<double>> similarity(sections.size());
@@ -141,14 +133,6 @@ std::vector<Section> constructSectionPrimitives(iStimulation iStim, std::vector<
     return sections;
 }
 
-std::vector<Section> constructSectionPrimitives(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm, int stride)
-{
-    std::vector<scalar*> pDelta(nTraces-1);
-    for ( int i = 0; i < nTraces-1; i++ )
-        pDelta[i] = diagDelta + i + 1;
-    return constructSectionPrimitives(iStim, pDelta, nTraces, blankCycles, norm, stride);
-}
-
 std::vector<Section> findSimilarCluster(std::vector<Section> sections, int nParams, double similarityThreshold, Section master)
 {
     // Remove primitives that don't resemble master (but flip & keep opposites)
@@ -212,15 +196,6 @@ std::vector<std::vector<Section>> constructClusters(iStimulation iStim, std::vec
     }
 
     return clusters;
-}
-
-std::vector<std::vector<Section> > constructClusters(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm,
-                                                     int stride, double similarityThreshold, int minClusterSize)
-{
-    std::vector<scalar*> pDelta(nTraces-1);
-    for ( int i = 0; i < nTraces-1; i++ )
-        pDelta[i] = diagDelta + i + 1;
-    return constructClusters(iStim, pDelta, nTraces, blankCycles, norm, stride, similarityThreshold, minClusterSize);
 }
 
 void printCluster(std::vector<Section> cluster, int nParams, double dt)

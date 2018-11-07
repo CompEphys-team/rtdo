@@ -9,10 +9,8 @@
 /// Calculates the scalar product between unit-length normalisations of two sections' deviation vector
 double scalarProduct(const Section &a, const Section &b, int nParams);
 
-/// Splits the delta record from @a start to @a end into section primitives of length @a stride (plus a leftovers section at the end),
+/// Splits the delta record from @a start to @a end into section primitives of length @a secLen (plus a leftovers section at the end),
 /// and appends them to @a sections.
-void constructSections(scalar *diagDelta, int start, int end, int nTraces, std::vector<double> norm, int stride,
-                       std::vector<Section> &sections);
 void constructSections(const std::vector<scalar*> pDelta, int dStride, int tStart, int tEnd,
                        std::vector<double> norm, int secLen, std::vector<Section> &sections);
 
@@ -23,9 +21,8 @@ std::vector<std::vector<double>> constructSimilarityTable(const std::vector<Sect
 /// Note, @a similarity and @a sections are modified, i.e. the cluster is removed from them.
 std::vector<Section> extractLargestCluster(std::vector<std::vector<double>> &similarity, std::vector<Section> &sections, double threshold);
 
-/// Splits the delta record into section primitives of length @a stride (plus leftovers)
+/// Splits the delta record into section primitives of length @a secLen (plus leftovers)
 /// while excluding time points within @a blankCycles after a step in @a iStim.
-std::vector<Section> constructSectionPrimitives(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm, int stride);
 std::vector<Section> constructSectionPrimitives(iStimulation iStim, std::vector<scalar*> pDelta, int dStride,
                                                 int blankCycles, std::vector<double> norm, int secLen);
 
@@ -40,8 +37,6 @@ std::vector<Section> findSimilarCluster(std::vector<Section> sections, int nPara
 
 /// Extracts all section primitives (via @fn constructSectionPrimitives), clusters them (via @fn extractLargestCluster), discarding clusters with
 /// fewer primitives than @a minClusterSize, finally merges adjacent sections and returns the resulting clusters, ordered by size, descending.
-std::vector<std::vector<Section>> constructClusters(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm,
-                                                    int stride, double similarityThreshold, int minClusterSize);
 std::vector<std::vector<Section>> constructClusters(iStimulation iStim, std::vector<scalar*> pDelta, int dStride, int blankCycles,
                                                     std::vector<double> norm, int secLen, double similarityThreshold, int minClusterSize);
 
