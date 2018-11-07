@@ -91,6 +91,8 @@ public:
         void (*resizeOutput)(size_t);
         void(*pullOutput)(void);
         scalar **output;
+
+        void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
     };
 
     Project &project;
@@ -154,6 +156,11 @@ public:
     inline void pullOutput() { pointers.pullOutput(); }
 
     void setRundata(size_t modelIndex, const RunData &rund);
+
+    /// post-run() workhorse for SamplingProfiler
+    inline void profile(int nSamples, int stride, size_t targetParam, double &accuracy, double &median_norm_gradient) {
+        pointers.profile(nSamples, stride, adjustableParams[targetParam].d_v, accuracy, median_norm_gradient);
+    }
 
 private:
     void *load();

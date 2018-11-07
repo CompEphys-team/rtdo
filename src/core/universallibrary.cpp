@@ -327,8 +327,8 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "#include \"definitions.h\"" << endl;
     ss << "#include \"universallibrary.h\"" << endl;
     ss << "#include \"../core/supportcode.cpp\"" << endl;
-    ss << "#include \"universallibrary.cu\"" << endl;
     ss << "#define NMODELS " << NMODELS << endl;
+    ss << "#include \"universallibrary.cu\"" << endl;
     ss << endl;
 
     ss << model.supportCode() << endl;
@@ -383,6 +383,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.pushTarget =& pushTarget;" << endl;
     ss << "    pointers.resizeOutput =& resizeOutput;" << endl;
     ss << "    pointers.pullOutput =& pullOutput;" << endl;
+    ss << "    pointers.profile =& profile;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 
