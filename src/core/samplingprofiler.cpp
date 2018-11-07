@@ -162,7 +162,7 @@ SamplingProfiler::Profile::Profile(WaveSource src, size_t target, Result r) :
     Result(r),
     src(src),
     target(target),
-    sigma(src.session->project.model().adjustableParams[target].adjustedSigma),
+    sigma(src.session->project.model().adjustableParams[target].sigma),
     samplingInterval(1),
     uniform(src.session->project.model().adjustableParams.size()),
     value1(uniform.size()),
