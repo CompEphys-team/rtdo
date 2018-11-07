@@ -171,6 +171,7 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
 StimulationCreator::~StimulationCreator()
 {
     delete ui;
+    delete lib;
     session.project.universal().destroySimulator(simulator);
     simulator = nullptr;
 }
@@ -264,6 +265,8 @@ void StimulationCreator::setNStims(int n)
     }
     ui->stimulations->setVerticalHeaderLabels(labels);
     ui->saveDeck->setEnabled(named);
+
+    pDelta.clear();
 }
 
 void StimulationCreator::setLimits()
@@ -363,6 +366,8 @@ void StimulationCreator::updateStimulation()
     ui->stimulations->item(stim - stims.begin(), 1)->setText(QString("%1 ms, %2 steps").arg(stim->duration).arg(stim->size()));
 
     redraw();
+
+    pDelta.clear();
 }
 
 void StimulationCreator::redraw()
@@ -402,16 +407,19 @@ void StimulationCreator::makeHidable(QCPGraph *g)
 
 void StimulationCreator::diagnose()
 {
-    if ( session.busy() ) {
-        QMessageBox::warning(this, "Busy", "Other actions are currently in progress. Pause or cancel before diagnosing.");
-        return;
-    }
-    double dt = session.qRunData().dt;
+    const RunData &rd = session.qRunData();
+    double dt = rd.dt;
     int nGraphs = session.project.model().adjustableParams.size() + 1;
     std::vector<double> norm(nGraphs-1, 1);
 
+    // Prepare lib & pDelta
+    if ( lib == nullptr )
+        lib = new UniversalLibrary(session.project, false);
+    if ( pDelta.empty() )
+        pDelta = getDetunedDiffTraces(stims, *lib, rd);
+
     iStimulation iStim(*stim, dt);
-    session.wavegen().diagnose(iStim, dt, session.qRunData().simCycles);
+    int stimIdx = stim - stims.begin();
 
     redraw();
     makeHidable(ui->plot->graph());
@@ -419,18 +427,19 @@ void StimulationCreator::diagnose()
     QVector<double> keys(iStim.duration);
     QVector<double> mean(iStim.duration, 0), sd(iStim.duration, 0);
     std::vector<QVector<double>> values(nGraphs, QVector<double>(iStim.duration));
-    scalar *delta = session.wavegen().lib.diagDelta;
 
     for ( int t = 0; t < iStim.duration; t++ ) {
         // Time
         keys[t] = t * dt;
 
         // (Normalised) deviations and mean
-        for ( int i = 0; i < nGraphs; i++, delta++ ) {
-            double val = *delta;// Pointer magic! Equivalent to lib.diagDelta[t * nGraphs + i]
+        for ( int i = 0; i < nGraphs; i++ ) {
+            double val;
             if ( i > 0 ) {
-                val /= norm[i-1];
+                val = pDelta[stimIdx][i-1][t*lib->NMODELS] / norm[i-1];
                 mean[t] += val;
+            } else {
+                val = pDelta[stimIdx][0][t*lib->NMODELS - 1]; // pDelta[*][0] is lane 1; so pDelta[*][0]-1 = lane 0 is base model current
             }
             values[i][t] = val;
         }
@@ -484,13 +493,21 @@ void StimulationCreator::diagnose()
 void StimulationCreator::clustering()
 {
     const GAFitterSettings &settings = session.qGaFitterSettings();
-    double dt = session.qRunData().dt;
+    const RunData &rd = session.qRunData();
+    double dt = rd.dt;
     int nParams = session.project.model().adjustableParams.size();
     iStimulation iStim(*stim, dt);
+    int stimIdx = stim - stims.begin();
     std::vector<double> norm(nParams, 1);
 
-    std::vector<std::vector<Section>> clusters = constructClusters(iStim, session.wavegen().lib.diagDelta, settings.cluster_blank_after_step/dt,
-                                                                   nParams+1, norm, settings.cluster_fragment_dur/dt, settings.cluster_threshold,
+    // Prepare lib & pDelta
+    if ( lib == nullptr )
+        lib = new UniversalLibrary(session.project, false);
+    if ( pDelta.empty() )
+        pDelta = getDetunedDiffTraces(stims, *lib, rd);
+
+    std::vector<std::vector<Section>> clusters = constructClusters(iStim, pDelta[stimIdx], lib->NMODELS, settings.cluster_blank_after_step/dt,
+                                                                   norm, settings.cluster_fragment_dur/dt, settings.cluster_threshold,
                                                                    settings.cluster_min_dur/settings.cluster_fragment_dur);
     std::vector<Section> bookkeeping;
     std::cout << "\n*** " << clusters.size() << " natural clusters for stimulation " << (stim-stims.begin()) << std::endl;
@@ -513,11 +530,11 @@ void StimulationCreator::clustering()
     std::cout << "\n*** Observation window section:" << std::endl;
     // Shortcut to construct one section for the entire observation window:
     std::vector<Section> tObs;
-    constructSections(session.wavegen().lib.diagDelta, iStim.tObsBegin, iStim.tObsEnd, nParams+1, norm, iStim.tObsEnd-iStim.tObsBegin+1, tObs);
+    constructSections(pDelta[stimIdx], lib->NMODELS, iStim.tObsBegin, iStim.tObsEnd, norm, iStim.tObsEnd-iStim.tObsBegin+1, tObs);
     printCluster(tObs, nParams, dt);
 
-    std::vector<Section> primitives = constructSectionPrimitives(iStim, session.wavegen().lib.diagDelta, settings.cluster_blank_after_step/dt,
-                                                                 nParams+1, norm, settings.cluster_fragment_dur/dt);
+    std::vector<Section> primitives = constructSectionPrimitives(iStim, pDelta[stimIdx], lib->NMODELS, settings.cluster_blank_after_step/dt,
+                                                                 norm, settings.cluster_fragment_dur/dt);
     std::vector<Section> sympa = findSimilarCluster(primitives, nParams, settings.cluster_threshold, tObs[0]);
     if ( !sympa.empty() ) {
         std::cout << "\n*** Sympathetic cluster:\n";

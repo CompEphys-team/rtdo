@@ -62,6 +62,9 @@ private:
     std::vector<Trace> traces;
     DAQ *simulator;
     enum {SrcBase, SrcFit, SrcManual, SrcRec} paramsSrc;
+
+    UniversalLibrary *lib = nullptr;
+    std::vector<std::vector<scalar*>> pDelta;
 };
 
 #endif // STIMULATIONCREATOR_H
