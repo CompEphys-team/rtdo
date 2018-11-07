@@ -183,16 +183,20 @@ void GAFitter::setup(const std::vector<Stimulation> &astims)
         }
     } else {
         stims = astims;
+
+        std::vector<std::vector<scalar*>> pDelta;
+        if ( settings.mutationSelectivity == 1 )
+            pDelta = getDetunedDiffTraces(stims, lib, session.runData());
+
         for ( int i = 0; i < nParams; i++ ) {
             iStimulation I(stims[i], session.runData().dt);
             errNorm[i] = I.tObsEnd - I.tObsBegin;
             obsTimes[i] = {std::make_pair(I.tObsBegin, I.tObsEnd)};
 
             if ( settings.mutationSelectivity == 1 ) {
-                session.wavegen().diagnose(I, session.runData().dt, session.runData().simCycles);
                 std::vector<Section> tObs;
-                constructSections(session.wavegen().lib.diagDelta, I.tObsBegin, I.tObsEnd, nParams+1, std::vector<double>(nParams, 1),
-                                  I.tObsEnd-I.tObsBegin+1, tObs);
+                constructSections(pDelta[i], lib.NMODELS, I.tObsBegin, I.tObsEnd, std::vector<double>(nParams, 1),
+                                  I.tObsEnd - I.tObsBegin + 1, tObs);
                 double norm = 0;
                 for ( int j = 0; j < nParams; j++ )
                     if ( norm < fabs(tObs.front().deviations[j]) )
@@ -211,10 +215,6 @@ void GAFitter::setup(const std::vector<Stimulation> &astims)
             output.obsTimes[i].push_back(QPair<int,int>(p.first, p.second));
         output.baseF[i] = QVector<double>::fromStdVector(baseF[i]);
     }
-
-    lib.setSingularRund();
-    lib.setSingularStim();
-    lib.setSingularTarget();
 }
 
 double GAFitter::fit()
@@ -562,6 +562,15 @@ double GAFitter::stimulate(unsigned int extra_assignments)
     const RunData &rd = session.runData();
     const Stimulation &aI = stims[targetParam];
     iStimulation I(aI, rd.dt);
+
+    // Set up library
+    lib.setSingularRund();
+    lib.simCycles = rd.simCycles;
+    lib.integrator = rd.integrator;
+    lib.setRundata(0, rd);
+
+    lib.setSingularStim();
+    lib.stim[0] = I;
     for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
         if ( i < obsTimes[targetParam].size() ) {
             lib.obs[0].start[i] = obsTimes[targetParam][i].first;
@@ -571,15 +580,12 @@ double GAFitter::stimulate(unsigned int extra_assignments)
         }
     }
 
-    // Set up library
+    lib.setSingularTarget();
+    lib.resizeTarget(1, I.duration);
+    lib.targetOffset[0] = 0;
+
     lib.assignment = lib.assignment_base | extra_assignments
             | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED;
-    lib.simCycles = rd.simCycles;
-    lib.integrator = rd.integrator;
-    lib.setRundata(0, rd);
-    lib.stim[0] = I;
-    lib.targetOffset[0] = 0;
-    lib.resizeTarget(1, I.duration);
     lib.push();
 
     // Set up + settle DAQ
@@ -622,16 +628,18 @@ std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim
     int nParams = lib.adjustableParams.size();
     std::vector<double> norm(nParams, 1);
 
-    std::vector<std::vector<std::vector<Section>>> clusters;
-    for ( int i = 0, nStims = astims.size(); i < nStims; i++ ) {
-        iStimulation stim(astims[i], dt);
-        session.wavegen().diagnose(stim, dt, session.runData().simCycles);
-        clusters.push_back(constructClusters(
-                                     stim, session.wavegen().lib.diagDelta, settings.cluster_blank_after_step/dt,
-                                     nParams+1, norm, settings.cluster_fragment_dur/dt, settings.cluster_threshold,
-                                     settings.cluster_min_dur/settings.cluster_fragment_dur));
+    std::vector<std::vector<std::vector<Section>>> clusters(astims.size());
+    std::vector<std::vector<scalar*>> pDelta = getDetunedDiffTraces(astims, lib, session.runData());
+    for ( size_t i = 0; i < pDelta.size(); i++ ) {
+        clusters[i] = constructClusters(iStimulation(astims[i], dt),
+                                        pDelta[i],
+                                        lib.NMODELS,
+                                        settings.cluster_blank_after_step/dt,
+                                        norm,
+                                        settings.cluster_fragment_dur/dt,
+                                        settings.cluster_threshold,
+                                        settings.cluster_min_dur/settings.cluster_fragment_dur);
     }
-
     return clusters;
 }
 
