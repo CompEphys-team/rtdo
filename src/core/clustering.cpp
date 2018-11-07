@@ -14,30 +14,36 @@ double scalarProduct(const Section &a, const Section &b, int nParams)
     return denom==0 ? 0 : dotp/denom;
 }
 
-void constructSections(const scalar *diagDelta, int start, int end, int nTraces, std::vector<double> norm, int stride, std::vector<Section> &sections)
+void constructSections(const std::vector<scalar*> pDelta, int dStride, int tStart, int tEnd, std::vector<double> norm, int secLen, std::vector<Section> &sections)
 {
-    const scalar *delta = diagDelta + start*nTraces;
-    Section sec {start, 0, std::vector<double>(nTraces-1, 0)};
-    for ( int t = start; t <= end; t++ ) {
-        ++delta; // Skip current trace
+    Section sec {tStart, 0, std::vector<double>(pDelta.size(), 0)};
+    for ( int t = tStart; t < tEnd; t++ ) {
 
         // Populate values
-        for ( int i = 0; i < nTraces-1; i++, delta++ ) {
-            double val = *delta / norm[i];
+        for ( size_t i = 0; i < pDelta.size(); i++ ) {
+            double val = *(pDelta[i] + t*dStride) / norm[i];
             sec.deviations[i] += val;
         }
 
-        if ( (t-start+1) % stride == 0 ) {
+        if ( (t-tStart+1) % secLen == 0 ) {
             sec.end = t;
             sections.push_back(sec);
             sec.start = t;
-            sec.deviations.assign(nTraces-1, 0);
+            sec.deviations.assign(pDelta.size(), 0);
         }
     }
-    if ( sec.start < end ) {
-        sec.end = end;
+    if ( sec.start < tEnd-1 ) {
+        sec.end = tEnd-1;
         sections.push_back(sec);
     }
+}
+
+void constructSections(scalar *diagDelta, int start, int end, int nTraces, std::vector<double> norm, int stride, std::vector<Section> &sections)
+{
+    std::vector<scalar*> pDelta(nTraces-1);
+    for ( int i = 0; i < nTraces-1; i++ )
+        pDelta[i] = diagDelta + i + 1;
+    constructSections(pDelta, nTraces, start, end, norm, stride, sections);
 }
 
 std::vector<std::vector<double> > constructSimilarityTable(const std::vector<Section> &sections, int nParams)
@@ -120,19 +126,27 @@ std::vector<std::pair<int, int>> observeNoSteps(iStimulation iStim, int blankCyc
     return segments;
 }
 
-std::vector<Section> constructSectionPrimitives(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm, int stride)
+std::vector<Section> constructSectionPrimitives(iStimulation iStim, std::vector<scalar*> pDelta, int dStride, int blankCycles, std::vector<double> norm, int secLen)
 {
     std::vector<std::pair<int,int>> segments = observeNoSteps(iStim, blankCycles);
     int nSec = 0;
     for ( std::pair<int,int> const& seg : segments )
-        nSec += (seg.second-seg.first)/stride + 1;
+        nSec += (seg.second-seg.first)/secLen + 1;
 
     std::vector<Section> sections;
     sections.reserve(nSec);
     for ( std::pair<int,int> &seg : segments ) {
-        constructSections(diagDelta, seg.first, seg.second, nTraces, norm, stride, sections);
+        constructSections(pDelta, dStride, seg.first, seg.second, norm, secLen, sections);
     }
     return sections;
+}
+
+std::vector<Section> constructSectionPrimitives(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm, int stride)
+{
+    std::vector<scalar*> pDelta(nTraces-1);
+    for ( int i = 0; i < nTraces-1; i++ )
+        pDelta[i] = diagDelta + i + 1;
+    return constructSectionPrimitives(iStim, pDelta, nTraces, blankCycles, norm, stride);
 }
 
 std::vector<Section> findSimilarCluster(std::vector<Section> sections, int nParams, double similarityThreshold, Section master)
@@ -166,11 +180,11 @@ std::vector<Section> findSimilarCluster(std::vector<Section> sections, int nPara
     return compact;
 }
 
-std::vector<std::vector<Section> > constructClusters(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm,
-                                                     int stride, double similarityThreshold, int minClusterSize)
+std::vector<std::vector<Section>> constructClusters(iStimulation iStim, std::vector<scalar*> pDelta, int dStride, int blankCycles,
+                                                    std::vector<double> norm, int secLen, double similarityThreshold, int minClusterSize)
 {
-    std::vector<Section> sections = constructSectionPrimitives(iStim, diagDelta, blankCycles, nTraces, norm, stride);
-    std::vector<std::vector<double>> similarity = constructSimilarityTable(sections, nTraces-1);
+    std::vector<Section> sections = constructSectionPrimitives(iStim, pDelta, dStride, blankCycles, norm, secLen);
+    std::vector<std::vector<double>> similarity = constructSimilarityTable(sections, pDelta.size());
 
     std::vector<std::vector<Section>> clusters;
     while ( !sections.empty() ) {
@@ -181,11 +195,11 @@ std::vector<std::vector<Section> > constructClusters(iStimulation iStim, scalar 
         // compact it
         std::vector<Section> compact;
         compact.reserve(cluster.size()); // conservative estimate
-        Section tmp { cluster.front().start, cluster.front().start, std::vector<double>(nTraces-1, 0) };
+        Section tmp { cluster.front().start, cluster.front().start, std::vector<double>(pDelta.size(), 0) };
         for ( const Section &sec : cluster ) {
             if ( sec.start == tmp.end ) {
                 tmp.end = sec.end;
-                for ( int i = 0; i < nTraces-1; i++ )
+                for ( size_t i = 0; i < pDelta.size(); i++ )
                     tmp.deviations[i] += sec.deviations[i];
             } else {
                 compact.push_back(std::move(tmp));
@@ -198,6 +212,15 @@ std::vector<std::vector<Section> > constructClusters(iStimulation iStim, scalar 
     }
 
     return clusters;
+}
+
+std::vector<std::vector<Section> > constructClusters(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm,
+                                                     int stride, double similarityThreshold, int minClusterSize)
+{
+    std::vector<scalar*> pDelta(nTraces-1);
+    for ( int i = 0; i < nTraces-1; i++ )
+        pDelta[i] = diagDelta + i + 1;
+    return constructClusters(iStim, pDelta, nTraces, blankCycles, norm, stride, similarityThreshold, minClusterSize);
 }
 
 void printCluster(std::vector<Section> cluster, int nParams, double dt)
@@ -267,4 +290,91 @@ std::vector<std::tuple<int, std::vector<double>, std::vector<Section>>> extractS
         picks.push_back(*it);
     }
     return picks;
+}
+
+std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<Stimulation> &astims, UniversalLibrary &lib, const RunData &rd)
+{
+    std::vector<iStimulation> stims(astims.size());
+    for ( size_t i = 0; i < stims.size(); i++ )
+        stims[i] = iStimulation(astims[i], rd.dt);
+    return getDetunedDiffTraces(stims, lib, rd);
+}
+
+std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimulation> &stims, UniversalLibrary &lib, const RunData &rd)
+{
+    int nParams = lib.adjustableParams.size();
+
+    lib.setSingularRund();
+    lib.simCycles = rd.simCycles;
+    lib.integrator = rd.integrator;
+    lib.setRundata(0, rd);
+
+    lib.setSingularStim(false);
+
+    size_t warpOffset = 0, tid = 0;
+    std::vector<std::vector<scalar*>> pDelta(stims.size(), std::vector<scalar*>(nParams, nullptr));
+
+    int maxDuration = 0;
+    for ( const iStimulation &stim : stims ) {
+        maxDuration = std::max(maxDuration, stim.duration);
+    }
+    lib.resizeOutput(maxDuration);
+
+    // Set model-level data: tuned/detuned parameters, stim, obs, settleDuration.
+    for ( size_t stimIdx = 0; stimIdx < stims.size(); stimIdx++ ) {
+        iObservations obs {{}, {}};
+        obs.stop[0] = stims[stimIdx].duration;
+
+        int nWarps = (nParams+30) / 31; // Lane 0 for base model, up to 31 lanes for detuned models
+        int pid = 0;
+        for ( int warp = 0; warp < nWarps; warp++ ) {
+            for ( int lane = 0; lane < 32; lane++ ) { // Fill the warp - if there are more threads than models, the remaining ones are initial
+                tid = (warpOffset + warp)*32 + lane;
+                lib.stim[tid] = stims[stimIdx];
+                lib.obs[tid] = obs;
+
+                for ( int i = 0; i < nParams; i++ ) {
+                    AdjustableParam &p = lib.adjustableParams[i];
+                    if ( lane > 0 && i == pid ) { // Detune target parameter
+                        scalar newp;
+                        if ( p.multiplicative ) {
+                            newp = p.initial * (1 + p.adjustedSigma);
+                            if ( newp > p.max || newp < p.min )
+                                newp = p.initial * (1 - p.adjustedSigma);
+                        } else {
+                            newp = p.initial + p.adjustedSigma;
+                            if ( newp > p.max || newp < p.min )
+                                newp = p.initial - p.adjustedSigma;
+                        }
+                        p[tid] = newp;
+
+                        pDelta[stimIdx][pid] = lib.output + tid;
+                    } else { // Use initial non-target parameters
+                        p[tid] = p.initial;
+                    }
+                }
+
+                if ( lane > 0 ) // Leave lane 0 fully tuned in all warps
+                    ++pid;
+            }
+        }
+
+        warpOffset += nWarps;
+    }
+
+    // Fill the remaining warps/blocks with empty stims
+    iStimulation stim = stims[0];
+    stim.duration = 0;
+    iObservations obs {{}, {}};
+    for ( tid = tid+1; tid < lib.NMODELS; ++tid ) {
+        lib.stim[tid] = stim;
+        lib.obs[tid] = obs;
+    }
+
+    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_LANE0;
+
+    lib.push();
+    lib.run();
+    lib.pullOutput();
+    return pDelta;
 }

@@ -2,6 +2,7 @@
 #define CLUSTERING_H
 
 #include "types.h"
+#include "universallibrary.h"
 
 // ******************* Helper functions: *****************************
 
@@ -10,8 +11,10 @@ double scalarProduct(const Section &a, const Section &b, int nParams);
 
 /// Splits the delta record from @a start to @a end into section primitives of length @a stride (plus a leftovers section at the end),
 /// and appends them to @a sections.
-void constructSections(const scalar *diagDelta, int start, int end, int nTraces, std::vector<double> norm, int stride,
+void constructSections(scalar *diagDelta, int start, int end, int nTraces, std::vector<double> norm, int stride,
                        std::vector<Section> &sections);
+void constructSections(const std::vector<scalar*> pDelta, int dStride, int tStart, int tEnd,
+                       std::vector<double> norm, int secLen, std::vector<Section> &sections);
 
 /// Constructs an n*n table of scalarProducts between @a sections, represented as triangular matrix.
 std::vector<std::vector<double>> constructSimilarityTable(const std::vector<Section> &sections, int nParams);
@@ -23,6 +26,8 @@ std::vector<Section> extractLargestCluster(std::vector<std::vector<double>> &sim
 /// Splits the delta record into section primitives of length @a stride (plus leftovers)
 /// while excluding time points within @a blankCycles after a step in @a iStim.
 std::vector<Section> constructSectionPrimitives(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm, int stride);
+std::vector<Section> constructSectionPrimitives(iStimulation iStim, std::vector<scalar*> pDelta, int dStride,
+                                                int blankCycles, std::vector<double> norm, int secLen);
 
 /// Extracts all observation times that exclude hard steps and @a blankCycles thereafter, as (start,end) pairs.
 std::vector<std::pair<int, int>> observeNoSteps(iStimulation iStim, int blankCycles);
@@ -37,6 +42,8 @@ std::vector<Section> findSimilarCluster(std::vector<Section> sections, int nPara
 /// fewer primitives than @a minClusterSize, finally merges adjacent sections and returns the resulting clusters, ordered by size, descending.
 std::vector<std::vector<Section>> constructClusters(iStimulation iStim, scalar *diagDelta, int blankCycles, int nTraces, std::vector<double> norm,
                                                     int stride, double similarityThreshold, int minClusterSize);
+std::vector<std::vector<Section>> constructClusters(iStimulation iStim, std::vector<scalar*> pDelta, int dStride, int blankCycles,
+                                                    std::vector<double> norm, int secLen, double similarityThreshold, int minClusterSize);
 
 
 /// Prints a representation of @a cluster to std::cout
@@ -52,5 +59,11 @@ void printCluster(std::vector<Section> cluster, int nParams, double dt);
 /// * The cluster itself.
 std::vector<std::tuple<int, std::vector<double>, std::vector<Section>>> extractSeparatingClusters(
         const std::vector<std::vector<std::vector<Section>>> &clustersByStim, int nParams);
+
+
+/// Runs the given @a stims in @a lib, comparing detuned models to the base model. Returns a collection of pointers to traces for use
+/// as pDelta in the functions above; dStride is lib.NMODELS.
+std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimulation> &stims, UniversalLibrary &lib, const RunData &rd);
+std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<Stimulation> &astims, UniversalLibrary &lib, const RunData &rd);
 
 #endif // CLUSTERING_H
