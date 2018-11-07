@@ -248,9 +248,13 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                     break;
                 case ASSIGNMENT_TIMESERIES_COMPARE_LANE0:
                     diff = __shfl_sync(0xffffffff, value, 0) - value;
+                    if ( (threadIdx.x & 31) == 0 )
+                        diff = value;
                     break;
                 case ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD:
                     diff = __shfl_up_sync(0xffffffff, value, 1) - value;
+                    if ( (threadIdx.x & 31) == 0 )
+                        diff = value;
                     break;
                 case ASSIGNMENT_TIMESERIES_COMPARE_NONE:
                 default:
@@ -269,9 +273,13 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                     break;
                 case ASSIGNMENT_SUMMARY_COMPARE_LANE0:
                     diff = __shfl_sync(0xffffffff, value, 0) - value;
+                    if ( (threadIdx.x & 31) == 0 )
+                        diff = value;
                     break;
                 case ASSIGNMENT_SUMMARY_COMPARE_PREVTHREAD:
                     diff = __shfl_up_sync(0xffffffff, value, 1) - value;
+                    if ( (threadIdx.x & 31) == 0 )
+                        diff = value;
                     break;
                 case ASSIGNMENT_SUMMARY_COMPARE_NONE:
                 default:

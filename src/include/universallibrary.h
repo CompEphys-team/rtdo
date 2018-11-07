@@ -7,10 +7,11 @@
 
 /// Flags and bitmasks for the `assignment` parameter:
 // Bits 0-1: Which target to compare to (summary)
+// Caution: _LANE0 and _PREVTHREAD require identical stim/obs and rund within a warp.
 #define ASSIGNMENT_SUMMARY_COMPARE_NONE         static_cast<unsigned int>(0x0) /* report raw current */
 #define ASSIGNMENT_SUMMARY_COMPARE_TARGET       static_cast<unsigned int>(0x1) /* compare against lib.target */
-#define ASSIGNMENT_SUMMARY_COMPARE_LANE0        static_cast<unsigned int>(0x2) /* compare against first lane in warp */
-#define ASSIGNMENT_SUMMARY_COMPARE_PREVTHREAD   static_cast<unsigned int>(0x3) /* compare against preceding lane in warp */
+#define ASSIGNMENT_SUMMARY_COMPARE_LANE0        static_cast<unsigned int>(0x2) /* compare against first lane in warp; first lane does _NONE */
+#define ASSIGNMENT_SUMMARY_COMPARE_PREVTHREAD   static_cast<unsigned int>(0x3) /* compare against preceding lane in warp; first lane does _NONE */
 #define ASSIGNMENT_SUMMARY_COMPARE_MASK         static_cast<unsigned int>(0x3) /* (mask) */
 
 // Bit 2: Whether to report summary value
@@ -41,10 +42,11 @@
 #define ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES    static_cast<unsigned int>(0x1 << 10) /* Sparse mode: set unobserved samples to 0 */
 
 // Bits 11-12: Which target to compare to (time series)
+// Caution: _LANE0 and _PREVTHREAD require identical stim/obs and rund within a warp.
 #define ASSIGNMENT_TIMESERIES_COMPARE_NONE              static_cast<unsigned int>(0x0 << 11) /* report raw current */
 #define ASSIGNMENT_TIMESERIES_COMPARE_TARGET            static_cast<unsigned int>(0x1 << 11) /* compare against lib.target */
-#define ASSIGNMENT_TIMESERIES_COMPARE_LANE0             static_cast<unsigned int>(0x2 << 11) /* compare against first lane in warp */
-#define ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD        static_cast<unsigned int>(0x3 << 11) /* compare against preceding lane in warp */
+#define ASSIGNMENT_TIMESERIES_COMPARE_LANE0             static_cast<unsigned int>(0x2 << 11) /* compare against first lane in warp; first lane does _NONE */
+#define ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD        static_cast<unsigned int>(0x3 << 11) /* compare against preceding lane in warp; first lane does _NONE */
 #define ASSIGNMENT_TIMESERIES_COMPARE_MASK              static_cast<unsigned int>(0x3 << 11) /* (mask) */
 
 // Bit 13: Whether to maintain summary value across calls, rather than resetting to 0
