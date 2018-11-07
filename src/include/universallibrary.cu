@@ -77,7 +77,7 @@ extern "C" void pushTarget()
 
 extern "C" void resizeOutput(size_t newSize)
 {
-    unsigned int tmp = target_size;
+    unsigned int tmp = timeseries_size;
     resizeHostArray(timeseries, tmp, newSize);
     resizeArray(d_timeseries, timeseries_size, newSize);
     CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(dd_timeseries, &d_timeseries, sizeof(scalar*)));
