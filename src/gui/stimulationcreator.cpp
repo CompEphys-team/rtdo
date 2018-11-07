@@ -4,7 +4,8 @@
 #include "stimulationgraph.h"
 #include "clustering.h"
 
-QString colours[] = {
+constexpr static int nColours = 8;
+const static QString colours[nColours] = {
     "#e41a1c",
     "#377eb8",
     "#4daf4a",
@@ -469,7 +470,7 @@ void StimulationCreator::diagnose()
         g = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
         g->setName(QString::fromStdString(p.name));
         g->setData(keys, values[i], true);
-        g->setPen(QPen(QColor(colours[i % sizeof colours])));
+        g->setPen(QPen(QColor(colours[i % nColours])));
         makeHidable(g);
     }
 
