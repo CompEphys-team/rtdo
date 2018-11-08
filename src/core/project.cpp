@@ -16,6 +16,14 @@ Project::Project(const QString &projectfile, bool light) :
     loadSettings(projectfile);
     loadExtraModels();
 
+    // Ensure correct UniLib sizing
+    size_t n = exp_numCandidates;
+    setExpNumCandidates(n);
+    if ( n != exp_numCandidates ) {
+        compile();
+        return;
+    }
+
     // Load libraries from existing files
     wglib.reset(new WavegenLibrary(*this, false, light));
     unilib.reset(new UniversalLibrary(*this, false, light));

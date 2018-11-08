@@ -25,7 +25,7 @@ public:
     inline void setDt(double dt) { if ( !frozen ) m_dt = dt; }
     inline void setMethod(IntegrationMethod method) { if ( !frozen ) m_method = method; }
     inline void setWgNumGroups(size_t num) { if ( !frozen ) wg_numGroups = num; }
-    inline void setExpNumCandidates(size_t num) { if ( !frozen ) exp_numCandidates = num; }
+    inline void setExpNumCandidates(size_t num) { if ( !frozen ) exp_numCandidates = 64*int((num+63)/64); /* ensure numPairs == k*32 */ }
     inline void setProfNumPairs(size_t num) { if ( !frozen ) prof_numPairs = 32*int((num+31)/32); /* ensure numPairs == k*32 */ }
 
     /// Get compile-time parameters
