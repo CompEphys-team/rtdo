@@ -105,31 +105,61 @@ extern "C" void pullOutput()
 /// Profiler kernel & host function
 // Compute the current deviation of both tuned and untuned models against each tuned model
 // Models are interleaved (even id = tuned, odd id = detuned) in SamplingProfiler
-__global__ void compute_gradient(unsigned int nSamples, int stride, scalar *targetParam, scalar *gradient)
+__global__ void compute_gradient(int nSamples, int stride, scalar *targetParam, scalar *gradient)
 {
-    unsigned int x = blockIdx.x * blockDim.x + threadIdx.x; // probe
-    unsigned int y = blockIdx.y * blockDim.y + threadIdx.y; // reference
-    scalar tuned_err = 0, detuned_err = 0;
-    for ( unsigned int i = 0; i < nSamples; i += stride ) {
+    unsigned int xThread = blockIdx.x * blockDim.x + threadIdx.x; // probe
+    unsigned int yThread = blockIdx.y * blockDim.y + threadIdx.y; // reference
+    unsigned int x,y;
+    if ( xThread < yThread ) { // transpose subdiagonal half of the top-left quadrant to run on the supradiagonal half of bottom-right quadrant
+        // the coordinate transformation is equivalent to squashing the bottom-right supradiagonal triangle to the left border,
+        // then flipping it up across the midline.
+        x = xThread + NPAIRS - yThread; // xnew = x + n-y
+        y = NPAIRS - yThread - 1;       // ynew = n-y - 1
+    } else {
+        x = xThread;
+        y = yThread;
+    }
+
+    scalar err_tx_ty = 0., err_tx_dy = 0., err_dx_ty = 0., err;
+    int i = 0;
+    for ( ; i < nSamples; i += stride ) {
+        scalar xval = dd_timeseries[2*x + NMODELS*i];
         scalar yval = dd_timeseries[2*y + NMODELS*i];
 
-        scalar err = dd_timeseries[2*x + NMODELS*i] - yval;
-        tuned_err += err*err;
+        err = xval - yval;
+        err_tx_ty += err*err;
 
-        err = dd_timeseries[2*x+1 + NMODELS*i] - yval;
-        detuned_err += err*err;
+        err = xval - dd_timeseries[2*y+1 + NMODELS*i];
+        err_tx_dy += err*err;
+
+        err = yval - dd_timeseries[2*x+1 + NMODELS*i];
+        err_dx_ty += err*err;
     }
-    tuned_err = sqrt(tuned_err / (nSamples/stride)); // RMSE
-    detuned_err = sqrt(detuned_err / (nSamples/stride));
 
-    if ( x != y ) // Ignore diagonal (don't probe against self)
-        gradient[x + NPAIRS*y - (y+1)] =
+    i = nSamples/stride; // Using i as nSamplesUsed
+    err_tx_ty = std::sqrt(err_tx_ty / i);
+    err_tx_dy = std::sqrt(err_tx_dy / i);
+    err_dx_ty = std::sqrt(err_dx_ty / i);
 
-                // fractional change in error ( (d_err-t_err)/t_err) "how much does the error change by detuning, relative to total error?")
-                ((detuned_err / tuned_err) - 1)
+    if ( x != y ) { // Ignore diagonal (don't probe against self)
+        // invert sign as appropriate, such that detuning in the direction of the reference is reported as positive
+        i = (1 - 2 * (targetParam[2*x] < targetParam[2*y])); // using i as sign
 
-                // invert sign as appropriate, such that detuning in the direction of the reference is reported as positive
-                * (1 - 2 * (targetParam[2*x] < targetParam[2*y]));
+        // fractional change in error ( (d_err-t_err)/t_err) "how much does the error improve by detuning, relative to total error?")
+        err = ((err_dx_ty / err_tx_ty) - 1) * i;
+
+        // Put invalid values to the end of the scale, positive or negative; heuristically balance both sides
+        if ( ::isnan(err) )
+            err = i * SCALAR_MAX;
+
+        // Addressing: Squish the diagonal out to prevent extra zeroes
+        gradient[xThread + NPAIRS*yThread - yThread - (xThread>yThread)] = err;
+
+        err = (1 - (err_tx_dy / err_tx_ty)) * i; // = ((err_tx_dy / err_tx_ty) - 1) * -i
+        if ( ::isnan(err) )
+            err = -i * SCALAR_MAX;
+        gradient[xThread + NPAIRS*yThread - yThread - (xThread>yThread) + (NPAIRS-1)*(NPAIRS/2)] = err;
+    }
 }
 
 struct is_positive : public thrust::unary_function<scalar, bool>
@@ -142,7 +172,7 @@ struct is_positive : public thrust::unary_function<scalar, bool>
 extern "C" void profile(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient)
 {
     dim3 block(32, 16);
-    dim3 grid(NPAIRS/32, NPAIRS/16);
+    dim3 grid(NPAIRS/32, NPAIRS/32);
     compute_gradient<<<grid, block>>>(nSamples, stride, d_targetParam, d_gradient);
 
     thrust::device_ptr<scalar> gradient = thrust::device_pointer_cast(d_gradient);
