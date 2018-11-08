@@ -29,9 +29,8 @@ static __constant__ size_t singular_targetOffset;
 
 // profiler memory space
 static constexpr unsigned int NPAIRS = NMODELS/2;
-static scalar *d_gradient, *d_err;
+static scalar *d_gradient;
 static constexpr unsigned int gradientSz = NPAIRS * (NPAIRS - 1); // No diagonal
-static constexpr unsigned int errSz = gradientSz/2; // Above diagonal only
 
 void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 {
@@ -60,7 +59,6 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
     cudaGetSymbolAddress((void **)&lib.targetOffset.singular_v, singular_targetOffset);
 
     CHECK_CUDA_ERRORS(cudaMalloc(&d_gradient, gradientSz * sizeof(scalar)));
-    CHECK_CUDA_ERRORS(cudaMalloc(&d_err, errSz * sizeof(scalar)));
 }
 
 extern "C" void libExit(UniversalLibrary::Pointers &pointers)
@@ -107,7 +105,7 @@ extern "C" void pullOutput()
 /// Profiler kernel & host function
 // Compute the current deviation of both tuned and untuned models against each tuned model
 // Models are interleaved (even id = tuned, odd id = detuned) in SamplingProfiler
-__global__ void compute_err_and_gradient(unsigned int nSamples, int stride, scalar *targetParam, scalar *gradient, scalar *err)
+__global__ void compute_gradient(unsigned int nSamples, int stride, scalar *targetParam, scalar *gradient)
 {
     unsigned int x = blockIdx.x * blockDim.x + threadIdx.x; // probe
     unsigned int y = blockIdx.y * blockDim.y + threadIdx.y; // reference
@@ -118,11 +116,13 @@ __global__ void compute_err_and_gradient(unsigned int nSamples, int stride, scal
     }
 
     if ( x != y ) // Ignore diagonal (don't probe against self)
-        //       error differential relative to detuning direction   invert sign as appropriate; positive differential indicates gradient pointing towards reference
-        gradient[x + NPAIRS*y - (y+1)] = (detuned_err - tuned_err) * (1 - 2 * (targetParam[2*x] < targetParam[2*y]));
+        gradient[x + NPAIRS*y - (y+1)] =
 
-    if ( x > y ) // (tuned) err is symmetrical; keep only values above the diagonal for faster median finding
-        err[x + NPAIRS*y - (y+1)*(y+2)/2] = tuned_err;
+                // fractional change in error ( (d_err-t_err)/t_err) "how much does the error change by detuning, relative to total error?")
+                ((detuned_err / tuned_err) - 1)
+
+                // invert sign as appropriate, such that detuning in the direction of the reference is reported as positive
+                * (1 - 2 * (targetParam[2*x] < targetParam[2*y]));
 }
 
 struct is_positive : public thrust::unary_function<scalar, bool>
@@ -136,22 +136,17 @@ extern "C" void profile(int nSamples, int stride, scalar *d_targetParam, double 
 {
     dim3 block(32, 16);
     dim3 grid(NPAIRS/32, NPAIRS/16);
-    compute_err_and_gradient<<<grid, block>>>(nSamples, stride, d_targetParam, d_gradient, d_err);
+    compute_gradient<<<grid, block>>>(nSamples, stride, d_targetParam, d_gradient);
 
     thrust::device_ptr<scalar> gradient = thrust::device_pointer_cast(d_gradient);
-    thrust::device_ptr<scalar> err = thrust::device_pointer_cast(d_err);
     thrust::sort(gradient, gradient + gradientSz);
-    thrust::sort(err, err + errSz);
 
     double nPositive = thrust::count_if(gradient, gradient + gradientSz, is_positive());
     accuracy = nPositive / gradientSz;
 
-    scalar median_g[2], median_e[2];
+    scalar median_g[2];
     CHECK_CUDA_ERRORS(cudaMemcpy(median_g, d_gradient + gradientSz/2, 2*sizeof(scalar), cudaMemcpyDeviceToHost));
-    CHECK_CUDA_ERRORS(cudaMemcpy(median_e, d_err + errSz/2, 2*sizeof(scalar), cudaMemcpyDeviceToHost));
-    scalar median_gradient = (median_g[0] + median_g[1]) / 2;
-    scalar median_err = (median_e[0] + median_e[1]) / 2;
-    median_norm_gradient = median_gradient / median_err;
+    median_norm_gradient = (median_g[0] + median_g[1]) / 2;
 }
 
 #endif
