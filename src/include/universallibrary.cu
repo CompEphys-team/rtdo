@@ -111,9 +111,16 @@ __global__ void compute_gradient(unsigned int nSamples, int stride, scalar *targ
     unsigned int y = blockIdx.y * blockDim.y + threadIdx.y; // reference
     scalar tuned_err = 0, detuned_err = 0;
     for ( unsigned int i = 0; i < nSamples; i += stride ) {
-        tuned_err += scalarfabs(dd_timeseries[2*x + NMODELS*i] - dd_timeseries[2*y + NMODELS*i]);
-        detuned_err += scalarfabs(dd_timeseries[2*x+1 + NMODELS*i] - dd_timeseries[2*y + NMODELS*i]);
+        scalar yval = dd_timeseries[2*y + NMODELS*i];
+
+        scalar err = dd_timeseries[2*x + NMODELS*i] - yval;
+        tuned_err += err*err;
+
+        err = dd_timeseries[2*x+1 + NMODELS*i] - yval;
+        detuned_err += err*err;
     }
+    tuned_err = sqrt(tuned_err / (nSamples/stride)); // RMSE
+    detuned_err = sqrt(detuned_err / (nSamples/stride));
 
     if ( x != y ) // Ignore diagonal (don't probe against self)
         gradient[x + NPAIRS*y - (y+1)] =
