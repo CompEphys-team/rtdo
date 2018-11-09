@@ -46,11 +46,12 @@ void printCluster(std::vector<Section> cluster, int nParams, double dt);
 
 
 /// Extracts the best-fit single-stimulation cluster for each parameter, where fitness is defined as follows:
-/// f = weight_target^2 / sum weight_offtarget^2
-/// where weight is the deviation across the cluster, normalised by the largest deviation.
+/// f = sqrt(weight_target^2 / sum weights^2)
+/// where weight_param is the current deviation, summed across the cluster, caused by detuning param by one sigma.
+/// iow, if D is the current deviation vector [dI_param1, dI_param2, ..., dI_paramN], then param k's fitness is f_k = |dI_k| / |D|.
 /// @returns a tuple for each parameter, containing, in order:
 /// * The stimulation index
-/// * The normalised weight of each parameter
+/// * The fitness of each parameter
 /// * The cluster itself.
 std::vector<std::tuple<int, std::vector<double>, std::vector<Section>>> extractSeparatingClusters(
         const std::vector<std::vector<std::vector<Section>>> &clustersByStim, int nParams);

@@ -227,41 +227,32 @@ std::vector<std::tuple<int, std::vector<double>, std::vector<Section>>> extractS
 {
     using T = std::tuple<int, std::vector<double>, std::vector<Section>>;
     std::vector<T> clusters, picks;
-    std::vector<Section> bookkeeping;
     for ( int i = 0, nStims = clustersByStim.size(); i < nStims; i++ ) {
         for ( auto it = clustersByStim[i].begin(); it != clustersByStim[i].end(); ++it ) {
             std::vector<double> F(nParams, 0);
-            Section tmp {0, 0, std::vector<double>(nParams, 0)};
             for ( const Section &sec : *it ) {
                 for ( int j = 0; j < nParams; j++ ) {
-                    tmp.deviations[j] += sec.deviations[j];
+                    F[j] += sec.deviations[j];
                 }
             }
-            double norm = 0;
+
+            double sumSquares = 0;
+            for ( int j = 0; j < nParams; j++ ) {
+                F[j] *= F[j];
+                sumSquares += F[j];
+            }
             for ( int j = 0; j < nParams; j++ )
-                if ( norm < fabs(tmp.deviations[j]) )
-                    norm = fabs(tmp.deviations[j]);
-            for ( int j = 0; j < nParams; j++ )
-                F[j] = fabs(tmp.deviations[j])/norm;
+                F[j] = std::sqrt(F[j] / sumSquares);
+
             clusters.emplace_back(i, std::move(F), *it);
-            bookkeeping.push_back(std::move(tmp));
         }
     }
 
     for ( int i = 0; i < nParams; i++ ) {
         auto it = clusters.begin();
         std::nth_element(clusters.begin(), it, clusters.end(), [=](const T& lhs, const T& rhs){
-            const std::vector<double> &a(std::get<1>(lhs)), &b(std::get<1>(rhs));
-            double kA(0), kB(0);
-            for ( int j = 0; j < nParams; j++ ) {
-                if ( j == i )
-                    continue;
-                kA += a[j]*a[j];
-                kB += b[j]*b[j];
-            }
-            return a[i]*a[i] / kA > b[i]*b[i] / kB;
+            return std::get<1>(lhs)[i] > std::get<1>(rhs)[i];
         });
-
         picks.push_back(*it);
     }
     return picks;
