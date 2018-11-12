@@ -298,9 +298,8 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
                         dotp = contrib * sh_clusters[stimIdx][i][paramIdx];
                 }
                 dotp = sumOverStim(dotp, stimWidth, stimIdx);
-                if ( dotp > 0 )
-                    dotp /= (square * sh_cluster_square_norm[stimIdx][i]); // normalised
-                if ( dotp > max_dotp ) {
+                dotp /= std::sqrt(square * sh_cluster_square_norm[stimIdx][i]); // normalised
+                if ( (max_dotp >= 0 && dotp > max_dotp) || (max_dotp < 0 && dotp < max_dotp) ) {
                     max_dotp = dotp;
                     closest_cluster = i;
                 }
@@ -311,14 +310,14 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
         }
 
         // No adequate cluster: start a new one
-        if ( max_dotp < dotp_threshold ) {
+        if ( scalarfabs(max_dotp) < dotp_threshold ) {
             closest_cluster = nClusters;
         }
 
         // Add present contribution to the nearest cluster, ignoring empty sections and cluster overflow
         if ( square > 0 && closest_cluster < MAXCLUSTERS ) {
             if ( paramIdx < NPARAMS ) {
-                contrib += sh_clusters[stimIdx][closest_cluster][paramIdx];
+                contrib += sh_clusters[stimIdx][closest_cluster][paramIdx] * (max_dotp < 0 ? -1 : 1);
                 sh_clusters[stimIdx][closest_cluster][paramIdx] = contrib;
             }
             square = contrib * contrib;
