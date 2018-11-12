@@ -84,9 +84,7 @@ extern "C" void resetDevice()
 
 extern "C" void resizeTarget(size_t newSize)
 {
-    unsigned int tmp = target_size;
-    resizeHostArray(target, tmp, newSize);
-    resizeArray(d_target, target_size, newSize);
+    resizeArrayPair(target, d_target, target_size, newSize);
     CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(dd_target, &d_target, sizeof(scalar*)));
     latest_target_size = newSize;
 }
@@ -98,9 +96,7 @@ extern "C" void pushTarget()
 
 extern "C" void resizeOutput(size_t newSize)
 {
-    unsigned int tmp = timeseries_size;
-    resizeHostArray(timeseries, tmp, newSize);
-    resizeArray(d_timeseries, timeseries_size, newSize);
+    resizeArrayPair(timeseries, d_timeseries, timeseries_size, newSize);
     CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(dd_timeseries, &d_timeseries, sizeof(scalar*)));
     latest_timeseries_size = newSize;
 }
