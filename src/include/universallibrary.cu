@@ -9,11 +9,11 @@
 #include <thrust/count.h>
 
 static scalar *target = nullptr, *d_target = nullptr;
-static __device__ scalar *dd_target = nullptr;
+static __constant__ scalar *dd_target = nullptr;
 static unsigned int target_size = 0, latest_target_size = 0;
 
 static scalar *timeseries = nullptr, *d_timeseries = nullptr;
-static __device__ scalar *dd_timeseries = nullptr;
+static __constant__ scalar *dd_timeseries = nullptr;
 static unsigned int timeseries_size = 0, latest_timeseries_size = 0;
 
 static __constant__ iStimulation singular_stim;
