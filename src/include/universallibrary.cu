@@ -186,4 +186,100 @@ extern "C" void profile(int nSamples, int stride, scalar *d_targetParam, double 
     median_norm_gradient = (median_g[0] + median_g[1]) / 2;
 }
 
+
+
+
+
+static constexpr int MAXCLUSTERS = 32;
+static constexpr int STIMS_PER_CLUSTER_BLOCK = 16;
+
+// Code adapated from Justin Luitjens, <https://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/>
+// Note, shuffle is only supported on compute capability 3.x and higher
+__device__ inline scalar warpReduceSum(scalar val, int cutoff = warpSize)
+{
+    for ( int offset = 1; offset < cutoff; offset *= 2 )
+        val += __shfl_down_sync(val, offset, 0xffffffff);
+    return val;
+}
+
+__device__ inline scalar sumOverX(scalar val)
+{
+    static __shared__ tmp[STIMS_PER_CLUSTER_BLOCK];
+    val = warpReduceSum(val);
+    if ( NPARAMS > 32 ) {
+        if ( threadIdx.x & 31 == 0 ) // Lane 0
+            atomicAdd(val, tmp[threadIdx.y]);
+        __syncthreads();
+        val = tmp[threadIdx.y];
+    }
+    return val;
+}
+
+__global__ void clusterKernel(int nTraces, /* total number of ee steps, a multiple of 31 */
+                              int duration,
+                              int secLen,
+                              scalar dotp_threshold)
+{
+    // Note: paramIdx == threadIdx.x
+    int timeseries_offset = (blockDim.y*blockIdx.y + threadIdx.y) * (nTraces/31)*32;
+    __shared__ scalar clusters[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS][NPARAMS];
+    __shared__ scalar cluster_square_norm[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
+    __shared__ int clusterLen[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
+
+    for ( int t = 0; t < duration; t++ ) {
+
+        // Load ee contribution from this parameter
+        // Note, timeseries[0,32,64,...] are unused (COMPARE_PREVTHREAD), hence "+ i/31 + 1" indexing
+        scalar contrib = 0;
+        if ( threadIdx.x < NPARAMS )
+            for ( int tEnd = t + secLen; t < tEnd; t++ )
+                for ( int i = threadIdx.x; i < nTraces; i += NPARAMS )
+                    contrib += dd_timeseries[t*NMODELS + timeseries_offset + i + i/31 + 1];
+
+        // Compute the square norm (sum of squared contributions) for scalar product normalisation
+        scalar square = contrib * contrib;
+        square = sumOverX(square);
+
+        // Compute the scalar product with each existing cluster to find the closest match
+        scalar max_dotp = 0;
+        int closest_cluster = 0;
+        int nClusters = 0;
+        for ( int i = 0; i < MAXCLUSTERS; ++i ) {
+            scalar dotp = 0;
+            if ( clusterLen[threadIdx.y][i] > 0 ) {
+                ++nClusters;
+                if ( threadIdx.x < NPARAMS )
+                    dotp = contrib * clusters[threadIdx.y][i][threadIdx.x];
+            }
+            dotp = sumOverX(dotp);
+            if ( dotp > 0 )
+                dotp /= (square * cluster_square_norm[threadIdx.y][i]); // normalised
+            if ( dotp > max_dotp ) {
+                max_dotp = dotp;
+                closest_cluster = i;
+            }
+        }
+
+        // No adequate cluster: make a new one, if space is available
+        if ( max_dotp < dotp_threshold ) {
+            closest_cluster = nClusters;
+            if ( closest_cluster == MAXCLUSTERS )
+                continue;
+        }
+
+        // Add present contribution to the nearest cluster
+        if ( threadIdx.x < NPARAMS ) {
+            contrib += clusters[threadIdx.y][closest_cluster][threadIdx.x];
+            clusters[threadIdx.y][closest_cluster][threadIdx.x] = contrib;
+        }
+        square = contrib * contrib;
+        square = sumOverX(square);
+        if ( threadIdx.x == 0 ) {
+            cluster_square_norm[threadIdx.y][closest_cluster] = square;
+            ++clusterLen[threadIdx.y][closest_cluster];
+        }
+        __syncthreads();
+    }
+}
+
 #endif
