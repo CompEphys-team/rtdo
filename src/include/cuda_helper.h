@@ -49,4 +49,16 @@ void resizeHostArray(T *&arr, unsigned int &actualSize, unsigned int requestedSi
     }
 }
 
+template <typename T>
+void resizeArrayPair(T *&h_arr, T *&d_arr, unsigned int &actualSize, unsigned int requestedSize)
+{
+    if ( actualSize < requestedSize ) {
+        CHECK_CUDA_ERRORS(cudaFree(d_arr));
+        CHECK_CUDA_ERRORS(cudaFreeHost(h_arr));
+        CHECK_CUDA_ERRORS(cudaMalloc((void **)&d_arr, requestedSize * sizeof(T)));
+        CHECK_CUDA_ERRORS(cudaHostAlloc((void **)&h_arr, requestedSize * sizeof(T), cudaHostAllocPortable));
+        actualSize = requestedSize;
+    }
+}
+
 #endif // CUDA_HELPER_H
