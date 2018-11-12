@@ -41,7 +41,10 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     targetStride(light ? dummyInt : *pointers.targetStride),
 
     target(light ? dummyScalarPtr : *pointers.target),
-    output(light ? dummyScalarPtr : *pointers.output)
+    output(light ? dummyScalarPtr : *pointers.output),
+
+    clusters(light ? dummyScalarPtr : *pointers.clusters),
+    clusterLen(light ? dummyIntPtr : *pointers.clusterLen)
 {
 }
 
@@ -328,6 +331,8 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "#include \"universallibrary.h\"" << endl;
     ss << "#include \"../core/supportcode.cpp\"" << endl;
     ss << "#define NMODELS " << NMODELS << endl;
+    ss << "#define NPARAMS " << adjustableParams.size() << endl;
+    ss << "#define MAXCLUSTERS " << maxClusters << endl;
     ss << "#include \"universallibrary.cu\"" << endl;
     ss << endl;
 

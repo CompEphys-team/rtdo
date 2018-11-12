@@ -93,11 +93,17 @@ public:
         scalar **output;
 
         void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
+
+        void (*cluster)(int nTraces, int duration, int secLen, scalar dotp_threshold);
+        scalar **clusters;
+        int **clusterLen;
     };
 
     Project &project;
     MetaModel &model;
     const size_t NMODELS;
+
+    static constexpr int maxClusters = 32;
 
     std::vector<StateVariable> stateVariables;
     std::vector<AdjustableParam> adjustableParams;
@@ -162,6 +168,12 @@ public:
         pointers.profile(nSamples, stride, adjustableParams[targetParam].d_v, accuracy, median_norm_gradient);
     }
 
+    /// post-run() workhorse for elementary effects wavegen
+    inline void cluster(int nTraces, /* total number of ee steps, a multiple of 31 */
+                        int duration, int secLen, scalar dotp_threshold) {
+        pointers.cluster(nTraces, duration, secLen, dotp_threshold);
+    }
+
 private:
     void *load();
     void *compile_and_load();
@@ -178,6 +190,7 @@ private:
     unsigned int dummyUInt;
     IntegrationMethod dummyIntegrator;
     scalar *dummyScalarPtr = nullptr;
+    int *dummyIntPtr = nullptr;
 
 public:
     // Globals
@@ -188,6 +201,9 @@ public:
 
     scalar *&target;
     scalar *&output;
+
+    scalar *&clusters;
+    int *&clusterLen;
 
     unsigned int assignment_base = 0;
 };

@@ -32,6 +32,13 @@ static constexpr unsigned int NPAIRS = NMODELS/2;
 static scalar *d_gradient;
 static constexpr unsigned int gradientSz = NPAIRS * (NPAIRS - 1); // No diagonal
 
+// elementary effects wg / clustering memory space
+static scalar *clusters = nullptr, *d_clusters = nullptr;
+static unsigned int clusters_size = 0;
+
+static int *clusterLen = nullptr, *d_clusterLen = nullptr;
+static unsigned int clusterLen_size = 0;
+
 void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 {
     pointers.pushV = [](void *hostptr, void *devptr, size_t size){
@@ -43,6 +50,9 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 
     pointers.target =& target;
     pointers.output =& timeseries;
+
+    pointers.clusters =& clusters;
+    pointers.clusterLen =& clusterLen;
 
     allocateMem();
     initialize();
@@ -102,7 +112,10 @@ extern "C" void pullOutput()
 
 
 
-/// Profiler kernel & host function
+/// ******************************************************************************************************************************
+///  >============================     Profiler kernel & host function      ====================================================<
+/// ******************************************************************************************************************************
+
 // Compute the current deviation of both tuned and untuned models against each tuned model
 // Models are interleaved (even id = tuned, odd id = detuned) in SamplingProfiler
 __global__ void compute_gradient(int nSamples, int stride, scalar *targetParam, scalar *gradient)
@@ -190,8 +203,12 @@ extern "C" void profile(int nSamples, int stride, scalar *d_targetParam, double 
 
 
 
-static constexpr int MAXCLUSTERS = 32;
-static constexpr int STIMS_PER_CLUSTER_BLOCK = 16;
+/// ******************************************************************************************************************************
+///  >============================     Elementary Effects WG    ================================================================<
+/// ******************************************************************************************************************************
+
+static constexpr int STIMS_PER_CLUSTER_WARP = NPARAMS>16 ? 1 : NPARAMS>8 ? 2 : NPARAMS>4 ? 4 : NPARAMS>2 ? 8 : NPARAMS>1 ? 16 : 32;
+static constexpr int STIMS_PER_CLUSTER_BLOCK = 8 * STIMS_PER_CLUSTER_WARP;
 
 // Code adapated from Justin Luitjens, <https://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/>
 // Note, shuffle is only supported on compute capability 3.x and higher
@@ -202,15 +219,17 @@ __device__ inline scalar warpReduceSum(scalar val, int cutoff = warpSize)
     return val;
 }
 
-__device__ inline scalar sumOverX(scalar val)
+__device__ inline scalar sumOverStim(scalar val, int stimWidth, int stimIdx)
 {
-    static __shared__ tmp[STIMS_PER_CLUSTER_BLOCK];
-    val = warpReduceSum(val);
-    if ( NPARAMS > 32 ) {
-        if ( threadIdx.x & 31 == 0 ) // Lane 0
-            atomicAdd(val, tmp[threadIdx.y]);
+    static __shared__ scalar tmp[STIMS_PER_CLUSTER_BLOCK];
+    val = warpReduceSum(val, stimWidth);
+    if ( NPARAMS > warpSize ) {
+        if ( threadIdx.x & (stimWidth-1) == 0 ) // Lane 0
+            atomicAdd(&tmp[stimIdx], val);
         __syncthreads();
-        val = tmp[threadIdx.y];
+        val = tmp[stimIdx];
+    } else {
+        val = __shfl_sync(val, 0, 0xffffffff);
     }
     return val;
 }
@@ -218,27 +237,55 @@ __device__ inline scalar sumOverX(scalar val)
 __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multiple of 31 */
                               int duration,
                               int secLen,
-                              scalar dotp_threshold)
+                              scalar dotp_threshold,
+                              scalar *global_clusters, int *global_clusterLen)
 {
-    // Note: paramIdx == threadIdx.x
-    int timeseries_offset = (blockDim.y*blockIdx.y + threadIdx.y) * (nTraces/31)*32;
-    __shared__ scalar clusters[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS][NPARAMS];
-    __shared__ scalar cluster_square_norm[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
-    __shared__ int clusterLen[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
+    static constexpr int stimWidth = 32/STIMS_PER_CLUSTER_WARP;
+    int paramIdx, stimIdx;
+    if ( STIMS_PER_CLUSTER_WARP == 1 ) {
+        // One row, one stim
+        paramIdx = threadIdx.x;
+        stimIdx = threadIdx.y;
+    } else {
+        // Each row is one warp with multiple stims
+        paramIdx = threadIdx.x % stimWidth;
+        stimIdx = (threadIdx.y * STIMS_PER_CLUSTER_WARP) + (threadIdx.x/stimWidth);
+    }
+    int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
+    int timeseries_offset = global_stimIdx * (nTraces/31)*32;
 
+    __shared__ scalar sh_clusters[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS][NPARAMS];
+    __shared__ scalar sh_cluster_square_norm[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
+    __shared__ int sh_clusterLen[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
+    { // zero-initialise
+        if ( paramIdx < NPARAMS )
+            for ( int i = 0; i < MAXCLUSTERS; i++ )
+                sh_clusters[stimIdx][i][paramIdx] = 0;
+
+        int laneid = threadIdx.x + blockDim.x*threadIdx.y;
+        if ( laneid < STIMS_PER_CLUSTER_BLOCK ) {
+            for ( int i = 0; i < MAXCLUSTERS; i++ ) {
+                sh_cluster_square_norm[laneid][i] = 0;
+                sh_clusterLen[laneid][i] = 0;
+            }
+        }
+    }
+
+    // Construct clusters in shared memory
+    scalar contrib, square;
     for ( int t = 0; t < duration; t++ ) {
 
         // Load ee contribution from this parameter
         // Note, timeseries[0,32,64,...] are unused (COMPARE_PREVTHREAD), hence "+ i/31 + 1" indexing
-        scalar contrib = 0;
-        if ( threadIdx.x < NPARAMS )
-            for ( int tEnd = t + secLen; t < tEnd; t++ )
-                for ( int i = threadIdx.x; i < nTraces; i += NPARAMS )
+        contrib = 0;
+        if ( paramIdx < NPARAMS )
+            for ( int tEnd = (t + secLen > duration) ? duration : (t + secLen); t < tEnd; t++ )
+                for ( int i = paramIdx; i < nTraces; i += NPARAMS )
                     contrib += dd_timeseries[t*NMODELS + timeseries_offset + i + i/31 + 1];
 
         // Compute the square norm (sum of squared contributions) for scalar product normalisation
-        scalar square = contrib * contrib;
-        square = sumOverX(square);
+        square = contrib * contrib;
+        square = sumOverStim(square, stimWidth, stimIdx);
 
         // Compute the scalar product with each existing cluster to find the closest match
         scalar max_dotp = 0;
@@ -246,40 +293,78 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
         int nClusters = 0;
         for ( int i = 0; i < MAXCLUSTERS; ++i ) {
             scalar dotp = 0;
-            if ( clusterLen[threadIdx.y][i] > 0 ) {
-                ++nClusters;
-                if ( threadIdx.x < NPARAMS )
-                    dotp = contrib * clusters[threadIdx.y][i][threadIdx.x];
-            }
-            dotp = sumOverX(dotp);
-            if ( dotp > 0 )
-                dotp /= (square * cluster_square_norm[threadIdx.y][i]); // normalised
-            if ( dotp > max_dotp ) {
-                max_dotp = dotp;
-                closest_cluster = i;
+
+            // Ignore empty sections (all zeroes is (a) useless and (b) likely in an unobserved region)
+            if ( square > 0 ) {
+                if ( sh_clusterLen[stimIdx][i] > 0 ) {
+                    ++nClusters;
+                    if ( paramIdx < NPARAMS )
+                        dotp = contrib * sh_clusters[stimIdx][i][paramIdx];
+                }
+                dotp = sumOverStim(dotp, stimWidth, stimIdx);
+                if ( dotp > 0 )
+                    dotp /= (square * sh_cluster_square_norm[stimIdx][i]); // normalised
+                if ( dotp > max_dotp ) {
+                    max_dotp = dotp;
+                    closest_cluster = i;
+                }
+            } else if ( NPARAMS > warpSize ) {
+                // sumOverStim has a __syncthreads call, idle over it to prevent stalling
+                dotp = sumOverStim(dotp, stimWidth, stimIdx);
             }
         }
 
-        // No adequate cluster: make a new one, if space is available
+        // No adequate cluster: start a new one
         if ( max_dotp < dotp_threshold ) {
             closest_cluster = nClusters;
-            if ( closest_cluster == MAXCLUSTERS )
-                continue;
         }
 
-        // Add present contribution to the nearest cluster
-        if ( threadIdx.x < NPARAMS ) {
-            contrib += clusters[threadIdx.y][closest_cluster][threadIdx.x];
-            clusters[threadIdx.y][closest_cluster][threadIdx.x] = contrib;
-        }
-        square = contrib * contrib;
-        square = sumOverX(square);
-        if ( threadIdx.x == 0 ) {
-            cluster_square_norm[threadIdx.y][closest_cluster] = square;
-            ++clusterLen[threadIdx.y][closest_cluster];
+        // Add present contribution to the nearest cluster, ignoring empty sections and cluster overflow
+        if ( square > 0 && closest_cluster < MAXCLUSTERS ) {
+            if ( paramIdx < NPARAMS ) {
+                contrib += sh_clusters[stimIdx][closest_cluster][paramIdx];
+                sh_clusters[stimIdx][closest_cluster][paramIdx] = contrib;
+            }
+            square = contrib * contrib;
+            square = sumOverStim(square, stimWidth, stimIdx);
+            if ( paramIdx == 0 ) {
+                sh_cluster_square_norm[stimIdx][closest_cluster] = square;
+                ++sh_clusterLen[stimIdx][closest_cluster];
+            }
         }
         __syncthreads();
     }
+
+    // Push normalised completed clusters to global memory
+    if ( paramIdx < NPARAMS ) {
+        for ( int i = 0; i < MAXCLUSTERS; i++ ) {
+            contrib = sh_clusters[stimIdx][i][paramIdx];
+            square = contrib*contrib;
+            global_clusters[(((global_stimIdx * MAXCLUSTERS) + i) * NPARAMS) + paramIdx] =
+                    square / sh_cluster_square_norm[stimIdx][i];
+            if ( paramIdx == 0 ) {
+                global_clusterLen[(global_stimIdx * MAXCLUSTERS) + i] = sh_clusterLen[stimIdx][i];
+            }
+        }
+    }
+}
+
+extern "C" void cluster(int nTraces, /* total number of ee steps, a multiple of 31 */
+             int duration,
+             int secLen,
+             scalar dotp_threshold)
+{
+    unsigned int nStims = NMODELS / ((nTraces/31)*32);
+    unsigned int nClusters = nStims * MAXCLUSTERS;
+    resizeArrayPair(clusters, d_clusters, clusters_size, nClusters * NPARAMS);
+    resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, nClusters);
+
+    dim3 block((NPARAMS+31)/32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
+    dim3 grid(nStims);
+    clusterKernel<<<grid, block>>>(nTraces, duration, secLen, dotp_threshold, d_clusters, d_clusterLen);
+
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nClusters * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, nClusters * sizeof(int), cudaMemcpyDeviceToHost));
 }
 
 #endif
