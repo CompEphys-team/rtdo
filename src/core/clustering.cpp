@@ -57,9 +57,9 @@ std::vector<Section> extractLargestCluster(std::vector<std::vector<double> > &si
     for ( size_t i = 0; i < sections.size(); i++ ) {
         for ( size_t j = 0; j < sections.size(); j++ ) {
             if ( j < i ) // Run down the i:th column until reaching the diagonal
-                nSiblings[i] += (similarity[i][j] > threshold);
+                nSiblings[i] += (fabs(similarity[i][j]) > threshold);
             else if ( j > i ) // Then, run along the i:th row from the diagonal to the right
-                nSiblings[i] += (similarity[j][i] > threshold);
+                nSiblings[i] += (fabs(similarity[j][i]) > threshold);
         }
     }
 
@@ -71,13 +71,16 @@ std::vector<Section> extractLargestCluster(std::vector<std::vector<double> > &si
     cluster.reserve(1 + *it);
     clusterIdx.reserve(1 + *it);
     for ( size_t j = 0; j < sections.size(); j++ ) {
-        bool isSibling = true; // the representative (j==rep) goes in by default
+        double sim = 1; // the representative (j==rep) goes in by default
         if ( j < rep ) {
-            isSibling = (similarity[rep][j] > threshold);
+            sim = similarity[rep][j];
         } else if ( j > rep ) {
-            isSibling = (similarity[j][rep] > threshold);
+            sim = similarity[j][rep];
         }
-        if ( isSibling ) {
+        if ( fabs(sim) > threshold ) {
+            if ( sim < 0 )
+                for ( double &dev : sections[j].deviations )
+                    dev *= -1;
             cluster.push_back(std::move(sections[j]));
             clusterIdx.push_back(j);
         }
