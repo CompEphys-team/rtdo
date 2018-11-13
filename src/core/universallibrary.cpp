@@ -389,6 +389,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.resizeOutput =& resizeOutput;" << endl;
     ss << "    pointers.pullOutput =& pullOutput;" << endl;
     ss << "    pointers.profile =& profile;" << endl;
+    ss << "    pointers.cluster =& cluster;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 

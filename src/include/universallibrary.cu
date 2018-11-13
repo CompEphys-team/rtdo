@@ -231,6 +231,7 @@ __device__ inline scalar sumOverStim(scalar val, int stimWidth, int stimIdx)
 }
 
 __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multiple of 31 */
+                              int nStims,
                               int duration,
                               int secLen,
                               scalar dotp_threshold,
@@ -269,13 +270,14 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
 
     // Construct clusters in shared memory
     scalar contrib, square;
-    for ( int t = 0; t < duration; t++ ) {
+    int t = 0;
+    while ( t < duration ) {
 
         // Load ee contribution from this parameter
         // Note, timeseries[0,32,64,...] are unused (COMPARE_PREVTHREAD), hence "+ i/31 + 1" indexing
         contrib = 0;
-        if ( paramIdx < NPARAMS )
-            for ( int tEnd = (t + secLen > duration) ? duration : (t + secLen); t < tEnd; t++ )
+        for ( int tEnd = (t + secLen > duration) ? duration : (t + secLen); t < tEnd; t++ )
+            if ( paramIdx < NPARAMS && global_stimIdx < nStims )
                 for ( int i = paramIdx; i < nTraces; i += NPARAMS )
                     contrib += dd_timeseries[t*NMODELS + timeseries_offset + i + i/31 + 1];
 
@@ -354,9 +356,9 @@ extern "C" void cluster(int nTraces, /* total number of ee steps, a multiple of 
     resizeArrayPair(clusters, d_clusters, clusters_size, nClusters * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, nClusters);
 
-    dim3 block((NPARAMS+31)/32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
-    dim3 grid(nStims);
-    clusterKernel<<<grid, block>>>(nTraces, duration, secLen, dotp_threshold, d_clusters, d_clusterLen);
+    dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
+    dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
+    clusterKernel<<<grid, block>>>(nTraces, nStims, duration, secLen, dotp_threshold, d_clusters, d_clusterLen);
 
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nClusters * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, nClusters * sizeof(int), cudaMemcpyDeviceToHost));
