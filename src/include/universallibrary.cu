@@ -213,7 +213,7 @@ static constexpr int STIMS_PER_CLUSTER_BLOCK = 8 * STIMS_PER_CLUSTER_WARP;
 __device__ inline scalar warpReduceSum(scalar val, int cutoff = warpSize)
 {
     for ( int offset = 1; offset < cutoff; offset *= 2 )
-        val += __shfl_down_sync(val, offset, 0xffffffff);
+        val += __shfl_down_sync(0xffffffff, val, offset);
     return val;
 }
 
@@ -227,7 +227,7 @@ __device__ inline scalar sumOverStim(scalar val, int stimWidth, int stimIdx)
         __syncthreads();
         val = tmp[stimIdx];
     } else {
-        val = __shfl_sync(val, 0, 0xffffffff);
+        val = __shfl_sync(0xffffffff, val, 0, stimWidth);
     }
     return val;
 }
