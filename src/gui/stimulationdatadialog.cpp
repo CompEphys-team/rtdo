@@ -80,9 +80,9 @@ void StimulationDataDialog::exportData()
     bool wdChanged = false;
     for ( MAPEDimension &m : wd.mapeDimensions ) {
         scalar min = m.min, max = m.max;
-        m.setDefaultMinMax(session.qStimulationData());
+        m.setDefaultMinMax(session.qStimulationData(), session.project.model().adjustableParams.size());
         if ( m.min == min && m.max == max ) {
-            m.setDefaultMinMax(p);
+            m.setDefaultMinMax(p, session.project.model().adjustableParams.size());
             wdChanged |= (m.min != min || m.max != max);
         } else { // Keep non-default values unchanged
             m.min = min;

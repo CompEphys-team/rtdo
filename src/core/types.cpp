@@ -1,6 +1,7 @@
 #include "types.h"
 #include <cassert>
 #include <cmath>
+#include "universallibrary.h"
 
 void Stimulation::insert(Stimulation::Step *position, const Step &value)
 {
@@ -235,12 +236,24 @@ size_t MAPEDimension::bin(scalar value, size_t multiplier) const
         return multiplier * resolution * (value - min)/(max - min);
 }
 
+size_t MAPEDimension::bin(const iStimulation &I, size_t ee_value, size_t multiplier, double dt) const
+{
+    switch ( func ) {
+    case Func::EE_ClusterIndex:
+    case Func::EE_NumClusters:
+    case Func::EE_ParamIndex:
+        return ee_value;
+    default:
+        return bin(I, multiplier, dt);
+    }
+}
+
 scalar MAPEDimension::bin_inverse(size_t bin, size_t multiplier) const
 {
     return min + bin * (max - min)/(multiplier * resolution);
 }
 
-void MAPEDimension::setDefaultMinMax(StimulationData d)
+void MAPEDimension::setDefaultMinMax(StimulationData d, size_t nParams)
 {
     scalar maxDeviation = d.maxVoltage-d.baseV > d.baseV-d.minVoltage
             ? d.maxVoltage - d.baseV
@@ -250,6 +263,9 @@ void MAPEDimension::setDefaultMinMax(StimulationData d)
     case Func::BestBubbleTime:     min = 0; max = d.duration; return;
     case Func::VoltageDeviation:   min = 0; max = maxDeviation; return;
     case Func::VoltageIntegral:    min = 0; max = maxDeviation * d.duration; return;
+    case Func::EE_ClusterIndex:
+    case Func::EE_NumClusters:     min = 0; max = UniversalLibrary::maxClusters; return;
+    case Func::EE_ParamIndex:      min = 0; max = nParams; return;
     }
 }
 
@@ -260,6 +276,9 @@ std::string toString(const MAPEDimension::Func &f)
     case MAPEDimension::Func::BestBubbleTime:       return "BestBubbleTime";
     case MAPEDimension::Func::VoltageDeviation:     return "VoltageDeviation";
     case MAPEDimension::Func::VoltageIntegral:      return "VoltageIntegral";
+    case MAPEDimension::Func::EE_ClusterIndex:      return "ClusterIndex";
+    case MAPEDimension::Func::EE_NumClusters:       return "NumClusters";
+    case MAPEDimension::Func::EE_ParamIndex:        return "ParamIndex";
     }
     return "InvalidFunction";
 }
@@ -278,6 +297,9 @@ std::istream &operator>>(std::istream &is, MAPEDimension::Func &f)
     else if ( s == std::string("BestBubbleTime") )      f = MAPEDimension::Func::BestBubbleTime;
     else if ( s == std::string("VoltageDeviation") )    f = MAPEDimension::Func::VoltageDeviation;
     else if ( s == std::string("VoltageIntegral") )     f = MAPEDimension::Func::VoltageIntegral;
+    else if ( s == std::string("ClusterIndex") )        f = MAPEDimension::Func::EE_ClusterIndex;
+    else if ( s == std::string("NumClusters") )         f = MAPEDimension::Func::EE_NumClusters;
+    else if ( s == std::string("ParamIndex") )          f = MAPEDimension::Func::EE_ParamIndex;
     else /* Default */ f = MAPEDimension::Func::BestBubbleDuration;
     return is;
 }

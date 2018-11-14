@@ -328,7 +328,11 @@ struct MAPEDimension
         BestBubbleDuration,
         BestBubbleTime,
         VoltageDeviation,
-        VoltageIntegral
+        VoltageIntegral,
+
+        EE_ParamIndex,
+        EE_NumClusters,
+        EE_ClusterIndex
     };
 
     Func func;
@@ -336,16 +340,17 @@ struct MAPEDimension
     size_t resolution; //!< initial number of bins
 
     /**
-     * @brief bin classifies the given Stimulation along this dimension.
+     * @brief bin classifies the given Stimulation along this dimension. (non-EE functions only)
      * @param I: A Stimulation with a finalised observation window
      * @param multiplier: Multiplier to the resolution (i.e., number of bins = multiplier * resolution)
      * @return The bin index this Stimulation belongs to.
      */
     size_t bin(const iStimulation &I, size_t multiplier, double dt) const;
     size_t bin(scalar value, size_t multiplier) const; //!< As above, but with a fully processed behavioural value
+    size_t bin(const iStimulation &I, size_t ee_value, size_t multiplier, double dt) const; //!< As above, but for all functions
     scalar bin_inverse(size_t bin, size_t multiplier) const; //!< Inverse function of bin(scalar, size_t), aliased to the lower boundary of the bin.
 
-    void setDefaultMinMax(StimulationData d);
+    void setDefaultMinMax(StimulationData d, size_t nParams);
 };
 std::string toString(const MAPEDimension::Func &f);
 std::ostream& operator<<(std::ostream& os, const MAPEDimension::Func &f);

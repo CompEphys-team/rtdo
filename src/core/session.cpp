@@ -159,7 +159,7 @@ void Session::addAPs()
         {MAPEDimension::Func::VoltageDeviation,     0, 0,  32}
     };
     for ( MAPEDimension &m : q_settings.searchd.mapeDimensions )
-        m.setDefaultMinMax(q_settings.stimd);
+        m.setDefaultMinMax(q_settings.stimd, project.model().adjustableParams.size());
     q_settings.searchd.precisionIncreaseEpochs = { 100 };
 
     sanitiseSettings(q_settings);
