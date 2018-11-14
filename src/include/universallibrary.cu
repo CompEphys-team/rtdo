@@ -39,6 +39,8 @@ static unsigned int clusters_size = 0;
 static int *clusterLen = nullptr, *d_clusterLen = nullptr;
 static unsigned int clusterLen_size = 0;
 
+static __constant__ scalar deltabar[NPARAMS];
+
 void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 {
     pointers.pushV = [](void *hostptr, void *devptr, size_t size){
@@ -250,6 +252,7 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
     }
     int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
     int timeseries_offset = global_stimIdx * (nTraces/31)*32;
+    int nContrib = (nTraces/NPARAMS) + (paramIdx < nTraces%NPARAMS);
 
     __shared__ scalar sh_clusters[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS][NPARAMS];
     __shared__ scalar sh_cluster_square_norm[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
@@ -276,11 +279,15 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
         // Load ee contribution from this parameter
         // Note, timeseries[0,32,64,...] are unused (COMPARE_PREVTHREAD), hence "+ i/31 + 1" indexing
         contrib = 0;
-        for ( int tEnd = (t + secLen > duration) ? duration : (t + secLen); t < tEnd; t++ )
+        if ( t + secLen > duration )
+            secLen = duration - t; // Shorten the very final sec if necessary
+        for ( int tEnd = t + secLen; t < tEnd; t++ )
             if ( paramIdx < NPARAMS && global_stimIdx < nStims )
                 for ( int i = paramIdx; i < nTraces; i += NPARAMS )
                     contrib += dd_timeseries[t*NMODELS + timeseries_offset + i + i/31 + 1];
 
+        // Normalise contrib to the mean deviation per tick, per single detune
+        contrib /= secLen * nContrib * deltabar[paramIdx];
         // Compute the square norm (sum of squared contributions) for scalar product normalisation
         square = contrib * contrib;
         square = sumOverStim(square, stimWidth, stimIdx);
@@ -349,12 +356,14 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
 extern "C" void cluster(int nTraces, /* total number of ee steps, a multiple of 31 */
              int duration,
              int secLen,
-             scalar dotp_threshold)
+             scalar dotp_threshold,
+             std::vector<scalar> deltabar_arg)
 {
     unsigned int nStims = NMODELS / ((nTraces/31)*32);
     unsigned int nClusters = nStims * MAXCLUSTERS;
     resizeArrayPair(clusters, d_clusters, clusters_size, nClusters * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, nClusters);
+    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(deltabar, deltabar_arg.data(), NPARAMS*sizeof(scalar)));
 
     dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
@@ -362,6 +371,89 @@ extern "C" void cluster(int nTraces, /* total number of ee steps, a multiple of 
 
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nClusters * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, nClusters * sizeof(int), cudaMemcpyDeviceToHost));
+}
+
+
+
+__global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scalar *global_clusters)
+{
+    static constexpr int stimWidth = 32/STIMS_PER_CLUSTER_WARP;
+    int paramIdx, stimIdx;
+    if ( STIMS_PER_CLUSTER_WARP == 1 ) {
+        // One row, one stim
+        paramIdx = threadIdx.x;
+        stimIdx = threadIdx.y;
+    } else {
+        // Each row is one warp with multiple stims
+        paramIdx = threadIdx.x % stimWidth;
+        stimIdx = (threadIdx.y * STIMS_PER_CLUSTER_WARP) + (threadIdx.x/stimWidth);
+    }
+    int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
+    int timeseries_offset = global_stimIdx * (nTraces/31)*32;
+    int nContrib = (nTraces/NPARAMS) + (paramIdx < nTraces%NPARAMS);
+
+    __shared__ scalar sh_clusters[STIMS_PER_CLUSTER_BLOCK][NPARAMS];
+
+    // Accumulate each stim's square deviations
+    scalar sumSquares = 0;
+    if ( paramIdx < NPARAMS ) {
+        if ( global_stimIdx < nStims ) {
+            for ( int t = 0; t < duration; t++ ) {
+                scalar contrib = 0;
+                for ( int i = paramIdx; i < nTraces; i += NPARAMS ) {
+                    contrib += dd_timeseries[t*NMODELS + timeseries_offset + i + i/31 + 1];
+                }
+                contrib /= nContrib;
+                sumSquares += contrib*contrib;
+            }
+        }
+        sh_clusters[stimIdx][paramIdx] = sumSquares;
+    }
+
+    // Reduce to a single 'cluster' in block
+    int tid = threadIdx.y*blockDim.x + threadIdx.x;
+    for ( int width = STIMS_PER_CLUSTER_BLOCK; width > 0; width /= 32 ) {
+        paramIdx = tid / width;
+        stimIdx = tid % width;
+        sumSquares = 0;
+        __syncthreads();
+        if ( paramIdx < NPARAMS )
+            sumSquares = sh_clusters[stimIdx][paramIdx];
+
+        if ( width > 32 ) {
+            sumSquares = warpReduceSum(sumSquares);
+            if ( stimIdx % 32 == 0 )
+                sh_clusters[stimIdx/32][paramIdx] = sumSquares;
+        } else {
+            sumSquares = warpReduceSum(sumSquares, width);
+        }
+    }
+    if ( stimIdx == 0 && paramIdx < NPARAMS )
+        global_clusters[blockIdx.x*NPARAMS + paramIdx] = sumSquares;
+}
+
+extern "C" std::vector<scalar> find_deltabar(int nTraces, int duration)
+{
+    unsigned int nStims = NMODELS / ((nTraces/31)*32);
+    dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
+    dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
+
+    resizeArrayPair(clusters, d_clusters, clusters_size, grid.x * NPARAMS);
+
+    find_deltabar_kernel<<<grid, block>>>(nTraces, nStims, duration, d_clusters);
+
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, grid.x * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, grid.x * sizeof(int), cudaMemcpyDeviceToHost));
+
+    // Reduce across blocks on the CPU - this isn't performance-critical
+    double tmp[NPARAMS] = {};
+    std::vector<scalar> ret(NPARAMS, 0);
+    for ( int i = 0; i < grid.x; i++ )
+        for ( int p = 0; p < NPARAMS; p++ )
+            tmp[p] += clusters[i*NPARAMS + p];
+    for ( int p = 0; p < NPARAMS; p++ )
+        ret[p] = sqrt(tmp[p] / (duration * nStims));
+    return ret;
 }
 
 #endif

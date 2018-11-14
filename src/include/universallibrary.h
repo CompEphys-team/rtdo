@@ -94,7 +94,8 @@ public:
 
         void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
 
-        void (*cluster)(int nTraces, int duration, int secLen, scalar dotp_threshold);
+        void (*cluster)(int nTraces, int duration, int secLen, scalar dotp_threshold, std::vector<scalar> deltabar);
+        std::vector<scalar> (*find_deltabar)(int nTraces, int duration);
         scalar **clusters;
         int **clusterLen;
     };
@@ -170,9 +171,13 @@ public:
 
     /// post-run() workhorse for elementary effects wavegen
     inline void cluster(int nTraces, /* total number of ee steps, a multiple of 31 */
-                        int duration, int secLen, scalar dotp_threshold) {
-        pointers.cluster(nTraces, duration, secLen, dotp_threshold);
+                        int duration, int secLen, scalar dotp_threshold, std::vector<scalar> deltabar) {
+        pointers.cluster(nTraces, duration, secLen, dotp_threshold, deltabar);
     }
+
+    /// post-run() calculation of RMS current deviation from each detuned parameter. Reports the RMSD per tick, per single detuning,
+    /// as required by cluster().
+    inline std::vector<scalar> find_deltabar(int nTraces, int duration) { return pointers.find_deltabar(nTraces, duration); }
 
 private:
     void *load();
