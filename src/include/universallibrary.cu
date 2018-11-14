@@ -456,4 +456,49 @@ extern "C" std::vector<scalar> find_deltabar(int nTraces, int duration)
     return ret;
 }
 
+
+
+
+
+/// ******************************************************************************************************************************
+///  >============================     Utility functions    ====================================================================<
+/// ******************************************************************************************************************************
+
+__global__ void observe_no_steps_kernel(int blankCycles)
+{
+    unsigned int id = blockDim.x * blockIdx.x + threadIdx.x;
+    if ( id >= NMODELS )
+        return;
+    iStimulation stim = dd_stimUNI[id];
+    iObservations obs = {};
+    int tStart = 0;
+    int nextObs = 0;
+    for ( const auto step : stim ) {
+        if ( step.t > stim.duration )
+            break;
+        if ( !step.ramp ) {
+            if ( tStart < step.t ) {
+                obs.start[nextObs] = tStart;
+                obs.stop[nextObs] = step.t;
+                if ( ++nextObs == iObservations::maxObs )
+                    break;
+            }
+            tStart = step.t + blankCycles;
+        }
+    }
+    if ( nextObs < iObservations::maxObs ) {
+        if ( tStart < stim.duration ) {
+            obs.start[nextObs] = tStart;
+            obs.stop[nextObs] = stim.duration;
+        }
+    }
+    dd_obsUNI[id] = obs;
+}
+
+extern "C" void observe_no_steps(int blankCycles)
+{
+    dim3 block(256);
+    observe_no_steps_kernel<<<((NMODELS+block.x-1)/block.x)*block.x, block.x>>>(blankCycles);
+}
+
 #endif

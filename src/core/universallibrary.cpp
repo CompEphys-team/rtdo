@@ -391,6 +391,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.profile =& profile;" << endl;
     ss << "    pointers.cluster =& cluster;" << endl;
     ss << "    pointers.find_deltabar =& find_deltabar;" << endl;
+    ss << "    pointers.observe_no_steps =& observe_no_steps;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 

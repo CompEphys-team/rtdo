@@ -98,6 +98,8 @@ public:
         std::vector<scalar> (*find_deltabar)(int nTraces, int duration);
         scalar **clusters;
         int **clusterLen;
+
+        void (*observe_no_steps)(int blankCycles);
     };
 
     Project &project;
@@ -181,6 +183,9 @@ public:
     /// as required by cluster().
     /// Expects assignments TIMESERIES_COMPARE_PREVTHREAD | ZERO_UNTOUCHED with full warps of models detuned along an ee trajectory
     inline std::vector<scalar> find_deltabar(int nTraces, int duration) { return pointers.find_deltabar(nTraces, duration); }
+
+    /// Utility call to add full-stim, step-blanked observation windows to the (model-individual) stims residing on the GPU
+    inline void observe_no_steps(int blankCycles) { pointers.observe_no_steps(blankCycles); }
 
 private:
     void *load();
