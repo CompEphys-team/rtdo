@@ -165,11 +165,13 @@ public:
     void setRundata(size_t modelIndex, const RunData &rund);
 
     /// post-run() workhorse for SamplingProfiler
+    /// Expects assignments TIMESERIES_COMPARE_NONE | TIMESERIES_COMPACT with adjacent pairs of tuned/detuned models
     inline void profile(int nSamples, int stride, size_t targetParam, double &accuracy, double &median_norm_gradient) {
         pointers.profile(nSamples, stride, adjustableParams[targetParam].d_v, accuracy, median_norm_gradient);
     }
 
     /// post-run() workhorse for elementary effects wavegen
+    /// Expects assignments TIMESERIES_COMPARE_PREVTHREAD | ZERO_UNTOUCHED with full warps of models detuned along an ee trajectory
     inline void cluster(int nTraces, /* total number of ee steps, a multiple of 31 */
                         int duration, int secLen, scalar dotp_threshold, std::vector<scalar> deltabar) {
         pointers.cluster(nTraces, duration, secLen, dotp_threshold, deltabar);
@@ -177,6 +179,7 @@ public:
 
     /// post-run() calculation of RMS current deviation from each detuned parameter. Reports the RMSD per tick, per single detuning,
     /// as required by cluster().
+    /// Expects assignments TIMESERIES_COMPARE_PREVTHREAD | ZERO_UNTOUCHED with full warps of models detuned along an ee trajectory
     inline std::vector<scalar> find_deltabar(int nTraces, int duration) { return pointers.find_deltabar(nTraces, duration); }
 
 private:
