@@ -251,8 +251,10 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
         stimIdx = (threadIdx.y * STIMS_PER_CLUSTER_WARP) + (threadIdx.x/stimWidth);
     }
     int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
-    int timeseries_offset = global_stimIdx * (nTraces/31)*32;
+    int id0 = global_stimIdx * (nTraces/31)*32; // id of the first trajectory's starting point model
     int nContrib = (nTraces/NPARAMS) + (paramIdx < nTraces%NPARAMS);
+    iObservations obs = dd_obsUNI[id0];
+    int nextObs = 0;
 
     __shared__ scalar sh_clusters[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS][NPARAMS];
     __shared__ scalar sh_cluster_square_norm[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
@@ -269,6 +271,7 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
                 sh_clusterLen[laneid][i] = 0;
             }
         }
+        __syncthreads();
     }
 
     // Construct clusters in shared memory
@@ -279,15 +282,25 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
         // Load ee contribution from this parameter
         // Note, timeseries[0,32,64,...] are unused (COMPARE_PREVTHREAD), hence "+ i/31 + 1" indexing
         contrib = 0;
-        if ( t + secLen > duration )
-            secLen = duration - t; // Shorten the very final sec if necessary
-        for ( int tEnd = t + secLen; t < tEnd; t++ )
-            if ( paramIdx < NPARAMS && global_stimIdx < nStims )
-                for ( int i = paramIdx; i < nTraces; i += NPARAMS )
-                    contrib += dd_timeseries[t*NMODELS + timeseries_offset + i + i/31 + 1];
+        int trueSecLen = 0;
+        for ( int tEnd = t + secLen; t < tEnd; t++ ) {
+            if ( paramIdx < NPARAMS
+                 && global_stimIdx < nStims
+                 && nextObs < iObservations::maxObs
+                 && t >= obs.start[nextObs] ) {
+                if ( t < obs.stop[nextObs] ) {
+                    for ( int i = paramIdx; i < nTraces; i += NPARAMS )
+                        contrib += dd_timeseries[t*NMODELS + id0 + i + i/31 + 1];
+                    ++trueSecLen;
+                } else {
+                    ++nextObs;
+                }
+            }
+        }
 
         // Normalise contrib to the mean deviation per tick, per single detune
-        contrib /= secLen * nContrib * deltabar[paramIdx];
+        if ( trueSecLen )
+            contrib /= trueSecLen * nContrib * deltabar[paramIdx];
         // Compute the square norm (sum of squared contributions) for scalar product normalisation
         square = contrib * contrib;
         square = sumOverStim(square, stimWidth, stimIdx);
@@ -375,7 +388,7 @@ extern "C" void cluster(int nTraces, /* total number of ee steps, a multiple of 
 
 
 
-__global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scalar *global_clusters)
+__global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scalar *global_clusters, int *global_clusterLen)
 {
     static constexpr int stimWidth = 32/STIMS_PER_CLUSTER_WARP;
     int paramIdx, stimIdx;
@@ -389,25 +402,38 @@ __global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scal
         stimIdx = (threadIdx.y * STIMS_PER_CLUSTER_WARP) + (threadIdx.x/stimWidth);
     }
     int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
-    int timeseries_offset = global_stimIdx * (nTraces/31)*32;
+    int id0 = global_stimIdx * (nTraces/31)*32;
     int nContrib = (nTraces/NPARAMS) + (paramIdx < nTraces%NPARAMS);
+    iObservations obs = dd_obsUNI[id0];
+    int nextObs = 0;
+    int nSamples = 0;
 
     __shared__ scalar sh_clusters[STIMS_PER_CLUSTER_BLOCK][NPARAMS];
+    __shared__ scalar sh_nSamples[STIMS_PER_CLUSTER_BLOCK];
 
     // Accumulate each stim's square deviations
     scalar sumSquares = 0;
     if ( paramIdx < NPARAMS ) {
         if ( global_stimIdx < nStims ) {
             for ( int t = 0; t < duration; t++ ) {
-                scalar contrib = 0;
-                for ( int i = paramIdx; i < nTraces; i += NPARAMS ) {
-                    contrib += dd_timeseries[t*NMODELS + timeseries_offset + i + i/31 + 1];
+                if ( nextObs < iObservations::maxObs && t >= obs.start[nextObs] ) {
+                    if ( t < obs.stop[nextObs] ) {
+                        scalar contrib = 0;
+                        for ( int i = paramIdx; i < nTraces; i += NPARAMS ) {
+                            contrib += dd_timeseries[t*NMODELS + id0 + i + i/31 + 1];
+                        }
+                        contrib /= nContrib;
+                        sumSquares += contrib*contrib;
+                        ++nSamples;
+                    } else {
+                        ++nextObs;
+                    }
                 }
-                contrib /= nContrib;
-                sumSquares += contrib*contrib;
             }
         }
         sh_clusters[stimIdx][paramIdx] = sumSquares;
+        if ( paramIdx == 0 )
+            sh_nSamples[stimIdx] = nSamples;
     }
 
     // Reduce to a single 'cluster' in block
@@ -416,20 +442,34 @@ __global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scal
         paramIdx = tid / width;
         stimIdx = tid % width;
         sumSquares = 0;
+        nSamples = 0;
         __syncthreads();
-        if ( paramIdx < NPARAMS )
+        if ( paramIdx < NPARAMS ) {
             sumSquares = sh_clusters[stimIdx][paramIdx];
+            if ( paramIdx == 0 )
+                nSamples = sh_nSamples[stimIdx];
+        }
 
         if ( width > 32 ) {
             sumSquares = warpReduceSum(sumSquares);
-            if ( stimIdx % 32 == 0 )
+            if ( paramIdx == 0 )
+                nSamples = warpReduceSum(nSamples);
+            if ( stimIdx % 32 == 0 ) {
                 sh_clusters[stimIdx/32][paramIdx] = sumSquares;
+                if ( paramIdx == 0 )
+                    sh_nSamples[stimIdx/32] = nSamples;
+            }
         } else {
             sumSquares = warpReduceSum(sumSquares, width);
+            if ( paramIdx == 0 )
+                nSamples = warpReduceSum(nSamples, width);
         }
     }
-    if ( stimIdx == 0 && paramIdx < NPARAMS )
+    if ( stimIdx == 0 && paramIdx < NPARAMS ) {
         global_clusters[blockIdx.x*NPARAMS + paramIdx] = sumSquares;
+        if ( paramIdx == 0 )
+            global_clusterLen[blockIdx.x] = nSamples;
+    }
 }
 
 extern "C" std::vector<scalar> find_deltabar(int nTraces, int duration)
@@ -439,20 +479,24 @@ extern "C" std::vector<scalar> find_deltabar(int nTraces, int duration)
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
 
     resizeArrayPair(clusters, d_clusters, clusters_size, grid.x * NPARAMS);
+    resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, grid.x);
 
-    find_deltabar_kernel<<<grid, block>>>(nTraces, nStims, duration, d_clusters);
+    find_deltabar_kernel<<<grid, block>>>(nTraces, nStims, duration, d_clusters, d_clusterLen);
 
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, grid.x * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, grid.x * sizeof(int), cudaMemcpyDeviceToHost));
 
     // Reduce across blocks on the CPU - this isn't performance-critical
     double tmp[NPARAMS] = {};
+    int n = 0;
     std::vector<scalar> ret(NPARAMS, 0);
-    for ( int i = 0; i < grid.x; i++ )
+    for ( int i = 0; i < grid.x; i++ ) {
         for ( int p = 0; p < NPARAMS; p++ )
             tmp[p] += clusters[i*NPARAMS + p];
+        n += clusterLen[i];
+    }
     for ( int p = 0; p < NPARAMS; p++ )
-        ret[p] = sqrt(tmp[p] / (duration * nStims));
+        ret[p] = sqrt(tmp[p] / n);
     return ret;
 }
 

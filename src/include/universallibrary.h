@@ -173,7 +173,8 @@ public:
     }
 
     /// post-run() workhorse for elementary effects wavegen
-    /// Expects assignments TIMESERIES_COMPARE_PREVTHREAD | ZERO_UNTOUCHED with full warps of models detuned along an ee trajectory
+    /// Expects assignments TIMESERIES_COMPARE_PREVTHREAD with full warps of models detuned along an ee trajectory and an appropriate
+    /// individual obs in each stim's first trajectory starting point model
     inline void cluster(int nTraces, /* total number of ee steps, a multiple of 31 */
                         int duration, int secLen, scalar dotp_threshold, std::vector<scalar> deltabar) {
         pointers.cluster(nTraces, duration, secLen, dotp_threshold, deltabar);
@@ -181,7 +182,8 @@ public:
 
     /// post-run() calculation of RMS current deviation from each detuned parameter. Reports the RMSD per tick, per single detuning,
     /// as required by cluster().
-    /// Expects assignments TIMESERIES_COMPARE_PREVTHREAD | ZERO_UNTOUCHED with full warps of models detuned along an ee trajectory
+    /// Expects assignments TIMESERIES_COMPARE_PREVTHREAD with full warps of models detuned along an ee trajectory and an appropriate
+    /// individual obs in each stim's first trajectory starting point model
     inline std::vector<scalar> find_deltabar(int nTraces, int duration) { return pointers.find_deltabar(nTraces, duration); }
 
     /// Utility call to add full-stim, step-blanked observation windows to the (model-individual) stims residing on the GPU
