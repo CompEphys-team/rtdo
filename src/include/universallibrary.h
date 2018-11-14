@@ -94,8 +94,8 @@ public:
 
         void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
 
-        void (*cluster)(int nTraces, int duration, int secLen, scalar dotp_threshold, std::vector<scalar> deltabar);
-        std::vector<scalar> (*find_deltabar)(int nTraces, int duration);
+        void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, std::vector<scalar> deltabar);
+        std::vector<scalar> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
         int **clusterLen;
 
@@ -173,18 +173,19 @@ public:
     }
 
     /// post-run() workhorse for elementary effects wavegen
-    /// Expects assignments TIMESERIES_COMPARE_PREVTHREAD with full warps of models detuned along an ee trajectory and an appropriate
-    /// individual obs in each stim's first trajectory starting point model
-    inline void cluster(int nTraces, /* total number of ee steps, a multiple of 31 */
+    /// Expects assignment TIMESERIES_COMPARE_PREVTHREAD with models sequentially detuned along and across their ee trajectories, as well as
+    /// an appropriate individual obs in each stim's first trajectory starting point model
+    inline void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
+                        int nTraj, /* Number of EE trajectories */
                         int duration, int secLen, scalar dotp_threshold, std::vector<scalar> deltabar) {
-        pointers.cluster(nTraces, duration, secLen, dotp_threshold, deltabar);
+        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, deltabar);
     }
 
     /// post-run() calculation of RMS current deviation from each detuned parameter. Reports the RMSD per tick, per single detuning,
     /// as required by cluster().
-    /// Expects assignments TIMESERIES_COMPARE_PREVTHREAD with full warps of models detuned along an ee trajectory and an appropriate
-    /// individual obs in each stim's first trajectory starting point model
-    inline std::vector<scalar> find_deltabar(int nTraces, int duration) { return pointers.find_deltabar(nTraces, duration); }
+    /// Expects assignment TIMESERIES_COMPARE_PREVTHREAD with models sequentially detuned along and across their ee trajectories, as well as
+    /// an appropriate individual obs in each stim's first trajectory starting point model
+    inline std::vector<scalar> find_deltabar(int trajLen, int nTraj, int duration) { return pointers.find_deltabar(trajLen, nTraj, duration); }
 
     /// Utility call to add full-stim, step-blanked observation windows to the (model-individual) stims residing on the GPU
     inline void observe_no_steps(int blankCycles) { pointers.observe_no_steps(blankCycles); }

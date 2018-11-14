@@ -232,7 +232,8 @@ __device__ inline scalar sumOverStim(scalar val, int stimWidth, int stimIdx)
     return val;
 }
 
-__global__ void clusterKernel(int nTraces, /* total number of ee steps, a multiple of 31 */
+__global__ void clusterKernel(int trajLen,
+                              int nTraj,
                               int nStims,
                               int duration,
                               int secLen,
@@ -240,6 +241,7 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
                               scalar *global_clusters, int *global_clusterLen)
 {
     static constexpr int stimWidth = 32/STIMS_PER_CLUSTER_WARP;
+    const int nUsefulTraces = (trajLen-1)*nTraj;
     int paramIdx, stimIdx;
     if ( STIMS_PER_CLUSTER_WARP == 1 ) {
         // One row, one stim
@@ -250,10 +252,10 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
         paramIdx = threadIdx.x % stimWidth;
         stimIdx = (threadIdx.y * STIMS_PER_CLUSTER_WARP) + (threadIdx.x/stimWidth);
     }
-    int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
-    int id0 = global_stimIdx * (nTraces/31)*32; // id of the first trajectory's starting point model
-    int nContrib = (nTraces/NPARAMS) + (paramIdx < nTraces%NPARAMS);
-    iObservations obs = dd_obsUNI[id0];
+    const int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
+    const int id0 = global_stimIdx * trajLen * nTraj; // id of the first trajectory's starting point model
+    const int nContrib = (nUsefulTraces/NPARAMS) + (paramIdx < (nUsefulTraces%NPARAMS));
+    const iObservations obs = dd_obsUNI[id0];
     int nextObs = 0;
 
     __shared__ scalar sh_clusters[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS][NPARAMS];
@@ -289,8 +291,8 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
                  && nextObs < iObservations::maxObs
                  && t >= obs.start[nextObs] ) {
                 if ( t < obs.stop[nextObs] ) {
-                    for ( int i = paramIdx; i < nTraces; i += NPARAMS )
-                        contrib += dd_timeseries[t*NMODELS + id0 + i + i/31 + 1];
+                    for ( int i = paramIdx; i < nUsefulTraces; i += NPARAMS )
+                        contrib += dd_timeseries[t*NMODELS + id0 + i + i/(trajLen-1) + 1];
                     ++trueSecLen;
                 } else {
                     ++nextObs;
@@ -366,13 +368,14 @@ __global__ void clusterKernel(int nTraces, /* total number of ee steps, a multip
     }
 }
 
-extern "C" void cluster(int nTraces, /* total number of ee steps, a multiple of 31 */
-             int duration,
-             int secLen,
-             scalar dotp_threshold,
-             std::vector<scalar> deltabar_arg)
+extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
+                        int nTraj, /* Number of EE trajectories */
+                        int duration,
+                        int secLen,
+                        scalar dotp_threshold,
+                        std::vector<scalar> deltabar_arg)
 {
-    unsigned int nStims = NMODELS / ((nTraces/31)*32);
+    unsigned int nStims = NMODELS / (trajLen*nTraj);
     unsigned int nClusters = nStims * MAXCLUSTERS;
     resizeArrayPair(clusters, d_clusters, clusters_size, nClusters * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, nClusters);
@@ -380,7 +383,7 @@ extern "C" void cluster(int nTraces, /* total number of ee steps, a multiple of 
 
     dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
-    clusterKernel<<<grid, block>>>(nTraces, nStims, duration, secLen, dotp_threshold, d_clusters, d_clusterLen);
+    clusterKernel<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, dotp_threshold, d_clusters, d_clusterLen);
 
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nClusters * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, nClusters * sizeof(int), cudaMemcpyDeviceToHost));
@@ -388,9 +391,10 @@ extern "C" void cluster(int nTraces, /* total number of ee steps, a multiple of 
 
 
 
-__global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scalar *global_clusters, int *global_clusterLen)
+__global__ void find_deltabar_kernel(int trajLen, int nTraj, int nStims, int duration, scalar *global_clusters, int *global_clusterLen)
 {
     static constexpr int stimWidth = 32/STIMS_PER_CLUSTER_WARP;
+    const int nUsefulTraces = (trajLen-1)*nTraj;
     int paramIdx, stimIdx;
     if ( STIMS_PER_CLUSTER_WARP == 1 ) {
         // One row, one stim
@@ -401,10 +405,10 @@ __global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scal
         paramIdx = threadIdx.x % stimWidth;
         stimIdx = (threadIdx.y * STIMS_PER_CLUSTER_WARP) + (threadIdx.x/stimWidth);
     }
-    int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
-    int id0 = global_stimIdx * (nTraces/31)*32;
-    int nContrib = (nTraces/NPARAMS) + (paramIdx < nTraces%NPARAMS);
-    iObservations obs = dd_obsUNI[id0];
+    const int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
+    const int id0 = global_stimIdx * trajLen * nTraj;
+    const int nContrib = (nUsefulTraces/NPARAMS) + (paramIdx < (nUsefulTraces%NPARAMS));
+    const iObservations obs = dd_obsUNI[id0];
     int nextObs = 0;
     int nSamples = 0;
 
@@ -419,8 +423,8 @@ __global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scal
                 if ( nextObs < iObservations::maxObs && t >= obs.start[nextObs] ) {
                     if ( t < obs.stop[nextObs] ) {
                         scalar contrib = 0;
-                        for ( int i = paramIdx; i < nTraces; i += NPARAMS ) {
-                            contrib += dd_timeseries[t*NMODELS + id0 + i + i/31 + 1];
+                        for ( int i = paramIdx; i < nUsefulTraces; i += NPARAMS ) {
+                            contrib += dd_timeseries[t*NMODELS + id0 + i + i/(trajLen-1) + 1];
                         }
                         contrib /= nContrib;
                         sumSquares += contrib*contrib;
@@ -437,7 +441,7 @@ __global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scal
     }
 
     // Reduce to a single 'cluster' in block
-    int tid = threadIdx.y*blockDim.x + threadIdx.x;
+    const int tid = threadIdx.y*blockDim.x + threadIdx.x;
     for ( int width = STIMS_PER_CLUSTER_BLOCK; width > 0; width /= 32 ) {
         paramIdx = tid / width;
         stimIdx = tid % width;
@@ -472,16 +476,16 @@ __global__ void find_deltabar_kernel(int nTraces, int nStims, int duration, scal
     }
 }
 
-extern "C" std::vector<scalar> find_deltabar(int nTraces, int duration)
+extern "C" std::vector<scalar> find_deltabar(int trajLen, int nTraj, int duration)
 {
-    unsigned int nStims = NMODELS / ((nTraces/31)*32);
+    unsigned int nStims = NMODELS / (trajLen*nTraj);
     dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
 
     resizeArrayPair(clusters, d_clusters, clusters_size, grid.x * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, grid.x);
 
-    find_deltabar_kernel<<<grid, block>>>(nTraces, nStims, duration, d_clusters, d_clusterLen);
+    find_deltabar_kernel<<<grid, block>>>(trajLen, nTraj, nStims, duration, d_clusters, d_clusterLen);
 
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, grid.x * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, grid.x * sizeof(int), cudaMemcpyDeviceToHost));
