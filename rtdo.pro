@@ -81,7 +81,8 @@ SOURCES += \
     src/gui/fitinspector.cpp \
     src/gui/deviationboxplot.cpp \
     src/gui/fiterrorplotter.cpp \
-    src/core/universallibrary.cpp
+    src/core/universallibrary.cpp \
+    src/core/wavegen_elementary.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \

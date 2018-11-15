@@ -37,6 +37,8 @@ void Wavegen::load(const QString &action, const QString &args, QFile &results, R
         sigmaAdjust_load(results, r);
     else if ( action == search_action )
         search_load(results, args, r);
+    else if ( action == ee_action )
+        ee_load(results, args, r);
     else
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
 }

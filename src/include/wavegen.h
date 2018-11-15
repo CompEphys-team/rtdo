@@ -36,6 +36,8 @@ public:
             meanFitness.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
             maxFitness.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
         }
+
+        QVector<double> deltabar;
     };
 
     inline const std::vector<Archive> &archives() const { return m_archives; }
@@ -114,6 +116,9 @@ protected:
     void search_save(QFile &file);
     void search_load(QFile &file, const QString &args, Result r);
 
+    void ee_save(QFile &file);
+    void ee_load(QFile &file, const QString &args, Result r);
+
     /**
      * @brief initModels initialises model parameters with random values. Typically, every WavegenData::nGroupsPerWave groups, there
      * is a base parameter set. If only randomised models are to be generated, supply withBase==false.
@@ -186,9 +191,9 @@ protected:
 
     std::vector<Archive> m_archives; //!< All archives
 
-    static QString sigmaAdjust_action, search_action;
-    static quint32 sigmaAdjust_magic, search_magic;
-    static quint32 sigmaAdjust_version, search_version;
+    static QString sigmaAdjust_action, search_action, ee_action;
+    static quint32 sigmaAdjust_magic, search_magic, ee_magic;
+    static quint32 sigmaAdjust_version, search_version, ee_version;
 
     struct iStimData
     {
