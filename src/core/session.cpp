@@ -101,6 +101,8 @@ void Session::addAPs()
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].min", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::min);
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].max", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::max);
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].resolution", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::resolution);
+    addAP(searchAP, "S.Wavegen.nTrajectories", &q_settings, &Settings::searchd, &WavegenData::nTrajectories);
+    addAP(searchAP, "S.Wavegen.trajectoryLength", &q_settings, &Settings::searchd, &WavegenData::trajectoryLength);
 
     addAP(stimAP, "S.Stimulation.baseV", &q_settings, &Settings::stimd, &StimulationData::baseV);
     addAP(stimAP, "S.Stimulation.duration", &q_settings, &Settings::stimd, &StimulationData::duration);
@@ -175,6 +177,21 @@ void Session::sanitiseSettings(Settings &s)
         --s.searchd.nGroupsPerWave;
     int nWavesPerKernel = project.wavegen().numGroups / s.searchd.nGroupsPerWave;
     s.searchd.nWavesPerEpoch = ((s.searchd.nWavesPerEpoch + nWavesPerKernel - 1) / nWavesPerKernel) * nWavesPerKernel;
+
+    if ( s.searchd.trajectoryLength >= 32 )
+        s.searchd.trajectoryLength = 32;
+    else if ( s.searchd.trajectoryLength >= 16 )
+        s.searchd.trajectoryLength = 16;
+    else if ( s.searchd.trajectoryLength >= 8 )
+        s.searchd.trajectoryLength = 8;
+    else if ( s.searchd.trajectoryLength >= 4 )
+        s.searchd.trajectoryLength = 4;
+    else
+        s.searchd.trajectoryLength = 2;
+
+    int nTrajTotal = project.universal().NMODELS / s.searchd.trajectoryLength; // Guaranteed integer, NMODELS is k*64
+    while ( nTrajTotal % s.searchd.nTrajectories )
+        --s.searchd.nTrajectories;
 
     size_t n = project.model().adjustableParams.size();
     if ( s.gafs.constraints.empty() ) {

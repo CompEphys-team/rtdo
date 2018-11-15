@@ -381,6 +381,15 @@ struct WavegenData
     size_t maxIterations = 1000; //!< Total number of epochs (cf nWavesPerEpoch)
     double noise_sd = 0.; //!< Expected instrument/environment current noise standard deviation (nA)
     double dt = 0.01;
+
+    int nTrajectories = 1; //!< Number of EE trajectories with independent starting points for each stimulation. Parameters are cycled across
+                           //! trajectories (e.g. b012; b340; b123 etc., where b is a starting point, and the numbers indicate the parameter
+                           //! detuned with respect to the precedent. With useBaseParameters==true, the initial model is used as starting point
+                           //! until each parameter has been touched at least once. With rerandomiseParameters==true, each free starting point is
+                           //! chosen independently, whereas otherwise, every stim gets the same set of starting points. The starting points never
+                           //! change between epochs.
+                           //! nTraj is adjusted down to fit nTraj*trajLen squarely into UniLib::NMODELS.
+    int trajectoryLength = 32; //!< Length of each trajectory, including the starting point. Must be one of {2,4,8,16,32}.
 };
 
 struct GAFitterSettings {

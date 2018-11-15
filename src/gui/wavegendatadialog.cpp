@@ -45,6 +45,8 @@ void WavegenDataDialog::importData()
     ui->nBinsBubbleDuration->setValue(0);
     ui->nBinsVoltageDeviation->setValue(0);
     ui->nBinsVoltageIntegral->setValue(0);
+    ui->mape_clusterIndex->setChecked(false);
+    ui->mape_nClusters->setChecked(false);
     for ( const MAPEDimension &dim : p.mapeDimensions ) {
         if ( dim.func == MAPEDimension::Func::BestBubbleTime )
             ui->nBinsBubbleTime->setValue(dim.resolution);
@@ -54,10 +56,17 @@ void WavegenDataDialog::importData()
             ui->nBinsVoltageDeviation->setValue(dim.resolution);
         if ( dim.func == MAPEDimension::Func::VoltageIntegral)
             ui->nBinsVoltageIntegral->setValue(dim.resolution);
+        if ( dim.func == MAPEDimension::Func::EE_ClusterIndex )
+            ui->mape_clusterIndex->setChecked(true);
+        if ( dim.func == MAPEDimension::Func::EE_NumClusters )
+            ui->mape_nClusters->setChecked(true);
     }
 
     ui->dt->setValue(p.dt);
     ui->noise_sd->setValue(p.noise_sd);
+
+    ui->nTrajectories->setValue(p.nTrajectories);
+    ui->trajectoryLength->setValue(p.trajectoryLength);
 }
 
 void WavegenDataDialog::exportData()
@@ -94,10 +103,17 @@ void WavegenDataDialog::exportData()
         dims.push_back(MAPEDimension {MAPEDimension::Func::VoltageDeviation, 0, maxDeviation, (size_t)ui->nBinsVoltageDeviation->value()});
     if ( ui->nBinsVoltageIntegral->value() > 0 )
         dims.push_back(MAPEDimension {MAPEDimension::Func::VoltageIntegral, 0, maxDeviation * stimd.duration, (size_t)ui->nBinsVoltageIntegral->value()});
+    if ( ui->mape_nClusters->isChecked() )
+        dims.push_back(MAPEDimension {MAPEDimension::Func::EE_NumClusters, 0, UniversalLibrary::maxClusters, UniversalLibrary::maxClusters});
+    if ( ui->mape_clusterIndex->isChecked() )
+        dims.push_back(MAPEDimension {MAPEDimension::Func::EE_ClusterIndex, 0, UniversalLibrary::maxClusters, UniversalLibrary::maxClusters});
     p.mapeDimensions = dims;
 
     p.dt = ui->dt->value();
     p.noise_sd = ui->noise_sd->value();
+
+    p.nTrajectories = ui->nTrajectories->value();
+    p.trajectoryLength = ui->trajectoryLength->value();
 
     emit apply(p);
 }
