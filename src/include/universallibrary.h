@@ -95,7 +95,7 @@ public:
         void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
 
         void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, std::vector<scalar> deltabar);
-        std::vector<scalar> (*find_deltabar)(int trajLen, int nTraj, int duration);
+        std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
         int **clusterLen;
 
@@ -185,7 +185,7 @@ public:
     /// as required by cluster().
     /// Expects assignment TIMESERIES_COMPARE_PREVTHREAD with models sequentially detuned along and across their ee trajectories, as well as
     /// an appropriate individual obs in each stim's first trajectory starting point model
-    inline std::vector<scalar> find_deltabar(int trajLen, int nTraj, int duration) { return pointers.find_deltabar(trajLen, nTraj, duration); }
+    inline std::vector<double> find_deltabar(int trajLen, int nTraj, int duration) { return pointers.find_deltabar(trajLen, nTraj, duration); }
 
     /// Utility call to add full-stim, step-blanked observation windows to the (model-individual) stims residing on the GPU
     inline void observe_no_steps(int blankCycles) { pointers.observe_no_steps(blankCycles); }

@@ -491,16 +491,15 @@ extern "C" std::vector<scalar> find_deltabar(int trajLen, int nTraj, int duratio
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, grid.x * sizeof(int), cudaMemcpyDeviceToHost));
 
     // Reduce across blocks on the CPU - this isn't performance-critical
-    double tmp[NPARAMS] = {};
     int n = 0;
-    std::vector<scalar> ret(NPARAMS, 0);
+    std::vector<double> ret(NPARAMS, 0);
     for ( int i = 0; i < grid.x; i++ ) {
         for ( int p = 0; p < NPARAMS; p++ )
-            tmp[p] += clusters[i*NPARAMS + p];
+            ret[p] += clusters[i*NPARAMS + p];
         n += clusterLen[i];
     }
     for ( int p = 0; p < NPARAMS; p++ )
-        ret[p] = sqrt(tmp[p] / n);
+        ret[p] = sqrt(ret[p] / n);
     return ret;
 }
 
