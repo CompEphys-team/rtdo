@@ -72,7 +72,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
     {
         ret.reserve(archive()->elites.size());
         for ( MAPElite const& e : archive()->elites )
-            ret.push_back(Stimulation(e.wave, session->wavegenData(resultIndex()).dt));
+            ret.push_back(Stimulation(*e.wave, session->wavegenData(resultIndex()).dt));
         break;
     }
     case Selection :
@@ -81,7 +81,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
         shrunk = true;
         ret.reserve(el.size());
         for ( const MAPElite &e : el )
-            ret.push_back(Stimulation(e.wave, session->wavegenData(resultIndex()).dt));
+            ret.push_back(Stimulation(*e.wave, session->wavegenData(resultIndex()).dt));
         break;
     }
     case Subset :
@@ -139,12 +139,9 @@ std::vector<MAPElite> WaveSource::elites() const
     case Manual:
     {
         std::vector<Stimulation> stims = stimulations();
-        ret.reserve(stims.size());
-        for ( Stimulation &stim : stims ) {
-            MAPElite el;
-            el.wave = iStimulation(stim, session->wavegenData(resultIndex()).dt);
-            ret.push_back(el);
-        }
+        ret.resize(stims.size());
+        for ( size_t i = 0; i < ret.size(); i++ )
+            ret[i].wave.reset(new iStimulation(stims[i], session->wavegenData(resultIndex()).dt));
         break;
     }
     }
@@ -165,7 +162,7 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
         ret.reserve(archive()->elites.size());
         if ( session->wavegenData(resultIndex()).dt == dt ) {
             for ( MAPElite const& e : archive()->elites )
-                ret.push_back(e.wave);
+                ret.push_back(*e.wave);
         } else {
             for ( Stimulation const& I : stimulations() )
                 ret.push_back(iStimulation(I, dt));
@@ -179,7 +176,7 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
         ret.reserve(el.size());
         if ( session->wavegenData(resultIndex()).dt == dt ) {
             for ( const MAPElite &e : el )
-                ret.push_back(e.wave);
+                ret.push_back(*e.wave);
         } else {
             for ( Stimulation const& I : stimulations() )
                 ret.push_back(iStimulation(I, dt));

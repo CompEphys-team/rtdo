@@ -16,7 +16,7 @@ std::ostream &operator<<(std::ostream &os, const QString &str)
 
 QDataStream &operator<<(QDataStream &os, const MAPElite &e)
 {
-    os << e.wave << e.fitness;
+    os << *e.wave << e.fitness;
     os << quint32(e.bin.size());
     for ( const size_t &b : e.bin )
         os << quint32(b);
@@ -25,7 +25,7 @@ QDataStream &operator<<(QDataStream &os, const MAPElite &e)
 
 QDataStream &operator>>(QDataStream &is, MAPElite &e)
 {
-    is >> e.wave >> e.fitness;
+    is >> *e.wave >> e.fitness;
     quint32 bins, val;
     is >> bins;
     e.bin.resize(bins);

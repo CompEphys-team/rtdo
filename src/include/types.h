@@ -303,11 +303,11 @@ struct Bubble
 struct MAPElite
 {
     std::vector<size_t> bin;
-    iStimulation wave;
+    std::shared_ptr<iStimulation> wave;
     scalar fitness;
 
     MAPElite() : fitness(0) {}
-    MAPElite(std::vector<size_t> bin, iStimulation wave, scalar fitness) : bin(bin), wave(wave), fitness(fitness) {}
+    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness) : bin(bin), wave(wave), fitness(fitness) {}
 
     /**
      * @brief compare performs a lexical comparison on bin.

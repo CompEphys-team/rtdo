@@ -85,7 +85,7 @@ bool Wavegen::search_exec(QFile &file, Result *result)
                 current.precision++;
                 double sumFitness = 0;
                 for ( MAPElite &e : current.elites ) {
-                    e.bin = mape_bin(e.wave);
+                    e.bin = mape_bin(*e.wave);
                     sumFitness += e.fitness;
                 }
                 current.elites.sort();
@@ -142,7 +142,7 @@ bool Wavegen::search_exec(QFile &file, Result *result)
 
             // Mutate
             for ( int i = 0; i < numWavesPerEpisode; i++ ) {
-                (*newWaves)[i] = mutate(parents[2*i]->wave, parents[2*i + 1]->wave);
+                (*newWaves)[i] = mutate(*parents[2*i]->wave, *parents[2*i + 1]->wave);
             }
         }
 
@@ -181,7 +181,7 @@ void Wavegen::mape_tournament(std::vector<iStimulation> &waves)
         if ( lib.bubbles[i].cycles > 0 ) {
             waves[i].tObsBegin = lib.bubbles[i].startCycle;
             waves[i].tObsEnd = lib.bubbles[i].startCycle + lib.bubbles[i].cycles;
-            candidates.emplace_back(mape_bin(waves[i]), waves[i], lib.bubbles[i].value);
+            candidates.emplace_back(mape_bin(waves[i]), std::make_shared<iStimulation>(waves[i]), lib.bubbles[i].value);
         }
     }
 
@@ -279,7 +279,7 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
             MAPElite__scalarStim old;
             is >> old;
             e.bin = old.bin;
-            e.wave = iStimulation(old.wave, searchd.dt);
+            e.wave.reset(new iStimulation(old.wave, searchd.dt));
             e.fitness = old.fitness;
         }
     }
