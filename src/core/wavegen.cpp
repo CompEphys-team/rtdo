@@ -50,6 +50,8 @@ bool Wavegen::execute(QString action, QString, Result *res, QFile &file)
         return sigmaAdjust_exec(file, res);
     else if ( action == search_action )
         return search_exec(file, res);
+    else if ( action == ee_action )
+        return ee_exec(file, res);
     else
         return false;
 }

@@ -76,6 +76,15 @@ public slots: // Asynchronous calls that queue via Session
     void search(int param);
 
     /**
+     * @brief elementaryEffects searches for Stimulations using Elementary Effects detuning in the UniversalLibrary.
+     * All parameters are scored simultaneously. The resulting Archive's primary dimension, in addition to any dimensions set by the user,
+     * is MAPEDimension::Func::EE_ParamIndex, so the Archive can be easily separated into parameter-specific selections.
+     * The MAPElite fitness value is the normalised current deviation for the given parameter's detuning within a cluster
+     * as identified by UniversalLibrary::cluster().
+     */
+    void elementaryEffects();
+
+    /**
      * @brief recalcIstimd populates iStimd from the latest searchd/stimd. Called automatically on session-registered changes.
      */
     void recalcIstimd();
@@ -117,6 +126,7 @@ protected:
     void search_save(QFile &file);
     void search_load(QFile &file, const QString &args, Result r);
 
+    bool ee_exec(QFile &file, Result *r);
     void ee_save(QFile &file);
     void ee_load(QFile &file, const QString &args, Result r);
 
