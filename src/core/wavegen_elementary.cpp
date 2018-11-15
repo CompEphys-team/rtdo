@@ -54,7 +54,7 @@ void Wavegen::ee_load(QFile &file, const QString &, Result r)
     if ( version < 100 || version > ee_version )
         throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
 
-    m_archives.emplace_back(r);
+    m_archives.emplace_back(-1, searchd, r);
     Archive &arch = m_archives.back();
 
     quint32 precision, iterations, archSize, nBins;

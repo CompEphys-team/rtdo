@@ -129,7 +129,7 @@ void WavegenProgressPlotter::searchTick(int)
 {
     const Wavegen::Archive &arch = session->wavegen().currentArchive();
     if ( !inProgress )
-        ui->archive->addItem(QString("%1 (in progress)").arg(QString::fromStdString(session->project.model().adjustableParams[arch.param].name)));
+        ui->archive->addItem(QString("%1 (in progress)").arg(arch.param < 0 ? "EE" : QString::fromStdString(session->project.model().adjustableParams[arch.param].name)));
     else if ( ui->archive->currentIndex() == int(session->wavegen().archives().size()) ) {
         for ( AbstractGraphProxy *proxy : proxies )
             proxy->extend();

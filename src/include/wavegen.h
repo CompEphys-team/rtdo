@@ -30,11 +30,12 @@ public:
         Archive(Result r = Result()) : Result(r) {}
         Archive(int param, WavegenData searchd, Result r = Result()) : Result(r), param(param)
         {
-            nCandidates.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
-            nInsertions.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
-            nReplacements.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
-            meanFitness.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
-            maxFitness.reserve(searchd.maxIterations * searchd.nGroupsPerWave);
+            int n = searchd.maxIterations * (param < 0 ? 1 : searchd.nGroupsPerWave);
+            nCandidates.reserve(n);
+            nInsertions.reserve(n);
+            nReplacements.reserve(n);
+            meanFitness.reserve(n);
+            maxFitness.reserve(n);
         }
 
         QVector<double> deltabar;

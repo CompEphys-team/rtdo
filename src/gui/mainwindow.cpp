@@ -197,7 +197,7 @@ void MainWindow::sessionOpened()
 
     QString *paramName = new QString();
     connect(&session->wavegen(), &Wavegen::startedSearch, [=](int p){
-        *paramName = QString::fromStdString(project->model().adjustableParams[p].name);
+        *paramName = p < 0 ? "elementary effects" : QString::fromStdString(project->model().adjustableParams[p].name);
         workerStatus->setText(QString("Wavegen searching for %1 ...").arg(*paramName));
     });
     connect(&session->wavegen(), &Wavegen::searchTick, [=](int e){

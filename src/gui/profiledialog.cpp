@@ -152,7 +152,7 @@ void ProfileDialog::on_btnPreset_clicked()
     int preset = ui->preset->currentIndex();
 
     if ( preset < nHardPresets ) {
-        if ( src.archive() ) {
+        if ( src.archive() && src.archive()->param >= 0 ) {
             if ( ns[src.archive()->param]->value() == 0 ) // Target: Set full range via valueChanged signal
                 ns[src.archive()->param]->valueChanged(0);
             else

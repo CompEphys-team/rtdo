@@ -55,7 +55,7 @@ SamplingProfileDialog::SamplingProfileDialog(Session &s, QWidget *parent) :
         if ( i < 0 )
             return;
         WaveSource src = ui->cbSelection->currentData().value<WaveSource>();
-        if ( src.archive() )
+        if ( src.archive() && src.archive()->param >= 0 )
             ui->target->setCurrentIndex(src.archive()->param);
     });
 

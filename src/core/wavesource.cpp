@@ -215,7 +215,7 @@ QString WaveSource::prettyName() const
     case Deck:      return QString("Deck %1").arg(idx);
     case Manual:    return QString("Manual %1").arg(idx);
     }
-    return ret.arg(idx).arg(QString::fromStdString(session->project.model().adjustableParams[archive()->param].name));
+    return ret.arg(idx).arg(archive()->param < 0 ? "EE" : QString::fromStdString(session->project.model().adjustableParams[archive()->param].name));
 }
 
 int WaveSource::index() const
