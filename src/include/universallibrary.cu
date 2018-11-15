@@ -368,25 +368,35 @@ __global__ void clusterKernel(int trajLen,
     }
 }
 
+extern "C" void copyClusters(int nStims)
+{
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nStims * MAXCLUSTERS * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, nStims * MAXCLUSTERS * sizeof(int), cudaMemcpyDeviceToHost));
+}
+
 extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
                         int nTraj, /* Number of EE trajectories */
                         int duration,
                         int secLen,
                         scalar dotp_threshold,
-                        std::vector<scalar> deltabar_arg)
+                        std::vector<double> deltabar_arg,
+                        bool copy_results)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
     unsigned int nClusters = nStims * MAXCLUSTERS;
     resizeArrayPair(clusters, d_clusters, clusters_size, nClusters * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, nClusters);
-    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(deltabar, deltabar_arg.data(), NPARAMS*sizeof(scalar)));
+    scalar deltabar_array[NPARAMS];
+    for ( int i = 0; i < NPARAMS; i++ )
+        deltabar_array[i] = deltabar_arg[i];
+    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(deltabar, deltabar_array, NPARAMS*sizeof(scalar)));
 
     dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
     clusterKernel<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, dotp_threshold, d_clusters, d_clusterLen);
 
-    CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nClusters * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
-    CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, nClusters * sizeof(int), cudaMemcpyDeviceToHost));
+    if ( copy_results )
+        copyClusters(nStims);
 }
 
 
