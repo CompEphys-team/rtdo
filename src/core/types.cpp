@@ -236,13 +236,15 @@ size_t MAPEDimension::bin(scalar value, size_t multiplier) const
         return multiplier * resolution * (value - min)/(max - min);
 }
 
-size_t MAPEDimension::bin(const iStimulation &I, size_t ee_value, size_t multiplier, double dt) const
+size_t MAPEDimension::bin(const iStimulation &I, size_t paramIdx, size_t clusterIdx, size_t nClusters, size_t multiplier, double dt) const
 {
     switch ( func ) {
     case Func::EE_ClusterIndex:
+        return clusterIdx;
     case Func::EE_NumClusters:
+        return nClusters;
     case Func::EE_ParamIndex:
-        return ee_value;
+        return paramIdx;
     default:
         return bin(I, multiplier, dt);
     }
@@ -250,7 +252,14 @@ size_t MAPEDimension::bin(const iStimulation &I, size_t ee_value, size_t multipl
 
 scalar MAPEDimension::bin_inverse(size_t bin, size_t multiplier) const
 {
-    return min + bin * (max - min)/(multiplier * resolution);
+    switch ( func ) {
+    case Func::EE_ClusterIndex:
+    case Func::EE_NumClusters:
+    case Func::EE_ParamIndex:
+        return bin;
+    default:
+        return min + bin * (max - min)/(multiplier * resolution);
+    }
 }
 
 void MAPEDimension::setDefaultMinMax(StimulationData d, size_t nParams)
