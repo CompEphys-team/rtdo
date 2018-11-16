@@ -177,6 +177,7 @@ protected:
     /// MAP-Elites helper functions
     void mape_tournament(std::vector<iStimulation> &);
     void mape_insert(std::vector<MAPElite> &candidates);
+    void construct_next_generation(std::vector<iStimulation> &stims);
 
     /**
      * @brief mape_bin returns a vector of discretised behavioural measures used as MAPE dimensions.

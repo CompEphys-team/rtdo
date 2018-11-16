@@ -104,46 +104,7 @@ bool Wavegen::search_exec(QFile &file, Result *result)
             nInitialWaves += numWavesPerEpisode;
             initialising = nInitialWaves < searchd.nInitialWaves;
         } else {
-            std::vector<std::list<MAPElite>::const_iterator> parents(2 * numWavesPerEpisode);
-
-            // Sample the archive space with a bunch of random indices
-            std::vector<size_t> idx(2 * numWavesPerEpisode);
-            session.RNG.generate(idx, size_t(0), current.elites.size() - 1);
-            std::sort(idx.begin(), idx.end());
-
-            // Insert the sampling into parents in a single run through
-            auto archIter = current.elites.begin();
-            size_t pos = 0;
-            for ( int i = 0; i < 2*numWavesPerEpisode; i++ ) {
-                std::advance(archIter, idx[i] - pos);
-                pos = idx[i];
-                parents[i] = archIter;
-            }
-
-            // Shuffle the parents, but ensure that xover isn't incestuous
-            bool wellShuffled;
-            int shuffleFailures = 0;
-            do {
-                session.RNG.shuffle(parents);
-                wellShuffled = true;
-                for ( int i = 0; i < numWavesPerEpisode; i++ ) {
-                    if ( parents[2*i] == parents[2*i + 1] ) {
-                        if ( i < numWavesPerEpisode - 1 ) {
-                            session.RNG.shuffle(parents.begin() + 2*i, parents.end());
-                            --i;
-                        } else {
-                            wellShuffled = false;
-                            ++shuffleFailures;
-                            break;
-                        }
-                    }
-                }
-            } while ( !wellShuffled && shuffleFailures < 10 );
-
-            // Mutate
-            for ( int i = 0; i < numWavesPerEpisode; i++ ) {
-                (*newWaves)[i] = mutate(*parents[2*i]->wave, *parents[2*i + 1]->wave);
-            }
+            construct_next_generation(*newWaves);
         }
 
         if ( episodeCounter == 0 && searchd.rerandomiseParameters ) {
@@ -170,6 +131,51 @@ bool Wavegen::search_exec(QFile &file, Result *result)
     emit done(param);
 
     return true;
+}
+
+void Wavegen::construct_next_generation(std::vector<iStimulation> &stims)
+{
+    const int nStims = stims.size();
+    std::vector<std::list<MAPElite>::const_iterator> parents(2 * nStims);
+
+    // Sample the archive space with a bunch of random indices
+    std::vector<size_t> idx(2 * nStims);
+    session.RNG.generate(idx, size_t(0), current.elites.size() - 1);
+    std::sort(idx.begin(), idx.end());
+
+    // Insert the sampling into parents in a single run through
+    auto archIter = current.elites.begin();
+    size_t pos = 0;
+    for ( int i = 0; i < 2*nStims; i++ ) {
+        std::advance(archIter, idx[i] - pos);
+        pos = idx[i];
+        parents[i] = archIter;
+    }
+
+    // Shuffle the parents, but ensure that xover isn't incestuous
+    bool wellShuffled;
+    int shuffleFailures = 0;
+    do {
+        session.RNG.shuffle(parents);
+        wellShuffled = true;
+        for ( int i = 0; i < nStims; i++ ) {
+            if ( parents[2*i] == parents[2*i + 1] ) {
+                if ( i < nStims - 1 ) {
+                    session.RNG.shuffle(parents.begin() + 2*i, parents.end());
+                    --i;
+                } else {
+                    wellShuffled = false;
+                    ++shuffleFailures;
+                    break;
+                }
+            }
+        }
+    } while ( !wellShuffled && shuffleFailures < 10 );
+
+    // Mutate
+    for ( int i = 0; i < nStims; i++ ) {
+        stims[i] = mutate(*parents[2*i]->wave, *parents[2*i + 1]->wave);
+    }
 }
 
 void Wavegen::mape_tournament(std::vector<iStimulation> &waves)
