@@ -1,6 +1,6 @@
 #include "wavegen.h"
 #include "session.h"
-#include <functional>
+#include <forward_list>
 
 QString Wavegen::ee_action = QString("ee_search");
 quint32 Wavegen::ee_magic = 0xc9fd545f;
@@ -96,6 +96,86 @@ QVector<double> getDeltabar(Session &session, UniversalLibrary &ulib)
     return QVector<double>::fromStdVector(dbar);
 }
 
+std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElite>> &candidates_by_param)
+{
+    // TODO: radix sort
+    std::forward_list<MAPElite> ret;
+    auto back = ret.before_begin();
+    for ( std::forward_list<MAPElite> l : candidates_by_param ) {
+        l.sort();
+        ret.splice_after(back, l);
+        auto after_back = back;
+        for ( ++after_back; after_back != ret.end(); ++after_back )
+            ++back;
+    }
+    return ret;
+}
+
+void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ulib,
+                    Session &session, Wavegen::Archive &current, const int nStims)
+{
+    const double dt = session.runData().dt;
+    const int minLength = session.gaFitterSettings().cluster_min_dur / dt;
+    const size_t nParams = ulib.adjustableParams.size();
+
+    std::vector<MAPEDimension> dims = session.wavegenData().mapeDimensions;
+    dims.insert(dims.begin(), MAPEDimension {MAPEDimension::Func::EE_ParamIndex, 0, scalar(nParams), nParams});
+    const int nBins = dims.size();
+    std::vector<size_t> bins(nBins);
+    std::vector<std::forward_list<MAPElite>> candidates_by_param(nParams);
+    int nCandidates = 0;
+
+    for ( int stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
+        std::shared_ptr<iStimulation> stim = std::make_shared<iStimulation>(stims[stimIdx]);
+        stim->tObsBegin = 0;
+
+        // Find number of valid clusters
+        size_t nClusters = 0;
+        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ )
+            if ( ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx] >= minLength )
+                ++nClusters;
+
+        // Construct a MAPElite for each non-zero parameter contribution of each valid cluster
+        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ ) {
+            int len = ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx];
+            if ( len >= minLength ) {
+                stim->tObsEnd = len;
+                for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
+                    scalar contrib = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
+                    if ( contrib > 0 ) {
+                        for ( int binIdx = 0; binIdx < nBins; binIdx++ )
+                            bins[binIdx] = dims[binIdx].bin(*stim, paramIdx, clusterIdx, nClusters, current.precision, dt);
+                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib});
+                        ++nCandidates;
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort and consolidate the lists
+    std::forward_list<MAPElite> candidates = sortCandidates(candidates_by_param);
+
+    // Insert into archive
+    int nInserted = 0, nReplaced = 0;
+    auto archIter = current.elites.begin();
+    for ( auto candIter = candidates.begin(); candIter != candidates.end(); candIter++ ) {
+        while ( archIter != current.elites.end() && *archIter < *candIter ) // Advance to the first archive element with coords >= candidate
+            ++archIter;
+        if ( archIter == current.elites.end() || *candIter < *archIter ) { // No elite at candidate's coords, insert implicitly
+            archIter = current.elites.insert(archIter, std::move(*candIter));
+            ++nInserted;
+        } else { // preexisting elite at the candidate's coords, compete
+            nReplaced += archIter->compete(*candIter);
+        }
+    }
+
+    current.nCandidates.push_back(nCandidates);
+    current.nInsertions.push_back(nInserted);
+    current.nReplacements.push_back(nReplaced);
+    current.nElites.push_back(current.elites.size());
+}
+
 bool Wavegen::ee_exec(QFile &file, Result *result)
 {
     current = Archive(-1, searchd, *result);
@@ -107,6 +187,9 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     UniversalLibrary &ulib = session.project.universal();
     const int nModelsPerStim = searchd.trajectoryLength * searchd.nTrajectories;
     const int nStimsPerEpoch = ulib.NMODELS / nModelsPerStim;
+    const int blankCycles = session.gaFitterSettings().cluster_blank_after_step / session.runData().dt;
+    const int sectionLength = session.gaFitterSettings().cluster_fragment_dur / session.runData().dt;
+    const scalar dotp_threshold = session.gaFitterSettings().cluster_threshold;
 
     ulib.resizeOutput(istimd.iDuration);
     prepareModels(session, ulib, searchd);
@@ -121,11 +204,86 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     size_t nInitialStims = 2*nStimsPerEpoch;
     std::vector<iStimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
 
+    bool hasVariablePrecisionBins = false;
+    for ( const MAPEDimension &dim : searchd.mapeDimensions )
+        if ( dim.func == MAPEDimension::Func::BestBubbleDuration
+             || dim.func == MAPEDimension::Func::BestBubbleTime
+             || dim.func == MAPEDimension::Func::VoltageDeviation
+             || dim.func == MAPEDimension::Func::VoltageIntegral )
+            hasVariablePrecisionBins = true;
+
     // Run a set of stims through a deltabar finding mission
     current.deltabar = getDeltabar(session, ulib);
+    std::vector<double> deltabar = current.deltabar.toStdVector();
 
+    // Queue the first set of stims
+    pushStimsAndObserve(*returnedWaves, ulib, nModelsPerStim, blankCycles);
+    ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
+    ulib.run();
+    ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, deltabar, false);
 
-    return false;
+    for ( size_t epoch = 0; epoch < searchd.maxIterations; epoch++ ) {
+        // Copy completed clusters for returnedWaves to host (sync)
+        ulib.copyClusters(nStimsPerEpoch);
+
+        bool done = (++current.iterations == searchd.maxIterations) || isAborted();
+
+        // Push and run newWaves (async)
+        if ( !done ) {
+            pushStimsAndObserve(*newWaves, ulib, nModelsPerStim, blankCycles);
+            ulib.run();
+            ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, deltabar, false);
+        }
+
+        // score and insert returnedWaves into archive
+        scoreAndInsert(*returnedWaves, ulib, session, current, nStimsPerEpoch);
+
+        // Swap waves: After this, returnedWaves points at those in progress, and newWaves are ready for new adventures
+        using std::swap;
+        swap(newWaves, returnedWaves);
+
+        // Aborting or complete: No further processing.
+        if ( done )
+            break;
+
+        // Increase precision
+        if ( current.precision < searchd.precisionIncreaseEpochs.size() &&
+             current.iterations == searchd.precisionIncreaseEpochs[current.precision] ) {
+            current.precision++;
+            // Only rebin/resort if necessary
+            if ( hasVariablePrecisionBins ) {
+                for ( MAPElite &e : current.elites ) {
+                    e.bin = mape_bin(*e.wave);
+                }
+                current.elites.sort(); // TODO: radix sort
+            }
+        }
+
+        emit searchTick(current.iterations);
+
+        // Prepare the next set of stims
+        if ( nInitialStims < searchd.nInitialWaves ) {
+            for ( iStimulation &w : *newWaves )
+                w = getRandomStim();
+            nInitialStims += nStimsPerEpoch;
+        } else {
+            construct_next_generation(*newWaves);
+        }
+    }
+
+    current.nCandidates.squeeze();
+    current.nInsertions.squeeze();
+    current.nReplacements.squeeze();
+    current.nElites.squeeze();
+    current.meanFitness.squeeze();
+    current.maxFitness.squeeze();
+    m_archives.push_back(std::move(current));
+
+    ee_save(file);
+
+    emit done();
+
+    return true;
 }
 
 void Wavegen::ee_save(QFile &file)
