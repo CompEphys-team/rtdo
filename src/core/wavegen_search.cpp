@@ -153,24 +153,21 @@ void Wavegen::construct_next_generation(std::vector<iStimulation> &stims)
     }
 
     // Shuffle the parents, but ensure that xover isn't incestuous
-    bool wellShuffled;
-    int shuffleFailures = 0;
-    do {
-        session.RNG.shuffle(parents);
-        wellShuffled = true;
-        for ( int i = 0; i < nStims; i++ ) {
-            if ( parents[2*i] == parents[2*i + 1] ) {
-                if ( i < nStims - 1 ) {
-                    session.RNG.shuffle(parents.begin() + 2*i, parents.end());
-                    --i;
-                } else {
-                    wellShuffled = false;
-                    ++shuffleFailures;
+    session.RNG.shuffle(parents);
+    for ( int i = 0; i < nStims; i++ ) {
+        if ( parents[2*i] == parents[2*i + 1] ) {
+            while ( true ) {
+                int otherPair = session.RNG.uniform(0, nStims-2);
+                otherPair += (otherPair >= i);
+                if ( parents[2*otherPair] != parents[2*i] && parents[2*otherPair+1] != parents[2*i] ) {
+                    // Both of the other pair are different from the incestuous couple => swap one of them over
+                    parents[2*i+1] = parents[2*otherPair];
+                    parents[2*otherPair] = parents[2*i];
                     break;
                 }
             }
         }
-    } while ( !wellShuffled && shuffleFailures < 10 );
+    }
 
     // Mutate
     for ( int i = 0; i < nStims; i++ ) {
