@@ -96,17 +96,53 @@ QVector<double> getDeltabar(Session &session, UniversalLibrary &ulib)
     return QVector<double>::fromStdVector(dbar);
 }
 
-std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElite>> &candidates_by_param)
+/// Radix sort by MAPElite::bin, starting from dimension @a firstDimIdx upwards.
+/// Returns: An iterator to the final element of the sorted list.
+std::forward_list<MAPElite>::iterator radixSort(std::forward_list<MAPElite> &list, const std::vector<MAPEDimension> &dims, size_t firstDimIdx = 0)
 {
-    // TODO: radix sort
+    auto tail = list.before_begin();
+    for ( size_t dimIdx = firstDimIdx; dimIdx < dims.size(); dimIdx++ ) {
+        size_t nBuckets = dims[dimIdx].resolution;
+        std::vector<std::forward_list<MAPElite>> buckets(nBuckets);
+        std::vector<std::forward_list<MAPElite>::iterator> tails(nBuckets);
+        for ( size_t bucketIdx = 0; bucketIdx < nBuckets; bucketIdx++ )
+            tails[bucketIdx] = buckets[bucketIdx].before_begin();
+
+        // Sort into buckets, maintaining existing order
+        while ( !list.empty() ) {
+            const size_t bucketIdx = list.begin()->bin[dimIdx];
+            buckets[bucketIdx].splice_after(tails[bucketIdx], list, list.before_begin());
+            ++tails[bucketIdx];
+        }
+
+        // Consolidate back into a contiguous list
+        tail = list.before_begin();
+        for ( size_t bucketIdx = 0; bucketIdx < nBuckets; bucketIdx++ ) {
+            if ( !buckets[bucketIdx].empty() ) {
+                list.splice_after(tail, buckets[bucketIdx]);
+                tail = tails[bucketIdx];
+            }
+        }
+    }
+
+    // Guard against loop not being entered at all (1D archive?)
+    if ( tail == list.before_begin() && !list.empty() ) {
+        auto after_tail = tail;
+        for ( ++after_tail; after_tail != list.end(); ++after_tail )
+            ++tail;
+    }
+    return tail;
+}
+
+std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElite>> &candidates_by_param, const std::vector<MAPEDimension> &dims)
+{
     std::forward_list<MAPElite> ret;
-    auto back = ret.before_begin();
+    auto tail = ret.before_begin();
     for ( std::forward_list<MAPElite> l : candidates_by_param ) {
-        l.sort();
-        ret.splice_after(back, l);
-        auto after_back = back;
-        for ( ++after_back; after_back != ret.end(); ++after_back )
-            ++back;
+        auto next_tail = radixSort(l, dims, 1); // NOTE: Expects EE_ParamIdx as first dimension.
+        ret.splice_after(tail, l);
+        using std::swap;
+        swap(tail, next_tail);
     }
     return ret;
 }
@@ -178,7 +214,7 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
     }
 
     // Sort and consolidate the lists
-    std::forward_list<MAPElite> candidates = sortCandidates(candidates_by_param);
+    std::forward_list<MAPElite> candidates = sortCandidates(candidates_by_param, dims);
 
     // Insert into archive
     int nInserted = 0, nReplaced = 0;
