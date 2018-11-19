@@ -6,6 +6,19 @@
 
 void Wavegen::search(int param)
 {
+    WavegenData d = session.qWavegenData();
+    bool changed = false;
+    for ( int i = d.mapeDimensions.size()-1; i >= 0; i-- ) {
+        if ( d.mapeDimensions[i].func == MAPEDimension::Func::EE_ClusterIndex
+             || d.mapeDimensions[i].func == MAPEDimension::Func::EE_NumClusters
+             || d.mapeDimensions[i].func == MAPEDimension::Func::EE_ParamIndex ) {
+            d.mapeDimensions.erase(d.mapeDimensions.begin() + i);
+            changed = true;
+        }
+    }
+    if ( changed )
+        session.setWavegenData(d);
+
     assert(param >= 0 && param < (int)lib.adjustableParams.size());
     Archive *a = new Archive;
     a->param = param;

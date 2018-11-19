@@ -8,6 +8,15 @@ quint32 Wavegen::ee_version = 100;
 
 void Wavegen::elementaryEffects()
 {
+    if ( session.qWavegenData().mapeDimensions[0].func != MAPEDimension::Func::EE_ParamIndex ) {
+        WavegenData d = session.qWavegenData();
+        d.mapeDimensions.insert(d.mapeDimensions.begin(), MAPEDimension {
+                                    MAPEDimension::Func::EE_ParamIndex,
+                                    0,
+                                    scalar(lib.adjustableParams.size()),
+                                    lib.adjustableParams.size()});
+        session.setWavegenData(d);
+    }
     session.queue(actorName(), ee_action, "", new Result());
 }
 
@@ -254,7 +263,6 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     const scalar dotp_threshold = session.gaFitterSettings().cluster_threshold;
 
     std::vector<MAPEDimension> dims = session.wavegenData().mapeDimensions;
-    dims.insert(dims.begin(), MAPEDimension {MAPEDimension::Func::EE_ParamIndex, 0, scalar(ulib.adjustableParams.size()), ulib.adjustableParams.size()});
     bool hasVariablePrecisionBins = false;
     for ( const MAPEDimension &dim : dims )
         if ( dim.func == MAPEDimension::Func::BestBubbleDuration
