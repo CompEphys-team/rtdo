@@ -54,6 +54,8 @@ void settleModels(const Session &session, UniversalLibrary &ulib)
     ulib.iSettleDuration[0] = rd.settleDuration / rd.dt;
     ulib.Imax[0] = rd.Imax;
     ulib.dt[0] = rd.dt;
+    ulib.integrator = rd.integrator;
+    ulib.simCycles = rd.simCycles;
 
     ulib.setSingularTarget();
     ulib.targetOffset[0] = 0;
