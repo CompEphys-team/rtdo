@@ -223,7 +223,7 @@ void Wavegen::mutateTime(iStimulation &I)
         iStimulation::Step *target = session.RNG.choose(I);
         int newT;
         do {
-            newT = lrint(session.RNG.variate<double>(target->t * searchd.dt, stimd.muta.sdTime) / searchd.dt);
+            newT = lrint(session.RNG.variate<double>(target->t, stimd.muta.sdTime / session.runData().dt));
         } while ( newT < istimd.iMinStep || newT > istimd.iDuration - istimd.iMinStep );
         auto it = I.begin();
         for ( ; it != I.end(); it++ ) {

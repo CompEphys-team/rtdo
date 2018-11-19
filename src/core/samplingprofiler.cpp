@@ -81,7 +81,7 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     unsigned int assignment = lib.assignment_base
             | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPACT | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
 
-    std::vector<iStimulation> stims = prof.src.iStimulations(session.wavegenData().dt);
+    std::vector<iStimulation> stims = prof.src.iStimulations(session.runData().dt);
     size_t total = stims.size();
     prof.gradient.resize(total);
     prof.accuracy.resize(total);

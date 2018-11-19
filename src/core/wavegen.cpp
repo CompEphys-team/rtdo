@@ -13,7 +13,7 @@ quint32 Wavegen::sigmaAdjust_version = 101;
 
 QString Wavegen::search_action = QString("search");
 quint32 Wavegen::search_magic = 0x8a33c402;
-quint32 Wavegen::search_version = 110;
+quint32 Wavegen::search_version = 111;
 
 Wavegen::Wavegen(Session &session) :
     SessionWorker(session),
@@ -22,13 +22,13 @@ Wavegen::Wavegen(Session &session) :
     lib(session.project.wavegen())
 {
     connect(&session, &Session::stimulationDataChanged, this, &Wavegen::recalcIstimd);
-    connect(&session, &Session::wavegenDataChanged, this, &Wavegen::recalcIstimd);
+    connect(&session, &Session::runDataChanged, this, &Wavegen::recalcIstimd);
 }
 
 void Wavegen::recalcIstimd()
 {
-    istimd.iDuration = lrint(stimd.duration / searchd.dt);
-    istimd.iMinStep = lrint(stimd.minStepLength / searchd.dt);
+    istimd.iDuration = lrint(stimd.duration / session.runData().dt);
+    istimd.iMinStep = lrint(stimd.minStepLength / session.runData().dt);
 }
 
 void Wavegen::load(const QString &action, const QString &args, QFile &results, Result r)
@@ -125,13 +125,13 @@ void Wavegen::settle()
 {
     // Simulate for a given time, retaining the final state
     iStimulation I;
-    I.duration = lrint(session.runData().settleDuration / searchd.dt);
+    I.duration = lrint(session.runData().settleDuration / session.runData().dt);
     I.baseV = stimd.baseV;
     I.clear();
     pushStims({I});
     lib.getErr = false;
     lib.settling = true;
-    lib.dt = searchd.dt;
+    lib.dt = session.runData().dt;
     lib.simCycles = 1;
     lib.push();
     lib.step();
@@ -308,6 +308,6 @@ void Wavegen::diagnose(iStimulation I, double dt, int simCycles)
     lib.dt = dt;
     lib.simCycles = simCycles;
     lib.diagnose(I);
-    lib.dt = searchd.dt;
+    lib.dt = session.runData().dt;
     lib.simCycles = 1;
 }

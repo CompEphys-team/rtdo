@@ -332,7 +332,7 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
                         dim.resolution *= 2;
                 for ( MAPElite &e : current.elites ) {
                     for ( size_t i = 0; i < dims.size(); i++ ) {
-                        e.bin[i] = dims.at(i).bin(*e.wave, 1, searchd.dt);
+                        e.bin[i] = dims.at(i).bin(*e.wave, 1, session.runData().dt);
                     }
                 }
                 current.elites.sort(); // TODO: radix sort

@@ -382,7 +382,6 @@ struct WavegenData
     std::vector<size_t> precisionIncreaseEpochs; //!< Epochs on which MAPE precision/resolution is to double
     size_t maxIterations = 1000; //!< Total number of epochs (cf nWavesPerEpoch)
     double noise_sd = 0.; //!< Expected instrument/environment current noise standard deviation (nA)
-    double dt = 0.01;
 
     int nTrajectories = 1; //!< Number of EE trajectories with independent starting points for each stimulation. Parameters are cycled across
                            //! trajectories (e.g. b012; b340; b123 etc., where b is a starting point, and the numbers indicate the parameter

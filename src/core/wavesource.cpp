@@ -72,7 +72,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
     {
         ret.reserve(archive()->elites.size());
         for ( MAPElite const& e : archive()->elites )
-            ret.push_back(Stimulation(*e.wave, session->wavegenData(resultIndex()).dt));
+            ret.push_back(Stimulation(*e.wave, session->runData(resultIndex()).dt));
         break;
     }
     case Selection :
@@ -81,7 +81,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
         shrunk = true;
         ret.reserve(el.size());
         for ( const MAPElite &e : el )
-            ret.push_back(Stimulation(*e.wave, session->wavegenData(resultIndex()).dt));
+            ret.push_back(Stimulation(*e.wave, session->runData(resultIndex()).dt));
         break;
     }
     case Subset :
@@ -141,7 +141,7 @@ std::vector<MAPElite> WaveSource::elites() const
         std::vector<Stimulation> stims = stimulations();
         ret.resize(stims.size());
         for ( size_t i = 0; i < ret.size(); i++ )
-            ret[i].wave.reset(new iStimulation(stims[i], session->wavegenData(resultIndex()).dt));
+            ret[i].wave.reset(new iStimulation(stims[i], session->runData(resultIndex()).dt));
         break;
     }
     }
@@ -160,7 +160,7 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
     case Archive :
     {
         ret.reserve(archive()->elites.size());
-        if ( session->wavegenData(resultIndex()).dt == dt ) {
+        if ( session->runData(resultIndex()).dt == dt ) {
             for ( MAPElite const& e : archive()->elites )
                 ret.push_back(*e.wave);
         } else {
@@ -174,7 +174,7 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
         std::vector<MAPElite> el = elites();
         shrunk = true;
         ret.reserve(el.size());
-        if ( session->wavegenData(resultIndex()).dt == dt ) {
+        if ( session->runData(resultIndex()).dt == dt ) {
             for ( const MAPElite &e : el )
                 ret.push_back(*e.wave);
         } else {

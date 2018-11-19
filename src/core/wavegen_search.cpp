@@ -246,7 +246,7 @@ std::vector<size_t> Wavegen::mape_bin(const iStimulation &I)
     size_t mult = mape_multiplier(current.precision);
     std::vector<size_t> bin(searchd.mapeDimensions.size());
     for ( size_t i = 0; i < searchd.mapeDimensions.size(); i++ ) {
-        bin[i] = searchd.mapeDimensions.at(i).bin(I, mult, searchd.dt);
+        bin[i] = searchd.mapeDimensions.at(i).bin(I, mult, session.runData().dt);
     }
 
     return bin;
@@ -290,12 +290,24 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
     if ( version >= 110 ) {
         for ( MAPElite &e : arch.elites )
             is >> e;
+        if ( version == 110 ) {
+            // iStimulation probably generated at WavegenData::dt=0.01; convert to RunData::dt stepping
+            // There may be some loss of precision, but that's unavoidable. >.<
+            double factor = session.runData().dt / 0.01;
+            for ( MAPElite &e : arch.elites ) {
+                e.wave->duration = lrint(e.wave->duration / factor);
+                e.wave->tObsBegin = lrint(e.wave->tObsBegin / factor);
+                e.wave->tObsEnd = lrint(e.wave->tObsEnd / factor);
+                for ( iStimulation::Step &step : *e.wave )
+                    step.t = lrint(step.t / factor);
+            }
+        }
     } else {
         for ( MAPElite &e : arch.elites ) {
             MAPElite__scalarStim old;
             is >> old;
             e.bin = old.bin;
-            e.wave.reset(new iStimulation(old.wave, searchd.dt));
+            e.wave.reset(new iStimulation(old.wave, session.runData().dt));
             e.fitness = old.fitness;
         }
     }

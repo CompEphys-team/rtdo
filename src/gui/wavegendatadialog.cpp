@@ -62,7 +62,6 @@ void WavegenDataDialog::importData()
             ui->mape_nClusters->setChecked(true);
     }
 
-    ui->dt->setValue(p.dt);
     ui->noise_sd->setValue(p.noise_sd);
 
     ui->nTrajectories->setValue(p.nTrajectories);
@@ -109,7 +108,6 @@ void WavegenDataDialog::exportData()
         dims.push_back(MAPEDimension {MAPEDimension::Func::EE_ClusterIndex, 0, UniversalLibrary::maxClusters, UniversalLibrary::maxClusters});
     p.mapeDimensions = dims;
 
-    p.dt = ui->dt->value();
     p.noise_sd = ui->noise_sd->value();
 
     p.nTrajectories = ui->nTrajectories->value();

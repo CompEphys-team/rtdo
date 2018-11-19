@@ -57,7 +57,7 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     connect(ui->steps, SIGNAL(cellChanged(int,int)), this, SLOT(updateStimulation()));
 
     connect(ui->randomise, &QPushButton::clicked, [=](){
-        *stim = Stimulation(this->session.wavegen().getRandomStim(), this->session.wavegenData().dt);
+        *stim = Stimulation(this->session.wavegen().getRandomStim(), this->session.runData().dt);
         setStimulation();
     });
 
