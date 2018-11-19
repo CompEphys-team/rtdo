@@ -21,14 +21,14 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="4">
+   <item row="0" column="5">
     <widget class="QPushButton" name="btnAbort">
      <property name="text">
       <string>Abort</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="5">
+   <item row="1" column="0" colspan="6">
     <widget class="WavegenProgressPlotter" name="progressPlotter" native="true"/>
    </item>
    <item row="0" column="1">
@@ -45,6 +45,13 @@
     <widget class="QPushButton" name="btnSearchAll">
      <property name="text">
       <string>Search (all)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="4">
+    <widget class="QPushButton" name="btnEE">
+     <property name="text">
+      <string>EE Search</string>
      </property>
     </widget>
    </item>
