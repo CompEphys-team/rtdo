@@ -156,6 +156,8 @@ void StimulationPlotter::replot()
         stims = src.stimulations();
         isDeck = src.type == WaveSource::Deck;
     }
+    if ( stims.empty() )
+        return;
 
     rebuilding = true;
 
