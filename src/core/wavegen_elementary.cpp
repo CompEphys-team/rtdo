@@ -194,7 +194,7 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
 
         // Populate all bins (with some garbage for clusterIdx, paramIdx, clusterDuration)
         for ( int binIdx = 0; binIdx < nBins; binIdx++ )
-            bins[binIdx] = dims[binIdx].bin(*stim, 0, 0, nClusters, 0, dt);
+            bins[binIdx] = dims[binIdx].bin(*stim, 0, 0, nClusters, 1, dt);
 
         // Construct a MAPElite for each non-zero parameter contribution of each valid cluster
         for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ ) {
@@ -206,16 +206,16 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
                 // Populate cluster-level bins
                 if ( bin_for_clusterDuration > 0 ) {
                     stim->tObsEnd = len;
-                    bins[bin_for_clusterDuration] = dims[bin_for_clusterDuration].bin(*stim, 0, dt);
+                    bins[bin_for_clusterDuration] = dims[bin_for_clusterDuration].bin(*stim, 1, dt);
                 }
                 if ( bin_for_clusterIdx > 0 )
-                    bins[bin_for_clusterIdx] = dims[bin_for_clusterIdx].bin(*stim, 0, clusterIdx, 0, 0, dt);
+                    bins[bin_for_clusterIdx] = dims[bin_for_clusterIdx].bin(*stim, 0, clusterIdx, 0, 1, dt);
 
                 // One entry for each parameter
                 for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
                     scalar contrib = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
                     if ( contrib > 0 ) {
-                        bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 0, dt);
+                        bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 1, dt);
                         candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib});
                         ++nCandidates;
                     }
@@ -332,7 +332,7 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
                         dim.resolution *= 2;
                 for ( MAPElite &e : current.elites ) {
                     for ( size_t i = 0; i < dims.size(); i++ ) {
-                        e.bin[i] = dims.at(i).bin(*e.wave, 0, searchd.dt);
+                        e.bin[i] = dims.at(i).bin(*e.wave, 1, searchd.dt);
                     }
                 }
                 current.elites.sort(); // TODO: radix sort
