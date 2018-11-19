@@ -486,7 +486,7 @@ __global__ void find_deltabar_kernel(int trajLen, int nTraj, int nStims, int dur
     }
 }
 
-extern "C" std::vector<scalar> find_deltabar(int trajLen, int nTraj, int duration)
+extern "C" std::vector<double> find_deltabar(int trajLen, int nTraj, int duration)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
     dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
