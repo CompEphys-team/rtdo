@@ -424,6 +424,7 @@ __global__ void find_deltabar_kernel(int trajLen, int nTraj, int nStims, int dur
 
     __shared__ scalar sh_clusters[STIMS_PER_CLUSTER_BLOCK][NPARAMS];
     __shared__ scalar sh_nSamples[STIMS_PER_CLUSTER_BLOCK];
+    const int tid = threadIdx.y*blockDim.x + threadIdx.x;
 
     // Accumulate each stim's square deviations
     scalar sumSquares = 0;
@@ -451,8 +452,7 @@ __global__ void find_deltabar_kernel(int trajLen, int nTraj, int nStims, int dur
     }
 
     // Reduce to a single 'cluster' in block
-    const int tid = threadIdx.y*blockDim.x + threadIdx.x;
-    for ( int width = STIMS_PER_CLUSTER_BLOCK; width > 0; width /= 32 ) {
+    for ( int width = STIMS_PER_CLUSTER_BLOCK; width > 1; width /= 32 ) {
         paramIdx = tid / width;
         stimIdx = tid % width;
         sumSquares = 0;
