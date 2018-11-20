@@ -32,14 +32,14 @@ size_t WavegenSelection::size() const
 
 double WavegenSelection::rmin(size_t i) const
 {
-    size_t multiplier = Wavegen::mape_multiplier(archive().precision);
-    return session.wavegenData(archive().resultIndex).mapeDimensions.at(i).bin_inverse(ranges.at(i).min, multiplier);
+    const MAPEDimension &dim = session.wavegenData(archive().resultIndex).mapeDimensions.at(i);
+    return dim.bin_inverse(ranges.at(i).min, dim.multiplier(archive().precision));
 }
 
 double WavegenSelection::rmax(size_t i) const
 {
-    size_t multiplier = Wavegen::mape_multiplier(archive().precision);
-    return session.wavegenData(archive().resultIndex).mapeDimensions.at(i).bin_inverse(ranges.at(i).max, multiplier);
+    const MAPEDimension &dim = session.wavegenData(archive().resultIndex).mapeDimensions.at(i);
+    return dim.bin_inverse(ranges.at(i).max, dim.multiplier(archive().precision));
 }
 
 const MAPElite* WavegenSelection::data_relative(std::vector<size_t> idx, bool *ok) const
@@ -63,13 +63,13 @@ const MAPElite* WavegenSelection::data_relative(std::vector<size_t> idx, bool *o
 const MAPElite* WavegenSelection::data_relative(std::vector<double> idx, bool *ok) const
 {
     std::vector<size_t> bin(ranges.size());
-    size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
     for ( size_t i = 0; i < ranges.size(); i++ ) {
         if ( ranges[i].collapse )
             continue;
-        scalar min = session.wavegenData(archive().resultIndex).mapeDimensions[i].bin_inverse( ranges[i].min, multiplier ); // Behaviour-value offset of the selected area
+        const MAPEDimension &dim = session.wavegenData(archive().resultIndex).mapeDimensions[i];
+        scalar min = dim.bin_inverse(ranges[i].min, dim.multiplier(archive().precision)); // Behaviour-value offset of the selected area
         scalar shifted = min + idx[i]; // Absolute behavioural value
-        bin[i] = session.wavegenData(archive().resultIndex).mapeDimensions[i].bin(shifted, multiplier); // guaranteed valid bin for whole archive, but not for selection
+        bin[i] = dim.bin(shifted, dim.multiplier(archive().precision)); // guaranteed valid bin for whole archive, but not for selection
     }
     return data_absolute(bin, ok); // Let data_absolute deal with out of range issues
 }
@@ -96,9 +96,9 @@ const MAPElite* WavegenSelection::data_absolute(std::vector<size_t> idx, bool *o
 const MAPElite* WavegenSelection::data_absolute(std::vector<double> idx, bool *ok) const
 {
     std::vector<size_t> bin(ranges.size());
-    size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
     for ( size_t i = 0; i < ranges.size(); i++ ) {
-        bin[i] = session.wavegenData(archive().resultIndex).mapeDimensions[i].bin(idx[i], multiplier);
+        const MAPEDimension &dim = session.wavegenData(archive().resultIndex).mapeDimensions[i];
+        bin[i] = dim.bin(idx[i], dim.multiplier(archive().precision));
     }
     return data_absolute(bin, ok);
 }
@@ -106,7 +106,7 @@ const MAPElite* WavegenSelection::data_absolute(std::vector<double> idx, bool *o
 void WavegenSelection::limit(size_t dimension, double min, double max, bool collapse)
 {
     MAPEDimension dim = session.wavegenData(archive().resultIndex).mapeDimensions.at(dimension);
-    size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
+    size_t multiplier = dim.multiplier(archive().precision);
     limit(dimension, Range{dim.bin(min, multiplier), dim.bin(max, multiplier), collapse});
 }
 
@@ -118,8 +118,7 @@ void WavegenSelection::limit(size_t dimension, size_t min, size_t max, bool coll
 void WavegenSelection::limit(size_t dimension, Range range)
 {
     MAPEDimension dim = session.wavegenData(archive().resultIndex).mapeDimensions.at(dimension);
-    size_t multiplier = session.wavegen().mape_multiplier(archive().precision);
-    size_t rmax = multiplier * dim.resolution - 1;
+    size_t rmax = dim.multiplier(archive().precision) * dim.resolution - 1;
     if ( range.max < range.min )
         range.max = range.min;
     if ( range.max > rmax )

@@ -76,7 +76,6 @@ void WavegenFitnessMapper::updateDimensions()
 
     WaveSource src = ui->combo->currentData().value<WaveSource>();
     int i = 0, n = session.wavegenData(src.archive()->resultIndex).mapeDimensions.size();
-    size_t multiplier = Wavegen::mape_multiplier(src.archive()->precision);
     groupx = new QButtonGroup(this);
     groupy = new QButtonGroup(this);
     mins.resize(n);
@@ -99,7 +98,7 @@ void WavegenFitnessMapper::updateDimensions()
         ui->dimensions->setCellWidget(i, 4, c);
         collapse[i] = c;
 
-        double step = (d.max - d.min) / (multiplier * d.resolution);
+        double step = (d.max - d.min) / (d.multiplier(src.archive()->precision) * d.resolution);
         int decimals = 1 - log10(step);
 
         QDoubleSpinBox *min = new QDoubleSpinBox();
@@ -213,7 +212,7 @@ void WavegenFitnessMapper::replot()
 
     MAPEDimension dimx = session.wavegenData(selection->archive().resultIndex).mapeDimensions[x];
     MAPEDimension dimy = session.wavegenData(selection->archive().resultIndex).mapeDimensions[y];
-    size_t multiplier = Wavegen::mape_multiplier(selection->archive().precision);
+    int precision = selection->archive().precision;
 
     // Set up axes
     ui->plot->xAxis->setLabel(QString::fromStdString(toString(dimx.func)));
@@ -221,7 +220,7 @@ void WavegenFitnessMapper::replot()
 
     // set up the QCPColorMap:
     colorMap->data()->clear();
-    colorMap->data()->setSize(dimx.resolution * multiplier, dimy.resolution * multiplier);
+    colorMap->data()->setSize(dimx.resolution * dimx.multiplier(precision), dimy.resolution * dimy.multiplier(precision));
     if ( selection->ranges.at(x).collapse )
         colorMap->data()->setKeySize(1);
     if ( selection->ranges.at(y).collapse )

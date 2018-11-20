@@ -354,6 +354,7 @@ struct MAPEDimension
 
     void setDefaultMinMax(StimulationData d, size_t nParams);
     inline bool hasVariableResolution() const { return !(func==Func::EE_ClusterIndex || func==Func::EE_NumClusters || func==Func::EE_ParamIndex); }
+    inline size_t multiplier(int precisionLevel) const { return hasVariableResolution() ? (size_t(1)<<precisionLevel) : 1; }
 };
 std::string toString(const MAPEDimension::Func &f);
 std::ostream& operator<<(std::ostream& os, const MAPEDimension::Func &f);
