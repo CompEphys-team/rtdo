@@ -53,6 +53,8 @@ private:
 
     const static QString action;
     const static quint32 magic, version;
+
+    int generate_observations(const Profile &prof, const std::vector<iStimulation> &stims, std::vector<iObservations> &observations);
 };
 
 Q_DECLARE_METATYPE(SamplingProfiler::Profile)
