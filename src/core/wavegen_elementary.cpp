@@ -1,6 +1,7 @@
 #include "wavegen.h"
 #include "session.h"
 #include <forward_list>
+#include "clustering.h"
 
 QString Wavegen::ee_action = QString("ee_search");
 quint32 Wavegen::ee_magic = 0xc9fd545f;
@@ -154,39 +155,6 @@ std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElit
     return ret;
 }
 
-void reduceObsCount(iObservations &obs, int largestBridgableGap)
-{
-    int shortestObs = -1, shortestObsIdx = 0;
-    int shortestGap = -1, shortestGapIdx = 0;
-    int shuffleIdx;
-    for ( size_t obsIdx = 0; obsIdx < iObservations::maxObs; obsIdx++ ) {
-        int dur = obs.stop[obsIdx] - obs.start[obsIdx];
-        if ( dur < shortestObs ) {
-            shortestObs = dur;
-            shortestObsIdx = obsIdx;
-        }
-        if ( obsIdx > 0 ) {
-            int gap = obs.start[obsIdx] - obs.start[obsIdx-1];
-            if ( gap < shortestGap ) {
-                shortestGap = gap;
-                shortestGapIdx = obsIdx;
-            }
-        }
-    }
-    if ( shortestGap <= largestBridgableGap ) {
-        // Merge across gap - this may cause overlapping obs for different clusters
-        obs.stop[shortestGapIdx-1] = obs.stop[shortestGapIdx];
-        shuffleIdx = shortestGapIdx;
-    } else {
-        // Eliminate shortest
-        shuffleIdx = shortestObsIdx;
-    }
-    for ( size_t obsIdx = shuffleIdx; obsIdx < iObservations::maxObs-1; obsIdx++ ) {
-        obs.start[obsIdx] = obs.start[obsIdx+1];
-        obs.stop[obsIdx] = obs.stop[obsIdx+1];
-    }
-}
-
 std::vector<iObservations> getClusterObservations(const UniversalLibrary &ulib, int stimIdx, int duration, int nClusters, int largestBridgableGap)
 {
     std::vector<iObservations> obs(nClusters, {{}, {}});
@@ -202,7 +170,7 @@ std::vector<iObservations> getClusterObservations(const UniversalLibrary &ulib, 
 
         // Prune/merge short observations
         if ( onsets[clusterIdx] == iObservations::maxObs ) {
-            reduceObsCount(obs[clusterIdx], largestBridgableGap);
+            reduceObsCount(obs[clusterIdx].start, obs[clusterIdx].stop, iObservations::maxObs, largestBridgableGap);
             --onsets[clusterIdx];
         }
         obs[clusterIdx].start[onsets[clusterIdx]] = onsetTime; // open next

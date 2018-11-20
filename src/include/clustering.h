@@ -70,4 +70,9 @@ inline size_t maxDetunedDiffTraceStims(UniversalLibrary &lib)
     return (lib.NMODELS/32) / nWarps;
 }
 
+
+/// Utility to reduce the number of observations by one, eliminating either a small gap up to @a largestBridgableGap, or (failing that),
+/// the shortest observation period.
+void reduceObsCount(int *start, int *stop, size_t maxObs, int largestBridgableGap);
+
 #endif // CLUSTERING_H
