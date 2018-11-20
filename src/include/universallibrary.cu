@@ -39,6 +39,9 @@ static unsigned int clusters_size = 0;
 static int *clusterLen = nullptr, *d_clusterLen = nullptr;
 static unsigned int clusterLen_size = 0;
 
+static unsigned int *clusterOnsets = nullptr, *d_clusterOnsets = nullptr;
+static unsigned int clusterOnsets_size = 0;
+
 static __constant__ scalar deltabar[NPARAMS];
 
 void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
@@ -55,6 +58,7 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 
     pointers.clusters =& clusters;
     pointers.clusterLen =& clusterLen;
+    pointers.clusterOnsets =& clusterOnsets;
 
     allocateMem();
     initialize();
@@ -238,7 +242,7 @@ __global__ void clusterKernel(int trajLen,
                               int duration,
                               int secLen,
                               scalar dotp_threshold,
-                              scalar *global_clusters, int *global_clusterLen)
+                              scalar *global_clusters, int *global_clusterLen, unsigned int *global_clusterOnsets)
 {
     static constexpr int stimWidth = 32/STIMS_PER_CLUSTER_WARP;
     const int nUsefulTraces = (trajLen-1)*nTraj;
@@ -310,6 +314,7 @@ __global__ void clusterKernel(int trajLen,
         // Compute the scalar product with each existing cluster to find the closest match
         scalar max_dotp = 0;
         int closest_cluster = 0;
+        int prev_cluster = -1, onsetIdx = 0;
         int nClusters = 0;
         for ( int i = 0; i < MAXCLUSTERS; ++i ) {
             scalar dotp = 0;
@@ -349,6 +354,14 @@ __global__ void clusterKernel(int trajLen,
             if ( paramIdx == 0 ) {
                 sh_cluster_square_norm[stimIdx][closest_cluster] = square;
                 ++sh_clusterLen[stimIdx][closest_cluster];
+
+                // Keep track of cluster onsets
+                if ( closest_cluster != prev_cluster && onsetIdx < MAX_CLUSTER_ONSETS ) {
+                    global_clusterOnsets[global_stimIdx * MAX_CLUSTER_ONSETS + onsetIdx]
+                            = (unsigned int(t) & CLUSTER_ONSET_MASK) | (closest_cluster << CLUSTER_ONSET_SHIFT);
+                    prev_cluster = closest_cluster;
+                    ++onsetIdx;
+                }
             }
         }
         __syncthreads();
@@ -365,6 +378,9 @@ __global__ void clusterKernel(int trajLen,
                 global_clusterLen[(global_stimIdx * MAXCLUSTERS) + i] = sh_clusterLen[stimIdx][i];
             }
         }
+        if ( paramIdx == 0 )
+            while ( onsetIdx < MAX_CLUSTER_ONSETS )
+                global_clusterOnsets[global_stimIdx * MAX_CLUSTER_ONSETS + onsetIdx++] = 0;
     }
 }
 
@@ -372,6 +388,7 @@ extern "C" void copyClusters(int nStims)
 {
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nStims * MAXCLUSTERS * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, nStims * MAXCLUSTERS * sizeof(int), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusterOnsets, d_clusterOnsets, nStims * MAX_CLUSTER_ONSETS * sizeof(unsigned int), cudaMemcpyDeviceToHost));
 }
 
 extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
@@ -386,6 +403,7 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
     unsigned int nClusters = nStims * MAXCLUSTERS;
     resizeArrayPair(clusters, d_clusters, clusters_size, nClusters * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, nClusters);
+    resizeArrayPair(clusterOnstes, d_clusterOnsets, clusterOnsets_size, nStims * MAX_CLUSTER_ONSETS);
     scalar deltabar_array[NPARAMS];
     for ( int i = 0; i < NPARAMS; i++ )
         deltabar_array[i] = deltabar_arg[i];
@@ -393,7 +411,7 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
 
     dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
-    clusterKernel<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, dotp_threshold, d_clusters, d_clusterLen);
+    clusterKernel<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, dotp_threshold, d_clusters, d_clusterLen, d_clusterOnsets);
 
     if ( copy_results )
         copyClusters(nStims);
