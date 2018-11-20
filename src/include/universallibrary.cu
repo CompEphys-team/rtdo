@@ -282,6 +282,7 @@ __global__ void clusterKernel(int trajLen,
 
     // Construct clusters in shared memory
     scalar contrib, square;
+    int prev_cluster = -1, onsetIdx = 0;
     int t = 0;
     while ( t < duration ) {
 
@@ -314,7 +315,6 @@ __global__ void clusterKernel(int trajLen,
         // Compute the scalar product with each existing cluster to find the closest match
         scalar max_dotp = 0;
         int closest_cluster = 0;
-        int prev_cluster = -1, onsetIdx = 0;
         int nClusters = 0;
         for ( int i = 0; i < MAXCLUSTERS; ++i ) {
             scalar dotp = 0;
@@ -358,7 +358,7 @@ __global__ void clusterKernel(int trajLen,
                 // Keep track of cluster onsets
                 if ( closest_cluster != prev_cluster && onsetIdx < MAX_CLUSTER_ONSETS ) {
                     global_clusterOnsets[global_stimIdx * MAX_CLUSTER_ONSETS + onsetIdx]
-                            = (unsigned int(t) & CLUSTER_ONSET_MASK) | (closest_cluster << CLUSTER_ONSET_SHIFT);
+                            = (((unsigned int)t) & CLUSTER_ONSET_MASK) | (closest_cluster << CLUSTER_ONSET_SHIFT);
                     prev_cluster = closest_cluster;
                     ++onsetIdx;
                 }
@@ -403,7 +403,7 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
     unsigned int nClusters = nStims * MAXCLUSTERS;
     resizeArrayPair(clusters, d_clusters, clusters_size, nClusters * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, nClusters);
-    resizeArrayPair(clusterOnstes, d_clusterOnsets, clusterOnsets_size, nStims * MAX_CLUSTER_ONSETS);
+    resizeArrayPair(clusterOnsets, d_clusterOnsets, clusterOnsets_size, nStims * MAX_CLUSTER_ONSETS);
     scalar deltabar_array[NPARAMS];
     for ( int i = 0; i < NPARAMS; i++ )
         deltabar_array[i] = deltabar_arg[i];
