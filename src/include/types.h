@@ -353,6 +353,7 @@ struct MAPEDimension
     scalar bin_inverse(size_t bin, size_t multiplier) const; //!< Inverse function of bin(scalar, size_t), aliased to the lower boundary of the bin.
 
     void setDefaultMinMax(StimulationData d, size_t nParams);
+    inline bool hasVariableResolution() const { return !(func==Func::EE_ClusterIndex || func==Func::EE_NumClusters || func==Func::EE_ParamIndex); }
 };
 std::string toString(const MAPEDimension::Func &f);
 std::ostream& operator<<(std::ostream& os, const MAPEDimension::Func &f);

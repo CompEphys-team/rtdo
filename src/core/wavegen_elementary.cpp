@@ -263,13 +263,10 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     const scalar dotp_threshold = session.gaFitterSettings().cluster_threshold;
 
     std::vector<MAPEDimension> dims = session.wavegenData().mapeDimensions;
-    bool hasVariablePrecisionBins = false;
-    for ( const MAPEDimension &dim : dims )
-        if ( dim.func == MAPEDimension::Func::BestBubbleDuration
-             || dim.func == MAPEDimension::Func::BestBubbleTime
-             || dim.func == MAPEDimension::Func::VoltageDeviation
-             || dim.func == MAPEDimension::Func::VoltageIntegral )
-            hasVariablePrecisionBins = true;
+    std::vector<size_t> variablePrecisionDims;
+    for ( size_t i = 0; i < dims.size(); i++ )
+        if ( dims[i].hasVariableResolution() )
+            variablePrecisionDims.push_back(i);
 
     ulib.resizeOutput(istimd.iDuration);
     prepareModels(session, ulib, searchd);
@@ -323,18 +320,12 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
              current.iterations == searchd.precisionIncreaseEpochs[current.precision] ) {
             current.precision++;
             // Only rebin/resort if necessary
-            if ( hasVariablePrecisionBins ) {
-                for ( MAPEDimension &dim : dims )
-                    if ( dim.func == MAPEDimension::Func::BestBubbleDuration
-                         || dim.func == MAPEDimension::Func::BestBubbleTime
-                         || dim.func == MAPEDimension::Func::VoltageDeviation
-                         || dim.func == MAPEDimension::Func::VoltageIntegral )
-                        dim.resolution *= 2;
-                for ( MAPElite &e : current.elites ) {
-                    for ( size_t i = 0; i < dims.size(); i++ ) {
+            if ( !variablePrecisionDims.empty() ) {
+                for ( size_t i : variablePrecisionDims )
+                    dims[i].resolution *= 2;
+                for ( MAPElite &e : current.elites )
+                    for ( size_t i : variablePrecisionDims )
                         e.bin[i] = dims.at(i).bin(*e.wave, 1, session.runData().dt);
-                    }
-                }
                 current.elites.sort(); // TODO: radix sort
             }
         }
