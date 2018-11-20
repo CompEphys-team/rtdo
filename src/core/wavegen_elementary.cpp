@@ -217,7 +217,7 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
                 for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
                     if ( contrib[paramIdx] > 0 ) {
                         bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 1, dt);
-                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib[paramIdx], contrib});
+                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib[paramIdx], contrib, obs[stimIdx][clusterIdx].first});
                         ++nCandidates;
                     }
                 }
@@ -375,6 +375,7 @@ void Wavegen::ee_save(QFile &file)
     os << quint32(arch.elites.size());
     os << quint32(arch.elites.front().bin.size());
     os << quint32(arch.elites.front().deviations.size());
+    os << quint32(iObservations::maxObs);
 
     // Separate waves into unique and shared to reduce the number of lookups
     std::vector<iStimulation*> w_unique, w_shared;
@@ -384,6 +385,8 @@ void Wavegen::ee_save(QFile &file)
             os << quint32(b);
         for ( scalar d : e.deviations )
             os << d;
+        for ( size_t i = 0; i < iObservations::maxObs; i++ )
+            os << quint32(e.obs.start[i]) << quint32(e.obs.stop[i]);
 
         if ( e.wave.unique() ) {
             w_unique.push_back(e.wave.get());
@@ -416,18 +419,18 @@ void Wavegen::ee_load(QFile &file, const QString &, Result r)
     m_archives.emplace_back(-1, searchd, r);
     Archive &arch = m_archives.back();
 
-    quint32 precision, iterations, archSize, nBins, nParams;
+    quint32 precision, iterations, archSize, nBins, nParams, maxObs;
     is >> precision >> iterations;
     arch.precision = precision;
     arch.iterations = iterations;
     is >> arch.nCandidates >> arch.nInsertions >> arch.nReplacements >> arch.nElites;
     is >> arch.deltabar;
 
-    is >> archSize >> nBins >> nParams;
+    is >> archSize >> nBins >> nParams >> maxObs;
     arch.elites.resize(archSize);
     std::vector<qint32> stimIdx(archSize);
     auto idxIt = stimIdx.begin();
-    quint32 tmp;
+    quint32 tmp, start, stop;
     for ( auto el = arch.elites.begin(); el != arch.elites.end(); el++, idxIt++ ) {
         is >> el->fitness;
         el->bin.resize(nBins);
@@ -438,6 +441,16 @@ void Wavegen::ee_load(QFile &file, const QString &, Result r)
         el->deviations.resize(nParams);
         for ( scalar &d : el->deviations )
             is >> d;
+
+        el->obs = {{}, {}};
+        for ( size_t i = 0; i < maxObs; i++ ) {
+            is >> start >> stop;
+            if ( i < iObservations::maxObs ) {
+                el->obs.start[i] = start;
+                el->obs.stop[i] = stop;
+            }
+        }
+
         is >> *idxIt;
     }
 

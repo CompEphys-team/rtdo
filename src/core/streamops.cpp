@@ -20,26 +20,44 @@ QDataStream &operator<<(QDataStream &os, const MAPElite &e)
     os << quint32(e.bin.size());
     for ( const size_t &b : e.bin )
         os << quint32(b);
+
     os << quint32(e.deviations.size());
     for ( const scalar &d : e.deviations )
         os << d;
+
+    os << quint32(iObservations::maxObs);
+    for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
+        os << quint32(e.obs.start[i]) << quint32(e.obs.stop[i]);
+    }
     return os;
 }
 
 QDataStream &operator>>(QDataStream &is, MAPElite &e)
 {
     is >> *e.wave >> e.fitness;
-    quint32 size, val;
-    is >> size;
-    e.bin.resize(size);
+
+    quint32 bins, val, start, stop;
+    is >> bins;
+    e.bin.resize(bins);
     for ( size_t &b : e.bin ) {
         is >> val;
         b = size_t(val);
     }
-    is >> size;
-    e.deviations.resize(size);
+
+    is >> val;
+    e.deviations.resize(val);
     for ( scalar &d : e.deviations )
         is >> d;
+
+    is >> val;
+    e.obs = {{}, {}};
+    for ( size_t i = 0; i < val; i++ ) {
+        is >> start >> stop;
+        if ( i < iObservations::maxObs ) {
+            e.obs.start[i] = start;
+            e.obs.stop[i] = stop;
+        }
+    }
     return is;
 }
 

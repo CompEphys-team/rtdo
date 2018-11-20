@@ -324,6 +324,12 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
             e.fitness = old.fitness;
         }
     }
+    if ( version < 112 ) {
+        for ( MAPElite &e : arch.elites ) {
+            e.obs.start[0] = e.wave->tObsBegin;
+            e.obs.stop[0] = e.wave->tObsEnd;
+        }
+    }
 
     if ( version >= 101 ) {
         is >> arch.nCandidates >> arch.nInsertions >> arch.nReplacements >> arch.nElites;
