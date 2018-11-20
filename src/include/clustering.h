@@ -59,7 +59,15 @@ std::vector<std::tuple<int, std::vector<double>, std::vector<Section>>> extractS
 
 /// Runs the given @a stims in @a lib, comparing detuned models to the base model. Returns a collection of pointers to traces for use
 /// as pDelta in the functions above; dStride is lib.NMODELS.
+/// At most the first maxDetunedDiffTraceStims() stimulations are processed, and the return value is no larger than that.
 std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimulation> &stims, UniversalLibrary &lib, const RunData &rd);
 std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<Stimulation> &astims, UniversalLibrary &lib, const RunData &rd);
+
+/// Returns the maximum number of stimulations that can be run through getDetunedDiffTraces() at a time
+inline size_t maxDetunedDiffTraceStims(UniversalLibrary &lib)
+{
+    int nWarps = (lib.adjustableParams.size()+30) / 31;
+    return (lib.NMODELS/32) / nWarps;
+}
 
 #endif // CLUSTERING_H

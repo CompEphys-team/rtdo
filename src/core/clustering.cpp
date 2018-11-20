@@ -263,8 +263,9 @@ std::vector<std::tuple<int, std::vector<double>, std::vector<Section>>> extractS
 
 std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<Stimulation> &astims, UniversalLibrary &lib, const RunData &rd)
 {
-    std::vector<iStimulation> stims(astims.size());
-    for ( size_t i = 0; i < stims.size(); i++ )
+    size_t nStims = std::min(astims.size(), maxDetunedDiffTraceStims(lib));
+    std::vector<iStimulation> stims(nStims);
+    for ( size_t i = 0; i < nStims; i++ )
         stims[i] = iStimulation(astims[i], rd.dt);
     return getDetunedDiffTraces(stims, lib, rd);
 }
@@ -272,6 +273,7 @@ std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<Stimula
 std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimulation> &stims, UniversalLibrary &lib, const RunData &rd)
 {
     int nParams = lib.adjustableParams.size();
+    size_t nStims = std::min(stims.size(), maxDetunedDiffTraceStims(lib));
 
     lib.setSingularRund();
     lib.simCycles = rd.simCycles;
@@ -281,16 +283,16 @@ std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimul
     lib.setSingularStim(false);
 
     size_t warpOffset = 0, tid = 0;
-    std::vector<std::vector<scalar*>> pDelta(stims.size(), std::vector<scalar*>(nParams, nullptr));
+    std::vector<std::vector<scalar*>> pDelta(nStims, std::vector<scalar*>(nParams, nullptr));
 
     int maxDuration = 0;
-    for ( const iStimulation &stim : stims ) {
-        maxDuration = std::max(maxDuration, stim.duration);
+    for ( size_t i = 0; i < nStims; i++ ) {
+        maxDuration = std::max(maxDuration, stims[i].duration);
     }
     lib.resizeOutput(maxDuration);
 
     // Set model-level data: tuned/detuned parameters, stim, obs, settleDuration.
-    for ( size_t stimIdx = 0; stimIdx < stims.size(); stimIdx++ ) {
+    for ( size_t stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
         iObservations obs {{}, {}};
         obs.stop[0] = stims[stimIdx].duration;
 
