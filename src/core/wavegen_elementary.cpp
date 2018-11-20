@@ -109,10 +109,10 @@ QVector<double> getDeltabar(Session &session, UniversalLibrary &ulib)
 
 /// Radix sort by MAPElite::bin, starting from dimension @a firstDimIdx upwards.
 /// Returns: An iterator to the final element of the sorted list.
-std::forward_list<MAPElite>::iterator radixSort(std::forward_list<MAPElite> &list, const std::vector<MAPEDimension> &dims, size_t firstDimIdx = 0)
+std::forward_list<MAPElite>::iterator radixSort(std::forward_list<MAPElite> &list, const std::vector<MAPEDimension> &dims, int firstDimIdx = 0)
 {
     auto tail = list.before_begin();
-    for ( size_t dimIdx = firstDimIdx; dimIdx < dims.size(); dimIdx++ ) {
+    for ( int dimIdx = dims.size()-1; dimIdx >= firstDimIdx; dimIdx-- ) {
         size_t nBuckets = dims[dimIdx].resolution;
         std::vector<std::forward_list<MAPElite>> buckets(nBuckets);
         std::vector<std::forward_list<MAPElite>::iterator> tails(nBuckets);
