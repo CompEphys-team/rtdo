@@ -305,9 +305,17 @@ struct MAPElite
     std::vector<size_t> bin;
     std::shared_ptr<iStimulation> wave;
     scalar fitness;
+    iObservations obs;
 
-    MAPElite() : fitness(0) {}
-    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness) : bin(bin), wave(wave), fitness(fitness) {}
+    MAPElite() : fitness(0), obs {{},{}} {}
+    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness)
+        : bin(bin), wave(wave), fitness(fitness), obs {{},{}}
+    {
+        obs.start[0] = wave->tObsBegin;
+        obs.stop[0] = wave->tObsEnd;
+    }
+    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness, iObservations obs)
+        : bin(bin), wave(wave), fitness(fitness), obs(obs) {}
 
     /**
      * @brief compare performs a lexical comparison on bin.
