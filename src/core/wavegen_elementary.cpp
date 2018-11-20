@@ -58,11 +58,7 @@ void settleModels(const Session &session, UniversalLibrary &ulib)
     const RunData &rd = session.runData();
 
     ulib.setSingularRund();
-    ulib.clampGain[0] = rd.clampGain;
-    ulib.accessResistance[0] = rd.accessResistance;
-    ulib.iSettleDuration[0] = rd.settleDuration / rd.dt;
-    ulib.Imax[0] = rd.Imax;
-    ulib.dt[0] = rd.dt;
+    ulib.setRundata(0, rd);
     ulib.integrator = rd.integrator;
     ulib.simCycles = rd.simCycles;
 
