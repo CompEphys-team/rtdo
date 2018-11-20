@@ -154,6 +154,63 @@ std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElit
     return ret;
 }
 
+void reduceObsCount(iObservations &obs, int largestBridgableGap)
+{
+    int shortestObs = -1, shortestObsIdx = 0;
+    int shortestGap = -1, shortestGapIdx = 0;
+    int shuffleIdx;
+    for ( size_t obsIdx = 0; obsIdx < iObservations::maxObs; obsIdx++ ) {
+        int dur = obs.stop[obsIdx] - obs.start[obsIdx];
+        if ( dur < shortestObs ) {
+            shortestObs = dur;
+            shortestObsIdx = obsIdx;
+        }
+        if ( obsIdx > 0 ) {
+            int gap = obs.start[obsIdx] - obs.start[obsIdx-1];
+            if ( gap < shortestGap ) {
+                shortestGap = gap;
+                shortestGapIdx = obsIdx;
+            }
+        }
+    }
+    if ( shortestGap <= largestBridgableGap ) {
+        // Merge across gap - this may cause overlapping obs for different clusters
+        obs.stop[shortestGapIdx-1] = obs.stop[shortestGapIdx];
+        shuffleIdx = shortestGapIdx;
+    } else {
+        // Eliminate shortest
+        shuffleIdx = shortestObsIdx;
+    }
+    for ( size_t obsIdx = shuffleIdx; obsIdx < iObservations::maxObs-1; obsIdx++ ) {
+        obs.start[obsIdx] = obs.start[obsIdx+1];
+        obs.stop[obsIdx] = obs.stop[obsIdx+1];
+    }
+}
+
+std::vector<iObservations> getClusterObservations(const UniversalLibrary &ulib, int stimIdx, int duration, int nClusters, int largestBridgableGap)
+{
+    std::vector<iObservations> obs(nClusters, {{}, {}});
+    std::vector<int> onsets(nClusters, 0);
+    int clusterIdx = 0;
+    for ( int onsetIdx = 0; onsetIdx < ulib.maxClusterOnsets; onsetIdx++ ) {
+        unsigned int onset = ulib.clusterOnsets[stimIdx*ulib.maxClusterOnsets + onsetIdx];
+        if ( onsetIdx > 0 && onset == 0 )
+            break;
+        int onsetTime = onset & ulib.clusterOnset_tmask;
+        obs[clusterIdx].stop[onsets[clusterIdx]++] = onsetTime; // close previous
+        clusterIdx = onset >> ulib.clusterOnset_bitshift;
+
+        // Prune/merge short observations
+        if ( onsets[clusterIdx] == iObservations::maxObs ) {
+            reduceObsCount(obs[clusterIdx], largestBridgableGap);
+            --onsets[clusterIdx];
+        }
+        obs[clusterIdx].start[onsets[clusterIdx]] = onsetTime; // open next
+    }
+    obs[clusterIdx].stop[onsets[clusterIdx]] = duration; // close final
+    return obs;
+}
+
 void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ulib,
                     Session &session, Wavegen::Archive &current, const int nStims,
                     const std::vector<MAPEDimension> &dims)
@@ -183,10 +240,16 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
         stim->tObsBegin = 0;
 
         // Find number of valid clusters
-        size_t nClusters = 0;
-        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ )
+        size_t nClusters = 0, nVisited = 0;
+        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters && ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx] > 0; clusterIdx++ ) {
+            ++nVisited;
             if ( ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx] >= minLength )
                 ++nClusters;
+        }
+        if ( nClusters == 0 )
+            continue;
+
+        std::vector<iObservations> obs = getClusterObservations(ulib, stimIdx, stim->duration, nVisited, minLength);
 
         // Populate all bins (with some garbage for clusterIdx, paramIdx, clusterDuration)
         for ( int binIdx = 0; binIdx < nBins; binIdx++ )
@@ -212,7 +275,7 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
                     scalar contrib = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
                     if ( contrib > 0 ) {
                         bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 1, dt);
-                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib});
+                        candidates_by_param[paramIdx].emplace_front(bins, stim, contrib, obs[clusterIdx]);
                         ++nCandidates;
                     }
                 }
