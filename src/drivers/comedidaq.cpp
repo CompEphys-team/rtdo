@@ -53,10 +53,24 @@ void ComediDAQ::run(Stimulation s, double settleDuration)
 
     currentStim = s;
     samplesRemaining = nSamples();
+    dispatch(samplesRemaining + 1);
+}
+
+void ComediDAQ::scope(int qSize)
+{
+    if ( running )
+        return;
+    currentStim.baseV = 0;
+    samplesRemaining = 0;
+    endless = true;
+    dispatch(qSize);
+}
+
+void ComediDAQ::dispatch(int qSize)
+{
     qI.flush();
     qV.flush();
     qV2.flush();
-    int qSize = nSamples() + 1;
     qI.resize(qSize);
     qV.resize(qSize);
     qV2.resize(qSize);
@@ -85,7 +99,16 @@ void ComediDAQ::next()
             qV2.pop(v);
             voltage_2 = conV2.toPhys(v);
         }
-        --samplesRemaining;
+
+        if ( endless ) {
+            if ( p.currentChn.active )
+                samplesRemaining = qI.n_available_items();
+            else if ( p.voltageChn.active )
+                samplesRemaining = qV.n_available_items();
+            else if ( p.V2Chan.active )
+                samplesRemaining = qV2.n_available_items();
+        } else
+            --samplesRemaining;
     }
 }
 
@@ -94,6 +117,7 @@ void ComediDAQ::reset()
     if ( !running )
         return;
     running = false;
+    endless = false;
     finish.wait();
     qI.flush();
     qV.flush();
@@ -241,8 +265,13 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
             aicmd.chanlist = aiChans;
             aicmd.start_src = TRIG_INT;
             aicmd.start_arg = 0;
-            aicmd.stop_src = TRIG_COUNT;
-            aicmd.stop_arg = nSamples();
+            if ( endless ) {
+                aicmd.stop_src = TRIG_NONE;
+                aicmd.stop_arg = 0;
+            } else {
+                aicmd.stop_src = TRIG_COUNT;
+                aicmd.stop_arg = nSamples();
+            }
             aicmd.flags |= TRIG_DITHER;
 
             ret = comedi_command_test(dev, &aicmd);
@@ -259,7 +288,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
         }
 
         // AO setup
-        if ( O.active ) {
+        if ( O.active && !endless ) {
             comedi_set_write_subdevice(dev, aodev);
             ret = comedi_get_write_subdevice(dev);
             if ( ret != aodev )
@@ -303,7 +332,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
         }
 
         // Exit empty loop
-        if ( !aiDataRemaining && aoData.empty() ) {
+        if ( !aiDataRemaining && aoData.empty() && !endless ) {
             set.signal();
             go.wait();
             running = false;
@@ -312,7 +341,7 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
         }
 
         // Send commands to device
-        if ( aiDataRemaining ) {
+        if ( aiDataRemaining || endless ) {
             ret = comedi_command(dev, &aicmd);
             if ( ret < 0 )
                 throw std::runtime_error(std::string("Failed AI command: ") + comedi_strerror(comedi_errno()));
@@ -338,10 +367,10 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
             break;
 
         // Trigger start
-        doTrigger(dev, aiDataRemaining ? aidev : -1, O.active ? aodev : -1);
+        doTrigger(dev, (aiDataRemaining||endless) ? aidev : -1, (O.active&&!endless) ? aodev : -1);
 
         // Acquisition loop
-        while ( running && aiDataRemaining > 0 ) {
+        while ( running && (aiDataRemaining > 0 || endless) ) {
             ret = read(comedi_fileno(dev), aiBuffer + readOffset, AIBUFSZ - readOffset);
             if ( ret < 0 ) {
                 throw std::runtime_error(std::string("Failed read: ") + strerror(errno));
