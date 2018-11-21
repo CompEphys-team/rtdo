@@ -28,6 +28,18 @@ ResponsePlotter::ResponsePlotter(QWidget *parent) :
     ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
     ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
 
+    connect(ui->plot, &QCustomPlot::axisDoubleClick, [=](QCPAxis *ax, QCPAxis::SelectablePart part){
+        bool found;
+        QCPRange keyRange = ui->plot->graph(1)->getKeyRange(found);
+        QCPRange axRange = ui->plot->xAxis->range();
+        if ( found && ax == ui->plot->xAxis ) {
+            if ( part == QCPAxis::spAxisLabel )
+                ax->setRange(keyRange);
+            else
+                ax->setRange(axRange + keyRange.upper - axRange.upper + (axRange.upper-axRange.lower)/20);
+        }
+    });
+
     connect(ui->Vcmd, &QCheckBox::toggled, [=](bool on){
         ui->plot->graph(0)->setVisible(on);
         ui->plot->replot();
@@ -42,10 +54,33 @@ ResponsePlotter::ResponsePlotter(QWidget *parent) :
     });
     connect(ui->Iresponse, &QCheckBox::toggled, [=](bool on){
         ui->plot->graph(3)->setVisible(on);
+        ui->plot->yAxis2->setVisible(on);
+        ui->plot->replot();
+    });
+
+    ui->col_Vcmd->setColor(Qt::blue);
+    ui->col_V1->setColor(Qt::red);
+    ui->col_V2->setColor(Qt::darkRed);
+    ui->col_I->setColor(Qt::darkGreen);
+    connect(ui->col_Vcmd, &ColorButton::colorChanged, [=](QColor col){
+        ui->plot->graph(0)->setPen(QPen(col));
+        ui->plot->replot();
+    });
+    connect(ui->col_V1, &ColorButton::colorChanged, [=](QColor col){
+        ui->plot->graph(1)->setPen(QPen(col));
+        ui->plot->replot();
+    });
+    connect(ui->col_V2, &ColorButton::colorChanged, [=](QColor col){
+        ui->plot->graph(2)->setPen(QPen(col));
+        ui->plot->replot();
+    });
+    connect(ui->col_I, &ColorButton::colorChanged, [=](QColor col){
+        ui->plot->graph(3)->setPen(QPen(col));
         ui->plot->replot();
     });
 
     clear();
+
 
     connect(&dataTimer, SIGNAL(timeout()), this, SLOT(replot()));
 }
@@ -65,7 +100,7 @@ void ResponsePlotter::setDAQ(DAQ *daq)
 void ResponsePlotter::start()
 {
     dt = daq->samplingDt();
-    dataTimer.start(20);
+    dataTimer.start(10);
 }
 
 void ResponsePlotter::stop()
@@ -78,19 +113,19 @@ void ResponsePlotter::clear()
     ui->plot->clearGraphs();
 
     QCPGraph *g = ui->plot->addGraph();
-    g->setPen(QPen(Qt::blue));
+    g->setPen(QPen(ui->col_Vcmd->color));
     g->setVisible(ui->Vcmd->isChecked());
 
     g = ui->plot->addGraph();
-    g->setPen(QPen(Qt::red));
+    g->setPen(QPen(ui->col_V1->color));
     g->setVisible(ui->Vresponse->isChecked());
 
     g = ui->plot->addGraph();
-    g->setPen(QPen(Qt::darkRed));
+    g->setPen(QPen(ui->col_V2->color));
     g->setVisible(ui->V2->isChecked());
 
     g = ui->plot->addGraph(0, ui->plot->yAxis2);
-    g->setPen(QPen(Qt::darkGreen));
+    g->setPen(QPen(ui->col_I->color));
     g->setVisible(ui->Iresponse->isChecked());
 
     ui->plot->xAxis->moveRange(-ui->plot->xAxis->range().lower);
