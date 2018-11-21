@@ -91,6 +91,15 @@ public:
         }
     }
 
+    int n_available_items() const
+    {
+        const auto current_write = _write.load(std::memory_order_relaxed);
+        const auto current_read = _read.load(std::memory_order_relaxed);
+        return (current_read > current_write)
+                ? (SIZE + current_write - current_read)
+                :        (current_write - current_read);
+    }
+
 private:
     inline size_t increment(size_t i) const
     {
@@ -160,6 +169,12 @@ template <typename T>
 void Queue<T>::resize(int newSize)
 {
     return mbx->resize(newSize);
+}
+
+template <typename T>
+int Queue<T>::n_available_items()
+{
+    return mbx->n_available_items();
 }
 
 }

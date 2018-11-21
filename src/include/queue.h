@@ -62,6 +62,11 @@ public:
      */
     void resize(int newsize);
 
+    /**
+     * Return the number of items available for popping
+     */
+    int n_available_items();
+
     inline int overrun() { return overruns; }
 
 private:
