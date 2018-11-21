@@ -30,15 +30,19 @@ ResponsePlotter::ResponsePlotter(QWidget *parent) :
 
     connect(ui->Vcmd, &QCheckBox::toggled, [=](bool on){
         ui->plot->graph(0)->setVisible(on);
+        ui->plot->replot();
     });
     connect(ui->Vresponse, &QCheckBox::toggled, [=](bool on){
         ui->plot->graph(1)->setVisible(on);
+        ui->plot->replot();
     });
     connect(ui->V2, &QCheckBox::toggled, [=](bool on){
         ui->plot->graph(2)->setVisible(on);
+        ui->plot->replot();
     });
     connect(ui->Iresponse, &QCheckBox::toggled, [=](bool on){
         ui->plot->graph(3)->setVisible(on);
+        ui->plot->replot();
     });
 
     clear();
@@ -94,6 +98,8 @@ void ResponsePlotter::clear()
     iT = 0;
     if ( daq )
         dt = daq->samplingDt();
+
+    ui->plot->replot();
 }
 
 void ResponsePlotter::replot()
