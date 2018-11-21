@@ -116,6 +116,16 @@ void MainWindow::on_actionGAFitter_triggered()
     gaFitterWidget->setWindowTitle(gaFitterWidget->windowTitle() + " : " + title);
 }
 
+void MainWindow::on_actionScope_triggered()
+{
+    if ( !scope )
+        scope.reset(new Scope(*session));
+    scope->show();
+    scope->raise();
+    scope->activateWindow();
+    scope->setWindowTitle(scope->windowTitle() + " : " + title);
+}
+
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     if ( session ) {
@@ -136,6 +146,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
         deckWidget->close();
     if ( gaFitterWidget )
         gaFitterWidget->close();
+    if ( scope )
+        scope->close();
     event->accept();
 }
 

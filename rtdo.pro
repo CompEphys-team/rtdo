@@ -82,7 +82,8 @@ SOURCES += \
     src/gui/deviationboxplot.cpp \
     src/gui/fiterrorplotter.cpp \
     src/core/universallibrary.cpp \
-    src/core/wavegen_elementary.cpp
+    src/core/wavegen_elementary.cpp \
+    src/gui/scope.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -147,7 +148,8 @@ HEADERS  += \
     src/include/fitinspector.h \
     src/include/deviationboxplot.h \
     src/include/fiterrorplotter.h \
-    src/include/universallibrary.h
+    src/include/universallibrary.h \
+    src/include/scope.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -173,7 +175,8 @@ FORMS    += \
     src/gui/cannedchannelassociationdialog.ui \
     src/gui/fitinspector.ui \
     src/gui/deviationboxplot.ui \
-    src/gui/fiterrorplotter.ui
+    src/gui/fiterrorplotter.ui \
+    src/gui/scope.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl
 

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>537</width>
+    <width>590</width>
     <height>600</height>
    </rect>
   </property>
@@ -78,7 +78,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>537</width>
+     <width>590</width>
      <height>19</height>
     </rect>
    </property>
@@ -153,6 +153,7 @@
    <addaction name="actionDecks"/>
    <addaction name="actionGAFitter"/>
    <addaction name="actionStimulation_editor"/>
+   <addaction name="actionScope"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionWavegen">
@@ -299,6 +300,11 @@
   <action name="actionCrossload_from_other_session">
    <property name="text">
     <string>Crossload from other session...</string>
+   </property>
+  </action>
+  <action name="actionScope">
+   <property name="text">
+    <string>Scope</string>
    </property>
   </action>
  </widget>

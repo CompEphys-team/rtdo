@@ -11,6 +11,7 @@
 #include "project.h"
 #include "session.h"
 #include "projectsettingsdialog.h"
+#include "scope.h"
 
 namespace Ui {
 class MainWindow;
@@ -72,6 +73,8 @@ private slots:
 
     void on_remove_clicked();
 
+    void on_actionScope_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;
@@ -80,6 +83,7 @@ private:
     std::unique_ptr<GAFitterWidget> gaFitterWidget;
     std::unique_ptr<SamplingProfileDialog> sprofileDlg;
     std::unique_ptr<ProjectSettingsDialog> projectSettingsDlg;
+    std::unique_ptr<Scope> scope;
 
     Project *project;
     Session *session;
