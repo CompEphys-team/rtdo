@@ -5,6 +5,7 @@
 #include <QTimer>
 #include "queue.h"
 #include "types.h"
+#include "daq.h"
 
 namespace Ui {
 class ResponsePlotter;
@@ -18,9 +19,15 @@ public:
     explicit ResponsePlotter(QWidget *parent = 0);
     ~ResponsePlotter();
 
-    RTMaybe::Queue<DataPoint> qI, qV, qO;
+    RTMaybe::Queue<DataPoint> qI, qV, qV2, qO;
+
+    //! Pass a DAQ to read I and V from directly, rather than using the DataPoint queues. The output trace is left blank.
+    //! Time is deduced from DAQ::samplingDt(), with t=0 for the first sample after a call to clear().
+    void setDAQ(DAQ *daq);
 
 public slots:
+    void start();
+    void stop();
     void clear();
 
 protected slots:
@@ -29,6 +36,9 @@ protected slots:
 private:
     Ui::ResponsePlotter *ui;
     QTimer dataTimer;
+    DAQ *daq = nullptr;
+    double dt;
+    size_t iT = 0;
 };
 
 #endif // RESPONSEPLOTTER_H

@@ -18,6 +18,8 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     connect(&session.gaFitter(), SIGNAL(progress(quint32)), this, SLOT(progress(quint32)));
 
     connect(&session.gaFitter(), SIGNAL(starting()), ui->response_plotter, SLOT(clear()));
+    connect(&session.gaFitter(), SIGNAL(starting()), ui->response_plotter, SLOT(start()));
+    connect(&session.gaFitter(), SIGNAL(done()), ui->response_plotter, SLOT(stop()));
     session.gaFitter().qV = &ui->response_plotter->qV;
     session.gaFitter().qI = &ui->response_plotter->qI;
     session.gaFitter().qO = &ui->response_plotter->qO;
