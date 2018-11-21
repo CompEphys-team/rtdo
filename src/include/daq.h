@@ -23,6 +23,9 @@ public:
     /// Advance to next set of inputs, populating DAQ::current and DAQ::voltage
     virtual void next() = 0;
 
+    /// Returns the time between samples in ms
+    double samplingDt() const;
+
     double current;
     double voltage;
     double voltage_2;
@@ -46,7 +49,6 @@ protected:
     bool running;
     Stimulation currentStim;
 
-    double samplingDt() const;
     void extendStimulation(Stimulation &stim, scalar settleDuration);
 };
 
