@@ -17,7 +17,7 @@ ComediDAQ::ComediDAQ(Session &session, const Settings &settings) :
     t(&ComediDAQ::launchStatic, this),
     conI(p.currentChn, &p, true),
     conV(p.voltageChn, &p, true),
-    conV2(p.voltageChn, &p, true),
+    conV2(p.V2Chan, &p, true),
     conVC(p.vclampChan, &p, false),
     conCC(p.cclampChan, &p, false)
 {
