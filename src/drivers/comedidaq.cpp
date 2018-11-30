@@ -221,8 +221,10 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
     if ( ret < 0 || aoBufSz < 0 )
         throw std::runtime_error(std::string("Failed set AO buffer size: ") + comedi_strerror(comedi_errno()));
 
+    bool retry = false;
     while ( live ) {
-        ready.wait();
+        if ( !retry )
+            ready.wait();
         if ( !live )
             break;
 
@@ -361,19 +363,29 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
         }
 //        std::cout << std::endl;
 
-        set.signal();
-        go.wait();
-        if ( !live )
-            break;
+        if ( !retry ) {
+            set.signal();
+            go.wait();
+            if ( !live )
+                break;
+        }
 
         // Trigger start
         doTrigger(dev, (aiDataRemaining||endless) ? aidev : -1, (O.active&&!endless) ? aodev : -1);
 
         // Acquisition loop
+        retry = false;
         while ( running && (aiDataRemaining > 0 || endless) ) {
             ret = read(comedi_fileno(dev), aiBuffer + readOffset, AIBUFSZ - readOffset);
             if ( ret < 0 ) {
-                throw std::runtime_error(std::string("Failed read: ") + strerror(errno));
+                std::string err = std::string("Failed read: ") + strerror(errno);
+                if ( endless ) {
+                    std::cout << err << std::endl;
+                    std::cout << "Reinitialising..." << std::endl;
+                    retry = true;
+                    break;
+                }
+                throw std::runtime_error(err);
             } else if ( ret > 0 ) {
                 readOffset += ret;
                 int i;
@@ -392,6 +404,9 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
             usleep(20);
         comedi_cancel(dev, aodev);
         comedi_cancel(dev, aidev);
+
+        if ( retry )
+            continue;
 
         finish.signal();
     }
