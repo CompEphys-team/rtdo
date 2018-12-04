@@ -330,15 +330,16 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "#include \"definitions.h\"" << endl;
     ss << "#include \"universallibrary.h\"" << endl;
     ss << "#include \"../core/supportcode.cpp\"" << endl;
+    ss << endl;
+    ss << model.supportCode() << endl;
+    ss << project.simulatorCode() << endl;
+    ss << endl;
     ss << "#define NMODELS " << NMODELS << endl;
     ss << "#define NPARAMS " << adjustableParams.size() << endl;
     ss << "#define MAXCLUSTERS " << maxClusters << endl;
     ss << "#include \"universallibrary.cu\"" << endl;
     ss << endl;
 
-    ss << model.supportCode() << endl;
-
-    ss << project.simulatorCode() << endl;
 
     ss << "extern \"C\" UniversalLibrary::Pointers populate(UniversalLibrary &lib) {" << endl;
     ss << "    UniversalLibrary::Pointers pointers;" << endl;

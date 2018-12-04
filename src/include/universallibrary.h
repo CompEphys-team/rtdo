@@ -94,7 +94,7 @@ public:
 
         void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
 
-        void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, std::vector<double> deltabar, bool copy);
+        void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen, std::vector<double> deltabar, bool copy);
         void (*copyClusters)(int nStims);
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
@@ -179,11 +179,12 @@ public:
     inline void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
                         int nTraj, /* Number of EE trajectories */
                         int duration, /* nSamples of each trace, cf. resizeOutput() */
-                        int secLen, /* sampling resolution */
+                        int secLen, /* sampling resolution (in ticks) */
                         scalar dotp_threshold, /* Minimum scalar product for two sections to be considered to belong to the same cluster */
+                        int minClusterLen, /* Minimum duration for a cluster to be considered valid (in ticks) */
                         std::vector<double> deltabar, /* RMS current deviation, cf. find_deltabar() */
                         bool copy_results) /* True to copy results immediately; false to defer to copyClusters(), allowing time for CPU processing */ {
-        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, deltabar, copy_results);
+        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, copy_results);
     }
     /// Copy cluster() results to clusters and clusterLen. Note, nStims = NMODELS/(trajLen*nTraj).
     inline void copyClusters(int nStims) { pointers.copyClusters(nStims); }

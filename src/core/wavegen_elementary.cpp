@@ -257,6 +257,7 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     const int blankCycles = session.gaFitterSettings().cluster_blank_after_step / session.runData().dt;
     const int sectionLength = session.gaFitterSettings().cluster_fragment_dur / session.runData().dt;
     const scalar dotp_threshold = session.gaFitterSettings().cluster_threshold;
+    const int minClusterLen = session.gaFitterSettings().cluster_min_dur / session.runData().dt;
 
     std::vector<MAPEDimension> dims = session.wavegenData().mapeDimensions;
     std::vector<size_t> variablePrecisionDims;
@@ -285,7 +286,7 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     pushStimsAndObserve(*returnedWaves, ulib, nModelsPerStim, blankCycles);
     ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
     ulib.run();
-    ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, deltabar, false);
+    ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, minClusterLen, deltabar, false);
 
     for ( size_t epoch = 0; epoch < searchd.maxIterations; epoch++ ) {
         // Copy completed clusters for returnedWaves to host (sync)
@@ -297,7 +298,7 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
         if ( !done ) {
             pushStimsAndObserve(*newWaves, ulib, nModelsPerStim, blankCycles);
             ulib.run();
-            ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, deltabar, false);
+            ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, minClusterLen, deltabar, false);
         }
 
         // score and insert returnedWaves into archive
