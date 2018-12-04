@@ -208,11 +208,13 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
                     bins[bin_for_clusterIdx] = dims[bin_for_clusterIdx].bin(*stim, 0, clusterIdx, 0, 1, dt);
 
                 // One entry for each parameter
+                std::vector<scalar> contrib(nParams);
+                for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+                    contrib[paramIdx] = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
                 for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
-                    scalar contrib = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
-                    if ( contrib > 0 ) {
+                    if ( contrib[paramIdx] > 0 ) {
                         bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 1, dt);
-                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib});
+                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib[paramIdx], contrib});
                         ++nCandidates;
                     }
                 }
@@ -367,6 +369,7 @@ void Wavegen::ee_save(QFile &file)
 
     os << quint32(arch.elites.size());
     os << quint32(arch.elites.front().bin.size());
+    os << quint32(arch.elites.front().deviations.size());
 
     // Separate waves into unique and shared to reduce the number of lookups
     std::vector<iStimulation*> w_unique, w_shared;
@@ -374,6 +377,8 @@ void Wavegen::ee_save(QFile &file)
         os << e.fitness;
         for ( size_t b : e.bin )
             os << quint32(b);
+        for ( scalar d : e.deviations )
+            os << d;
 
         if ( e.wave.unique() ) {
             w_unique.push_back(e.wave.get());
@@ -406,14 +411,14 @@ void Wavegen::ee_load(QFile &file, const QString &, Result r)
     m_archives.emplace_back(-1, searchd, r);
     Archive &arch = m_archives.back();
 
-    quint32 precision, iterations, archSize, nBins;
+    quint32 precision, iterations, archSize, nBins, nParams;
     is >> precision >> iterations;
     arch.precision = precision;
     arch.iterations = iterations;
     is >> arch.nCandidates >> arch.nInsertions >> arch.nReplacements >> arch.nElites;
     is >> arch.deltabar;
 
-    is >> archSize >> nBins;
+    is >> archSize >> nBins >> nParams;
     arch.elites.resize(archSize);
     std::vector<qint32> stimIdx(archSize);
     auto idxIt = stimIdx.begin();
@@ -425,6 +430,9 @@ void Wavegen::ee_load(QFile &file, const QString &, Result r)
             is >> tmp;
             b = size_t(tmp);
         }
+        el->deviations.resize(nParams);
+        for ( scalar &d : el->deviations )
+            is >> d;
         is >> *idxIt;
     }
 

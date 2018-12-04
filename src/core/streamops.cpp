@@ -20,19 +20,26 @@ QDataStream &operator<<(QDataStream &os, const MAPElite &e)
     os << quint32(e.bin.size());
     for ( const size_t &b : e.bin )
         os << quint32(b);
+    os << quint32(e.deviations.size());
+    for ( const scalar &d : e.deviations )
+        os << d;
     return os;
 }
 
 QDataStream &operator>>(QDataStream &is, MAPElite &e)
 {
     is >> *e.wave >> e.fitness;
-    quint32 bins, val;
-    is >> bins;
-    e.bin.resize(bins);
+    quint32 size, val;
+    is >> size;
+    e.bin.resize(size);
     for ( size_t &b : e.bin ) {
         is >> val;
         b = size_t(val);
     }
+    is >> size;
+    e.deviations.resize(size);
+    for ( scalar &d : e.deviations )
+        is >> d;
     return is;
 }
 

@@ -288,8 +288,21 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
     arch.elites.resize(archSize);
 
     if ( version >= 110 ) {
-        for ( MAPElite &e : arch.elites )
-            is >> e;
+        if ( version >= 112 ) {
+            for ( MAPElite &e : arch.elites )
+                is >> e;
+        } else {
+            for ( MAPElite &e : arch.elites ) {
+                is >> *e.wave >> e.fitness;
+                quint32 size, val;
+                is >> size;
+                e.bin.resize(size);
+                for ( size_t &b : e.bin ) {
+                    is >> val;
+                    b = size_t(val);
+                }
+            }
+        }
         if ( version == 110 ) {
             // iStimulation probably generated at WavegenData::dt=0.01; convert to RunData::dt stepping
             // There may be some loss of precision, but that's unavoidable. >.<

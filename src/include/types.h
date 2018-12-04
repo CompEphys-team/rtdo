@@ -305,9 +305,12 @@ struct MAPElite
     std::vector<size_t> bin;
     std::shared_ptr<iStimulation> wave;
     scalar fitness;
+    std::vector<scalar> deviations;
 
     MAPElite() : fitness(0) {}
     MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness) : bin(bin), wave(wave), fitness(fitness) {}
+    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness, std::vector<scalar> deviations)
+        : bin(bin), wave(wave), fitness(fitness), deviations(deviations) {}
 
     /**
      * @brief compare performs a lexical comparison on bin.
@@ -316,7 +319,7 @@ struct MAPElite
     inline bool operator<(const MAPElite &rhs) const { return bin < rhs.bin; }
 
     /**
-     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness and wave if @p rhs is better.
+     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness, wave, and deviations if @p rhs is better.
      * @return true, if @p rhs beat and replaced the callee.
      */
     bool compete(const MAPElite &rhs);
