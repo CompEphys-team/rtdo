@@ -332,13 +332,13 @@ __device__ inline unsigned int find_single_section_representative(const unsigned
 {
     // Pack laneid and nFollowers into a single int (they're both <= 32)
     unsigned int max_count_and_lane = (nFollowers<<5) | laneid;
-    unsigned int target;
-    scalar target_dotp;
     for ( unsigned int delta = 1; delta < warpSize; delta <<= 1 ) {
-        target = __shfl_xor_sync(0xffffffff, max_count_and_lane, delta);
-        target_dotp = __shfl_xor_sync(0xffffffff, mean_dotp, delta);
-        if ( ((target>>5) > (max_count_and_lane>>5))
-             || ((target>>5) == (max_count_and_lane>>5) && target_dotp > mean_dotp) ) {
+        const unsigned int target = __shfl_xor_sync(0xffffffff, max_count_and_lane, delta);
+        const unsigned int target_nFollowers = target>>5;
+        const scalar target_dotp = __shfl_xor_sync(0xffffffff, mean_dotp, delta);
+        if ( (target_nFollowers > nFollowers)
+             || (target_nFollowers == nFollowers && target_dotp > mean_dotp)
+             || (target_nFollowers == nFollowers && target_dotp == mean_dotp && delta < laneid) ) {
             max_count_and_lane = target;
             mean_dotp = target_dotp;
         }
