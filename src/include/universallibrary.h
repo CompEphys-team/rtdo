@@ -100,6 +100,7 @@ public:
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
         int **clusterLen;
+        scalar **clusterCurrent;
 
         void (*observe_no_steps)(int blankCycles);
     };
@@ -175,7 +176,7 @@ public:
     }
 
     /// post-run() workhorse for elementary effects wavegen
-    /// Expects assignment TIMESERIES_COMPARE_PREVTHREAD with models sequentially detuned along and across their ee trajectories, as well as
+    /// Expects assignment TIMESERIES_COMPARE_NONE with models sequentially detuned along and across their ee trajectories, as well as
     /// an appropriate individual obs in each stim's first trajectory starting point model
     inline void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
                         int nTraj, /* Number of EE trajectories */
@@ -229,6 +230,7 @@ public:
 
     scalar *&clusters;
     int *&clusterLen;
+    scalar *&clusterCurrent;
 
     unsigned int assignment_base = 0;
 };

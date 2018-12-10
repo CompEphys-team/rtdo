@@ -286,7 +286,7 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
 
     // Queue the first set of stims
     pushStimsAndObserve(*returnedWaves, ulib, nModelsPerStim, blankCycles);
-    ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
+    ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
     ulib.run();
     ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, minClusterLen, deltabar, false);
 
