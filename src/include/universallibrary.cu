@@ -799,7 +799,7 @@ __global__ void find_cluster_representatives(const int nSecs,
                            out_clusters, out_clusterLen);
 }
 
-extern "C" void copyClusters(int nStims)
+extern "C" void pullClusters(int nStims)
 {
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nStims * MAXCLUSTERS * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, nStims * MAXCLUSTERS * sizeof(int), cudaMemcpyDeviceToHost));
@@ -812,7 +812,7 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
                         scalar dotp_threshold,
                         int minClusterLen,
                         std::vector<double> deltabar_arg,
-                        bool copy_results)
+                        bool pull_results)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
     unsigned int nClusters = nStims * MAXCLUSTERS;
@@ -841,8 +841,8 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
     find_cluster_representatives<<<nStims, 512, shmem_size>>>(nSecs, nPartitions, nMetaPartitions, dotp_threshold, secLen, minClusterLen,
                                                               d_sections, d_clusters, d_clusterLen);
 
-    if ( copy_results )
-        copyClusters(nStims);
+    if ( pull_results )
+        pullClusters(nStims);
 }
 
 

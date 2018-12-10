@@ -292,7 +292,7 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
 
     for ( size_t epoch = 0; epoch < searchd.maxIterations; epoch++ ) {
         // Copy completed clusters for returnedWaves to host (sync)
-        ulib.copyClusters(nStimsPerEpoch);
+        ulib.pullClusters(nStimsPerEpoch);
 
         bool done = (++current.iterations == searchd.maxIterations) || isAborted();
 

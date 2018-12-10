@@ -94,8 +94,9 @@ public:
 
         void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
 
-        void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen, std::vector<double> deltabar, bool copy);
-        void (*copyClusters)(int nStims);
+        void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
+                        std::vector<double> deltabar, bool pull);
+        void (*pullClusters)(int nStims);
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
         int **clusterLen;
@@ -183,11 +184,11 @@ public:
                         scalar dotp_threshold, /* Minimum scalar product for two sections to be considered to belong to the same cluster */
                         int minClusterLen, /* Minimum duration for a cluster to be considered valid (in ticks) */
                         std::vector<double> deltabar, /* RMS current deviation, cf. find_deltabar() */
-                        bool copy_results) /* True to copy results immediately; false to defer to copyClusters(), allowing time for CPU processing */ {
-        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, copy_results);
+                        bool pull_results) /* True to copy results immediately; false to defer to pullClusters(), allowing time for CPU processing */ {
+        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, pull_results);
     }
     /// Copy cluster() results to clusters and clusterLen. Note, nStims = NMODELS/(trajLen*nTraj).
-    inline void copyClusters(int nStims) { pointers.copyClusters(nStims); }
+    inline void pullClusters(int nStims) { pointers.pullClusters(nStims); }
 
     /// post-run() calculation of RMS current deviation from each detuned parameter. Reports the RMSD per tick, per single detuning,
     /// as required by cluster().
