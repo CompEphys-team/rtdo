@@ -372,6 +372,18 @@ std::string MetaModel::structDeclarations() const
     ss << ";"
        << "\n    }";
 
+    ss << "\n    __host__ __device__ inline Parameters &operator+=(const Parameters &p) {";
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "\n            " << p.name << " += p." << p.name << ";";
+    ss << "\n        return *this;"
+       << "\n    }";
+
+    ss << "\n    __host__ __device__ inline Parameters &operator/=(const scalar &v) {";
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "\n            " << p.name << " /= v;";
+    ss << "\n        return *this;"
+       << "\n    }";
+
     ss << "\n    __host__ __device__ inline void zero() {";
     for ( size_t i = 0; i < adjustableParams.size(); i++ )
         ss << "\n        " << adjustableParams[i].name << " = 0;";

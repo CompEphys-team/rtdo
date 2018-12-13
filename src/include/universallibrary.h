@@ -94,12 +94,13 @@ public:
 
         void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
 
-        void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
+        int (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
                         std::vector<double> deltabar, bool pull);
-        void (*pullClusters)(int nStims);
+        void (*pullClusters)(int nStims, int nPartitions);
         int (*pullPrimitives)(int nStims, int duration, int secLen);
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
+        unsigned int **clusterMasks;
         int **clusterLen;
         scalar **clusterCurrent;
         scalar **clusterPrimitives;
@@ -180,7 +181,8 @@ public:
     /// post-run() workhorse for elementary effects wavegen
     /// Expects assignment TIMESERIES_COMPARE_NONE with models sequentially detuned along and across their ee trajectories, as well as
     /// an appropriate individual obs in each stim's first trajectory starting point model
-    inline void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
+    /// @return nPartitions, as required for pullClusters() and further processing of clusterMasks: The number of partitions of 32 secs each
+    inline int cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
                         int nTraj, /* Number of EE trajectories */
                         int duration, /* nSamples of each trace, cf. resizeOutput() */
                         int secLen, /* sampling resolution (in ticks) */
@@ -188,10 +190,11 @@ public:
                         int minClusterLen, /* Minimum duration for a cluster to be considered valid (in ticks) */
                         std::vector<double> deltabar, /* RMS current deviation, cf. find_deltabar() */
                         bool pull_results) /* True to copy results immediately; false to defer to pullClusters(), allowing time for CPU processing */ {
-        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, pull_results);
+        return pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, pull_results);
     }
-    /// Copy cluster() results to clusters and clusterLen. Note, nStims = NMODELS/(trajLen*nTraj).
-    inline void pullClusters(int nStims) { pointers.pullClusters(nStims); }
+    /// Copy cluster() results to clusters, clusterMasks and clusterCurrent.
+    /// Note, nStims = NMODELS/(trajLen*nTraj); nPartitions = ((duration+secLen-1)/secLen+31)/32.
+    inline void pullClusters(int nStims, int nPartitions) { pointers.pullClusters(nStims, nPartitions); }
     /// Copy cluster() intermediates (section primitives) to clusterPrimitives, and return the section stride
     inline int pullPrimitives(int nStims, int duration, int secLen) { return pointers.pullPrimitives(nStims, duration, secLen); }
 
@@ -221,6 +224,7 @@ private:
     IntegrationMethod dummyIntegrator;
     scalar *dummyScalarPtr = nullptr;
     int *dummyIntPtr = nullptr;
+    unsigned int *dummyUIntPtr = nullptr;
 
 public:
     // Globals
@@ -233,6 +237,7 @@ public:
     scalar *&output;
 
     scalar *&clusters;
+    unsigned int *&clusterMasks; //!< Layout: [stimIdx][clusterIdx][partitionIdx]
     int *&clusterLen;
     scalar *&clusterCurrent;
     scalar *&clusterPrimitives; //!< Layout: [stimIdx][paramIdx][secIdx]. Get the section stride (padded nSecs) from the call to pullPrimitives().

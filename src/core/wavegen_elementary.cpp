@@ -288,11 +288,12 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     pushStimsAndObserve(*returnedWaves, ulib, nModelsPerStim, blankCycles);
     ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
     ulib.run();
-    ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, minClusterLen, deltabar, false);
+    int nPartitions = ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
+                                   sectionLength, dotp_threshold, minClusterLen, deltabar, false);
 
     for ( size_t epoch = 0; epoch < searchd.maxIterations; epoch++ ) {
         // Copy completed clusters for returnedWaves to host (sync)
-        ulib.pullClusters(nStimsPerEpoch);
+        ulib.pullClusters(nStimsPerEpoch, nPartitions);
 
         bool done = (++current.iterations == searchd.maxIterations) || isAborted();
 
@@ -300,7 +301,8 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
         if ( !done ) {
             pushStimsAndObserve(*newWaves, ulib, nModelsPerStim, blankCycles);
             ulib.run();
-            ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, minClusterLen, deltabar, false);
+            nPartitions = ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
+                                       sectionLength, dotp_threshold, minClusterLen, deltabar, false);
         }
 
         // score and insert returnedWaves into archive
