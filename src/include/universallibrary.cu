@@ -253,15 +253,15 @@ __global__ void build_section_primitives(const int trajLen,
     const int paramIdx_after_end_of_final_traj = nUsefulTraces % NPARAMS; // First param idx with one contrib fewer than the preceding ones
     const int lane0_offset = stimIdx * nTraces;
     const int nLoads = (nTraces + 31) & 0xffffffe0;
-    const iObservations obs = dd_obsUNI[stimIdx];
+    const iObservations obs = dd_obsUNI[stimIdx*nTraces];
     int nextObs = 0;
 
     volatile __shared__ scalar sh_contrib[STIMS_PER_CLUSTER_BLOCK][NPARAMS][PARTITION_SIZE + 1];
     volatile __shared__ scalar sh_current[STIMS_PER_CLUSTER_BLOCK][PARTITION_SIZE + 1];
 
-    for ( int i = laneid; i < STIMS_PER_CLUSTER_BLOCK*NPARAMS*(PARTITION_SIZE+1); i += warpSize )
+    for ( int i = threadIdx.x; i < STIMS_PER_CLUSTER_BLOCK*NPARAMS*(PARTITION_SIZE+1); i += blockDim.x )
         *((scalar*)sh_contrib + i) = 0;
-    for ( int i = laneid; i < STIMS_PER_CLUSTER_BLOCK*(PARTITION_SIZE+1); i += warpSize)
+    for ( int i = threadIdx.x; i < STIMS_PER_CLUSTER_BLOCK*(PARTITION_SIZE+1); i += blockDim.x )
         *((scalar*)sh_current + i) = 0;
     __syncthreads();
 
@@ -273,6 +273,7 @@ __global__ void build_section_primitives(const int trajLen,
     int t = 0;
     while ( t < duration ) {
         int trueSecLen = 0;
+        __syncwarp();
         for ( int tEnd = t + secLen; t < tEnd; t++ ) { // Note, t<duration guaranteed by obs.stop
             if ( nextObs < iObservations::maxObs && t >= obs.start[nextObs] ) {
                 if ( t < obs.stop[nextObs] ) {
@@ -476,6 +477,7 @@ __device__ void find_section_representatives(const int nSecs,
                     PARTITION_SIZE * nPartitions);
         else
             myContrib.zero();
+        __syncwarp();
 
         // All-to-all comparison within warp/partition
         scalar sum_dotp = 0;
@@ -555,6 +557,7 @@ __device__ int metaPartition_compare_reps_all2all(const Parameters myContrib,
         }
         target_nEstimatedFollowers = 0;
         repMask = target_repMask = 0;
+        __syncwarp();
 
         // Compare every reference against every target (32 comparisons per thread) by rotating targets by one thread at a time
         const int srcLane = (laneid+1) & 31;
@@ -563,7 +566,6 @@ __device__ int metaPartition_compare_reps_all2all(const Parameters myContrib,
             scalar dotp = scalarfabs(myContrib.dotp(target_contrib));
             if ( dotp > 0 )
                 dotp /= (norm * target_norm);
-
             if ( dotp > dotp_threshold ) {
                 // Update reference
                 nEstimatedFollowers += target_nOwnFollowers;
@@ -586,9 +588,11 @@ __device__ int metaPartition_compare_reps_all2all(const Parameters myContrib,
         }
 
         // Store target outputs back into shared
-        if ( repIdx < nReps && targetRepIdx < nReps ) {
-            atomicAdd(out_nEstimatedFollowers + targetRepIdx, target_nEstimatedFollowers);
-            out_repMasks[(repIdx>>5) * nReps + targetRepIdx] = target_repMask;
+        if ( repIdx < nReps ) {
+            if ( targetRepIdx < nReps ) {
+                atomicAdd(out_nEstimatedFollowers + targetRepIdx, target_nEstimatedFollowers);
+                out_repMasks[(repIdx>>5) * nReps + targetRepIdx] = target_repMask;
+            }
             out_repMasks[(targetRepIdx>>5) * nReps + repIdx] = repMask;
         }
     }
@@ -623,6 +627,7 @@ __device__ void estimate_rep_follower_count(const unsigned int nReps,
             myContrib.zero();
         }
         scalar norm = std::sqrt(myContrib.dotp(myContrib));
+        __syncwarp();
 
         // Compare amongst the reference reps (all-to-all within metapartition)
         int nEstimatedFollowers = nOwnFollowers;
@@ -756,6 +761,7 @@ __device__ void block_extract_clusters(const int nReps,
             } else if ( laneid == 0 ) {
                 // Largest remaining cluster is too short, so bail across the block
                 shared_cache[0] = nReps;
+                out_clusterLen[blockIdx.x*MAXCLUSTERS + clusterIdx] = 0;
             }
         }
 
