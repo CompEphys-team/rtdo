@@ -136,6 +136,24 @@ std::ostream &operator<<(std::ostream &os, const Stimulation::Step &s)
     return os;
 }
 
+std::ostream &operator<<(std::ostream &os, const iStimulation &I)
+{
+    using std::endl;
+    os << "{" << endl
+       << "  duration: " << I.duration << endl
+       << "  V: " << I.baseV << endl;
+    for ( const iStimulation::Step &s : I )
+        os << s;
+    os << "}";
+    return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const iStimulation::Step &s)
+{
+    os << "  {" << (s.ramp?"ramp":"step") << " at " << s.t << " to " << s.V << "}" << std::endl;
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const IntegrationMethod &m)
 {
     switch ( m ) {

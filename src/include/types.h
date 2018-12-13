@@ -111,6 +111,8 @@ struct iStimulation
     iStimulation(const Stimulation &I, double dt);
     iStimulation(int) : iStimulation() {}
 };
+std::ostream &operator<<(std::ostream&, const iStimulation&);
+std::ostream &operator<<(std::ostream&, const iStimulation::Step&);
 
 struct iObservations
 {
