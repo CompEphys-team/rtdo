@@ -97,10 +97,12 @@ public:
         void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
                         std::vector<double> deltabar, bool pull);
         void (*pullClusters)(int nStims);
+        int (*pullPrimitives)(int nStims, int duration, int secLen);
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
         int **clusterLen;
         scalar **clusterCurrent;
+        scalar **clusterPrimitives;
 
         void (*observe_no_steps)(int blankCycles);
     };
@@ -190,6 +192,8 @@ public:
     }
     /// Copy cluster() results to clusters and clusterLen. Note, nStims = NMODELS/(trajLen*nTraj).
     inline void pullClusters(int nStims) { pointers.pullClusters(nStims); }
+    /// Copy cluster() intermediates (section primitives) to clusterPrimitives, and return the section stride
+    inline int pullPrimitives(int nStims, int duration, int secLen) { return pointers.pullPrimitives(nStims, duration, secLen); }
 
     /// post-run() calculation of RMS current deviation from each detuned parameter. Reports the RMSD per tick, per single detuning,
     /// as required by cluster().
@@ -231,6 +235,7 @@ public:
     scalar *&clusters;
     int *&clusterLen;
     scalar *&clusterCurrent;
+    scalar *&clusterPrimitives; //!< Layout: [stimIdx][paramIdx][secIdx]. Get the section stride (padded nSecs) from the call to pullPrimitives().
 
     unsigned int assignment_base = 0;
 };

@@ -45,7 +45,8 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
 
     clusters(light ? dummyScalarPtr : *pointers.clusters),
     clusterLen(light ? dummyIntPtr : *pointers.clusterLen),
-    clusterCurrent(light ? dummyScalarPtr : *pointers.clusterCurrent)
+    clusterCurrent(light ? dummyScalarPtr : *pointers.clusterCurrent),
+    clusterPrimitives(light ? dummyScalarPtr : *pointers.clusterPrimitives)
 {
 }
 
@@ -393,6 +394,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.profile =& profile;" << endl;
     ss << "    pointers.cluster =& cluster;" << endl;
     ss << "    pointers.pullClusters =& pullClusters;" << endl;
+    ss << "    pointers.pullPrimitives =& pullPrimitives;" << endl;
     ss << "    pointers.find_deltabar =& find_deltabar;" << endl;
     ss << "    pointers.observe_no_steps =& observe_no_steps;" << endl;
     ss << "    return pointers;" << endl;

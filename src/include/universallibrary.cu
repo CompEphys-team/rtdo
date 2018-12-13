@@ -42,7 +42,7 @@ static unsigned int clusterLen_size = 0;
 static scalar *clusterCurrent = nullptr, *d_clusterCurrent = nullptr;
 static unsigned int clusterCurrent_size = 0;
 
-static scalar *d_sections = nullptr;
+static scalar *sections = nullptr, *d_sections = nullptr;
 static unsigned int sections_size = 0;
 
 static scalar *d_currents= nullptr;
@@ -65,6 +65,7 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
     pointers.clusters =& clusters;
     pointers.clusterLen =& clusterLen;
     pointers.clusterCurrent =& clusterCurrent;
+    pointers.clusterPrimitives =& sections;
 
     allocateMem();
     initialize();
@@ -232,7 +233,7 @@ static constexpr int PARTITION_SIZE = 32;
  *          representing up to secLen ticks. Sections are chunked into partitions of PARTITION_SIZE=32 sections each.
  *          Deviation vectors represent the mean deviation per tick, normalised to deltabar, caused by a single detuning.
  *          Note, this kernel expects the EE traces to be generated using TIMESERIES_COMPARE_NONE
- * @param out_sections is the output, laid out as [stimIdx][partitionIdx][paramIdx][secIdx (local to partition)].
+ * @param out_sections is the output, laid out as [stimIdx][paramIdx][partitionIdx][secIdx (local to partition)].
  * @param out_current is the mean current within each section, laid out as [stimIdx][partitionIdx][secIdx].
  */
 __global__ void build_section_primitives(const int trajLen,
@@ -308,9 +309,9 @@ __global__ void build_section_primitives(const int trajLen,
                 for ( int paramIdx = 0; paramIdx < NPARAMS; paramIdx++ ) {
                     if ( paramIdx == paramIdx_after_end_of_final_traj )
                         --nContrib;
-                    out_sections[stimIdx * nPartitions * NPARAMS * PARTITION_SIZE
-                            + partitionIdx * NPARAMS * PARTITION_SIZE
-                            + paramIdx * PARTITION_SIZE
+                    out_sections[stimIdx * NPARAMS * nPartitions * PARTITION_SIZE
+                            + paramIdx * nPartitions * PARTITION_SIZE
+                            + partitionIdx * PARTITION_SIZE
                             + laneid]
                             = trueSecLen_static
                               ? sh_contrib[warpid][paramIdx][laneid] / (trueSecLen_static * deltabar[paramIdx] * nContrib)
@@ -449,7 +450,7 @@ __device__ unsigned int warp_compare_reps_all2all(const Parameters myContrib,
  *          neither representative is above-threshold similar to (= a follower of) the other
  * @param nSecs total number of sections in the input
  * @param nPartitions total number of 32-section partitions
- * @param in_contrib Input data (deviation vectors); ordered by [stimIdx][partitionIdx][paramIdx][sectionIdx]
+ * @param in_contrib Input data (deviation vectors); ordered by [stimIdx][paramIdx][partitionIdx][sectionIdx]
  * @param out_reps Copy of the two representative section's deviation vectors; ordered by [repIdx][paramIdx],
  *           where repIdx is 2*partitionIdx for the primary and 2*partitionIdx+1 for the secondary representative
  * @param out_ownFollowerMasks Bitmasks for each rep flagging its followers, including self; ordered by [repIdx]
@@ -468,11 +469,11 @@ __device__ void find_section_representatives(const int nSecs,
     for ( int partitionIdx = warpid; partitionIdx < nPartitions; partitionIdx += blockDim.x>>5 ) {
         if ( partitionIdx*PARTITION_SIZE + laneid < nSecs)
             myContrib.load(in_contrib
-                           + PARTITION_SIZE * NPARAMS * nPartitions * blockIdx.x
-                           + PARTITION_SIZE * NPARAMS * partitionIdx
+                           + PARTITION_SIZE * nPartitions * NPARAMS * blockIdx.x
                            /* no indexing for parameter: that's done in .load() using the stride argument */
+                           + PARTITION_SIZE * partitionIdx
                            + laneid,
-                    PARTITION_SIZE);
+                    PARTITION_SIZE * nPartitions);
         else
             myContrib.zero();
 
@@ -836,6 +837,14 @@ extern "C" void pullClusters(int nStims)
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterCurrent, d_clusterCurrent, nStims * MAXCLUSTERS * sizeof(scalar), cudaMemcpyDeviceToHost));
 }
 
+extern "C" int pullPrimitives(int nStims, int duration, int secLen)
+{
+    int nSecs = (duration+secLen-1)/secLen;
+    int nPartitions = (nSecs + 31)/32;
+    CHECK_CUDA_ERRORS(cudaMemcpy(sections, d_sections, nStims * nPartitions * NPARAMS * PARTITION_SIZE * sizeof(scalar), cudaMemcpyDeviceToHost));
+    return nPartitions * PARTITION_SIZE;
+}
+
 extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
                         int nTraj, /* Number of EE trajectories */
                         int duration,
@@ -852,7 +861,7 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
     int nReps = 2*nPartitions;
     int nMetaPartitions = (nReps + 31)/32; // count one for every 32 representatives
 
-    resizeArray(d_sections, sections_size, nStims * nPartitions * NPARAMS * PARTITION_SIZE);
+    resizeArrayPair(sections, d_sections, sections_size, nStims * nPartitions * NPARAMS * PARTITION_SIZE);
     resizeArray(d_currents, currents_size, nStims * nPartitions * PARTITION_SIZE);
     resizeArrayPair(clusters, d_clusters, clusters_size, nClusters * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, nClusters);
