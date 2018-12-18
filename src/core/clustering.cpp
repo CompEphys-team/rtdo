@@ -136,23 +136,26 @@ std::vector<Section> constructSectionPrimitives(iStimulation iStim, std::vector<
     return sections;
 }
 
-std::vector<Section> findSimilarCluster(std::vector<Section> sections, int nParams, double similarityThreshold, Section master)
+std::vector<Section> findSimilarCluster(const std::vector<Section> &sections, int nParams, double similarityThreshold, Section master)
 {
     // Remove primitives that don't resemble master (but flip & keep opposites)
-    for ( auto rit = sections.rbegin(); rit != sections.rend(); ++rit ) {
-        double dotp = scalarProduct(master, *rit, nParams);
-        if ( -dotp > similarityThreshold )
-            for ( int i = 0; i < nParams; i++ )
-                rit->deviations[i] *= -1;
-        else if ( dotp < similarityThreshold )
-            sections.erase(rit.base());
+    std::vector<Section> selection;
+    selection.reserve(sections.size());
+    for ( const Section &sec : sections ) {
+        double dotp = scalarProduct(master, sec, nParams);
+        if ( dotp > similarityThreshold || -dotp > similarityThreshold ) {
+            selection.push_back(sec);
+            if ( std::signbit(dotp) )
+                for ( double &d : selection.back().deviations )
+                    d *= -1;
+        }
     }
 
     // compact
     std::vector<Section> compact;
-    compact.reserve(sections.size()); // conservative estimate
-    Section tmp { sections.front().start, sections.front().start, std::vector<double>(nParams, 0) };
-    for ( const Section &sec : sections ) {
+    compact.reserve(selection.size()); // conservative estimate
+    Section tmp { selection.front().start, selection.front().start, std::vector<double>(nParams, 0) };
+    for ( const Section &sec : selection ) {
         if ( sec.start == tmp.end ) {
             tmp.end = sec.end;
             for ( int i = 0; i < nParams; i++ )

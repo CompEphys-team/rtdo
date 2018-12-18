@@ -32,7 +32,7 @@ std::vector<std::pair<int, int>> observeNoSteps(iStimulation iStim, int blankCyc
 // ******************** High-level functions: ********************************
 
 /// Finds all sections similar to @a master in @a sections, copying them as a cluster to the @result.
-std::vector<Section> findSimilarCluster(std::vector<Section> sections, int nParams, double similarityThreshold, Section master);
+std::vector<Section> findSimilarCluster(const std::vector<Section> &sections, int nParams, double similarityThreshold, Section master);
 
 
 /// Extracts all section primitives (via @fn constructSectionPrimitives), clusters them (via @fn extractLargestCluster), discarding clusters with
