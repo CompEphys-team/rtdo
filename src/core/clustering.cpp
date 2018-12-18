@@ -352,3 +352,93 @@ std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimul
     lib.pullOutput();
     return pDelta;
 }
+
+
+
+
+void reduceObsCount(std::vector<int> &start, std::vector<int> &stop, int largestBridgableGap)
+{
+    int shortestObs = std::numeric_limits<int>::max(), shortestObsIdx = 0;
+    int shortestGap = std::numeric_limits<int>::max(), shortestGapIdx = 0;
+    int shuffleIdx;
+    for ( size_t obsIdx = 0; obsIdx < start.size(); obsIdx++ ) {
+        int dur = stop[obsIdx] - start[obsIdx];
+        if ( dur < shortestObs ) {
+            shortestObs = dur;
+            shortestObsIdx = obsIdx;
+        }
+        if ( obsIdx > 0 ) {
+            int gap = start[obsIdx] - start[obsIdx-1];
+            if ( gap < shortestGap ) {
+                shortestGap = gap;
+                shortestGapIdx = obsIdx;
+            }
+        }
+    }
+    if ( shortestGap < shortestObs && shortestGap <= largestBridgableGap ) {
+        // Merge across gap
+        stop[shortestGapIdx-1] = stop[shortestGapIdx];
+        shuffleIdx = shortestGapIdx;
+    } else {
+        // Eliminate shortest obs
+        shuffleIdx = shortestObsIdx;
+    }
+    for ( size_t obsIdx = shuffleIdx; obsIdx < start.size()-1; obsIdx++ ) {
+        start[obsIdx] = start[obsIdx+1];
+        stop[obsIdx] = stop[obsIdx+1];
+    }
+
+    start.resize(start.size()-1);
+    stop.resize(stop.size()-1);
+}
+
+std::vector<std::vector<std::pair<iObservations, int>>> processClusterMasks(
+        UniversalLibrary &ulib, int nStims, int nPartitions, int secLen, int largestBridgableGap)
+{
+    std::vector<std::vector<std::pair<iObservations, int>>> obs(nStims);
+    for ( int stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
+        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ ) {
+            int nSecs = 0;
+            std::vector<int> start, stop;
+            bool observing = false;
+            for ( int partitionIdx = 0; partitionIdx < nPartitions; partitionIdx++ ) {
+                unsigned int mask = ulib.clusterMasks[stimIdx * ulib.maxClusters * nPartitions + clusterIdx * nPartitions + partitionIdx];
+                for ( int i = 0; i < 32; i++ ) {
+                    if ( mask == 0 && !observing )
+                        break;
+                    if ( mask & 0x1 ) {
+                        ++nSecs;
+                        if ( !observing ) {
+                            observing = true;
+                            start.push_back(partitionIdx * 32 + i);
+                        }
+                    } else {
+                        if ( observing ) {
+                            observing = false;
+                            stop.push_back(partitionIdx * 32 + i);
+                        }
+                    }
+                    mask >>= 1;
+                }
+            }
+
+            if ( nSecs == 0 )
+                break; // to next stim
+
+            ulib.clusterCurrent[stimIdx * ulib.maxClusters + clusterIdx] /= nSecs;
+
+            while ( start.size() > iObservations::maxObs )
+                reduceObsCount(start, stop, largestBridgableGap / secLen);
+
+            obs[stimIdx].emplace_back(iObservations {{}, {}}, 0);
+            nSecs = 0;
+            for ( size_t i = 0; i < start.size(); i++ ) {
+                obs[stimIdx].back().first.start[i] = start[i] * secLen;
+                obs[stimIdx].back().first.stop[i] = stop[i] * secLen;
+                nSecs += stop[i] - start[i];
+            }
+            obs[stimIdx].back().second = nSecs * secLen;
+        }
+    }
+    return obs;
+}

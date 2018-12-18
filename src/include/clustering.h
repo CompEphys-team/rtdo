@@ -70,4 +70,13 @@ inline size_t maxDetunedDiffTraceStims(UniversalLibrary &lib)
     return (lib.NMODELS/32) / nWarps;
 }
 
+
+/// Processes the results of UniversalLibrary::cluster(), munging ulib.clusterMasks into iObservations, and normalising ulib.clusterCurrent.
+/// Where the masks indicates more than iObservations::maxObs windows, they are merged (across at most @p largestBridgableGap ticks) or dropped,
+/// with a preference for the shortest [gap | obs]. Note that currents and cluster deviation vectors are not updated to reflect this reduction.
+/// Changes ulib.clusterCurrent in place.
+/// @return an (iObs, obsDur[ticks]) pair for each cluster and each stimulation.
+std::vector<std::vector<std::pair<iObservations, int>>> processClusterMasks(
+        UniversalLibrary &ulib, int nStims, int nPartitions, int secLen, int largestBridgableGap);
+
 #endif // CLUSTERING_H
