@@ -214,16 +214,19 @@ void printCluster(std::vector<Section> cluster, int nParams, double dt)
             totals[i] += sec.deviations[i];
         len += sec.end - sec.start - 1;
     }
-    std::cout << "Total duration: " << len*dt << ", mean deviation: ";
-    double norm = 0;
+    std::cout << "Total duration: " << len*dt << ", normalised deviation: ";
+    double wNorm = 0, norm = 0;
+    for ( int i = 0; i < nParams; i++ )
+        norm += totals[i] * totals[i];
+    norm = std::sqrt(norm);
     for ( int i = 0; i < nParams; i++ ) {
-        std::cout << '\t' << totals[i]/len;
-        if ( norm < fabs(totals[i]) )
-            norm = fabs(totals[i]);
+        std::cout << '\t' << totals[i]/norm;
+        if ( wNorm < fabs(totals[i]) )
+            wNorm = fabs(totals[i]);
     }
     std::cout << "\nNormalised weights:\t";
     for ( int i = 0; i < nParams; i++ ) {
-        std::cout << '\t' << fabs(totals[i])/norm;
+        std::cout << '\t' << fabs(totals[i])/wNorm;
     }
     std::cout << std::endl;
 }
