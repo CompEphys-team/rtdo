@@ -339,25 +339,25 @@ __global__ void build_section_primitives(const int trajLen,
  *      where "best" means "greatest number of followers", and ties are broken in favour of a higher mean dotp to follower sections
  * @return ((maxFollowers<<5) | rep_laneid) to all threads
  */
-__device__ inline unsigned int find_single_section_representative(const unsigned int nFollowers,
+__device__ inline unsigned int find_single_section_representative(unsigned int nFollowers,
                                                                   const unsigned int laneid,
                                                                   scalar mean_dotp)
 {
     // Pack laneid and nFollowers into a single int (they're both <= 32)
     unsigned int max_count_and_lane = (nFollowers<<5) | laneid;
     for ( unsigned int delta = 1; delta < warpSize; delta <<= 1 ) {
-        const unsigned int target = __shfl_xor_sync(0xffffffff, max_count_and_lane, delta);
+        const unsigned int target = __shfl_down_sync(0xffffffff, max_count_and_lane, delta);
         const unsigned int target_nFollowers = target>>5;
-        const scalar target_dotp = __shfl_xor_sync(0xffffffff, mean_dotp, delta);
+        const scalar target_dotp = __shfl_down_sync(0xffffffff, mean_dotp, delta);
+
         if ( (target_nFollowers > nFollowers)
-             || (target_nFollowers == nFollowers && target_dotp > mean_dotp)
-             || (target_nFollowers == nFollowers && target_dotp == mean_dotp && delta < laneid) ) {
+             || (target_nFollowers == nFollowers && target_dotp > mean_dotp) ) {
+            nFollowers = target_nFollowers;
             max_count_and_lane = target;
             mean_dotp = target_dotp;
         }
     }
-
-    return max_count_and_lane;
+    return __shfl_sync(0xffffffff, max_count_and_lane, 0);
 }
 
 /**
@@ -667,7 +667,7 @@ __device__ int block_extract_clusters(const int nReps,
 {
     const unsigned laneid = threadIdx.x & 31;
     const unsigned warpid = threadIdx.x >> 5;
-    int static_bestRepIdx; // lane storage
+    int static_bestRepIdx = nReps; // lane storage
 
     int clusterIdx;
     for ( clusterIdx = 0; clusterIdx < MAXCLUSTERS; clusterIdx++ ) {
@@ -716,23 +716,27 @@ __device__ int block_extract_clusters(const int nReps,
                 }
             }
 
-            if ( laneid == clusterIdx )
-                static_bestRepIdx = bestRepIdx;
-
+            // Broadcast to block
             if ( laneid == 0 ) {
                 // Bail once cluster is too short to take seriously and nClusters is a power of 2
-                if ( mostEstimatedFollowers * secLen < minClusterLen && __popc(clusterIdx-1) == 1 )
+                if ( mostEstimatedFollowers == 0 || (mostEstimatedFollowers * secLen < minClusterLen && __popc(clusterIdx) == 1) )
                     bestRepIdx = nReps;
                 shared_cache[0] = bestRepIdx;
             }
         }
 
+        // Receive broadcast in all blocks
         __syncthreads();
-
-        // Check for completion
         bestRepIdx = shared_cache[0];
+
+        // Sync to ensure all warps have read, then check for completion
+        __syncthreads();
         if ( bestRepIdx == nReps )
             break;
+
+        if ( threadIdx.x == clusterIdx )
+            static_bestRepIdx = bestRepIdx;
+
 
         // Remove cluster members' ability to champion another cluster
         // This is much leaner than the original CPU algorithm, where the cluster was completely removed, necessitating rebuilding
@@ -747,10 +751,11 @@ __device__ int block_extract_clusters(const int nReps,
         __syncthreads();
     }
 
-    if ( laneid < clusterIdx-1 )
-        out_clusterHeads[laneid] = static_bestRepIdx;
+    // Write valid clusters out (note: static_bestRepIdx is initialised to nReps and only altered for selected clusters)
+    if ( static_bestRepIdx < nReps )
+        out_clusterHeads[threadIdx.x] = static_bestRepIdx;
 
-    return clusterIdx - 1;
+    return clusterIdx;
 }
 
 /**
@@ -786,7 +791,7 @@ __device__ void build_clusters_from_heads(const int nSecs,
 
     // Load heads into chunks of width threads, repeating across the warp
     if ( (laneid % width) < nClusters ) {
-        clusterHead.load(in_reps + in_clusterHeads[laneid % width]);
+        clusterHead.load(in_reps + in_clusterHeads[laneid % width] * NPARAMS);
         headNorm = std::sqrt(clusterHead.dotp(clusterHead));
     } else {
         clusterHead.zero();
@@ -819,7 +824,6 @@ __device__ void build_clusters_from_heads(const int nSecs,
             if ( dotp > 0 )
                 dotp /= (headNorm * secNorm);
             if ( dotp > dotp_threshold ) {
-                // Update reference
                 headMask |= 1 << ((laneid+i)&31);
                 current += secCurrent;
                 secSum += section;
@@ -910,7 +914,8 @@ __global__ void find_cluster_representatives(const int nSecs,
                                              scalar *out_clusters,
                                              unsigned int *out_clusterMasks,
                                              scalar *out_clusterCurrent,
-                                             const int shared_mem_padding)
+                                             const size_t shared_mem_padding,
+                                             const size_t shared_mem_total)
 {
     const int nReps = 2*nPartitions;
     extern __shared__ unsigned int shared_mem[];
@@ -919,9 +924,8 @@ __global__ void find_cluster_representatives(const int nSecs,
     unsigned int *sh_repMasks = sh_nEstimatedFollowers + nReps;
     scalar *sh_reps = (scalar*)&sh_repMasks[nReps*nMetaPartitions];
 
-    // init shared mem                followers x2    masks             parameter contribs for each rep
-    for ( int i = threadIdx.x, iEnd = 2*nReps + nReps*nMetaPartitions + (sizeof(scalar)/sizeof(int)) * nReps * NPARAMS;
-          i < iEnd; i += blockDim.x )
+    // init shared mem
+    for ( int i = threadIdx.x, iEnd = shared_mem_total/sizeof(int); i < iEnd; i += blockDim.x )
         shared_mem[i] = 0;
     __syncthreads();
 
@@ -1010,7 +1014,7 @@ extern "C" int cluster(int trajLen, /* length of EE trajectory (power of 2, <=32
     find_cluster_representatives<<<nStims, 32*nWarps, shmem_size>>>(nSecs, nPartitions, nMetaPartitions, dotp_threshold, secLen, minClusterLen,
                                                                     d_sections, d_currents,
                                                                     d_clusters, d_clusterMasks, d_clusterCurrent,
-                                                                    shmem_padding);
+                                                                    shmem_padding, shmem_size);
 
     if ( pull_results )
         pullClusters(nStims, nPartitions);
