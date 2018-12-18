@@ -1,6 +1,7 @@
 #include "wavegen.h"
 #include "session.h"
 #include <forward_list>
+#include "clustering.h"
 
 QString Wavegen::ee_action = QString("ee_search");
 quint32 Wavegen::ee_magic = 0xc9fd545f;
@@ -155,7 +156,7 @@ std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElit
 }
 
 void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ulib,
-                    Session &session, Wavegen::Archive &current, const int nStims,
+                    Session &session, Wavegen::Archive &current, const int nStims, const int nPartitions,
                     const std::vector<MAPEDimension> &dims)
 {
     const double dt = session.runData().dt;
@@ -178,14 +179,16 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
             bin_for_clusterDuration = i;
     }
 
+    std::vector<std::vector<std::pair<iObservations, int>>> obs = processClusterMasks(
+                ulib, nStims, nPartitions, session.gaFitterSettings().cluster_fragment_dur/dt, minLength);
     for ( int stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
         std::shared_ptr<iStimulation> stim = std::make_shared<iStimulation>(stims[stimIdx]);
         stim->tObsBegin = 0;
 
         // Find number of valid clusters
         size_t nClusters = 0;
-        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ )
-            if ( ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx] >= minLength )
+        for ( size_t clusterIdx = 0; clusterIdx < obs[stimIdx].size(); clusterIdx++ )
+            if ( obs[stimIdx][clusterIdx].second >= minLength )
                 ++nClusters;
 
         // Populate all bins (with some garbage for clusterIdx, paramIdx, clusterDuration)
@@ -193,10 +196,10 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
             bins[binIdx] = dims[binIdx].bin(*stim, 0, 0, nClusters, 1, dt);
 
         // Construct a MAPElite for each non-zero parameter contribution of each valid cluster
-        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ ) {
+        for ( size_t clusterIdx = 0; clusterIdx < obs[stimIdx].size(); clusterIdx++ ) {
 
             // Check for valid length
-            int len = ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx];
+            int len = obs[stimIdx][clusterIdx].second;
             if ( len >= minLength ) {
 
                 // Populate cluster-level bins
@@ -306,7 +309,7 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
         }
 
         // score and insert returnedWaves into archive
-        scoreAndInsert(*returnedWaves, ulib, session, current, nStimsPerEpoch, dims);
+        scoreAndInsert(*returnedWaves, ulib, session, current, nStimsPerEpoch, nPartitions, dims);
 
         // Swap waves: After this, returnedWaves points at those in progress, and newWaves are ready for new adventures
         using std::swap;
