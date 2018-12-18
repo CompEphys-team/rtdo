@@ -154,6 +154,13 @@ std::ostream &operator<<(std::ostream &os, const iStimulation::Step &s)
     return os;
 }
 
+std::ostream &operator<<(std::ostream &os, const iObservations &obs)
+{
+    for ( size_t i = 0; i < iObservations::maxObs && obs.stop[i]; i++ )
+        os << obs.start[i] << " - " << obs.stop[i] << std::endl;
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const IntegrationMethod &m)
 {
     switch ( m ) {

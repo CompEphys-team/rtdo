@@ -122,6 +122,7 @@ struct iObservations
 
     inline void operator=(double) {}
 };
+std::ostream &operator<<(std::ostream&, const iObservations&);
 
 struct ChnData
 {
