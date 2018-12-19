@@ -67,7 +67,6 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 
     pointers.clusters =& clusters;
     pointers.clusterMasks =& clusterMasks;
-    pointers.clusterLen =& clusterLen;
     pointers.clusterCurrent =& clusterCurrent;
     pointers.clusterPrimitives =& sections;
 

@@ -101,7 +101,6 @@ public:
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
         unsigned int **clusterMasks;
-        int **clusterLen;
         scalar **clusterCurrent;
         scalar **clusterPrimitives;
 
@@ -238,7 +237,6 @@ public:
 
     scalar *&clusters;
     unsigned int *&clusterMasks; //!< Layout: [stimIdx][clusterIdx][partitionIdx]
-    int *&clusterLen;
     scalar *&clusterCurrent;
     scalar *&clusterPrimitives; //!< Layout: [stimIdx][paramIdx][secIdx]. Get the section stride (padded nSecs) from the call to pullPrimitives().
 

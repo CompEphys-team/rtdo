@@ -45,7 +45,6 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
 
     clusters(light ? dummyScalarPtr : *pointers.clusters),
     clusterMasks(light ? dummyUIntPtr : *pointers.clusterMasks),
-    clusterLen(light ? dummyIntPtr : *pointers.clusterLen),
     clusterCurrent(light ? dummyScalarPtr : *pointers.clusterCurrent),
     clusterPrimitives(light ? dummyScalarPtr : *pointers.clusterPrimitives)
 {
