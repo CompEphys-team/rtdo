@@ -310,6 +310,7 @@ struct MAPElite
     scalar fitness;
     std::vector<scalar> deviations;
     iObservations obs;
+    scalar current = 0;
 
     MAPElite() : fitness(0), obs {{},{}} {}
     MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness)

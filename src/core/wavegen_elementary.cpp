@@ -201,6 +201,7 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
             // Check for valid length
             int len = obs[stimIdx][clusterIdx].second;
             if ( len >= minLength ) {
+                scalar meanCurrent = ulib.clusterCurrent[stimIdx * ulib.maxClusters + clusterIdx];
 
                 // Populate cluster-level bins
                 if ( bin_for_clusterDuration > 0 ) {
@@ -218,6 +219,7 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
                     if ( contrib[paramIdx] > 0 ) {
                         bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 1, dt);
                         candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib[paramIdx], contrib, obs[stimIdx][clusterIdx].first});
+                        candidates_by_param[paramIdx].front().current = meanCurrent;
                         ++nCandidates;
                     }
                 }
@@ -387,6 +389,7 @@ void Wavegen::ee_save(QFile &file)
             os << d;
         for ( size_t i = 0; i < iObservations::maxObs; i++ )
             os << quint32(e.obs.start[i]) << quint32(e.obs.stop[i]);
+        os << e.current;
 
         if ( e.wave.unique() ) {
             w_unique.push_back(e.wave.get());
@@ -450,6 +453,7 @@ void Wavegen::ee_load(QFile &file, const QString &, Result r)
                 el->obs.stop[i] = stop;
             }
         }
+        is >> el->current;
 
         is >> *idxIt;
     }

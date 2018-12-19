@@ -237,7 +237,7 @@ public:
 
     scalar *&clusters;
     unsigned int *&clusterMasks; //!< Layout: [stimIdx][clusterIdx][partitionIdx]
-    scalar *&clusterCurrent;
+    scalar *&clusterCurrent; //!< Layout: [stimIdx][clusterIdx]
     scalar *&clusterPrimitives; //!< Layout: [stimIdx][paramIdx][secIdx]. Get the section stride (padded nSecs) from the call to pullPrimitives().
 
     unsigned int assignment_base = 0;

@@ -29,6 +29,7 @@ QDataStream &operator<<(QDataStream &os, const MAPElite &e)
     for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
         os << quint32(e.obs.start[i]) << quint32(e.obs.stop[i]);
     }
+    os << e.current;
     return os;
 }
 
@@ -58,6 +59,7 @@ QDataStream &operator>>(QDataStream &is, MAPElite &e)
             e.obs.stop[i] = stop;
         }
     }
+    is >> e.current;
     return is;
 }
 
