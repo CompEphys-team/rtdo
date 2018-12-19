@@ -47,6 +47,7 @@ void WavegenDataDialog::importData()
     ui->nBinsVoltageIntegral->setValue(0);
     ui->mape_clusterIndex->setChecked(false);
     ui->mape_nClusters->setChecked(false);
+    ui->nBinsMeanCurrent->setValue(0);
     for ( const MAPEDimension &dim : p.mapeDimensions ) {
         if ( dim.func == MAPEDimension::Func::BestBubbleTime )
             ui->nBinsBubbleTime->setValue(dim.resolution);
@@ -60,6 +61,10 @@ void WavegenDataDialog::importData()
             ui->mape_clusterIndex->setChecked(true);
         if ( dim.func == MAPEDimension::Func::EE_NumClusters )
             ui->mape_nClusters->setChecked(true);
+        if ( dim.func == MAPEDimension::Func::EE_MeanCurrent ) {
+            ui->nBinsMeanCurrent->setValue(dim.resolution);
+            ui->meanCurrent_max->setValue(dim.max);
+        }
     }
 
     ui->noise_sd->setValue(p.noise_sd);
@@ -106,6 +111,8 @@ void WavegenDataDialog::exportData()
         dims.push_back(MAPEDimension {MAPEDimension::Func::EE_NumClusters, 0, UniversalLibrary::maxClusters, UniversalLibrary::maxClusters});
     if ( ui->mape_clusterIndex->isChecked() )
         dims.push_back(MAPEDimension {MAPEDimension::Func::EE_ClusterIndex, 0, UniversalLibrary::maxClusters, UniversalLibrary::maxClusters});
+    if ( ui->nBinsMeanCurrent->value() > 0 )
+        dims.push_back(MAPEDimension {MAPEDimension::Func::EE_MeanCurrent, 0, (scalar)ui->meanCurrent_max->value(), (size_t)ui->nBinsMeanCurrent->value()});
     p.mapeDimensions = dims;
 
     p.noise_sd = ui->noise_sd->value();

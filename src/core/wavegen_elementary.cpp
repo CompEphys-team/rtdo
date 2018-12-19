@@ -171,12 +171,14 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
     // Note the dimensions that can't be computed once for an entire stim
     // NOTE: This expects that the first dimension is always EE_ParamIdx.
     constexpr int bin_for_paramIdx = 0;
-    int bin_for_clusterIdx = -1, bin_for_clusterDuration = -1;
+    int bin_for_clusterIdx = -1, bin_for_clusterDuration = -1, bin_for_current = -1;
     for ( int i = 0; i < nBins; i++ ) {
         if ( dims[i].func == MAPEDimension::Func::EE_ClusterIndex )
             bin_for_clusterIdx = i;
         else if ( dims[i].func == MAPEDimension::Func::BestBubbleDuration )
             bin_for_clusterDuration = i;
+        else if ( dims[i].func == MAPEDimension::Func::EE_MeanCurrent )
+            bin_for_current = i;
     }
 
     std::vector<std::vector<std::pair<iObservations, int>>> obs = processClusterMasks(
@@ -210,6 +212,8 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
                 }
                 if ( bin_for_clusterIdx > 0 )
                     bins[bin_for_clusterIdx] = dims[bin_for_clusterIdx].bin(*stim, 0, clusterIdx, 0, 1, dt);
+                if ( bin_for_current > 0 )
+                    bins[bin_for_current] = dims[bin_for_current].bin(meanCurrent, 1);
 
                 // One entry for each parameter
                 std::vector<scalar> contrib(nParams);
@@ -268,9 +272,13 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
 
     std::vector<MAPEDimension> dims = session.wavegenData().mapeDimensions;
     std::vector<size_t> variablePrecisionDims;
-    for ( size_t i = 0; i < dims.size(); i++ )
+    int meanCurrentDim = -1;
+    for ( size_t i = 0; i < dims.size(); i++ ) {
         if ( dims[i].hasVariableResolution() )
             variablePrecisionDims.push_back(i);
+        if ( dims[i].func == MAPEDimension::Func::EE_MeanCurrent )
+            meanCurrentDim = i;
+    }
 
     ulib.resizeOutput(istimd.iDuration);
     prepareModels(session, ulib, searchd);
@@ -330,8 +338,12 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
                 for ( size_t i : variablePrecisionDims )
                     dims[i].resolution *= 2;
                 for ( MAPElite &e : current.elites )
-                    for ( size_t i : variablePrecisionDims )
-                        e.bin[i] = dims.at(i).bin(*e.wave, 1, session.runData().dt);
+                    for ( size_t i : variablePrecisionDims ) {
+                        if ( int(i) == meanCurrentDim )
+                            e.bin[i] = dims.at(i).bin(e.current, session.runData().dt);
+                        else
+                            e.bin[i] = dims.at(i).bin(*e.wave, 1, session.runData().dt);
+                    }
                 current.elites.sort(); // TODO: radix sort
             }
         }

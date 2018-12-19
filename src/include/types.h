@@ -345,7 +345,8 @@ struct MAPEDimension
 
         EE_ParamIndex,
         EE_NumClusters,
-        EE_ClusterIndex
+        EE_ClusterIndex,
+        EE_MeanCurrent
     };
 
     Func func;
