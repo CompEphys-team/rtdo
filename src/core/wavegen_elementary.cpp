@@ -155,7 +155,7 @@ std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElit
     return ret;
 }
 
-void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ulib,
+scalar scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ulib,
                     Session &session, Wavegen::Archive &current, const int nStims, const int nPartitions,
                     const std::vector<MAPEDimension> &dims)
 {
@@ -167,6 +167,7 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
     std::vector<size_t> bins(nBins);
     std::vector<std::forward_list<MAPElite>> candidates_by_param(nParams);
     int nCandidates = 0;
+    scalar maxCurrent = 0;
 
     // Note the dimensions that can't be computed once for an entire stim
     // NOTE: This expects that the first dimension is always EE_ParamIdx.
@@ -204,6 +205,8 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
             int len = obs[stimIdx][clusterIdx].second;
             if ( len >= minLength ) {
                 scalar meanCurrent = ulib.clusterCurrent[stimIdx * ulib.maxClusters + clusterIdx];
+                if ( meanCurrent > maxCurrent )
+                    maxCurrent = meanCurrent;
 
                 // Populate cluster-level bins
                 if ( bin_for_clusterDuration > 0 ) {
@@ -252,6 +255,8 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
     current.nInsertions.push_back(nInserted);
     current.nReplacements.push_back(nReplaced);
     current.nElites.push_back(current.elites.size());
+
+    return maxCurrent;
 }
 
 bool Wavegen::ee_exec(QFile &file, Result *result)
@@ -269,6 +274,8 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     const int sectionLength = session.gaFitterSettings().cluster_fragment_dur / session.runData().dt;
     const scalar dotp_threshold = session.gaFitterSettings().cluster_threshold;
     const int minClusterLen = session.gaFitterSettings().cluster_min_dur / session.runData().dt;
+
+    double run_maxCurrent = 0, sum_maxCurrents = 0;
 
     std::vector<MAPEDimension> dims = session.wavegenData().mapeDimensions;
     std::vector<size_t> variablePrecisionDims;
@@ -319,7 +326,10 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
         }
 
         // score and insert returnedWaves into archive
-        scoreAndInsert(*returnedWaves, ulib, session, current, nStimsPerEpoch, nPartitions, dims);
+        scalar epoch_maxCurrent = scoreAndInsert(*returnedWaves, ulib, session, current, nStimsPerEpoch, nPartitions, dims);
+        sum_maxCurrents += epoch_maxCurrent;
+        if ( epoch_maxCurrent > run_maxCurrent )
+            run_maxCurrent = epoch_maxCurrent;
 
         // Swap waves: After this, returnedWaves points at those in progress, and newWaves are ready for new adventures
         using std::swap;
@@ -359,6 +369,10 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
             construct_next_generation(*newWaves);
         }
     }
+
+    std::cout << "Overall maximum observed cluster current: " << run_maxCurrent
+              << " nA; average maximum across epochs: " << (sum_maxCurrents/current.iterations) << " nA."
+              << std::endl;
 
     current.nCandidates.squeeze();
     current.nInsertions.squeeze();
