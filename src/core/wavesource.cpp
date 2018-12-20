@@ -140,8 +140,11 @@ std::vector<MAPElite> WaveSource::elites() const
     {
         std::vector<Stimulation> stims = stimulations();
         ret.resize(stims.size());
-        for ( size_t i = 0; i < ret.size(); i++ )
+        for ( size_t i = 0; i < ret.size(); i++ ) {
             ret[i].wave.reset(new iStimulation(stims[i], session->runData(resultIndex()).dt));
+            ret[i].obs.start[0] = ret[i].wave->tObsBegin;
+            ret[i].obs.stop[0] = ret[i].wave->tObsEnd;
+        }
         break;
     }
     }
