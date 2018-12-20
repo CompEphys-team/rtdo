@@ -81,7 +81,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
         shrunk = true;
         ret.reserve(el.size());
         for ( const MAPElite &e : el )
-            ret.push_back(Stimulation(*e.wave, session->runData(resultIndex()).dt));
+            ret.push_back(Stimulation(*e.wave, session->runData(archive()->resultIndex).dt));
         break;
     }
     case Subset :
@@ -174,7 +174,7 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
         std::vector<MAPElite> el = elites();
         shrunk = true;
         ret.reserve(el.size());
-        if ( session->runData(resultIndex()).dt == dt ) {
+        if ( session->runData(archive()->resultIndex).dt == dt ) {
             for ( const MAPElite &e : el )
                 ret.push_back(*e.wave);
         } else {
