@@ -45,24 +45,14 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     const RunData &rd = session.runData();
     Profile &prof = *static_cast<Profile*>(res);
     std::vector<iStimulation> stims = prof.src.iStimulations(rd.dt);
-    std::vector<iObservations> obs(stims.size(), {{}, {}});
-    int maxObsDuration = 0;
+    std::vector<iObservations> obs = prof.src.observations(rd.dt);
 
-    if ( prof.src.archive() && prof.src.archive()->param == -1 ) {
-        std::vector<MAPElite> elites = prof.src.elites();
-        for ( size_t i = 0; i < elites.size(); i++ ) {
-            obs[i] = elites[i].obs;
-            int obsDuration = 0;
-            for ( size_t j = 0; j < iObservations::maxObs; j++ )
-                obsDuration += obs[i].stop[j] - obs[i].start[j];
-            maxObsDuration = std::max(maxObsDuration, obsDuration);
-        }
-    } else {
-        for ( size_t i = 0; i < stims.size(); i++ ) {
-            obs[i].start[0] = stims[i].tObsBegin;
-            obs[i].stop[0] = stims[i].tObsEnd;
-            maxObsDuration = std::max(maxObsDuration, stims[i].tObsEnd-stims[i].tObsBegin);
-        }
+    int maxObsDuration = 0;
+    for ( const iObservations &o : obs ) {
+        int obsDuration = 0;
+        for ( size_t i = 0; i < iObservations::maxObs; i++ )
+            obsDuration += o.stop[i] - o.start[i];
+        maxObsDuration = std::max(maxObsDuration, obsDuration);
     }
 
     // Populate
