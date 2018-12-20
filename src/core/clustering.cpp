@@ -136,23 +136,26 @@ std::vector<Section> constructSectionPrimitives(iStimulation iStim, std::vector<
     return sections;
 }
 
-std::vector<Section> findSimilarCluster(std::vector<Section> sections, int nParams, double similarityThreshold, Section master)
+std::vector<Section> findSimilarCluster(const std::vector<Section> &sections, int nParams, double similarityThreshold, Section master)
 {
     // Remove primitives that don't resemble master (but flip & keep opposites)
-    for ( auto rit = sections.rbegin(); rit != sections.rend(); ++rit ) {
-        double dotp = scalarProduct(master, *rit, nParams);
-        if ( -dotp > similarityThreshold )
-            for ( int i = 0; i < nParams; i++ )
-                rit->deviations[i] *= -1;
-        else if ( dotp < similarityThreshold )
-            sections.erase(rit.base());
+    std::vector<Section> selection;
+    selection.reserve(sections.size());
+    for ( const Section &sec : sections ) {
+        double dotp = scalarProduct(master, sec, nParams);
+        if ( dotp > similarityThreshold || -dotp > similarityThreshold ) {
+            selection.push_back(sec);
+            if ( std::signbit(dotp) )
+                for ( double &d : selection.back().deviations )
+                    d *= -1;
+        }
     }
 
     // compact
     std::vector<Section> compact;
-    compact.reserve(sections.size()); // conservative estimate
-    Section tmp { sections.front().start, sections.front().start, std::vector<double>(nParams, 0) };
-    for ( const Section &sec : sections ) {
+    compact.reserve(selection.size()); // conservative estimate
+    Section tmp { selection.front().start, selection.front().start, std::vector<double>(nParams, 0) };
+    for ( const Section &sec : selection ) {
         if ( sec.start == tmp.end ) {
             tmp.end = sec.end;
             for ( int i = 0; i < nParams; i++ )
@@ -211,16 +214,19 @@ void printCluster(std::vector<Section> cluster, int nParams, double dt)
             totals[i] += sec.deviations[i];
         len += sec.end - sec.start - 1;
     }
-    std::cout << "Total duration: " << len*dt << ", mean deviation: ";
-    double norm = 0;
+    std::cout << "Total duration: " << len*dt << ", normalised deviation: ";
+    double wNorm = 0, norm = 0;
+    for ( int i = 0; i < nParams; i++ )
+        norm += totals[i] * totals[i];
+    norm = std::sqrt(norm);
     for ( int i = 0; i < nParams; i++ ) {
-        std::cout << '\t' << totals[i]/len;
-        if ( norm < fabs(totals[i]) )
-            norm = fabs(totals[i]);
+        std::cout << '\t' << totals[i]/norm;
+        if ( wNorm < fabs(totals[i]) )
+            wNorm = fabs(totals[i]);
     }
     std::cout << "\nNormalised weights:\t";
     for ( int i = 0; i < nParams; i++ ) {
-        std::cout << '\t' << fabs(totals[i])/norm;
+        std::cout << '\t' << fabs(totals[i])/wNorm;
     }
     std::cout << std::endl;
 }
@@ -348,4 +354,94 @@ std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimul
     lib.run();
     lib.pullOutput();
     return pDelta;
+}
+
+
+
+
+void reduceObsCount(std::vector<int> &start, std::vector<int> &stop, int largestBridgableGap)
+{
+    int shortestObs = std::numeric_limits<int>::max(), shortestObsIdx = 0;
+    int shortestGap = std::numeric_limits<int>::max(), shortestGapIdx = 0;
+    int shuffleIdx;
+    for ( size_t obsIdx = 0; obsIdx < start.size(); obsIdx++ ) {
+        int dur = stop[obsIdx] - start[obsIdx];
+        if ( dur < shortestObs ) {
+            shortestObs = dur;
+            shortestObsIdx = obsIdx;
+        }
+        if ( obsIdx > 0 ) {
+            int gap = start[obsIdx] - start[obsIdx-1];
+            if ( gap < shortestGap ) {
+                shortestGap = gap;
+                shortestGapIdx = obsIdx;
+            }
+        }
+    }
+    if ( shortestGap < shortestObs && shortestGap <= largestBridgableGap ) {
+        // Merge across gap
+        stop[shortestGapIdx-1] = stop[shortestGapIdx];
+        shuffleIdx = shortestGapIdx;
+    } else {
+        // Eliminate shortest obs
+        shuffleIdx = shortestObsIdx;
+    }
+    for ( size_t obsIdx = shuffleIdx; obsIdx < start.size()-1; obsIdx++ ) {
+        start[obsIdx] = start[obsIdx+1];
+        stop[obsIdx] = stop[obsIdx+1];
+    }
+
+    start.resize(start.size()-1);
+    stop.resize(stop.size()-1);
+}
+
+std::vector<std::vector<std::pair<iObservations, int>>> processClusterMasks(
+        UniversalLibrary &ulib, int nStims, int nPartitions, int secLen, int largestBridgableGap)
+{
+    std::vector<std::vector<std::pair<iObservations, int>>> obs(nStims);
+    for ( int stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
+        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ ) {
+            int nSecs = 0;
+            std::vector<int> start, stop;
+            bool observing = false;
+            for ( int partitionIdx = 0; partitionIdx < nPartitions; partitionIdx++ ) {
+                unsigned int mask = ulib.clusterMasks[stimIdx * ulib.maxClusters * nPartitions + clusterIdx * nPartitions + partitionIdx];
+                for ( int i = 0; i < 32; i++ ) {
+                    if ( mask == 0 && !observing )
+                        break;
+                    if ( mask & 0x1 ) {
+                        ++nSecs;
+                        if ( !observing ) {
+                            observing = true;
+                            start.push_back(partitionIdx * 32 + i);
+                        }
+                    } else {
+                        if ( observing ) {
+                            observing = false;
+                            stop.push_back(partitionIdx * 32 + i);
+                        }
+                    }
+                    mask >>= 1;
+                }
+            }
+
+            if ( nSecs == 0 )
+                break; // to next stim
+
+            ulib.clusterCurrent[stimIdx * ulib.maxClusters + clusterIdx] /= nSecs;
+
+            while ( start.size() > iObservations::maxObs )
+                reduceObsCount(start, stop, largestBridgableGap / secLen);
+
+            obs[stimIdx].emplace_back(iObservations {{}, {}}, 0);
+            nSecs = 0;
+            for ( size_t i = 0; i < start.size(); i++ ) {
+                obs[stimIdx].back().first.start[i] = start[i] * secLen;
+                obs[stimIdx].back().first.stop[i] = stop[i] * secLen;
+                nSecs += stop[i] - start[i];
+            }
+            obs[stimIdx].back().second = nSecs * secLen;
+        }
+    }
+    return obs;
 }

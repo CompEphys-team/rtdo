@@ -1,6 +1,7 @@
 #include "wavegen.h"
 #include "session.h"
 #include <forward_list>
+#include "clustering.h"
 
 QString Wavegen::ee_action = QString("ee_search");
 quint32 Wavegen::ee_magic = 0xc9fd545f;
@@ -154,8 +155,8 @@ std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElit
     return ret;
 }
 
-void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ulib,
-                    Session &session, Wavegen::Archive &current, const int nStims,
+scalar scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ulib,
+                    Session &session, Wavegen::Archive &current, const int nStims, const int nPartitions,
                     const std::vector<MAPEDimension> &dims)
 {
     const double dt = session.runData().dt;
@@ -166,26 +167,31 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
     std::vector<size_t> bins(nBins);
     std::vector<std::forward_list<MAPElite>> candidates_by_param(nParams);
     int nCandidates = 0;
+    scalar maxCurrent = 0;
 
     // Note the dimensions that can't be computed once for an entire stim
     // NOTE: This expects that the first dimension is always EE_ParamIdx.
     constexpr int bin_for_paramIdx = 0;
-    int bin_for_clusterIdx = -1, bin_for_clusterDuration = -1;
+    int bin_for_clusterIdx = -1, bin_for_clusterDuration = -1, bin_for_current = -1;
     for ( int i = 0; i < nBins; i++ ) {
         if ( dims[i].func == MAPEDimension::Func::EE_ClusterIndex )
             bin_for_clusterIdx = i;
         else if ( dims[i].func == MAPEDimension::Func::BestBubbleDuration )
             bin_for_clusterDuration = i;
+        else if ( dims[i].func == MAPEDimension::Func::EE_MeanCurrent )
+            bin_for_current = i;
     }
 
+    std::vector<std::vector<std::pair<iObservations, int>>> obs = processClusterMasks(
+                ulib, nStims, nPartitions, session.gaFitterSettings().cluster_fragment_dur/dt, minLength);
     for ( int stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
         std::shared_ptr<iStimulation> stim = std::make_shared<iStimulation>(stims[stimIdx]);
         stim->tObsBegin = 0;
 
         // Find number of valid clusters
         size_t nClusters = 0;
-        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ )
-            if ( ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx] >= minLength )
+        for ( size_t clusterIdx = 0; clusterIdx < obs[stimIdx].size(); clusterIdx++ )
+            if ( obs[stimIdx][clusterIdx].second >= minLength )
                 ++nClusters;
 
         // Populate all bins (with some garbage for clusterIdx, paramIdx, clusterDuration)
@@ -193,11 +199,14 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
             bins[binIdx] = dims[binIdx].bin(*stim, 0, 0, nClusters, 1, dt);
 
         // Construct a MAPElite for each non-zero parameter contribution of each valid cluster
-        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ ) {
+        for ( size_t clusterIdx = 0; clusterIdx < obs[stimIdx].size(); clusterIdx++ ) {
 
             // Check for valid length
-            int len = ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx];
+            int len = obs[stimIdx][clusterIdx].second;
             if ( len >= minLength ) {
+                scalar meanCurrent = ulib.clusterCurrent[stimIdx * ulib.maxClusters + clusterIdx];
+                if ( meanCurrent > maxCurrent )
+                    maxCurrent = meanCurrent;
 
                 // Populate cluster-level bins
                 if ( bin_for_clusterDuration > 0 ) {
@@ -206,13 +215,18 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
                 }
                 if ( bin_for_clusterIdx > 0 )
                     bins[bin_for_clusterIdx] = dims[bin_for_clusterIdx].bin(*stim, 0, clusterIdx, 0, 1, dt);
+                if ( bin_for_current > 0 )
+                    bins[bin_for_current] = dims[bin_for_current].bin(meanCurrent, 1);
 
                 // One entry for each parameter
+                std::vector<scalar> contrib(nParams);
+                for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+                    contrib[paramIdx] = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
                 for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
-                    scalar contrib = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
-                    if ( contrib > 0 ) {
+                    if ( contrib[paramIdx] > 0 ) {
                         bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 1, dt);
-                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib});
+                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib[paramIdx], contrib, obs[stimIdx][clusterIdx].first});
+                        candidates_by_param[paramIdx].front().current = meanCurrent;
                         ++nCandidates;
                     }
                 }
@@ -241,6 +255,8 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
     current.nInsertions.push_back(nInserted);
     current.nReplacements.push_back(nReplaced);
     current.nElites.push_back(current.elites.size());
+
+    return maxCurrent;
 }
 
 bool Wavegen::ee_exec(QFile &file, Result *result)
@@ -257,12 +273,19 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     const int blankCycles = session.gaFitterSettings().cluster_blank_after_step / session.runData().dt;
     const int sectionLength = session.gaFitterSettings().cluster_fragment_dur / session.runData().dt;
     const scalar dotp_threshold = session.gaFitterSettings().cluster_threshold;
+    const int minClusterLen = session.gaFitterSettings().cluster_min_dur / session.runData().dt;
+
+    double run_maxCurrent = 0, sum_maxCurrents = 0;
 
     std::vector<MAPEDimension> dims = session.wavegenData().mapeDimensions;
     std::vector<size_t> variablePrecisionDims;
-    for ( size_t i = 0; i < dims.size(); i++ )
+    int meanCurrentDim = -1;
+    for ( size_t i = 0; i < dims.size(); i++ ) {
         if ( dims[i].hasVariableResolution() )
             variablePrecisionDims.push_back(i);
+        if ( dims[i].func == MAPEDimension::Func::EE_MeanCurrent )
+            meanCurrentDim = i;
+    }
 
     ulib.resizeOutput(istimd.iDuration);
     prepareModels(session, ulib, searchd);
@@ -283,13 +306,14 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
 
     // Queue the first set of stims
     pushStimsAndObserve(*returnedWaves, ulib, nModelsPerStim, blankCycles);
-    ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
+    ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
     ulib.run();
-    ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, deltabar, false);
+    int nPartitions = ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
+                                   sectionLength, dotp_threshold, minClusterLen, deltabar, false);
 
     for ( size_t epoch = 0; epoch < searchd.maxIterations; epoch++ ) {
         // Copy completed clusters for returnedWaves to host (sync)
-        ulib.copyClusters(nStimsPerEpoch);
+        ulib.pullClusters(nStimsPerEpoch, nPartitions);
 
         bool done = (++current.iterations == searchd.maxIterations) || isAborted();
 
@@ -297,11 +321,15 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
         if ( !done ) {
             pushStimsAndObserve(*newWaves, ulib, nModelsPerStim, blankCycles);
             ulib.run();
-            ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration, sectionLength, dotp_threshold, deltabar, false);
+            nPartitions = ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
+                                       sectionLength, dotp_threshold, minClusterLen, deltabar, false);
         }
 
         // score and insert returnedWaves into archive
-        scoreAndInsert(*returnedWaves, ulib, session, current, nStimsPerEpoch, dims);
+        scalar epoch_maxCurrent = scoreAndInsert(*returnedWaves, ulib, session, current, nStimsPerEpoch, nPartitions, dims);
+        sum_maxCurrents += epoch_maxCurrent;
+        if ( epoch_maxCurrent > run_maxCurrent )
+            run_maxCurrent = epoch_maxCurrent;
 
         // Swap waves: After this, returnedWaves points at those in progress, and newWaves are ready for new adventures
         using std::swap;
@@ -320,8 +348,12 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
                 for ( size_t i : variablePrecisionDims )
                     dims[i].resolution *= 2;
                 for ( MAPElite &e : current.elites )
-                    for ( size_t i : variablePrecisionDims )
-                        e.bin[i] = dims.at(i).bin(*e.wave, 1, session.runData().dt);
+                    for ( size_t i : variablePrecisionDims ) {
+                        if ( int(i) == meanCurrentDim )
+                            e.bin[i] = dims.at(i).bin(e.current, session.runData().dt);
+                        else
+                            e.bin[i] = dims.at(i).bin(*e.wave, 1, session.runData().dt);
+                    }
                 current.elites.sort(); // TODO: radix sort
             }
         }
@@ -337,6 +369,10 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
             construct_next_generation(*newWaves);
         }
     }
+
+    std::cout << "Overall maximum observed cluster current: " << run_maxCurrent
+              << " nA; average maximum across epochs: " << (sum_maxCurrents/current.iterations) << " nA."
+              << std::endl;
 
     current.nCandidates.squeeze();
     current.nInsertions.squeeze();
@@ -366,6 +402,8 @@ void Wavegen::ee_save(QFile &file)
 
     os << quint32(arch.elites.size());
     os << quint32(arch.elites.front().bin.size());
+    os << quint32(arch.elites.front().deviations.size());
+    os << quint32(iObservations::maxObs);
 
     // Separate waves into unique and shared to reduce the number of lookups
     std::vector<iStimulation*> w_unique, w_shared;
@@ -373,6 +411,11 @@ void Wavegen::ee_save(QFile &file)
         os << e.fitness;
         for ( size_t b : e.bin )
             os << quint32(b);
+        for ( scalar d : e.deviations )
+            os << d;
+        for ( size_t i = 0; i < iObservations::maxObs; i++ )
+            os << quint32(e.obs.start[i]) << quint32(e.obs.stop[i]);
+        os << e.current;
 
         if ( e.wave.unique() ) {
             w_unique.push_back(e.wave.get());
@@ -405,18 +448,18 @@ void Wavegen::ee_load(QFile &file, const QString &, Result r)
     m_archives.emplace_back(-1, searchd, r);
     Archive &arch = m_archives.back();
 
-    quint32 precision, iterations, archSize, nBins;
+    quint32 precision, iterations, archSize, nBins, nParams, maxObs;
     is >> precision >> iterations;
     arch.precision = precision;
     arch.iterations = iterations;
     is >> arch.nCandidates >> arch.nInsertions >> arch.nReplacements >> arch.nElites;
     is >> arch.deltabar;
 
-    is >> archSize >> nBins;
+    is >> archSize >> nBins >> nParams >> maxObs;
     arch.elites.resize(archSize);
     std::vector<qint32> stimIdx(archSize);
     auto idxIt = stimIdx.begin();
-    quint32 tmp;
+    quint32 tmp, start, stop;
     for ( auto el = arch.elites.begin(); el != arch.elites.end(); el++, idxIt++ ) {
         is >> el->fitness;
         el->bin.resize(nBins);
@@ -424,6 +467,20 @@ void Wavegen::ee_load(QFile &file, const QString &, Result r)
             is >> tmp;
             b = size_t(tmp);
         }
+        el->deviations.resize(nParams);
+        for ( scalar &d : el->deviations )
+            is >> d;
+
+        el->obs = {{}, {}};
+        for ( size_t i = 0; i < maxObs; i++ ) {
+            is >> start >> stop;
+            if ( i < iObservations::maxObs ) {
+                el->obs.start[i] = start;
+                el->obs.stop[i] = stop;
+            }
+        }
+        is >> el->current;
+
         is >> *idxIt;
     }
 

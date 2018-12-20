@@ -81,7 +81,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
         shrunk = true;
         ret.reserve(el.size());
         for ( const MAPElite &e : el )
-            ret.push_back(Stimulation(*e.wave, session->runData(resultIndex()).dt));
+            ret.push_back(Stimulation(*e.wave, session->runData(archive()->resultIndex).dt));
         break;
     }
     case Subset :
@@ -140,8 +140,11 @@ std::vector<MAPElite> WaveSource::elites() const
     {
         std::vector<Stimulation> stims = stimulations();
         ret.resize(stims.size());
-        for ( size_t i = 0; i < ret.size(); i++ )
+        for ( size_t i = 0; i < ret.size(); i++ ) {
             ret[i].wave.reset(new iStimulation(stims[i], session->runData(resultIndex()).dt));
+            ret[i].obs.start[0] = ret[i].wave->tObsBegin;
+            ret[i].obs.stop[0] = ret[i].wave->tObsEnd;
+        }
         break;
     }
     }
@@ -174,7 +177,7 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
         std::vector<MAPElite> el = elites();
         shrunk = true;
         ret.reserve(el.size());
-        if ( session->runData(resultIndex()).dt == dt ) {
+        if ( session->runData(archive()->resultIndex).dt == dt ) {
             for ( const MAPElite &e : el )
                 ret.push_back(*e.wave);
         } else {
@@ -197,6 +200,53 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
         return {ret[waveno]};
     else
         return ret;
+}
+
+std::vector<iObservations> WaveSource::observations(double dt) const
+{
+    std::vector<iObservations> ret;
+    double dtFactor = 1;
+    bool needs_dt_adjustment = false;
+
+    switch ( type ) {
+    case Archive:
+    case Manual:
+        if ( session->runData(resultIndex()).dt != dt ) {
+            needs_dt_adjustment = true;
+            dtFactor = session->runData(resultIndex()).dt / dt;
+        }
+        break;
+    case Selection:
+    case Subset:
+        if ( session->runData(archive()->resultIndex).dt != dt ) {
+            needs_dt_adjustment = true;
+            dtFactor = session->runData(archive()->resultIndex).dt / dt;
+        }
+        break;
+    case Deck:
+        for ( const WaveSource &src : deck()->sources() )
+            ret.push_back(src.observations(dt)[0]);
+        if ( waveno >= 0 )
+            return {ret[waveno]};
+        else
+            return ret;
+    }
+
+    std::vector<MAPElite> el = elites();
+    ret.reserve(el.size());
+    for ( MAPElite const& e : el )
+        ret.push_back(e.obs);
+
+    if ( needs_dt_adjustment ) {
+        for ( iObservations &obs : ret ) {
+            for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
+                obs.start[i] *= dtFactor;
+                obs.stop[i] *= dtFactor;
+            }
+        }
+    }
+
+    return ret;
 }
 
 QString WaveSource::prettyName() const

@@ -44,7 +44,9 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     output(light ? dummyScalarPtr : *pointers.output),
 
     clusters(light ? dummyScalarPtr : *pointers.clusters),
-    clusterLen(light ? dummyIntPtr : *pointers.clusterLen)
+    clusterMasks(light ? dummyUIntPtr : *pointers.clusterMasks),
+    clusterCurrent(light ? dummyScalarPtr : *pointers.clusterCurrent),
+    clusterPrimitives(light ? dummyScalarPtr : *pointers.clusterPrimitives)
 {
 }
 
@@ -330,15 +332,16 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "#include \"definitions.h\"" << endl;
     ss << "#include \"universallibrary.h\"" << endl;
     ss << "#include \"../core/supportcode.cpp\"" << endl;
+    ss << endl;
+    ss << model.supportCode() << endl;
+    ss << project.simulatorCode() << endl;
+    ss << endl;
     ss << "#define NMODELS " << NMODELS << endl;
     ss << "#define NPARAMS " << adjustableParams.size() << endl;
     ss << "#define MAXCLUSTERS " << maxClusters << endl;
     ss << "#include \"universallibrary.cu\"" << endl;
     ss << endl;
 
-    ss << model.supportCode() << endl;
-
-    ss << project.simulatorCode() << endl;
 
     ss << "extern \"C\" UniversalLibrary::Pointers populate(UniversalLibrary &lib) {" << endl;
     ss << "    UniversalLibrary::Pointers pointers;" << endl;
@@ -390,7 +393,8 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.pullOutput =& pullOutput;" << endl;
     ss << "    pointers.profile =& profile;" << endl;
     ss << "    pointers.cluster =& cluster;" << endl;
-    ss << "    pointers.copyClusters =& copyClusters;" << endl;
+    ss << "    pointers.pullClusters =& pullClusters;" << endl;
+    ss << "    pointers.pullPrimitives =& pullPrimitives;" << endl;
     ss << "    pointers.find_deltabar =& find_deltabar;" << endl;
     ss << "    pointers.observe_no_steps =& observe_no_steps;" << endl;
     ss << "    return pointers;" << endl;

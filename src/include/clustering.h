@@ -32,7 +32,7 @@ std::vector<std::pair<int, int>> observeNoSteps(iStimulation iStim, int blankCyc
 // ******************** High-level functions: ********************************
 
 /// Finds all sections similar to @a master in @a sections, copying them as a cluster to the @result.
-std::vector<Section> findSimilarCluster(std::vector<Section> sections, int nParams, double similarityThreshold, Section master);
+std::vector<Section> findSimilarCluster(const std::vector<Section> &sections, int nParams, double similarityThreshold, Section master);
 
 
 /// Extracts all section primitives (via @fn constructSectionPrimitives), clusters them (via @fn extractLargestCluster), discarding clusters with
@@ -69,5 +69,14 @@ inline size_t maxDetunedDiffTraceStims(UniversalLibrary &lib)
     int nWarps = (lib.adjustableParams.size()+30) / 31;
     return (lib.NMODELS/32) / nWarps;
 }
+
+
+/// Processes the results of UniversalLibrary::cluster(), munging ulib.clusterMasks into iObservations, and normalising ulib.clusterCurrent.
+/// Where the masks indicates more than iObservations::maxObs windows, they are merged (across at most @p largestBridgableGap ticks) or dropped,
+/// with a preference for the shortest [gap | obs]. Note that currents and cluster deviation vectors are not updated to reflect this reduction.
+/// Changes ulib.clusterCurrent in place.
+/// @return an (iObs, obsDur[ticks]) pair for each cluster and each stimulation.
+std::vector<std::vector<std::pair<iObservations, int>>> processClusterMasks(
+        UniversalLibrary &ulib, int nStims, int nPartitions, int secLen, int largestBridgableGap);
 
 #endif // CLUSTERING_H

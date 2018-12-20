@@ -253,7 +253,7 @@ void StimulationCreator::setNStims(int n)
     stims.resize(n, stimCopy);
     ui->stimulations->clearContents();
     ui->stimulations->setRowCount(stims.size());
-    bool named = (n == session.project.model().adjustableParams.size());
+    bool named = (n == (int)session.project.model().adjustableParams.size());
     QStringList labels;
     for ( int row = 0; row < n; row++ ) {
         ColorButton *c = new ColorButton();

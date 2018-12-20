@@ -44,6 +44,16 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
 
     const RunData &rd = session.runData();
     Profile &prof = *static_cast<Profile*>(res);
+    std::vector<iStimulation> stims = prof.src.iStimulations(rd.dt);
+    std::vector<iObservations> obs = prof.src.observations(rd.dt);
+
+    int maxObsDuration = 0;
+    for ( const iObservations &o : obs ) {
+        int obsDuration = 0;
+        for ( size_t i = 0; i < iObservations::maxObs; i++ )
+            obsDuration += o.stop[i] - o.start[i];
+        maxObsDuration = std::max(maxObsDuration, obsDuration);
+    }
 
     // Populate
     for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
@@ -76,31 +86,25 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     lib.stim[0].baseV = NAN;
     lib.obs[0] = {{}, {}};
 
+    lib.resizeOutput(maxObsDuration);
+
     lib.push();
 
     unsigned int assignment = lib.assignment_base
             | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPACT | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
 
-    std::vector<iStimulation> stims = prof.src.iStimulations(session.runData().dt);
-    size_t total = stims.size();
-    prof.gradient.resize(total);
-    prof.accuracy.resize(total);
-
-    int maxObsDuration = 0;
-    for ( const iStimulation &stim : stims )
-        maxObsDuration = std::max(maxObsDuration, stim.tObsEnd-stim.tObsBegin);
-    lib.resizeOutput(maxObsDuration);
+    prof.gradient.resize(stims.size());
+    prof.accuracy.resize(stims.size());
 
     // Run
-    for ( size_t i = 0; i < total; i++ ) {
+    for ( size_t i = 0; i < stims.size(); i++ ) {
         if ( isAborted() ) {
             delete res;
             return false;
         }
 
         lib.stim[0] = stims[i];
-        lib.obs[0].start[0] = stims[i].tObsBegin;
-        lib.obs[0].stop[0] = stims[i].tObsEnd;
+        lib.obs[0] = obs[i];
         lib.push(lib.stim);
         lib.push(lib.obs);
 
@@ -124,7 +128,7 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
         int nSamples = stims[i].tObsEnd - stims[i].tObsBegin;
         lib.profile(nSamples, prof.samplingInterval, prof.target, prof.accuracy[i], prof.gradient[i]);
         prof.gradient[i] /= prof.sigma;
-        emit progress(i, total);
+        emit progress(i, stims.size());
     }
 
     m_profiles.push_back(std::move(prof));

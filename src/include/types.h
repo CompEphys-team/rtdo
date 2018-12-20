@@ -111,6 +111,8 @@ struct iStimulation
     iStimulation(const Stimulation &I, double dt);
     iStimulation(int) : iStimulation() {}
 };
+std::ostream &operator<<(std::ostream&, const iStimulation&);
+std::ostream &operator<<(std::ostream&, const iStimulation::Step&);
 
 struct iObservations
 {
@@ -120,6 +122,7 @@ struct iObservations
 
     inline void operator=(double) {}
 };
+std::ostream &operator<<(std::ostream&, const iObservations&);
 
 struct ChnData
 {
@@ -305,9 +308,19 @@ struct MAPElite
     std::vector<size_t> bin;
     std::shared_ptr<iStimulation> wave;
     scalar fitness;
+    std::vector<scalar> deviations;
+    iObservations obs;
+    scalar current = 0;
 
-    MAPElite() : fitness(0) {}
-    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness) : bin(bin), wave(wave), fitness(fitness) {}
+    MAPElite() : fitness(0), obs {{},{}} {}
+    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness)
+        : bin(bin), wave(wave), fitness(fitness), obs {{},{}}
+    {
+        obs.start[0] = wave->tObsBegin;
+        obs.stop[0] = wave->tObsEnd;
+    }
+    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness, std::vector<scalar> deviations, iObservations obs)
+        : bin(bin), wave(wave), fitness(fitness), deviations(deviations), obs(obs) {}
 
     /**
      * @brief compare performs a lexical comparison on bin.
@@ -316,7 +329,7 @@ struct MAPElite
     inline bool operator<(const MAPElite &rhs) const { return bin < rhs.bin; }
 
     /**
-     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness and wave if @p rhs is better.
+     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness, wave, obs and deviations if @p rhs is better.
      * @return true, if @p rhs beat and replaced the callee.
      */
     bool compete(const MAPElite &rhs);
@@ -332,7 +345,8 @@ struct MAPEDimension
 
         EE_ParamIndex,
         EE_NumClusters,
-        EE_ClusterIndex
+        EE_ClusterIndex,
+        EE_MeanCurrent
     };
 
     Func func;

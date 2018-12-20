@@ -2,13 +2,25 @@
 
 StimulationGraph::StimulationGraph(QCPAxis *keyAxis, QCPAxis *valueAxis, Stimulation stim, bool omitTail) :
     QCPGraph(keyAxis, valueAxis),
-    m_stim(std::move(stim))
+    m_stim(std::move(stim)),
+    m_tail(!omitTail)
+{
+    recalculate();
+}
+
+void StimulationGraph::recalculate()
 {
     scalar tLast;
-    if ( omitTail )
-        tLast = m_stim.tObsEnd;
-    else
+    if ( m_tail )
         tLast = m_stim.duration;
+    else if ( m_dt == 0 )
+        tLast = m_stim.tObsEnd;
+    else {
+        size_t i;
+        for ( i = 0; i < iObservations::maxObs && m_obs.stop[i] > 0; i++ )
+            ;
+        tLast = i ? m_obs.stop[i-1] * m_dt : 0;
+    }
 
     bool complete = false;
     QVector<double> t, V;
@@ -40,6 +52,13 @@ StimulationGraph::StimulationGraph(QCPAxis *keyAxis, QCPAxis *valueAxis, Stimula
     setData(t, V, true);
 }
 
+void StimulationGraph::setObservations(const iObservations &obs, double dt)
+{
+     m_obs = obs;
+     m_dt = dt;
+     recalculate();
+}
+
 StimulationGraph::~StimulationGraph() {}
 
 void StimulationGraph::draw(QCPPainter *painter)
@@ -51,10 +70,21 @@ void StimulationGraph::draw(QCPPainter *painter)
     swap(brush, mBrush);
     painter->setBrush(mBrush);
     painter->setPen(Qt::NoPen);
-    painter->drawRect(QRectF(QPointF( // top left
-                                  keyAxis()->coordToPixel(m_stim.tObsBegin),
-                                  valueAxis()->coordToPixel(valueAxis()->range().upper)),
-                            QPointF( // bottom right
-                                  keyAxis()->coordToPixel(m_stim.tObsEnd),
-                                  valueAxis()->coordToPixel(valueAxis()->range().lower))));
+    if ( m_dt == 0 ) {
+        painter->drawRect(QRectF(QPointF( // top left
+                                      keyAxis()->coordToPixel(m_stim.tObsBegin),
+                                      valueAxis()->coordToPixel(valueAxis()->range().upper)),
+                                QPointF( // bottom right
+                                      keyAxis()->coordToPixel(m_stim.tObsEnd),
+                                      valueAxis()->coordToPixel(valueAxis()->range().lower))));
+    } else {
+        for ( size_t i = 0; i < iObservations::maxObs && m_obs.stop[i] > 0; i++ ) {
+            painter->drawRect(QRectF(QPointF( // top left
+                                          keyAxis()->coordToPixel(m_obs.start[i] * m_dt),
+                                          valueAxis()->coordToPixel(valueAxis()->range().upper)),
+                                    QPointF( // bottom right
+                                          keyAxis()->coordToPixel(m_obs.stop[i] * m_dt),
+                                          valueAxis()->coordToPixel(valueAxis()->range().lower))));
+        }
+    }
 }

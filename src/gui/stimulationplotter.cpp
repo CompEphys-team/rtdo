@@ -6,8 +6,7 @@
 StimulationPlotter::StimulationPlotter(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::StimulationPlotter),
-    rebuilding(false),
-    enslaved(false)
+    rebuilding(false)
 {
     ui->setupUi(this);
     connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(replot()));
@@ -96,35 +95,14 @@ void StimulationPlotter::init(Session *session)
     QTimer::singleShot(10, this, &StimulationPlotter::resizePanel);
 }
 
-void StimulationPlotter::setSource(WaveSource src)
-{
-    enslaved = true;
-    single = false;
-    source = std::move(src);
-    ui->sources->setVisible(false);
-    replot();
-}
-
-void StimulationPlotter::setStimulation(Stimulation src)
-{
-    enslaved = true;
-    single = true;
-    stim = std::move(src);
-    ui->sources->setVisible(false);
-    replot();
-}
-
 void StimulationPlotter::clear()
 {
-    enslaved = false;
     ui->sources->setVisible(true);
     updateSources();
 }
 
 void StimulationPlotter::updateSources()
 {
-    if ( enslaved )
-        return;
     int currentSource = ui->sources->currentIndex();
     ui->sources->clear();
     session->wavesets().selections();
@@ -136,26 +114,14 @@ void StimulationPlotter::updateSources()
 
 void StimulationPlotter::replot()
 {
-    if ( rebuilding )
+    if ( rebuilding || ui->sources->currentIndex() < 0 )
         return;
 
-    std::vector<Stimulation> stims;
+    const RunData &rd = session->qRunData();
     double duration = 0, minV = session->qStimulationData().minVoltage, maxV = session->qStimulationData().maxVoltage;
-    bool isDeck;
-    if ( enslaved && single ) {
-        stims.push_back(stim);
-        duration = stim.duration;
-        isDeck = false;
-    } else if ( enslaved && !single ) {
-        stims = source.stimulations();
-        isDeck = source.type == WaveSource::Deck;
-    } else if ( ui->sources->currentIndex() < 0 ) {
-        return;
-    } else {
-        WaveSource src = session->wavesets().sources().at(ui->sources->currentIndex());
-        stims = src.stimulations();
-        isDeck = src.type == WaveSource::Deck;
-    }
+    WaveSource src = session->wavesets().sources().at(ui->sources->currentIndex());
+    std::vector<Stimulation> stims = src.stimulations();
+    std::vector<iObservations> obs = src.observations(rd.dt);
     if ( stims.empty() )
         return;
 
@@ -180,7 +146,7 @@ void StimulationPlotter::replot()
     check.setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
     check.setCheckState(Qt::Checked);
     for ( size_t i = lower, row = 0; i < upper; i++, row++ ) {
-        if ( isDeck )
+        if ( src.type == WaveSource::Deck )
             labels << QString::fromStdString(session->project.model().adjustableParams[i].name);
         else
             labels << QString::number(i);
@@ -209,33 +175,33 @@ void StimulationPlotter::replot()
     bool hasScale = ui->scale->isChecked();
 
     for ( size_t i = 0; i < upper-lower; i++ ) {
-        new StimulationGraph(ui->overlay->xAxis, ui->overlay->yAxis, stims[i+lower]); // ui->overlay takes ownership
-        if ( !single ) {
-            QCPAxisRect *axes = new QCPAxisRect(ui->panel);
-            QCPAxis *xAxis = axes->axis(QCPAxis::atBottom);
-            QCPAxis *yAxis = axes->axis(QCPAxis::atLeft);
-            xAxis->setTicks(hasScale);
-            xAxis->setTickLabels(hasScale);
-            xAxis->setLabel(hasScale ? "Time (ms)" : "");
-            xAxis->setLayer("axes");
-            xAxis->grid()->setLayer("grid");
-            yAxis->setTicks(hasScale);
-            yAxis->setTickLabels(hasScale);
-            yAxis->setLabel(hasScale ? "Voltage (mV)" : "");
-            yAxis->setLayer("axes");
-            yAxis->grid()->setLayer("grid");
+        StimulationGraph *g = new StimulationGraph(ui->overlay->xAxis, ui->overlay->yAxis, stims[i+lower]); // ui->overlay takes ownership
+        g->setObservations(obs[i+lower], rd.dt);
+        QCPAxisRect *axes = new QCPAxisRect(ui->panel);
+        QCPAxis *xAxis = axes->axis(QCPAxis::atBottom);
+        QCPAxis *yAxis = axes->axis(QCPAxis::atLeft);
+        xAxis->setTicks(hasScale);
+        xAxis->setTickLabels(hasScale);
+        xAxis->setLabel(hasScale ? "Time (ms)" : "");
+        xAxis->setLayer("axes");
+        xAxis->grid()->setLayer("grid");
+        yAxis->setTicks(hasScale);
+        yAxis->setTickLabels(hasScale);
+        yAxis->setLabel(hasScale ? "Voltage (mV)" : "");
+        yAxis->setLayer("axes");
+        yAxis->grid()->setLayer("grid");
 
-            int row = 2 * int(i / ui->columns->value());
-            int col = i % ui->columns->value();
-            QCPTextElement *title = new QCPTextElement(ui->panel, labels.at(i));
-            title->setVisible(hasTitle);
-            ui->panel->plotLayout()->addElement(row, col, title);
-            ui->panel->plotLayout()->addElement(row+1, col, axes); // add axes to panel
+        int row = 2 * int(i / ui->columns->value());
+        int col = i % ui->columns->value();
+        QCPTextElement *title = new QCPTextElement(ui->panel, labels.at(i));
+        title->setVisible(hasTitle);
+        ui->panel->plotLayout()->addElement(row, col, title);
+        ui->panel->plotLayout()->addElement(row+1, col, axes); // add axes to panel
 
-            graphs[i] = new StimulationGraph(xAxis, yAxis, stims[i+lower], !ui->tails->isChecked()); // add new stimGraph to axes
+        graphs[i] = new StimulationGraph(xAxis, yAxis, stims[i+lower], !ui->tails->isChecked()); // add new stimGraph to axes
+        graphs[i]->setObservations(obs[i+lower], rd.dt);
 
-            duration = std::max(duration, double(stims[i+lower].duration));
-        }
+        duration = std::max(duration, double(stims[i+lower].duration));
         updateColor(i, false);
     }
     ui->overlay->xAxis->setRange(0, duration);
@@ -262,12 +228,10 @@ void StimulationPlotter::updateColor(size_t idx, bool replot)
     ui->overlay->graph(idx)->setBrush(brush);
     if ( replot )
         ui->overlay->replot();
-    if ( !single ) {
-        graphs[idx]->setPen(pen);
-        graphs[idx]->setBrush(brush);
-        if ( replot )
-            ui->panel->replot();
-    }
+    graphs[idx]->setPen(pen);
+    graphs[idx]->setBrush(brush);
+    if ( replot )
+        ui->panel->replot();
 }
 
 void StimulationPlotter::on_pdf_clicked()

@@ -136,6 +136,31 @@ std::ostream &operator<<(std::ostream &os, const Stimulation::Step &s)
     return os;
 }
 
+std::ostream &operator<<(std::ostream &os, const iStimulation &I)
+{
+    using std::endl;
+    os << "{" << endl
+       << "  duration: " << I.duration << endl
+       << "  V: " << I.baseV << endl;
+    for ( const iStimulation::Step &s : I )
+        os << s;
+    os << "}";
+    return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const iStimulation::Step &s)
+{
+    os << "  {" << (s.ramp?"ramp":"step") << " at " << s.t << " to " << s.V << "}" << std::endl;
+    return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const iObservations &obs)
+{
+    for ( size_t i = 0; i < iObservations::maxObs && obs.stop[i]; i++ )
+        os << obs.start[i] << " - " << obs.stop[i] << std::endl;
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const IntegrationMethod &m)
 {
     switch ( m ) {
@@ -161,6 +186,8 @@ bool MAPElite::compete(const MAPElite &rhs)
     if ( rhs.fitness > fitness ) {
         fitness = rhs.fitness;
         wave = rhs.wave;
+        deviations = rhs.deviations;
+        obs = rhs.obs;
         return true;
     }
     return false;
@@ -275,6 +302,7 @@ void MAPEDimension::setDefaultMinMax(StimulationData d, size_t nParams)
     case Func::EE_ClusterIndex:
     case Func::EE_NumClusters:     min = 0; max = UniversalLibrary::maxClusters; return;
     case Func::EE_ParamIndex:      min = 0; max = nParams; return;
+    case Func::EE_MeanCurrent:     min = 0; max = 0; return;
     }
 }
 
@@ -288,6 +316,7 @@ std::string toString(const MAPEDimension::Func &f)
     case MAPEDimension::Func::EE_ClusterIndex:      return "ClusterIndex";
     case MAPEDimension::Func::EE_NumClusters:       return "NumClusters";
     case MAPEDimension::Func::EE_ParamIndex:        return "ParamIndex";
+    case MAPEDimension::Func::EE_MeanCurrent:       return "MeanCurrent";
     }
     return "InvalidFunction";
 }
@@ -309,6 +338,7 @@ std::istream &operator>>(std::istream &is, MAPEDimension::Func &f)
     else if ( s == std::string("ClusterIndex") )        f = MAPEDimension::Func::EE_ClusterIndex;
     else if ( s == std::string("NumClusters") )         f = MAPEDimension::Func::EE_NumClusters;
     else if ( s == std::string("ParamIndex") )          f = MAPEDimension::Func::EE_ParamIndex;
+    else if ( s == std::string("MeanCurrent") )         f = MAPEDimension::Func::EE_MeanCurrent;
     else /* Default */ f = MAPEDimension::Func::BestBubbleDuration;
     return is;
 }

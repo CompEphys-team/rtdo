@@ -39,6 +39,18 @@ static unsigned int clusters_size = 0;
 static int *clusterLen = nullptr, *d_clusterLen = nullptr;
 static unsigned int clusterLen_size = 0;
 
+static unsigned int *clusterMasks = nullptr, *d_clusterMasks = nullptr;
+static unsigned int clusterMasks_size = 0;
+
+static scalar *clusterCurrent = nullptr, *d_clusterCurrent = nullptr;
+static unsigned int clusterCurrent_size = 0;
+
+static scalar *sections = nullptr, *d_sections = nullptr;
+static unsigned int sections_size = 0;
+
+static scalar *d_currents= nullptr;
+static unsigned int currents_size = 0;
+
 static __constant__ scalar deltabar[NPARAMS];
 
 void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
@@ -54,7 +66,9 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
     pointers.output =& timeseries;
 
     pointers.clusters =& clusters;
-    pointers.clusterLen =& clusterLen;
+    pointers.clusterMasks =& clusterMasks;
+    pointers.clusterCurrent =& clusterCurrent;
+    pointers.clusterPrimitives =& sections;
 
     allocateMem();
     initialize();
@@ -106,6 +120,16 @@ extern "C" void resizeOutput(size_t newSize)
 extern "C" void pullOutput()
 {
     CHECK_CUDA_ERRORS(cudaMemcpy(timeseries, d_timeseries, latest_timeseries_size * sizeof(scalar), cudaMemcpyDeviceToHost))
+}
+
+
+// Code adapated from Justin Luitjens, <https://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/>
+// Note, shuffle is only supported on compute capability 3.x and higher
+__device__ inline scalar warpReduceSum(scalar val, int cutoff = warpSize)
+{
+    for ( int offset = 1; offset < cutoff; offset *= 2 )
+        val += __shfl_xor_sync(0xffffffff, val, offset);
+    return val;
 }
 
 
@@ -202,228 +226,835 @@ extern "C" void profile(int nSamples, int stride, scalar *d_targetParam, double 
 
 
 /// ******************************************************************************************************************************
-///  >============================     Elementary Effects WG    ================================================================<
+///  >============================     Elementary Effects WG: Clustering    ====================================================<
 /// ******************************************************************************************************************************
+static constexpr int STIMS_PER_CLUSTER_BLOCK = 16;
+static constexpr int PARTITION_SIZE = 32;
 
-static constexpr int STIMS_PER_CLUSTER_WARP = NPARAMS>16 ? 1 : NPARAMS>8 ? 2 : NPARAMS>4 ? 4 : NPARAMS>2 ? 8 : NPARAMS>1 ? 16 : 32;
-static constexpr int STIMS_PER_CLUSTER_BLOCK = 8 * STIMS_PER_CLUSTER_WARP;
-
-// Code adapated from Justin Luitjens, <https://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/>
-// Note, shuffle is only supported on compute capability 3.x and higher
-__device__ inline scalar warpReduceSum(scalar val, int cutoff = warpSize)
+/**
+ * @brief build_section_primitives chops the EE traces in d_timeseries into deltabar-normalised deviation vectors ("sections")
+ *          representing up to secLen ticks. Sections are chunked into partitions of PARTITION_SIZE=32 sections each.
+ *          Deviation vectors represent the mean deviation per tick, normalised to deltabar, caused by a single detuning.
+ *          Note, this kernel expects the EE traces to be generated using TIMESERIES_COMPARE_NONE
+ * @param out_sections is the output, laid out as [stimIdx][paramIdx][partitionIdx][secIdx (local to partition)].
+ * @param out_current is the mean current within each section, laid out as [stimIdx][partitionIdx][secIdx].
+ */
+__global__ void build_section_primitives(const int trajLen,
+                                         const int nTraj,
+                                         const int nStims,
+                                         const int duration,
+                                         const int secLen,
+                                         const int nPartitions,
+                                         scalar *out_sections,
+                                         scalar *out_current)
 {
-    for ( int offset = 1; offset < cutoff; offset *= 2 )
-        val += __shfl_down_sync(0xffffffff, val, offset);
-    return val;
-}
-
-__device__ inline scalar sumOverStim(scalar val, int stimWidth, int stimIdx)
-{
-    static __shared__ scalar tmp[STIMS_PER_CLUSTER_BLOCK];
-    val = warpReduceSum(val, stimWidth);
-    if ( NPARAMS > warpSize ) {
-        if ( threadIdx.x & (stimWidth-1) == 0 ) // Lane 0
-            atomicAdd(&tmp[stimIdx], val);
-        __syncthreads();
-        val = tmp[stimIdx];
-    } else {
-        val = __shfl_sync(0xffffffff, val, 0, stimWidth);
-    }
-    return val;
-}
-
-__global__ void clusterKernel(int trajLen,
-                              int nTraj,
-                              int nStims,
-                              int duration,
-                              int secLen,
-                              scalar dotp_threshold,
-                              scalar *global_clusters, int *global_clusterLen)
-{
-    static constexpr int stimWidth = 32/STIMS_PER_CLUSTER_WARP;
-    const int nUsefulTraces = (trajLen-1)*nTraj;
-    int paramIdx, stimIdx;
-    if ( STIMS_PER_CLUSTER_WARP == 1 ) {
-        // One row, one stim
-        paramIdx = threadIdx.x;
-        stimIdx = threadIdx.y;
-    } else {
-        // Each row is one warp with multiple stims
-        paramIdx = threadIdx.x % stimWidth;
-        stimIdx = (threadIdx.y * STIMS_PER_CLUSTER_WARP) + (threadIdx.x/stimWidth);
-    }
-    const int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
-    const int id0 = global_stimIdx * trajLen * nTraj; // id of the first trajectory's starting point model
-    const int nContrib = (nUsefulTraces/NPARAMS) + (paramIdx < (nUsefulTraces%NPARAMS));
-    const iObservations obs = dd_obsUNI[id0];
+    const int warpid = threadIdx.x / 32; // acts as block-local stim idx
+    const int laneid = threadIdx.x & 31;
+    const int stimIdx = (blockIdx.x * blockDim.x + threadIdx.x) / 32; // global stim idx; one stim per warp
+    const int nTraces = trajLen*nTraj; // Total number of traces per stim, including starting point models
+    const int nUsefulTraces = (trajLen-1)*nTraj; // Number of mid-trajectory models per stim
+    const int paramIdx_after_end_of_final_traj = nUsefulTraces % NPARAMS; // First param idx with one contrib fewer than the preceding ones
+    const int lane0_offset = stimIdx * nTraces;
+    const int nLoads = (nTraces + 31) & 0xffffffe0;
+    const iObservations obs = dd_obsUNI[stimIdx*nTraces];
     int nextObs = 0;
 
-    __shared__ scalar sh_clusters[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS][NPARAMS];
-    __shared__ scalar sh_cluster_square_norm[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
-    __shared__ int sh_clusterLen[STIMS_PER_CLUSTER_BLOCK][MAXCLUSTERS];
-    { // zero-initialise
-        if ( paramIdx < NPARAMS )
-            for ( int i = 0; i < MAXCLUSTERS; i++ )
-                sh_clusters[stimIdx][i][paramIdx] = 0;
+    volatile __shared__ scalar sh_contrib[STIMS_PER_CLUSTER_BLOCK][NPARAMS][PARTITION_SIZE + 1];
+    volatile __shared__ scalar sh_current[STIMS_PER_CLUSTER_BLOCK][PARTITION_SIZE + 1];
 
-        int laneid = threadIdx.x + blockDim.x*threadIdx.y;
-        if ( laneid < STIMS_PER_CLUSTER_BLOCK ) {
-            for ( int i = 0; i < MAXCLUSTERS; i++ ) {
-                sh_cluster_square_norm[laneid][i] = 0;
-                sh_clusterLen[laneid][i] = 0;
-            }
-        }
-        __syncthreads();
-    }
+    for ( int i = threadIdx.x; i < STIMS_PER_CLUSTER_BLOCK*NPARAMS*(PARTITION_SIZE+1); i += blockDim.x )
+        *((scalar*)sh_contrib + i) = 0;
+    for ( int i = threadIdx.x; i < STIMS_PER_CLUSTER_BLOCK*(PARTITION_SIZE+1); i += blockDim.x )
+        *((scalar*)sh_current + i) = 0;
+    __syncthreads();
 
-    // Construct clusters in shared memory
-    scalar contrib, square;
+    if ( stimIdx >= nStims )
+        return;
+
+    unsigned int secIdx = 0;
+    int trueSecLen_static;
     int t = 0;
     while ( t < duration ) {
-
-        // Load ee contribution from this parameter
-        // Note, timeseries[0,32,64,...] are unused (COMPARE_PREVTHREAD), hence "+ i/31 + 1" indexing
-        contrib = 0;
         int trueSecLen = 0;
-        for ( int tEnd = t + secLen; t < tEnd; t++ ) {
-            if ( paramIdx < NPARAMS
-                 && global_stimIdx < nStims
-                 && nextObs < iObservations::maxObs
-                 && t >= obs.start[nextObs] ) {
+        __syncwarp();
+        for ( int tEnd = t + secLen; t < tEnd; t++ ) { // Note, t<duration guaranteed by obs.stop
+            if ( nextObs < iObservations::maxObs && t >= obs.start[nextObs] ) {
                 if ( t < obs.stop[nextObs] ) {
-                    for ( int i = paramIdx; i < nUsefulTraces; i += NPARAMS )
-                        contrib += dd_timeseries[t*NMODELS + id0 + i + i/(trajLen-1) + 1];
+                    for ( int i = laneid; i < nLoads; i += warpSize ) {
+                        const int paramIdx = (i - 1 - (i/trajLen)) % NPARAMS;
+                        scalar current_mylane = dd_timeseries[t*NMODELS + lane0_offset + i];
+                        scalar current_prevlane = __shfl_up_sync(0xffffffff, current_mylane, 1);
+                        scalar diff = current_prevlane - current_mylane;
+                        if ( i < nTraces ) {
+                            if ( i % trajLen != 0 )
+                                atomicAdd((scalar*)&sh_contrib[warpid][paramIdx][secIdx&31], diff);
+                            current_mylane = scalarfabs(current_mylane);
+                        } else {
+                            current_mylane = 0;
+                        }
+                        current_mylane = warpReduceSum(current_mylane);
+                        if ( laneid == 0 )
+                            sh_current[warpid][secIdx&31] += current_mylane;
+                    }
                     ++trueSecLen;
                 } else {
                     ++nextObs;
                 }
             }
         }
+        if ( laneid == (secIdx&31) )
+            trueSecLen_static = trueSecLen;
 
-        // Normalise contrib to the mean deviation per tick, per single detune
-        if ( trueSecLen )
-            contrib /= trueSecLen * nContrib * deltabar[paramIdx];
-        // Compute the square norm (sum of squared contributions) for scalar product normalisation
-        square = contrib * contrib;
-        square = sumOverStim(square, stimWidth, stimIdx);
-
-        // Compute the scalar product with each existing cluster to find the closest match
-        scalar max_dotp = 0;
-        int closest_cluster = 0;
-        int nClusters = 0;
-        for ( int i = 0; i < MAXCLUSTERS; ++i ) {
-            scalar dotp = 0;
-
-            // Ignore empty sections (all zeroes is (a) useless and (b) likely in an unobserved region)
-            if ( square > 0 ) {
-                if ( sh_clusterLen[stimIdx][i] > 0 ) {
-                    ++nClusters;
-                    if ( paramIdx < NPARAMS )
-                        dotp = contrib * sh_clusters[stimIdx][i][paramIdx];
+        if ( ((++secIdx) & 31) == 0 || t >= duration ) {
+            __syncwarp();
+            const int partitionIdx = (secIdx-1) >> 5;
+            int nContrib = nUsefulTraces/NPARAMS + 1;
+            if ( t < duration || laneid <= (secIdx&31) ) {
+                for ( int paramIdx = 0; paramIdx < NPARAMS; paramIdx++ ) {
+                    if ( paramIdx == paramIdx_after_end_of_final_traj )
+                        --nContrib;
+                    out_sections[stimIdx * NPARAMS * nPartitions * PARTITION_SIZE
+                            + paramIdx * nPartitions * PARTITION_SIZE
+                            + partitionIdx * PARTITION_SIZE
+                            + laneid]
+                            = trueSecLen_static
+                              ? sh_contrib[warpid][paramIdx][laneid] / (trueSecLen_static * deltabar[paramIdx] * nContrib)
+                              : 0;
+                    sh_contrib[warpid][paramIdx][laneid] = 0;
                 }
-                dotp = sumOverStim(dotp, stimWidth, stimIdx);
-                dotp /= std::sqrt(square * sh_cluster_square_norm[stimIdx][i]); // normalised
-                if ( (max_dotp >= 0 && dotp > max_dotp) || (max_dotp < 0 && dotp < max_dotp) ) {
-                    max_dotp = dotp;
-                    closest_cluster = i;
+            }
+
+            out_current[stimIdx * nPartitions * PARTITION_SIZE
+                    + partitionIdx * PARTITION_SIZE
+                    + laneid]
+                    = sh_current[warpid][laneid] / (trueSecLen_static * nTraces);
+            sh_current[warpid][laneid] = 0;
+        }
+    }
+}
+
+/**
+ * @brief find_single_section_representative finds the best representative section within a warp-sized partition,
+ *      where "best" means "greatest number of followers", and ties are broken in favour of a higher mean dotp to follower sections
+ * @return ((maxFollowers<<5) | rep_laneid) to all threads
+ */
+__device__ inline unsigned int find_single_section_representative(unsigned int nFollowers,
+                                                                  const unsigned int laneid,
+                                                                  scalar mean_dotp)
+{
+    // Pack laneid and nFollowers into a single int (they're both <= 32)
+    unsigned int max_count_and_lane = (nFollowers<<5) | laneid;
+    for ( unsigned int delta = 1; delta < warpSize; delta <<= 1 ) {
+        const unsigned int target = __shfl_down_sync(0xffffffff, max_count_and_lane, delta);
+        const unsigned int target_nFollowers = target>>5;
+        const scalar target_dotp = __shfl_down_sync(0xffffffff, mean_dotp, delta);
+
+        if ( (target_nFollowers > nFollowers)
+             || (target_nFollowers == nFollowers && target_dotp > mean_dotp) ) {
+            nFollowers = target_nFollowers;
+            max_count_and_lane = target;
+            mean_dotp = target_dotp;
+        }
+    }
+    return __shfl_sync(0xffffffff, max_count_and_lane, 0);
+}
+
+/**
+ * @brief warp_compare_sections_all2all compares all sections in a warp to each other, recording similarity and the sum of above-threshold dotp's
+ * @param myContrib is a section's deviation vector
+ * @param dotp_threshold
+ * @param sum_dotp is increased by the sum of above-threshold dotp's
+ * @return a bitmask flagging each above-threshold similar section
+ */
+__device__ unsigned int warp_compare_sections_all2all(const Parameters myContrib,
+                                                      const scalar dotp_threshold,
+                                                      scalar &sum_dotp)
+{
+    const unsigned laneid = threadIdx.x & 31;
+    unsigned int mask = 1<<laneid;
+    scalar norm = std::sqrt(myContrib.dotp(myContrib));
+    Parameters target_contrib;
+
+    for ( unsigned int offset = 1; offset < 17; offset++ ) {
+        int target = (laneid + offset)&31;
+
+        // Compare against target
+        target_contrib.shfl(myContrib, target);
+        scalar target_norm = __shfl_sync(0xffffffff, norm, target);
+        scalar dotp = scalarfabs(myContrib.dotp(target_contrib));
+        if ( dotp > 0 ) // ... else, one of the norms is zero, too
+            dotp /= (norm * target_norm);
+
+        // Process my own work
+        if ( dotp > dotp_threshold ) {
+            sum_dotp += dotp;
+            mask |= 1 << target;
+        }
+
+        // Retrieve the work of the thread that targeted me, and process that, too
+        target = (laneid + 32 - offset)&31;
+        dotp = __shfl_sync(0xffffffff, dotp, target);
+        if ( offset < 16 && dotp > dotp_threshold ) {
+            sum_dotp += dotp;
+            mask |= 1 << target;
+        }
+    }
+    return mask;
+}
+
+/**
+ * @brief warp_compare_reps_all2all compares all representative sections in a warp to each other, recording similarity and the total estimated follower count for each rep
+ * @param myContrib is a rep's deviation vector
+ * @param dotp_threshold
+ * @param nOwnFollowers is the number of followers of the rep in myContrib within its own partition
+ * @param nEstimatedFollowers is increased by the number of own followers of each rep that is similar to this thread's, EXCLUDING self.
+ * @return a bitmask flagging each above-threshold similar rep
+ */
+__device__ unsigned int warp_compare_reps_all2all(const Parameters myContrib,
+                                                  const scalar norm,
+                                                  const scalar dotp_threshold,
+                                                  const int nOwnFollowers,
+                                                  int &nEstimatedFollowers)
+{
+    const unsigned laneid = threadIdx.x & 31;
+    unsigned int mask = 1<<laneid;
+    Parameters target_contrib;
+
+    for ( int offset = 1; offset < 17; offset++ ) {
+        int target = (laneid + offset)&31;
+
+        // Compare against target
+        target_contrib.shfl(myContrib, target);
+        scalar target_norm = __shfl_sync(0xffffffff, norm, target);
+        int target_nOwnFollowers = __shfl_sync(0xffffffff, nOwnFollowers, target);
+        scalar dotp = scalarfabs(myContrib.dotp(target_contrib));
+        if ( dotp > 0 )
+            dotp /= (norm * target_norm);
+
+        // Process my own work
+        if ( dotp > dotp_threshold ) {
+            nEstimatedFollowers += target_nOwnFollowers;
+            mask |= 1 << target;
+        }
+
+        // Retrieve the work of the thread that targeted me, and process that, too
+        target = (laneid + 32 - offset)&31;
+        dotp = __shfl_sync(0xffffffff, dotp, target);
+        target_nOwnFollowers = __shfl_sync(0xffffffff, nOwnFollowers, target);
+        if ( offset < 16 && dotp > dotp_threshold ) {
+            nEstimatedFollowers += target_nOwnFollowers;
+            mask |= 1 << target;
+        }
+    }
+    return mask;
+}
+
+/**
+ * @brief find_section_representatives extracts the two most representative sections from a partition (=32 sections), such that
+ *          neither representative is above-threshold similar to (= a follower of) the other
+ * @param nSecs total number of sections in the input
+ * @param nPartitions total number of 32-section partitions
+ * @param in_contrib Input data (deviation vectors); ordered by [stimIdx][paramIdx][partitionIdx][sectionIdx]
+ * @param out_reps Copy of the two representative section's deviation vectors; ordered by [repIdx][paramIdx],
+ *           where repIdx is 2*partitionIdx for the primary and 2*partitionIdx+1 for the secondary representative
+ * @param out_ownFollowerMasks Bitmasks for each rep flagging its followers, including self; ordered by [repIdx]
+ */
+__device__ void find_section_representatives(const int nSecs,
+                                             const int nPartitions,
+                                             const scalar dotp_threshold,
+                                             scalar *in_contrib,
+                                             scalar *out_reps,
+                                             unsigned int *out_ownFollowerMasks)
+{
+    const unsigned int laneid = threadIdx.x & 31;
+    const unsigned int warpid = threadIdx.x >> 5;
+    Parameters myContrib;
+
+    for ( int partitionIdx = warpid; partitionIdx < nPartitions; partitionIdx += blockDim.x>>5 ) {
+        if ( partitionIdx*PARTITION_SIZE + laneid < nSecs)
+            myContrib.load(in_contrib
+                           + PARTITION_SIZE * nPartitions * NPARAMS * blockIdx.x
+                           /* no indexing for parameter: that's done in .load() using the stride argument */
+                           + PARTITION_SIZE * partitionIdx
+                           + laneid,
+                    PARTITION_SIZE * nPartitions);
+        else
+            myContrib.zero();
+        __syncwarp();
+
+        // All-to-all comparison within warp/partition
+        scalar sum_dotp = 0;
+        unsigned int similar_lanes = warp_compare_sections_all2all(myContrib, dotp_threshold, sum_dotp);
+
+        // Find primary representative (greatest number of similar lanes, ties broken with greatest sum dotp)
+        unsigned int max_count_and_lane = find_single_section_representative(__popc(similar_lanes), laneid, sum_dotp);
+
+        // Store primary representative, provided it has at least one follower
+        if ( laneid == (max_count_and_lane&31) && (max_count_and_lane>>6) ) {
+            myContrib.store(out_reps + 2*partitionIdx * NPARAMS);
+            out_ownFollowerMasks[2*partitionIdx] = similar_lanes;
+        }
+
+        // Find a secondary representative if there are at least two unrepresented sections remaining
+        if ( max_count_and_lane < (31<<5) ) {
+            // Remove the primary rep's followers' ability to represent
+            if ( (1<<laneid) & __shfl_sync(0xffffffff, similar_lanes, max_count_and_lane&31) )
+                similar_lanes = 0;
+
+            // Find secondary representative. Since followers of the primary are only excluded from being reps, but not from being
+            // the secondary rep's followers, sum_dotp remains a valid tie breaker for the remaining potential reps.
+            max_count_and_lane = find_single_section_representative(__popc(similar_lanes), laneid, sum_dotp);
+
+            // Store secondary representative
+            if ( laneid == (max_count_and_lane&31) && (max_count_and_lane>>6) ) {
+                myContrib.store(out_reps + (2*partitionIdx + 1) * NPARAMS);
+                out_ownFollowerMasks[2*partitionIdx + 1] = similar_lanes;
+            }
+        }
+    }
+}
+
+/**
+ * @brief metaPartition_compare_reps_all2all compares the given reference reps against reps in all metapartitions EXCEPT the reference's own
+ * @param myContrib (reference)
+ * @param norm      (reference)
+ * @param repIdx    (reference)
+ * @param out_nEstimatedFollowers   Output: Target reps' estimated follower count is atomically updated to include the relevant reference reps' own followers
+ * @param out_repMasks  Output: Follower bitmasks for both reference and targets
+ * @return the reference rep's estimated follower count outside of its own metapartition
+ */
+__device__ int metaPartition_compare_reps_all2all(const Parameters myContrib,
+                                                  const scalar norm,
+                                                  const unsigned int repIdx,
+                                                  const unsigned int nReps,
+                                                  const unsigned int nMetaPartitions,
+                                                  const scalar dotp_threshold,
+                                                  scalar *in_reps,
+                                                  unsigned int *in_ownFollowerMasks,
+                                                  unsigned int *out_nEstimatedFollowers,
+                                                  unsigned int *out_repMasks)
+{
+    Parameters target_contrib;
+    const unsigned laneid = threadIdx.x & 31;
+    scalar target_norm;
+    int nOwnFollowers = 0, nEstimatedFollowers = 0;
+    int target_nOwnFollowers, target_nEstimatedFollowers;
+    unsigned int repMask, target_repMask;
+
+    for ( int warpTargetOffset = 1; warpTargetOffset < nMetaPartitions/2 + 1; warpTargetOffset++ ) {
+        if ( (nMetaPartitions&1) == 0 && warpTargetOffset == nMetaPartitions/2 && (repIdx>>5) >= nMetaPartitions/2 ) {
+            // even # of data sets  &&   it's the final iteration           &&   reference set is in the second half
+            // => This exact comparison has been done and recorded by the first half of reference sets on their final iteration.
+            break;
+        }
+
+        const int targetRepIdx = (repIdx + warpTargetOffset*32) % (nMetaPartitions*32); // look ahead by wTO sets of 32
+        if ( targetRepIdx < nReps ) {
+            target_contrib.load(in_reps + targetRepIdx * NPARAMS);
+            target_norm = std::sqrt(target_contrib.dotp(target_contrib));
+            target_nOwnFollowers = __popc(in_ownFollowerMasks[targetRepIdx]);
+        } else {
+            target_contrib.zero();
+            target_norm = 0;
+            target_nOwnFollowers = 0;
+        }
+        target_nEstimatedFollowers = 0;
+        repMask = target_repMask = 0;
+        __syncwarp();
+
+        // Compare every reference against every target (32 comparisons per thread) by rotating targets by one thread at a time
+        const int srcLane = (laneid+1) & 31;
+        for ( int i = 0; i < 32; i++ ) {
+            // Compare against target
+            scalar dotp = scalarfabs(myContrib.dotp(target_contrib));
+            if ( dotp > 0 )
+                dotp /= (norm * target_norm);
+            if ( dotp > dotp_threshold ) {
+                // Update reference
+                nEstimatedFollowers += target_nOwnFollowers;
+                repMask |= 1 << ((laneid+i)&31);
+
+                // Update target
+                target_nEstimatedFollowers += nOwnFollowers;
+                target_repMask |= 1 << laneid;
+            }
+
+            // Shuffle targets down (except after the final comparison)
+            if ( i < 31 ) {
+                target_contrib.shfl(target_contrib, srcLane);
+                target_norm = __shfl_sync(0xffffffff, target_norm, srcLane);
+                target_nOwnFollowers = __shfl_sync(0xffffffff, target_nOwnFollowers, srcLane);
+            }
+            // shuffle target outputs down 32 times to return them to their original lane
+            target_nEstimatedFollowers = __shfl_sync(0xffffffff, target_nEstimatedFollowers, srcLane);
+            target_repMask = __shfl_sync(0xffffffff, target_repMask, srcLane);
+        }
+
+        // Store target outputs back into shared
+        if ( repIdx < nReps ) {
+            if ( targetRepIdx < nReps ) {
+                atomicAdd(out_nEstimatedFollowers + targetRepIdx, target_nEstimatedFollowers);
+                out_repMasks[(repIdx>>5) * nReps + targetRepIdx] = target_repMask;
+            }
+            out_repMasks[(targetRepIdx>>5) * nReps + repIdx] = repMask;
+        }
+    }
+
+    return nEstimatedFollowers;
+}
+
+/**
+ * @brief estimate_rep_follower_count compares reps all2all, accumulating the followers of similar reps into nEstimatedFollowers
+ * @param out_repMasks Similarity bitmasks arranged as [metaPartitionIdx][repIdx]
+ */
+__device__ void estimate_rep_follower_count(const unsigned int nReps,
+                                            const unsigned int nMetaPartitions,
+                                            const scalar dotp_threshold,
+                                            scalar *in_reps,
+                                            unsigned int *in_ownFollowerMasks,
+                                            unsigned int *out_nEstimatedFollowers,
+                                            unsigned int *out_repMasks)
+{
+    Parameters myContrib;
+    const unsigned laneid = threadIdx.x & 31;
+    const unsigned warpid = threadIdx.x >> 5;
+
+    for ( unsigned int referenceWarpIdx = warpid; referenceWarpIdx < nMetaPartitions; referenceWarpIdx += blockDim.x>>5 ) {
+        const unsigned int repIdx = (referenceWarpIdx<<5) + laneid;
+        int nOwnFollowers = 0;
+        if ( repIdx < nReps ) {
+            // Load the reference reps
+            myContrib.load(in_reps + repIdx * NPARAMS);
+            nOwnFollowers = __popc(in_ownFollowerMasks[repIdx]);
+        } else {
+            myContrib.zero();
+        }
+        scalar norm = std::sqrt(myContrib.dotp(myContrib));
+        __syncwarp();
+
+        // Compare amongst the reference reps (all-to-all within metapartition)
+        int nEstimatedFollowers = nOwnFollowers;
+        unsigned int repMask = warp_compare_reps_all2all(myContrib, norm, dotp_threshold, nOwnFollowers, nEstimatedFollowers);
+        if ( repIdx < nReps )
+            out_repMasks[(repIdx>>5) * nReps + repIdx] = repMask;
+
+        // Compare against all other metapartitions
+        nEstimatedFollowers += metaPartition_compare_reps_all2all(myContrib, norm, repIdx, nReps, nMetaPartitions, dotp_threshold,
+                                                                  in_reps, in_ownFollowerMasks,
+                                                                  out_nEstimatedFollowers, out_repMasks);
+
+        // Add forward estimate to output
+        if ( repIdx < nReps )
+            atomicAdd(out_nEstimatedFollowers + repIdx, nEstimatedFollowers);
+    }
+}
+
+/**
+ * @brief block_extract_clusters finds at most MAXCLUSTERS clusters, writing their rep indices to output. Note that ordinary reps may be
+ *          followers of several clusters, but cluster heads may not.
+ * @param io_nEstimatedFollowers is altered: followers of a cluster head have their individual follower count set to zero.
+ * @param shared_cache - a minimum of 64 ints; may overlap with output, but not inputs
+ * @return The number of clusters extracted; a power of 2 <= MAXCLUSTERS
+ */
+__device__ int block_extract_clusters(const int nReps,
+                                      const int minClusterLen,
+                                      const int secLen,
+                                      unsigned int *in_repMasks,
+                                      unsigned int *io_nEstimatedFollowers,
+                                      unsigned int *out_clusterHeads,
+                                      unsigned int *shared_cache)
+{
+    const unsigned laneid = threadIdx.x & 31;
+    const unsigned warpid = threadIdx.x >> 5;
+    int static_bestRepIdx = nReps; // lane storage
+
+    int clusterIdx;
+    for ( clusterIdx = 0; clusterIdx < MAXCLUSTERS; clusterIdx++ ) {
+        unsigned int repIdx, bestRepIdx = threadIdx.x;
+        int nEstimatedFollowers = 0, mostEstimatedFollowers = 0;
+
+        // Block-stride reduction
+        for ( repIdx = threadIdx.x; repIdx < nReps; repIdx += blockDim.x ) {
+            nEstimatedFollowers = io_nEstimatedFollowers[repIdx];
+            if ( nEstimatedFollowers > mostEstimatedFollowers ) {
+                mostEstimatedFollowers = nEstimatedFollowers;
+                bestRepIdx = repIdx;
+            }
+        }
+
+        // Reduce in all warps, save to cache
+        for ( unsigned int offset = 1; offset < warpSize; offset <<= 1 ) {
+            nEstimatedFollowers = __shfl_down_sync(0xffffffff, mostEstimatedFollowers, offset);
+            repIdx = __shfl_down_sync(0xffffffff, bestRepIdx, offset);
+            if ( nEstimatedFollowers > mostEstimatedFollowers ) {
+                mostEstimatedFollowers = nEstimatedFollowers;
+                bestRepIdx = repIdx;
+            }
+        }
+        if ( laneid == 0 ) {
+            shared_cache[2*warpid] = bestRepIdx;
+            shared_cache[2*warpid + 1] = mostEstimatedFollowers;
+        }
+
+        __syncthreads();
+
+        // Final reduce in first warp
+        if ( warpid == 0 ) {
+            if ( laneid < (blockDim.x>>5) ) {
+                bestRepIdx = shared_cache[2*laneid];
+                mostEstimatedFollowers = shared_cache[2*laneid + 1];
+            } else {
+                bestRepIdx = mostEstimatedFollowers = 0;
+            }
+            for ( unsigned int offset = 1; offset < (blockDim.x>>5); offset <<= 1 ) {
+                nEstimatedFollowers = __shfl_down_sync(0xffffffff, mostEstimatedFollowers, offset);
+                repIdx = __shfl_down_sync(0xffffffff, bestRepIdx, offset);
+                if ( nEstimatedFollowers > mostEstimatedFollowers ) {
+                    mostEstimatedFollowers = nEstimatedFollowers;
+                    bestRepIdx = repIdx;
                 }
-            } else if ( NPARAMS > warpSize ) {
-                // sumOverStim has a __syncthreads call, idle over it to prevent stalling
-                dotp = sumOverStim(dotp, stimWidth, stimIdx);
+            }
+
+            // Broadcast to block
+            if ( laneid == 0 ) {
+                // Bail once cluster is too short to take seriously and nClusters is a power of 2
+                if ( mostEstimatedFollowers == 0 || (mostEstimatedFollowers * secLen < minClusterLen && __popc(clusterIdx) == 1) )
+                    bestRepIdx = nReps;
+                shared_cache[0] = bestRepIdx;
             }
         }
 
-        // No adequate cluster: start a new one
-        if ( scalarfabs(max_dotp) < dotp_threshold ) {
-            closest_cluster = nClusters;
+        // Receive broadcast in all blocks
+        __syncthreads();
+        bestRepIdx = shared_cache[0];
+
+        // Sync to ensure all warps have read, then check for completion
+        __syncthreads();
+        if ( bestRepIdx == nReps )
+            break;
+
+        if ( threadIdx.x == clusterIdx )
+            static_bestRepIdx = bestRepIdx;
+
+
+        // Remove cluster members' ability to champion another cluster
+        // This is much leaner than the original CPU algorithm, where the cluster was completely removed, necessitating rebuilding
+        // nEstimatedFollowers from nOwnFollowers for all remaining reps
+        for ( repIdx = threadIdx.x; repIdx < nReps; repIdx += blockDim.x ) {
+            // Is repIdx similar to bestRepIdx <==> is bestRepIdx's bit set in repIdx's similarity mask?
+            if ( in_repMasks[(bestRepIdx>>5) * nReps + repIdx] & (1<<(bestRepIdx&31)) ) {
+                io_nEstimatedFollowers[repIdx] = 0;
+            }
         }
 
-        // Add present contribution to the nearest cluster, ignoring empty sections and cluster overflow
-        if ( square > 0 && closest_cluster < MAXCLUSTERS ) {
-            if ( paramIdx < NPARAMS ) {
-                contrib += sh_clusters[stimIdx][closest_cluster][paramIdx] * (max_dotp < 0 ? -1 : 1);
-                sh_clusters[stimIdx][closest_cluster][paramIdx] = contrib;
-            }
-            square = contrib * contrib;
-            square = sumOverStim(square, stimWidth, stimIdx);
-            if ( paramIdx == 0 ) {
-                sh_cluster_square_norm[stimIdx][closest_cluster] = square;
-                ++sh_clusterLen[stimIdx][closest_cluster];
-            }
-        }
         __syncthreads();
     }
 
-    // Push normalised completed clusters to global memory
-    if ( paramIdx < NPARAMS ) {
-        for ( int i = 0; i < MAXCLUSTERS; i++ ) {
-            contrib = sh_clusters[stimIdx][i][paramIdx];
-            square = contrib*contrib;
-            global_clusters[(((global_stimIdx * MAXCLUSTERS) + i) * NPARAMS) + paramIdx] =
-                    square / sh_cluster_square_norm[stimIdx][i];
-            if ( paramIdx == 0 ) {
-                global_clusterLen[(global_stimIdx * MAXCLUSTERS) + i] = sh_clusterLen[stimIdx][i];
+    // Write valid clusters out (note: static_bestRepIdx is initialised to nReps and only altered for selected clusters)
+    if ( static_bestRepIdx < nReps )
+        out_clusterHeads[threadIdx.x] = static_bestRepIdx;
+
+    return clusterIdx;
+}
+
+/**
+ * @brief build_cluster_from_heads takes a set of cluster head reps, compares them against all deviation vectors, and provides
+ *      followership masks, mean deviation vectors, and total current for each cluster.
+ * @param in_clusterHeads - indices into in_reps
+ * @param out_clusterMasks - followership masks (one uint per partition), layout: [stimIdx][clusterIdx][partitionIdx]
+ * @param out_clusters - mean deviation vectors, layout: [stimIdx][clusterIdx][paramIdx]
+ * @param out_clusterCurrent - sum of current in follower sections, layout: [stimIdx][clusterIdx]
+ * @param shared_cache - nWarps*MAXCLUSTERS + nWarps*MAXCLUSTERS*NPARAMS scalars. This may overlap with in_clusterHead and in_reps.
+ */
+__device__ void build_clusters_from_heads(const int nSecs,
+                                          const int nPartitions,
+                                          const int nClusters,
+                                          const scalar dotp_threshold,
+                                          unsigned int *in_clusterHeads,
+                                          scalar *in_reps,
+                                          scalar *in_contrib,
+                                          scalar *in_current,
+                                          unsigned int *out_clusterMasks,
+                                          scalar *out_clusters,
+                                          scalar *out_clusterCurrent,
+                                          scalar *shared_cache)
+{
+    const unsigned laneid = threadIdx.x & 31;
+    const unsigned warpid = threadIdx.x >> 5;
+    const unsigned nWarps = blockDim.x >> 5;
+    int width;
+    for ( width = 1; width < nClusters; width *= 2 ) {}
+    Parameters clusterHead, section, secSum;
+    scalar headNorm, secNorm;
+    scalar current = 0, secCurrent;
+
+    // Load heads into chunks of width threads, repeating across the warp
+    if ( (laneid % width) < nClusters ) {
+        clusterHead.load(in_reps + in_clusterHeads[laneid % width] * NPARAMS);
+        headNorm = std::sqrt(clusterHead.dotp(clusterHead));
+    } else {
+        clusterHead.zero();
+        headNorm = 0;
+    }
+    secSum.zero();
+
+    for ( int partitionIdx = warpid; partitionIdx < nPartitions; partitionIdx += nWarps ) {
+        if ( PARTITION_SIZE*partitionIdx + laneid < nSecs ) {
+            section.load(in_contrib
+                         + blockIdx.x * NPARAMS * nPartitions * PARTITION_SIZE
+                         + partitionIdx * PARTITION_SIZE
+                         + laneid,
+                    nPartitions * PARTITION_SIZE);
+            secNorm = std::sqrt(section.dotp(section));
+            secCurrent = in_current[blockIdx.x * nPartitions * PARTITION_SIZE + partitionIdx * PARTITION_SIZE + laneid];
+        } else {
+            section.zero();
+            secNorm = 0;
+            secCurrent = 0;
+        }
+        unsigned int headMask = 0;
+        __syncwarp();
+
+        // Compare every cluster head against every target (width # comparisons per thread) by rotating sections by one thread at a time
+        const int srcLane = (laneid+1) % width;
+        for ( int i = 0; i < width; i++ ) {
+            // Compare against target
+            scalar dotp = scalarfabs(clusterHead.dotp(section));
+            if ( dotp > 0 )
+                dotp /= (headNorm * secNorm);
+            if ( dotp > dotp_threshold ) {
+                headMask |= 1 << ((laneid+i)&31);
+                current += secCurrent;
+                secSum += section;
+            }
+
+            // Shuffle targets down (except after the final comparison)
+            if ( i < (width-1) ) {
+                section.shfl(section, srcLane, width);
+                secNorm = __shfl_sync(0xffffffff, secNorm, srcLane, width);
+                secCurrent = __shfl_sync(0xffffffff, secCurrent, srcLane, width);
             }
         }
+
+        // Collate across duplicate heads
+        for ( int i = width; i < warpSize; i *= 2 ) {
+            headMask |= __shfl_down_sync(0xffffffff, headMask, i);
+            current += __shfl_down_sync(0xffffffff, current, i);
+            section.shfl(secSum, laneid + i);
+            secSum += section;
+        }
+
+        // Store mask from first chunk
+        if ( laneid < nClusters )
+            out_clusterMasks[blockIdx.x * MAXCLUSTERS * nPartitions + laneid * nPartitions + partitionIdx] = headMask;
+
+        // Broadcast cumulative values to all chunks
+        current = __shfl_sync(0xffffffff, current, laneid % width);
+        secSum.shfl(secSum, laneid % width);
+    }
+
+    // Drop cumulative values into shared. Note the implicit zeroing where warps fail to enter the loop above
+    __syncthreads();
+    if ( laneid < nClusters ) {
+        shared_cache[warpid * MAXCLUSTERS + laneid] = current;
+        secSum.store(shared_cache + nWarps * MAXCLUSTERS + warpid * NPARAMS * MAXCLUSTERS + laneid, MAXCLUSTERS);
+    }
+
+    __syncthreads();
+
+    // Reduce in first warp
+    if ( warpid == 0 ) {
+        for ( int clusterIdx = 0; clusterIdx < nClusters; clusterIdx++ ) {
+            if ( laneid < nWarps ) {
+                current = shared_cache[laneid * MAXCLUSTERS + clusterIdx];
+                secSum.load(shared_cache + nWarps * MAXCLUSTERS + laneid * NPARAMS * MAXCLUSTERS + clusterIdx, MAXCLUSTERS);
+            }
+
+            for ( int i = 1; i < nWarps; i *= 2 ) {
+                current += __shfl_down_sync(0xffffffff, current, i);
+                section.shfl(secSum, laneid + i);
+                secSum += section;
+            }
+
+            if ( laneid == 0 ) {
+                out_clusterCurrent[blockIdx.x * MAXCLUSTERS + clusterIdx] = current;
+                secNorm = std::sqrt(secSum.dotp(secSum));
+                secSum /= secNorm;
+                secSum.store(out_clusters + blockIdx.x * MAXCLUSTERS * NPARAMS + clusterIdx * NPARAMS);
+            }
+        }
+
+        // Zero the next cluster mask as a backstop
+        if ( nClusters < MAXCLUSTERS )
+            for ( int partitionIdx = laneid; partitionIdx < nPartitions; partitionIdx += warpSize )
+                out_clusterMasks[blockIdx.x * MAXCLUSTERS * nPartitions + nClusters * nPartitions + partitionIdx] = 0;
     }
 }
 
-extern "C" void copyClusters(int nStims)
+// Launch: One 1-D block per stim
+// dynamic shared mem size: nReps * NPARAMS * sizeof(scalar)       [for sh_reps]
+//                        + nReps * 2 * sizeof(int)                [for rep follower counts, own (as mask) and estimated (as number)]
+//                        + nReps * nMetaPartitions * sizeof(int)  [for similarity masks]
+//                        + some padding for caches: - 64-nReps for block_extract_clusters, and
+//                                                   - total size no less than nWarps*MAXCLUSTERS + nWarps*MAXCLUSTERS*NPARAMS scalars
+/**
+ * @brief find_cluster_representatives builds clusters from partitioned section primitives. Each cluster is reported by its leading section,
+ *          rather than a true mean, and heuristics are applied to estimate the cluster duration
+ * @param in_contrib -- output from build_section_primitives
+ */
+__global__ void find_cluster_representatives(const int nSecs,
+                                             const int nPartitions,
+                                             const int nMetaPartitions,
+                                             const scalar dotp_threshold,
+                                             const int secLen,
+                                             const int minClusterLen,
+                                             scalar *in_contrib,
+                                             scalar *in_current,
+                                             scalar *out_clusters,
+                                             unsigned int *out_clusterMasks,
+                                             scalar *out_clusterCurrent,
+                                             const size_t shared_mem_padding,
+                                             const size_t shared_mem_total)
 {
-    CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nStims * MAXCLUSTERS * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
-    CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, nStims * MAXCLUSTERS * sizeof(int), cudaMemcpyDeviceToHost));
+    const int nReps = 2*nPartitions;
+    extern __shared__ unsigned int shared_mem[];
+    unsigned int *sh_ownFollowerMasks = shared_mem;
+    unsigned int *sh_nEstimatedFollowers = sh_ownFollowerMasks + nReps + shared_mem_padding;
+    unsigned int *sh_repMasks = sh_nEstimatedFollowers + nReps;
+    scalar *sh_reps = (scalar*)&sh_repMasks[nReps*nMetaPartitions];
+
+    // init shared mem
+    for ( int i = threadIdx.x, iEnd = shared_mem_total/sizeof(int); i < iEnd; i += blockDim.x )
+        shared_mem[i] = 0;
+    __syncthreads();
+
+    // Compare sections within partitions, find the two most representative sections, and file them into sh_reps, sh_nOwnFollowers
+    find_section_representatives(nSecs, nPartitions, dotp_threshold, in_contrib, sh_reps, sh_ownFollowerMasks);
+
+    __syncthreads();
+
+    // Compare representative sections across the entire stim, populating their nEstimatedFollowers and repMasks
+    estimate_rep_follower_count(nReps, nMetaPartitions, dotp_threshold, sh_reps, sh_ownFollowerMasks, sh_nEstimatedFollowers, sh_repMasks);
+
+    __syncthreads();
+
+    // Extract the largest clusters one by one until hitting either the MAXCLUSTERS limit, or the minClusterLen one
+    // Note the repurposing of sh_ownFollowerMasks into cluster head rep indices
+    int nClusters = block_extract_clusters(nReps, minClusterLen, secLen, sh_repMasks, sh_nEstimatedFollowers, sh_ownFollowerMasks, shared_mem);
+
+    __syncthreads();
+
+    // Calculate mean deviation vector, total current, and section follower masks for each extracted cluster
+    build_clusters_from_heads(nSecs, nPartitions, nClusters, dotp_threshold,
+                              sh_ownFollowerMasks, sh_reps, in_contrib, in_current,
+                              out_clusterMasks, out_clusters, out_clusterCurrent,
+                              (scalar*)shared_mem);
 }
 
-extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
-                        int nTraj, /* Number of EE trajectories */
-                        int duration,
-                        int secLen,
-                        scalar dotp_threshold,
-                        std::vector<double> deltabar_arg,
-                        bool copy_results)
+extern "C" void pullClusters(int nStims, int nPartitions)
+{
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nStims * MAXCLUSTERS * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusterCurrent, d_clusterCurrent, nStims * MAXCLUSTERS * sizeof(scalar), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusterMasks, d_clusterMasks, nStims * nPartitions * MAXCLUSTERS * sizeof(unsigned int), cudaMemcpyDeviceToHost));
+}
+
+extern "C" int pullPrimitives(int nStims, int duration, int secLen)
+{
+    int nSecs = (duration+secLen-1)/secLen;
+    int nPartitions = (nSecs + 31)/32;
+    CHECK_CUDA_ERRORS(cudaMemcpy(sections, d_sections, nStims * nPartitions * NPARAMS * PARTITION_SIZE * sizeof(scalar), cudaMemcpyDeviceToHost));
+    return nPartitions * PARTITION_SIZE;
+}
+
+extern "C" int cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
+                       int nTraj, /* Number of EE trajectories */
+                       int duration,
+                       int secLen,
+                       scalar dotp_threshold,
+                       int minClusterLen,
+                       std::vector<double> deltabar_arg,
+                       bool pull_results)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
     unsigned int nClusters = nStims * MAXCLUSTERS;
+    int nSecs = (duration+secLen-1)/secLen;
+    int nPartitions = (nSecs + 31)/32;
+    int nReps = 2*nPartitions;
+    int nMetaPartitions = (nReps + 31)/32; // count one for every 32 representatives
+
+    resizeArrayPair(sections, d_sections, sections_size, nStims * nPartitions * NPARAMS * PARTITION_SIZE);
+    resizeArray(d_currents, currents_size, nStims * nPartitions * PARTITION_SIZE);
     resizeArrayPair(clusters, d_clusters, clusters_size, nClusters * NPARAMS);
-    resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, nClusters);
+    resizeArrayPair(clusterMasks, d_clusterMasks, clusterMasks_size, nClusters * nPartitions);
+    resizeArrayPair(clusterCurrent, d_clusterCurrent, clusterCurrent_size, nClusters);
+
     scalar deltabar_array[NPARAMS];
     for ( int i = 0; i < NPARAMS; i++ )
         deltabar_array[i] = deltabar_arg[i];
     CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(deltabar, deltabar_array, NPARAMS*sizeof(scalar)));
 
-    dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
+    dim3 block(STIMS_PER_CLUSTER_BLOCK * 32);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
-    clusterKernel<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, dotp_threshold, d_clusters, d_clusterLen);
+    build_section_primitives<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, nPartitions, d_sections, d_currents);
 
-    if ( copy_results )
-        copyClusters(nStims);
+    size_t nWarps = 16;
+    size_t shmem_size = nReps * NPARAMS * sizeof(scalar)
+                      + nReps * 2 * sizeof(int)
+                      + nReps * nMetaPartitions * sizeof(int);
+    size_t shmem_padding = nReps < 64 ? 64 - nReps : 0; // room for block_extract_clusters
+    size_t shmem_min = (nWarps*MAXCLUSTERS + nWarps*MAXCLUSTERS*NPARAMS) * sizeof(scalar); // room for build_clusters_from_heads
+    if ( shmem_size + shmem_padding*sizeof(int) < shmem_min ) {
+        shmem_padding = (shmem_min - shmem_size) / sizeof(int);
+        shmem_size = shmem_min;
+    } else {
+        shmem_size += shmem_padding*sizeof(int);
+    }
+
+    find_cluster_representatives<<<nStims, 32*nWarps, shmem_size>>>(nSecs, nPartitions, nMetaPartitions, dotp_threshold, secLen, minClusterLen,
+                                                                    d_sections, d_currents,
+                                                                    d_clusters, d_clusterMasks, d_clusterCurrent,
+                                                                    shmem_padding, shmem_size);
+
+    if ( pull_results )
+        pullClusters(nStims, nPartitions);
+
+    return nPartitions;
 }
 
 
 
+
+
+/// ******************************************************************************************************************************
+///  >============================     Elementary Effects WG: Deltabar    ======================================================<
+/// ******************************************************************************************************************************
+
+static constexpr int STIMS_PER_DELTABAR_WARP = NPARAMS>16 ? 1 : NPARAMS>8 ? 2 : NPARAMS>4 ? 4 : NPARAMS>2 ? 8 : NPARAMS>1 ? 16 : 32;
+static constexpr int STIMS_PER_DELTABAR_BLOCK = 8 * STIMS_PER_DELTABAR_WARP;
+
 __global__ void find_deltabar_kernel(int trajLen, int nTraj, int nStims, int duration, scalar *global_clusters, int *global_clusterLen)
 {
-    static constexpr int stimWidth = 32/STIMS_PER_CLUSTER_WARP;
+    static constexpr int stimWidth = 32/STIMS_PER_DELTABAR_WARP;
     const int nUsefulTraces = (trajLen-1)*nTraj;
     int paramIdx, stimIdx;
-    if ( STIMS_PER_CLUSTER_WARP == 1 ) {
+    if ( STIMS_PER_DELTABAR_WARP == 1 ) {
         // One row, one stim
         paramIdx = threadIdx.x;
         stimIdx = threadIdx.y;
     } else {
         // Each row is one warp with multiple stims
         paramIdx = threadIdx.x % stimWidth;
-        stimIdx = (threadIdx.y * STIMS_PER_CLUSTER_WARP) + (threadIdx.x/stimWidth);
+        stimIdx = (threadIdx.y * STIMS_PER_DELTABAR_WARP) + (threadIdx.x/stimWidth);
     }
-    const int global_stimIdx = STIMS_PER_CLUSTER_BLOCK*blockIdx.x + stimIdx;
+    const int global_stimIdx = STIMS_PER_DELTABAR_BLOCK*blockIdx.x + stimIdx;
     const int id0 = global_stimIdx * trajLen * nTraj;
     const int nContrib = (nUsefulTraces/NPARAMS) + (paramIdx < (nUsefulTraces%NPARAMS));
     const iObservations obs = dd_obsUNI[id0];
     int nextObs = 0;
     int nSamples = 0;
 
-    __shared__ scalar sh_clusters[STIMS_PER_CLUSTER_BLOCK][NPARAMS];
-    __shared__ scalar sh_nSamples[STIMS_PER_CLUSTER_BLOCK];
+    __shared__ scalar sh_clusters[STIMS_PER_DELTABAR_BLOCK][NPARAMS];
+    __shared__ scalar sh_nSamples[STIMS_PER_DELTABAR_BLOCK];
     const int tid = threadIdx.y*blockDim.x + threadIdx.x;
 
     // Accumulate each stim's square deviations
@@ -452,7 +1083,7 @@ __global__ void find_deltabar_kernel(int trajLen, int nTraj, int nStims, int dur
     }
 
     // Reduce to a single 'cluster' in block
-    for ( int width = STIMS_PER_CLUSTER_BLOCK; width > 1; width /= 32 ) {
+    for ( int width = STIMS_PER_DELTABAR_BLOCK; width > 1; width /= 32 ) {
         paramIdx = tid / width;
         stimIdx = tid % width;
         sumSquares = 0;
@@ -489,8 +1120,8 @@ __global__ void find_deltabar_kernel(int trajLen, int nTraj, int nStims, int dur
 extern "C" std::vector<double> find_deltabar(int trajLen, int nTraj, int duration)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
-    dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_CLUSTER_BLOCK/STIMS_PER_CLUSTER_WARP);
-    dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
+    dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_DELTABAR_BLOCK/STIMS_PER_DELTABAR_WARP);
+    dim3 grid(((nStims+STIMS_PER_DELTABAR_BLOCK-1)/STIMS_PER_DELTABAR_BLOCK));
 
     resizeArrayPair(clusters, d_clusters, clusters_size, grid.x * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, grid.x);

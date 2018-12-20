@@ -364,6 +364,45 @@ std::string MetaModel::structDeclarations() const
     for ( const AdjustableParam &p : adjustableParams ) {
         ss << "    " << p.type << " " << p.name << " = " << p.initial << ";" << endl;
     }
+
+    ss << "\n    __host__ __device__ inline scalar dotp(const Parameters &p) const {"
+       << "\n        return";
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "\n            + (" << p.name << " * p." << p.name << ")";
+    ss << ";"
+       << "\n    }";
+
+    ss << "\n    __host__ __device__ inline Parameters &operator+=(const Parameters &p) {";
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "\n            " << p.name << " += p." << p.name << ";";
+    ss << "\n        return *this;"
+       << "\n    }";
+
+    ss << "\n    __host__ __device__ inline Parameters &operator/=(const scalar &v) {";
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "\n            " << p.name << " /= v;";
+    ss << "\n        return *this;"
+       << "\n    }";
+
+    ss << "\n    __host__ __device__ inline void zero() {";
+    for ( size_t i = 0; i < adjustableParams.size(); i++ )
+        ss << "\n        " << adjustableParams[i].name << " = 0;";
+    ss << "\n    }";
+
+    ss << "\n    __host__ __device__ inline void load(scalar *mem, unsigned int stride = 1) {";
+    for ( size_t i = 0; i < adjustableParams.size(); i++ )
+        ss << "\n        " << adjustableParams[i].name << " = mem[" << i << "*stride];";
+    ss << "\n    }";
+    ss << "\n    __host__ __device__ inline void store(scalar *mem, unsigned int stride = 1) const {";
+    for ( size_t i = 0; i < adjustableParams.size(); i++ )
+        ss << "\n        mem[" << i << "*stride] = " << adjustableParams[i].name << ";";
+    ss << "\n    }";
+
+    ss << "\n    __device__ inline void shfl(const Parameters &p, const int srcLane, const int width = warpSize, const unsigned mask = 0xffffffff) {";
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "\n        " << p.name << " = __shfl_sync(mask, p." << p.name << ", srcLane, width);";
+    ss << "\n    }";
+
     ss << "};" << endl;
     ss << endl;
 
