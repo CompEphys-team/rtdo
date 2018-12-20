@@ -117,9 +117,11 @@ void StimulationPlotter::replot()
     if ( rebuilding || ui->sources->currentIndex() < 0 )
         return;
 
+    const RunData &rd = session->qRunData();
     double duration = 0, minV = session->qStimulationData().minVoltage, maxV = session->qStimulationData().maxVoltage;
     WaveSource src = session->wavesets().sources().at(ui->sources->currentIndex());
     std::vector<Stimulation> stims = src.stimulations();
+    std::vector<iObservations> obs = src.observations(rd.dt);
     if ( stims.empty() )
         return;
 
@@ -173,7 +175,8 @@ void StimulationPlotter::replot()
     bool hasScale = ui->scale->isChecked();
 
     for ( size_t i = 0; i < upper-lower; i++ ) {
-        new StimulationGraph(ui->overlay->xAxis, ui->overlay->yAxis, stims[i+lower]); // ui->overlay takes ownership
+        StimulationGraph *g = new StimulationGraph(ui->overlay->xAxis, ui->overlay->yAxis, stims[i+lower]); // ui->overlay takes ownership
+        g->setObservations(obs[i+lower], rd.dt);
         QCPAxisRect *axes = new QCPAxisRect(ui->panel);
         QCPAxis *xAxis = axes->axis(QCPAxis::atBottom);
         QCPAxis *yAxis = axes->axis(QCPAxis::atLeft);
@@ -196,6 +199,7 @@ void StimulationPlotter::replot()
         ui->panel->plotLayout()->addElement(row+1, col, axes); // add axes to panel
 
         graphs[i] = new StimulationGraph(xAxis, yAxis, stims[i+lower], !ui->tails->isChecked()); // add new stimGraph to axes
+        graphs[i]->setObservations(obs[i+lower], rd.dt);
 
         duration = std::max(duration, double(stims[i+lower].duration));
         updateColor(i, false);
