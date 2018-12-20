@@ -20,8 +20,6 @@ public:
     ~StimulationPlotter();
 
     void init(Session *session);
-    void setSource(WaveSource src);
-    void setStimulation(Stimulation src);
     void clear();
 
 protected:
@@ -45,8 +43,6 @@ private:
 
     bool rebuilding;
 
-    bool enslaved;
-    bool single;
     WaveSource source;
     Stimulation stim;
 };
