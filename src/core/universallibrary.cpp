@@ -44,8 +44,7 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     output(light ? dummyScalarPtr : *pointers.output),
 
     clusters(light ? dummyScalarPtr : *pointers.clusters),
-    clusterLen(light ? dummyIntPtr : *pointers.clusterLen),
-    clusterOnsets(light ? dummyUIntPtr : *pointers.clusterOnsets)
+    clusterLen(light ? dummyIntPtr : *pointers.clusterLen)
 {
 }
 
@@ -334,9 +333,6 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "#define NMODELS " << NMODELS << endl;
     ss << "#define NPARAMS " << adjustableParams.size() << endl;
     ss << "#define MAXCLUSTERS " << maxClusters << endl;
-    ss << "constexpr unsigned int MAX_CLUSTER_ONSETS = " << maxClusterOnsets << ';' << endl;
-    ss << "constexpr unsigned int CLUSTER_ONSET_SHIFT = " << clusterOnset_bitshift << ';' << endl;
-    ss << "constexpr unsigned int CLUSTER_ONSET_MASK = " << clusterOnset_tmask << ';' << endl;
     ss << "#include \"universallibrary.cu\"" << endl;
     ss << endl;
 

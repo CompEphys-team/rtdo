@@ -1,6 +1,5 @@
 #include "samplingprofiler.h"
 #include "session.h"
-#include "clustering.h"
 
 const QString SamplingProfiler::action = QString("generate");
 const quint32 SamplingProfiler::magic = 0x674b5c54;
@@ -37,82 +36,6 @@ void SamplingProfiler::generate(SamplingProfiler::Profile prof)
     session.queue(actorName(), action, prof.src.prettyName(), new Profile(std::move(prof)));
 }
 
-int SamplingProfiler::generate_observations(const Profile &prof, const std::vector<iStimulation> &stims, std::vector<iObservations> &observations)
-{
-    std::vector<double> deltabar = prof.src.archive()->deltabar.toStdVector();
-    const RunData &rd = session.runData();
-    int blankCycles = session.gaFitterSettings().cluster_blank_after_step/rd.dt;
-    int secLen = session.gaFitterSettings().cluster_fragment_dur/rd.dt;
-    int minLen = session.gaFitterSettings().cluster_min_dur/rd.dt;
-    double dotp_threshold = session.gaFitterSettings().cluster_threshold;
-    auto elit = prof.src.elites().begin();
-    int maxObsDuration = 0;
-
-    // Generate diff traces one GPU load at a time
-    size_t nTotalStims = stims.size(), nMaxDiffStims = maxDetunedDiffTraceStims(lib);
-    for ( size_t stimOffset = 0; stimOffset < nTotalStims; stimOffset += nMaxDiffStims ) {
-        size_t nStims = std::min(nTotalStims-stimOffset, nMaxDiffStims);
-        std::vector<iStimulation> stims_chunk;
-        stims_chunk.insert(stims_chunk.end(), stims.begin()+stimOffset, stims.begin()+stimOffset+nStims);
-        auto pDelta = getDetunedDiffTraces(stims_chunk, lib, rd);
-
-        // Cluster on CPU
-        for ( size_t i = 0; i < nStims; i++ ) {
-            auto clusters = constructClusters(stims_chunk[i], pDelta[i], lib.NMODELS, blankCycles, deltabar, secLen, dotp_threshold, minLen);
-            const iObservations &obs = elit->obs;
-            ++elit;
-
-            // Find and choose the cluster with the greatest observational overlap with the GPU's version
-            int bestOverlap = -1, bestOverlapIdx = 0;
-            for ( size_t j = 0; j < clusters.size(); j++ ) {
-                size_t k = 0;
-                int overlap = 0;
-                for ( const Section &sec : clusters[j] ) {
-                    while ( k < iObservations::maxObs && sec.start > obs.stop[k] )
-                        ++k;
-                    if ( k == iObservations::maxObs )
-                        break;
-                    if ( sec.end < obs.start[k] )
-                        continue;
-                    overlap += std::min(obs.stop[k], sec.end) - std::max(obs.start[k], sec.start);
-                }
-                if ( overlap > bestOverlap ) {
-                    bestOverlap = overlap;
-                    bestOverlapIdx = j;
-                }
-            }
-            const std::vector<Section> &cluster = clusters[bestOverlapIdx];
-
-            // Turn best-fit cluster into iObservations
-            size_t nObs = cluster.size();
-            int obsDuration = 0;
-            if ( nObs > iObservations::maxObs ) {
-                std::vector<int> start(nObs), stop(nObs);
-                for ( size_t j = 0; j < nObs; j++ ) {
-                    start[j] = cluster[j].start;
-                    stop[j] = cluster[j].end;
-                }
-                while ( nObs > iObservations::maxObs )
-                    reduceObsCount(start.data(), stop.data(), nObs--, minLen);
-
-                for ( size_t j = 0; j < nObs; j++ ) {
-                    observations[stimOffset + i].start[j] = start[j];
-                    observations[stimOffset + i].stop[j] = stop[j];
-                    obsDuration += stop[j] - start[j];
-                }
-            } else {
-                for ( size_t j = 0; j < nObs; j++ ) {
-                    observations[stimOffset + i].start[j] = cluster[j].start;
-                    observations[stimOffset + i].stop[j] = cluster[j].end;
-                    obsDuration += cluster[j].end - cluster[j].start;
-                }
-            }
-            maxObsDuration = std::max(maxObsDuration, obsDuration);
-        }
-    }
-    return maxObsDuration;
-}
-
 bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file)
 {
     clearAbort();
@@ -121,19 +44,6 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
 
     const RunData &rd = session.runData();
     Profile &prof = *static_cast<Profile*>(res);
-    std::vector<iStimulation> stims = prof.src.iStimulations(rd.dt);
-    std::vector<iObservations> obs(stims.size(), {{}, {}});
-    int maxObsDuration = 0;
-
-    if ( prof.src.archive() && prof.src.archive()->param == -1 ) {
-        maxObsDuration = generate_observations(prof, stims, obs);
-    } else {
-        for ( size_t i = 0; i < stims.size(); i++ ) {
-            obs[i].start[0] = stims[i].tObsBegin;
-            obs[i].stop[0] = stims[i].tObsEnd;
-            maxObsDuration = std::max(maxObsDuration, stims[i].tObsEnd-stims[i].tObsBegin);
-        }
-    }
 
     // Populate
     for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
@@ -166,16 +76,20 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     lib.stim[0].baseV = NAN;
     lib.obs[0] = {{}, {}};
 
-    lib.resizeOutput(maxObsDuration);
-
     lib.push();
 
     unsigned int assignment = lib.assignment_base
             | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPACT | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
 
+    std::vector<iStimulation> stims = prof.src.iStimulations(session.runData().dt);
     size_t total = stims.size();
     prof.gradient.resize(total);
     prof.accuracy.resize(total);
+
+    int maxObsDuration = 0;
+    for ( const iStimulation &stim : stims )
+        maxObsDuration = std::max(maxObsDuration, stim.tObsEnd-stim.tObsBegin);
+    lib.resizeOutput(maxObsDuration);
 
     // Run
     for ( size_t i = 0; i < total; i++ ) {
@@ -185,7 +99,8 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
         }
 
         lib.stim[0] = stims[i];
-        lib.obs[0] = obs[i];
+        lib.obs[0].start[0] = stims[i].tObsBegin;
+        lib.obs[0].stop[0] = stims[i].tObsEnd;
         lib.push(lib.stim);
         lib.push(lib.obs);
 

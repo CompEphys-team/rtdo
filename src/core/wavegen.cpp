@@ -13,7 +13,7 @@ quint32 Wavegen::sigmaAdjust_version = 101;
 
 QString Wavegen::search_action = QString("search");
 quint32 Wavegen::search_magic = 0x8a33c402;
-quint32 Wavegen::search_version = 112;
+quint32 Wavegen::search_version = 111;
 
 Wavegen::Wavegen(Session &session) :
     SessionWorker(session),

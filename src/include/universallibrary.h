@@ -99,7 +99,6 @@ public:
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
         int **clusterLen;
-        unsigned int **clusterOnsets;
 
         void (*observe_no_steps)(int blankCycles);
     };
@@ -108,11 +107,7 @@ public:
     MetaModel &model;
     const size_t NMODELS;
 
-    static constexpr int maxCluster_bits = 5;
-    static constexpr int maxClusters = 1 << maxCluster_bits;
-    static constexpr int maxClusterOnsets = 32;
-    static constexpr int clusterOnset_bitshift = 32 - maxCluster_bits;
-    static constexpr int clusterOnset_tmask = ~((maxClusterOnsets-1) << clusterOnset_bitshift);
+    static constexpr int maxClusters = 32;
 
     std::vector<StateVariable> stateVariables;
     std::vector<AdjustableParam> adjustableParams;
@@ -219,7 +214,6 @@ private:
     IntegrationMethod dummyIntegrator;
     scalar *dummyScalarPtr = nullptr;
     int *dummyIntPtr = nullptr;
-    unsigned int *dummyUIntPtr = nullptr;
 
 public:
     // Globals
@@ -233,7 +227,6 @@ public:
 
     scalar *&clusters;
     int *&clusterLen;
-    unsigned int *&clusterOnsets;
 
     unsigned int assignment_base = 0;
 };

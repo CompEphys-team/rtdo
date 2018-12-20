@@ -305,17 +305,9 @@ struct MAPElite
     std::vector<size_t> bin;
     std::shared_ptr<iStimulation> wave;
     scalar fitness;
-    iObservations obs;
 
-    MAPElite() : fitness(0), obs {{},{}} {}
-    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness)
-        : bin(bin), wave(wave), fitness(fitness), obs {{},{}}
-    {
-        obs.start[0] = wave->tObsBegin;
-        obs.stop[0] = wave->tObsEnd;
-    }
-    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness, iObservations obs)
-        : bin(bin), wave(wave), fitness(fitness), obs(obs) {}
+    MAPElite() : fitness(0) {}
+    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness) : bin(bin), wave(wave), fitness(fitness) {}
 
     /**
      * @brief compare performs a lexical comparison on bin.
@@ -324,7 +316,7 @@ struct MAPElite
     inline bool operator<(const MAPElite &rhs) const { return bin < rhs.bin; }
 
     /**
-     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness, wave, and obs if @p rhs is better.
+     * @brief compete compares the callee's fitness to that of @p rhs, replacing the callee's fitness and wave if @p rhs is better.
      * @return true, if @p rhs beat and replaced the callee.
      */
     bool compete(const MAPElite &rhs);

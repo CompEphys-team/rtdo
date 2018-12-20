@@ -349,37 +349,3 @@ std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimul
     lib.pullOutput();
     return pDelta;
 }
-
-
-void reduceObsCount(int *start, int *stop, size_t maxObs, int largestBridgableGap)
-{
-    int shortestObs = -1, shortestObsIdx = 0;
-    int shortestGap = -1, shortestGapIdx = 0;
-    int shuffleIdx;
-    for ( size_t obsIdx = 0; obsIdx < maxObs; obsIdx++ ) {
-        int dur = stop[obsIdx] - start[obsIdx];
-        if ( dur < shortestObs ) {
-            shortestObs = dur;
-            shortestObsIdx = obsIdx;
-        }
-        if ( obsIdx > 0 ) {
-            int gap = start[obsIdx] - start[obsIdx-1];
-            if ( gap < shortestGap ) {
-                shortestGap = gap;
-                shortestGapIdx = obsIdx;
-            }
-        }
-    }
-    if ( shortestGap <= largestBridgableGap ) {
-        // Merge across gap - this may cause overlapping obs for different clusters
-        stop[shortestGapIdx-1] = stop[shortestGapIdx];
-        shuffleIdx = shortestGapIdx;
-    } else {
-        // Eliminate shortest
-        shuffleIdx = shortestObsIdx;
-    }
-    for ( size_t obsIdx = shuffleIdx; obsIdx < maxObs-1; obsIdx++ ) {
-        start[obsIdx] = start[obsIdx+1];
-        stop[obsIdx] = stop[obsIdx+1];
-    }
-}

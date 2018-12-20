@@ -1,7 +1,6 @@
 #include "wavegen.h"
 #include "session.h"
 #include <forward_list>
-#include "clustering.h"
 
 QString Wavegen::ee_action = QString("ee_search");
 quint32 Wavegen::ee_magic = 0xc9fd545f;
@@ -155,30 +154,6 @@ std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElit
     return ret;
 }
 
-std::vector<iObservations> getClusterObservations(const UniversalLibrary &ulib, int stimIdx, int duration, int nClusters, int largestBridgableGap)
-{
-    std::vector<iObservations> obs(nClusters, {{}, {}});
-    std::vector<int> onsets(nClusters, 0);
-    int clusterIdx = 0;
-    for ( int onsetIdx = 0; onsetIdx < ulib.maxClusterOnsets; onsetIdx++ ) {
-        unsigned int onset = ulib.clusterOnsets[stimIdx*ulib.maxClusterOnsets + onsetIdx];
-        if ( onsetIdx > 0 && onset == 0 )
-            break;
-        int onsetTime = onset & ulib.clusterOnset_tmask;
-        obs[clusterIdx].stop[onsets[clusterIdx]++] = onsetTime; // close previous
-        clusterIdx = onset >> ulib.clusterOnset_bitshift;
-
-        // Prune/merge short observations
-        if ( onsets[clusterIdx] == iObservations::maxObs ) {
-            reduceObsCount(obs[clusterIdx].start, obs[clusterIdx].stop, iObservations::maxObs, largestBridgableGap);
-            --onsets[clusterIdx];
-        }
-        obs[clusterIdx].start[onsets[clusterIdx]] = onsetTime; // open next
-    }
-    obs[clusterIdx].stop[onsets[clusterIdx]] = duration; // close final
-    return obs;
-}
-
 void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ulib,
                     Session &session, Wavegen::Archive &current, const int nStims,
                     const std::vector<MAPEDimension> &dims)
@@ -208,16 +183,10 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
         stim->tObsBegin = 0;
 
         // Find number of valid clusters
-        size_t nClusters = 0, nVisited = 0;
-        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters && ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx] > 0; clusterIdx++ ) {
-            ++nVisited;
+        size_t nClusters = 0;
+        for ( int clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ )
             if ( ulib.clusterLen[stimIdx*ulib.maxClusters + clusterIdx] >= minLength )
                 ++nClusters;
-        }
-        if ( nClusters == 0 )
-            continue;
-
-        std::vector<iObservations> obs = getClusterObservations(ulib, stimIdx, stim->duration, nVisited, minLength);
 
         // Populate all bins (with some garbage for clusterIdx, paramIdx, clusterDuration)
         for ( int binIdx = 0; binIdx < nBins; binIdx++ )
@@ -243,7 +212,7 @@ void scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ul
                     scalar contrib = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
                     if ( contrib > 0 ) {
                         bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 1, dt);
-                        candidates_by_param[paramIdx].emplace_front(bins, stim, contrib, obs[clusterIdx]);
+                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib});
                         ++nCandidates;
                     }
                 }
