@@ -225,16 +225,17 @@ void Wavegen::mutateSwap(iStimulation &I)
 
 void Wavegen::mutateTime(iStimulation &I)
 {
+    iStimulation::Step *target;
+    int newT;
     bool tooClose;
+    auto it = I.begin();
     do {
         tooClose = false;
-        iStimulation::Step *target = session.RNG.choose(I);
-        int newT;
+        target = session.RNG.choose(I);
         do {
             newT = lrint(session.RNG.variate<double>(target->t, stimd.muta.sdTime / session.runData().dt));
         } while ( newT < istimd.iMinStep || newT > istimd.iDuration - istimd.iMinStep );
-        auto it = I.begin();
-        for ( ; it != I.end(); it++ ) {
+        for ( it = I.begin(); it != I.end(); it++ ) {
             if ( it != target && abs(it->t - newT) < istimd.iMinStep ) {
                 tooClose = true;
                 break;
@@ -243,17 +244,14 @@ void Wavegen::mutateTime(iStimulation &I)
                 break;
             }
         }
-        if ( !tooClose ) {
-            if ( it == target+1 ) {
-                target->t = newT;
-            } else {
-                iStimulation::Step tmp = *target;
-                I.erase(target);
-                I.insert(it - (it > target), std::move(tmp));
-            }
-            break;
-        }
     } while ( tooClose );
+
+    target->t = newT;
+    if ( it != target+1 ) {
+        iStimulation::Step tmp = *target;
+        I.erase(target);
+        I.insert(it - (it > target), std::move(tmp));
+    }
     assert(validStim(I, istimd, stimd));
 }
 
