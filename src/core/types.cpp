@@ -188,6 +188,7 @@ bool MAPElite::compete(const MAPElite &rhs)
         wave = rhs.wave;
         deviations = rhs.deviations;
         obs = rhs.obs;
+        current = rhs.current;
         return true;
     }
     return false;
