@@ -26,9 +26,14 @@ StimulationPlotter::StimulationPlotter(QWidget *parent) :
     connect(ui->legend->horizontalHeader(), &QHeaderView::sectionClicked, [=](int idx) {
         static bool on = false;
         if ( idx == 0 ) {
-            for ( int i = 0; i < ui->legend->rowCount(); i++ )
+            rebuilding = true;
+            for ( int i = 0; i < ui->legend->rowCount(); i++ ) {
                 ui->legend->item(i, 0)->setCheckState(on ? Qt::Checked : Qt::Unchecked);
+                ui->overlay->graph(i)->setVisible(on);
+            }
             on = !on;
+            ui->overlay->replot();
+            rebuilding = false;
         }
     });
 
