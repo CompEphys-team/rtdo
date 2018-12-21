@@ -58,6 +58,7 @@ StimulationPlotter::StimulationPlotter(QWidget *parent) :
     ui->overlay->yAxis->setLabel("Voltage (mV)");
 
     ui->legend->setColumnWidth(0, 21);
+    ui->legend->setColumnWidth(1, 25);
     ui->splitter->setStretchFactor(0, 4);
     ui->splitter->setStretchFactor(1, 4);
     ui->splitter->setStretchFactor(2, 1);
@@ -91,6 +92,16 @@ void StimulationPlotter::init(Session *session)
 {
     this->session = session;
     connect(&session->wavesets(), SIGNAL(addedSet()), this, SLOT(updateSources()));
+
+    QStringList legendHeaderLabels;
+    int nFixedLegendColumns = ui->legend->columnCount();
+    for ( int i = 0; i < nFixedLegendColumns; i++ )
+        legendHeaderLabels << ui->legend->horizontalHeaderItem(i)->text();
+    for ( const AdjustableParam &p : session->project.model().adjustableParams )
+        legendHeaderLabels << QString::fromStdString(p.name);
+    ui->legend->setColumnCount(nFixedLegendColumns + session->project.model().adjustableParams.size());
+    ui->legend->setHorizontalHeaderLabels(legendHeaderLabels);
+
     updateSources();
     QTimer::singleShot(10, this, &StimulationPlotter::resizePanel);
 }
@@ -122,6 +133,7 @@ void StimulationPlotter::replot()
     WaveSource src = session->wavesets().sources().at(ui->sources->currentIndex());
     std::vector<Stimulation> stims = src.stimulations();
     std::vector<iObservations> obs = src.observations(rd.dt);
+    std::vector<MAPElite> elites = src.elites();
     if ( stims.empty() )
         return;
 
@@ -160,6 +172,13 @@ void StimulationPlotter::replot()
             colors[row] = color;
             updateColor(row, true);
         });
+
+        if ( src.type != WaveSource::Manual ) {
+            ui->legend->setItem(row, 2, new QTableWidgetItem(QString::number(elites[i].fitness)));
+            ui->legend->setItem(row, 3, new QTableWidgetItem(QString::number(elites[i].current)));
+            for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
+                ui->legend->setItem(row, 4 + j, new QTableWidgetItem(QString::number(elites[i].deviations[j])));
+        }
     }
     ui->legend->setVerticalHeaderLabels(labels);
 
