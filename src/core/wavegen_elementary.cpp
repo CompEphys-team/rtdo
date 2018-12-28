@@ -30,8 +30,10 @@ void prepareModels(Session &session, UniversalLibrary &ulib, const WavegenData &
     for ( size_t i = 0; i < ulib.NMODELS; i++ ) {
         if ( i % searchd.trajectoryLength == 0 ) { // Pick a starting point
             // For the benefit of rerandomiseParameters && useBaseParameters, provide each new stim with a trajectory from base model
-            if ( i % nModelsPerStim == 0 )
+            if ( i % nModelsPerStim == 0 ) {
                 initial = true;
+                nextParam = 0;
+            }
             if ( searchd.useBaseParameters && initial ) // Reset to base model
                 for ( int j = 0; j < nParams; j++ )
                     values[j] = ulib.adjustableParams[j].initial;
