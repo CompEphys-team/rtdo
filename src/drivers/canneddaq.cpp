@@ -146,7 +146,7 @@ void CannedDAQ::getSampleNumbers(const std::vector<Stimulation> &stims, double d
 {
     scalar duration = 0;
     for ( const Stimulation &stim : stims )
-        duration = std::max(duration, stim.tObsEnd);
+        duration = std::max(duration, stim.duration);
     int _nSamples = duration / dt;
     int _nBuffer = _nSamples/62;
     int _nTotal = _nSamples + 2*_nBuffer;

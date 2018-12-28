@@ -583,9 +583,8 @@ void StimulationCreator::on_paramTrace_clicked()
         } else {
             rec->getCannedDAQ()->assoc = fit.assoc;
         }
-        std::vector<Stimulation> sanitisedStims = session.gaFitter().sanitiseDeck(stims);
-        rec->getCannedDAQ()->setRecord(sanitisedStims, fit.VCRecord);
-        actualStim = sanitisedStims[stim - stims.begin()];
+        rec->getCannedDAQ()->setRecord(stims, fit.VCRecord);
+        actualStim = *stim;
         daq = rec;
     } else {
         for ( int i = 0; i < nParams; i++ ) {
