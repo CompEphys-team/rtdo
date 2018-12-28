@@ -84,13 +84,12 @@ void pushStimsAndObserve(const std::vector<iStimulation>&stims, UniversalLibrary
     ulib.observe_no_steps(blankCycles);
 }
 
-QVector<double> getDeltabar(Session &session, UniversalLibrary &ulib)
+QVector<double> Wavegen::getDeltabar(UniversalLibrary &ulib)
 {
-    const WavegenData &searchd = session.wavegenData();
     int nModelsPerStim = searchd.nTrajectories * searchd.trajectoryLength;
     std::vector<iStimulation> stims(ulib.NMODELS / nModelsPerStim);
     for ( iStimulation &stim : stims )
-        stim = session.wavegen().getRandomStim();
+        stim = session.wavegen().getRandomStim(stimd, istimd);
 
     ulib.iSettleDuration[0] = 0;
     ulib.push(ulib.iSettleDuration);
@@ -303,14 +302,14 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     // Use the settling period to generate the first two sets of stims
     std::vector<iStimulation> waves_ep1(nStimsPerEpoch), waves_ep2(nStimsPerEpoch);
     for ( iStimulation &w : waves_ep1 )
-        w = getRandomStim();
+        w = getRandomStim(stimd, istimd);
     for ( iStimulation &w : waves_ep2 )
-        w = getRandomStim();
+        w = getRandomStim(stimd, istimd);
     size_t nInitialStims = 2*nStimsPerEpoch;
     std::vector<iStimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
 
     // Run a set of stims through a deltabar finding mission
-    current.deltabar = getDeltabar(session, ulib);
+    current.deltabar = getDeltabar(ulib);
     std::vector<double> deltabar = current.deltabar.toStdVector();
 
     // Queue the first set of stims
@@ -372,7 +371,7 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
         // Prepare the next set of stims
         if ( nInitialStims < searchd.nInitialWaves ) {
             for ( iStimulation &w : *newWaves )
-                w = getRandomStim();
+                w = getRandomStim(stimd, istimd);
             nInitialStims += nStimsPerEpoch;
         } else {
             construct_next_generation(*newWaves);

@@ -2,7 +2,7 @@
 #include "session.h"
 #include <cassert>
 
-inline bool validStim(iStimulation I, const Wavegen::iStimData &istimd, const StimulationData &stimd)
+inline bool validStim(iStimulation I, const iStimData &istimd, const StimulationData &stimd)
 {
     bool valid = ((int)I.size() >= stimd.minSteps) && ((int)I.size() <= stimd.maxSteps);
     for ( auto it = I.begin(); it != I.end(); it++ ) {
@@ -15,7 +15,7 @@ inline bool validStim(iStimulation I, const Wavegen::iStimData &istimd, const St
     return valid;
 }
 
-iStimulation Wavegen::getRandomStim() const
+iStimulation Wavegen::getRandomStim(const StimulationData &stimd, const iStimData &istimd) const
 {
     iStimulation I = iStimulation();
     int failedPos, failedAgain = 0;
