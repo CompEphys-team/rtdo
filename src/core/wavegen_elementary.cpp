@@ -156,8 +156,8 @@ std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElit
 }
 
 scalar scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &ulib,
-                    Session &session, Wavegen::Archive &current, const int nStims, const int nPartitions,
-                    const std::vector<MAPEDimension> &dims)
+                      Session &session, Wavegen::Archive &current, const int nStims,
+                      const std::vector<MAPEDimension> &dims)
 {
     const double dt = session.runData().dt;
     const int minLength = session.gaFitterSettings().cluster_min_dur / dt;
@@ -182,27 +182,36 @@ scalar scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &
             bin_for_current = i;
     }
 
-    std::vector<std::vector<std::pair<iObservations, int>>> obs = processClusterMasks(
-                ulib, nStims, nPartitions, session.gaFitterSettings().cluster_fragment_dur/dt, minLength);
     for ( int stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
         std::shared_ptr<iStimulation> stim = std::make_shared<iStimulation>(stims[stimIdx]);
         stim->tObsBegin = 0;
 
         // Find number of valid clusters
-        size_t nClusters = 0;
-        for ( size_t clusterIdx = 0; clusterIdx < obs[stimIdx].size(); clusterIdx++ )
-            if ( obs[stimIdx][clusterIdx].second >= minLength )
-                ++nClusters;
+        size_t nClusters = 0, nValidClusters = 0;
+        for ( size_t clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ ) {
+            const iObservations &obs = ulib.clusterObs[stimIdx * ulib.maxClusters + clusterIdx];
+            int len = 0;
+            for ( size_t i = 0; i < iObservations::maxObs; i++ )
+                len += obs.stop[i] - obs.start[i];
+            if ( len >= minLength )
+                ++nValidClusters;
+            if ( len == 0 )
+                break;
+            ++nClusters;
+        }
 
         // Populate all bins (with some garbage for clusterIdx, paramIdx, clusterDuration)
         for ( int binIdx = 0; binIdx < nBins; binIdx++ )
-            bins[binIdx] = dims[binIdx].bin(*stim, 0, 0, nClusters, 1, dt);
+            bins[binIdx] = dims[binIdx].bin(*stim, 0, 0, nValidClusters, 1, dt);
 
         // Construct a MAPElite for each non-zero parameter contribution of each valid cluster
-        for ( size_t clusterIdx = 0; clusterIdx < obs[stimIdx].size(); clusterIdx++ ) {
+        for ( size_t clusterIdx = 0; clusterIdx < nClusters; clusterIdx++ ) {
+            const iObservations &obs = ulib.clusterObs[stimIdx * ulib.maxClusters + clusterIdx];
 
             // Check for valid length
-            int len = obs[stimIdx][clusterIdx].second;
+            int len = 0;
+            for ( size_t i = 0; i < iObservations::maxObs; i++ )
+                len += obs.stop[i] - obs.start[i];
             if ( len >= minLength ) {
                 scalar meanCurrent = ulib.clusterCurrent[stimIdx * ulib.maxClusters + clusterIdx];
                 if ( meanCurrent > maxCurrent )
@@ -225,7 +234,7 @@ scalar scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &
                 for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
                     if ( contrib[paramIdx] > 0 ) {
                         bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 1, dt);
-                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib[paramIdx], contrib, obs[stimIdx][clusterIdx].first});
+                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib[paramIdx], contrib, obs});
                         candidates_by_param[paramIdx].front().current = meanCurrent;
                         ++nCandidates;
                     }
@@ -308,12 +317,12 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     pushStimsAndObserve(*returnedWaves, ulib, nModelsPerStim, blankCycles);
     ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
     ulib.run();
-    int nPartitions = ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                                   sectionLength, dotp_threshold, minClusterLen, deltabar, false);
+    ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
+                 sectionLength, dotp_threshold, minClusterLen, deltabar, false);
 
     for ( size_t epoch = 0; epoch < searchd.maxIterations; epoch++ ) {
         // Copy completed clusters for returnedWaves to host (sync)
-        ulib.pullClusters(nStimsPerEpoch, nPartitions);
+        ulib.pullClusters(nStimsPerEpoch);
 
         bool done = (++current.iterations == searchd.maxIterations) || isAborted();
 
@@ -321,12 +330,12 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
         if ( !done ) {
             pushStimsAndObserve(*newWaves, ulib, nModelsPerStim, blankCycles);
             ulib.run();
-            nPartitions = ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                                       sectionLength, dotp_threshold, minClusterLen, deltabar, false);
+            ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
+                         sectionLength, dotp_threshold, minClusterLen, deltabar, false);
         }
 
         // score and insert returnedWaves into archive
-        scalar epoch_maxCurrent = scoreAndInsert(*returnedWaves, ulib, session, current, nStimsPerEpoch, nPartitions, dims);
+        scalar epoch_maxCurrent = scoreAndInsert(*returnedWaves, ulib, session, current, nStimsPerEpoch, dims);
         sum_maxCurrents += epoch_maxCurrent;
         if ( epoch_maxCurrent > run_maxCurrent )
             run_maxCurrent = epoch_maxCurrent;

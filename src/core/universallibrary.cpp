@@ -44,9 +44,9 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     output(light ? dummyScalarPtr : *pointers.output),
 
     clusters(light ? dummyScalarPtr : *pointers.clusters),
-    clusterMasks(light ? dummyUIntPtr : *pointers.clusterMasks),
     clusterCurrent(light ? dummyScalarPtr : *pointers.clusterCurrent),
-    clusterPrimitives(light ? dummyScalarPtr : *pointers.clusterPrimitives)
+    clusterPrimitives(light ? dummyScalarPtr : *pointers.clusterPrimitives),
+    clusterObs(light ? dummyObsPtr : *pointers.clusterObs)
 {
 }
 
