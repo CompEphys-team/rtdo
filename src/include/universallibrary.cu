@@ -287,7 +287,7 @@ __global__ void build_section_primitives(const int trajLen,
                         const int paramIdx = (i - 1 - (i/trajLen)) % NPARAMS;
                         scalar current_mylane = dd_timeseries[t*NMODELS + lane0_offset + i];
                         scalar current_prevlane = __shfl_up_sync(0xffffffff, current_mylane, 1);
-                        scalar diff = current_prevlane - current_mylane;
+                        scalar diff = scalarfabs(current_prevlane - current_mylane);
                         if ( i < nTraces ) {
                             if ( i % trajLen != 0 )
                                 atomicAdd((scalar*)&sh_contrib[warpid][paramIdx][secIdx&31], diff);
@@ -769,7 +769,7 @@ __global__ void find_deltabar_kernel(int trajLen, int nTraj, int nStims, int dur
                     if ( t < obs.stop[nextObs] ) {
                         scalar contrib = 0;
                         for ( int i = paramIdx; i < nUsefulTraces; i += NPARAMS ) {
-                            contrib += dd_timeseries[t*NMODELS + id0 + i + i/(trajLen-1) + 1];
+                            contrib += scalarfabs(dd_timeseries[t*NMODELS + id0 + i + i/(trajLen-1) + 1]);
                         }
                         contrib /= nContrib;
                         sumSquares += contrib*contrib;
