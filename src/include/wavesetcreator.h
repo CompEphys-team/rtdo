@@ -34,7 +34,7 @@ signals:
 
 protected:
     friend class Session;
-    void load(const QString &action, const QString &args, QFile &results, Result r);
+    Result *load(const QString &action, const QString &args, QFile &results, Result r);
     const static quint32 magicSelect, magicSubset, magicDeck, magicManual, magicManualDeck;
     const static quint32 versionSelect, versionSubset, versionDeck, versionManual, versionManualDeck;
 

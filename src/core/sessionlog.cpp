@@ -23,6 +23,8 @@ void SessionLog::setLogFile(const QString &path)
             std::string line;
             std::getline(is, line);
             QString qline = QString::fromStdString(line);
+            if ( qline.startsWith('#') )
+                continue;
             QStringList list = qline.split(QChar('\t'));
             m_data.push_back({
                  QDateTime::fromString(list[0], Qt::ISODate),
@@ -37,8 +39,12 @@ void SessionLog::setLogFile(const QString &path)
 
 void SessionLog::queue(QString actor, QString action, QString args, Result *res)
 {
+    queue(Entry {QDateTime::currentDateTime(), actor, action, args, res});
+}
+
+void SessionLog::queue(const SessionLog::Entry &entry)
+{
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
-    Entry entry {QDateTime::currentDateTime(), actor, action, args, res};
     m_queue.enqueue(entry);
     endInsertRows();
 }

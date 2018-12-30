@@ -31,14 +31,14 @@ void Wavegen::recalcIstimd()
     istimd.iMinStep = lrint(stimd.minStepLength / session.runData().dt);
 }
 
-void Wavegen::load(const QString &action, const QString &args, QFile &results, Result r)
+Result *Wavegen::load(const QString &action, const QString &args, QFile &results, Result r)
 {
     if ( action == sigmaAdjust_action )
-        sigmaAdjust_load(results, r);
+        return sigmaAdjust_load(results, r);
     else if ( action == search_action )
-        search_load(results, args, r);
+        return search_load(results, args, r);
     else if ( action == ee_action )
-        ee_load(results, args, r);
+        return ee_load(results, args, r);
     else
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
 }
@@ -188,10 +188,14 @@ std::vector<double> Wavegen::getMeanParamError()
     return sumParamErr;
 }
 
-bool Wavegen::sigmaAdjust_exec(QFile &file, Result *dummy)
+bool Wavegen::sigmaAdjust_exec(QFile &file, Result *res)
 {
-    delete dummy;
-    dummy = nullptr;
+    bool dryrun = res->dryrun;
+    delete res;
+    res = nullptr;
+    if ( dryrun ) {
+        return true;
+    }
 
     initModels(false);
     detune();
@@ -257,8 +261,11 @@ void Wavegen::sigmaAdjust_save(QFile &file)
         os << p.adjustedSigma;
 }
 
-void Wavegen::sigmaAdjust_load(QFile &file, Result)
+Result *Wavegen::sigmaAdjust_load(QFile &file, Result r)
 {
+    if ( r.dryrun )
+        return new Result(r);
+
     QDataStream is;
     quint32 version = openLoadStream(file, is, sigmaAdjust_magic);
     if ( version < 100 || version > sigmaAdjust_version )
@@ -273,6 +280,8 @@ void Wavegen::sigmaAdjust_load(QFile &file, Result)
             is >> p.adjustedSigma;
     }
     propagateAdjustedSigma();
+
+    return new Result(r);
 }
 
 void Wavegen::propagateAdjustedSigma()

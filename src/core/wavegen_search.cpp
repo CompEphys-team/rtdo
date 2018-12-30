@@ -27,10 +27,16 @@ void Wavegen::search(int param)
 
 bool Wavegen::search_exec(QFile &file, Result *result)
 {
+    bool dryrun = result->dryrun;
     int param = static_cast<Archive*>(result)->param;
     current = Archive(param, searchd, *result);
     delete result;
     result = nullptr;
+
+    if ( dryrun ) {
+        search_save(file);
+        return true;
+    }
 
     emit startedSearch(param);
 
@@ -137,9 +143,9 @@ bool Wavegen::search_exec(QFile &file, Result *result)
     current.nElites.squeeze();
     current.meanFitness.squeeze();
     current.maxFitness.squeeze();
-    m_archives.push_back(std::move(current));
 
     search_save(file);
+    m_archives.push_back(std::move(current));
 
     emit done(param);
 
@@ -257,18 +263,18 @@ void Wavegen::search_save(QFile &file)
     QDataStream os;
     if ( !openSaveStream(file, os, search_magic, search_version) )
         return;
-    Archive &arch = m_archives.back();
-    os << quint32(arch.param);
-    os << quint32(arch.precision);
-    os << quint32(arch.iterations);
-    os << quint32(arch.elites.size());
-    for ( MAPElite const& e : arch.elites )
+
+    os << quint32(current.param);
+    os << quint32(current.precision);
+    os << quint32(current.iterations);
+    os << quint32(current.elites.size());
+    for ( MAPElite const& e : current.elites )
         os << e;
-    os << arch.nCandidates << arch.nInsertions << arch.nReplacements << arch.nElites;
-    os << arch.meanFitness << arch.maxFitness;
+    os << current.nCandidates << current.nInsertions << current.nReplacements << current.nElites;
+    os << current.meanFitness << current.maxFitness;
 }
 
-void Wavegen::search_load(QFile &file, const QString &args, Result r)
+Result *Wavegen::search_load(QFile &file, const QString &args, Result r)
 {
     QDataStream is;
     quint32 version = openLoadStream(file, is, search_magic);
@@ -281,18 +287,25 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
     else
         param = args.toInt();
     is >> precision >> iterations >> archSize;
-    m_archives.push_back(Archive(param, searchd, r)); // Note: this->searchd is correctly set up assuming sequential result loading
-    Archive &arch = m_archives.back();
-    arch.precision = precision;
-    arch.iterations = iterations;
-    arch.elites.resize(archSize);
+
+    Archive *arch;
+    if ( r.dryrun )
+        arch = new Archive(param, searchd, r);
+    else {
+        m_archives.push_back(Archive(param, searchd, r)); // Note: this->searchd is correctly set up assuming sequential result loading
+        arch =& m_archives.back();
+    }
+
+    arch->precision = precision;
+    arch->iterations = iterations;
+    arch->elites.resize(archSize);
 
     if ( version >= 110 ) {
         if ( version >= 112 ) {
-            for ( MAPElite &e : arch.elites )
+            for ( MAPElite &e : arch->elites )
                 is >> e;
         } else {
-            for ( MAPElite &e : arch.elites ) {
+            for ( MAPElite &e : arch->elites ) {
                 is >> *e.wave >> e.fitness;
                 quint32 size, val;
                 is >> size;
@@ -307,7 +320,7 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
             // iStimulation probably generated at WavegenData::dt=0.01; convert to RunData::dt stepping
             // There may be some loss of precision, but that's unavoidable. >.<
             double factor = session.runData().dt / 0.01;
-            for ( MAPElite &e : arch.elites ) {
+            for ( MAPElite &e : arch->elites ) {
                 e.wave->duration = lrint(e.wave->duration / factor);
                 e.wave->tObsBegin = lrint(e.wave->tObsBegin / factor);
                 e.wave->tObsEnd = lrint(e.wave->tObsEnd / factor);
@@ -316,7 +329,7 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
             }
         }
     } else {
-        for ( MAPElite &e : arch.elites ) {
+        for ( MAPElite &e : arch->elites ) {
             MAPElite__scalarStim old;
             is >> old;
             e.bin = old.bin;
@@ -325,14 +338,16 @@ void Wavegen::search_load(QFile &file, const QString &args, Result r)
         }
     }
     if ( version < 112 ) {
-        for ( MAPElite &e : arch.elites ) {
+        for ( MAPElite &e : arch->elites ) {
             e.obs.start[0] = e.wave->tObsBegin;
             e.obs.stop[0] = e.wave->tObsEnd;
         }
     }
 
     if ( version >= 101 ) {
-        is >> arch.nCandidates >> arch.nInsertions >> arch.nReplacements >> arch.nElites;
-        is >> arch.meanFitness >> arch.maxFitness;
+        is >> arch->nCandidates >> arch->nInsertions >> arch->nReplacements >> arch->nElites;
+        is >> arch->meanFitness >> arch->maxFitness;
     }
+
+    return arch;
 }

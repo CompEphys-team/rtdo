@@ -22,7 +22,7 @@ public:
 
 protected:
     friend class Session;
-    virtual void load(const QString &action, const QString &args, QFile &results, Result r) = 0;
+    virtual Result *load(const QString &action, const QString &args, QFile &results, Result r) = 0;
 
     bool aborted = false;
     QMutex mutex;

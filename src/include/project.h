@@ -38,6 +38,7 @@ public:
     inline size_t profNumPairs() const { return prof_numPairs; }
 
     QString dir() const; //!< @brief dir() returns the absolute path to the project directory
+    inline QString projectfile() const { return p_projectfile; }
 
     std::string simulatorCode() const; //!< Returns simulator code for all models for use in support code sections
 

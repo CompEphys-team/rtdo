@@ -15,7 +15,7 @@ SamplingProfiler::SamplingProfiler(Session &session) :
     qRegisterMetaType<Profile>();
 }
 
-void SamplingProfiler::load(const QString &act, const QString &, QFile &results, Result r)
+Result *SamplingProfiler::load(const QString &act, const QString &, QFile &results, Result r)
 {
     if ( act == action ) {
         QDataStream is;
@@ -23,9 +23,16 @@ void SamplingProfiler::load(const QString &act, const QString &, QFile &results,
         if ( ver < 100 || ver > version )
             throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
-        m_profiles.push_back(Profile(r));
-        m_profiles.back().src.session = &session;
-        is >> m_profiles.back();
+        Profile *prof;
+        if ( r.dryrun )
+            prof = new Profile(r);
+        else {
+            m_profiles.push_back(Profile(r));
+            prof =& m_profiles.back();
+        }
+        prof->src.session = &session;
+        is >> *prof;
+        return prof;
     } else {
         throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
     }
@@ -42,8 +49,16 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     if ( action != this->action )
         return false;
 
-    const RunData &rd = session.runData();
     Profile &prof = *static_cast<Profile*>(res);
+    if ( res->dryrun ) {
+        QDataStream os;
+        if ( openSaveStream(file, os, magic, version) )
+            os << prof;
+        delete res;
+        return true;
+    }
+
+    const RunData &rd = session.runData();
     std::vector<iStimulation> stims = prof.src.iStimulations(rd.dt);
     std::vector<iObservations> obs = prof.src.observations(rd.dt);
 

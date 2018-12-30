@@ -22,6 +22,8 @@ public:
     Dispatcher(Session &s) : s(s), running(true), busy(false) {}
     Session &s;
     std::atomic<bool> running, busy;
+    bool dryrun = false;
+    QDir dir;
     SessionLog::Entry nextEntry;
     QMutex mutex;
 public slots:
@@ -56,6 +58,9 @@ public:
     void pause();
     void resume();
     void abort();
+
+    void desiccate(QString &file, QString &directory);
+    void exec_desiccated(QString &file, bool synchronous = true);
 
     /**
      * @brief queue adds an action to the queue, starting asynchronous execution immediately (unless paused).
@@ -144,7 +149,7 @@ protected:
     SessionLog m_log;
 
     void addAPs();
-    void load();
+    std::vector<SessionLog::Entry> load(bool dryrun = false);
     bool readConfig(const QString &filename, bool incremental = false);
 
     void sanitiseSettings(Settings &s);

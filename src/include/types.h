@@ -449,7 +449,7 @@ struct GAFitterSettings {
 
 struct DataPoint { double t; double value; };
 
-struct Result { int resultIndex = -1; };
+struct Result { int resultIndex = -1; bool dryrun = false; };
 
 struct Settings : public Result
 {

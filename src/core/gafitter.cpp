@@ -91,7 +91,13 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     output.stimSource = static_cast<Output*>(res)->stimSource;
     output.VCRecord = static_cast<Output*>(res)->VCRecord;
     output.assoc = static_cast<Output*>(res)->assoc;
+    bool dryrun = res->dryrun;
     delete res;
+
+    if ( dryrun ) {
+        save(file);
+        return true;
+    }
 
     emit starting();
 
@@ -271,7 +277,7 @@ void GAFitter::finish()
     doFinish = true;
 }
 
-void GAFitter::load(const QString &act, const QString &, QFile &results, Result r)
+Result *GAFitter::load(const QString &act, const QString &, QFile &results, Result r)
 {
     if ( act != action )
         throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
@@ -280,7 +286,15 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
     if ( ver < 100 || ver > version )
         throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
-    Output out(*this, r);
+    Output *p_out;
+    if ( r.dryrun ) {
+        p_out = new Output(*this, r);
+    } else {
+        m_results.emplace_back(*this, r);
+        p_out =& m_results.back();
+    }
+    Output &out = *p_out;
+
     is >> out.stimSource >> out.epochs;
     out.targetParam.resize(out.epochs);
     out.params.resize(out.epochs);
@@ -325,7 +339,8 @@ void GAFitter::load(const QString &act, const QString &, QFile &results, Result 
         out.assoc.V2idx = V2;
         is >> out.assoc.Iscale >> out.assoc.Vscale >> out.assoc.V2scale;
     }
-    m_results.push_back(std::move(out));
+
+    return p_out;
 }
 
 bool GAFitter::finished()

@@ -35,6 +35,7 @@ public:
     int nextIndex() const { return m_data.size(); }
 
     void queue(QString actor, QString action, QString args, Result *res);
+    void queue(const Entry &entry);
     int queueSize() const { return m_queue.size(); }
     Entry dequeue(bool makeActive);
     void removeQueued(int first, int last);

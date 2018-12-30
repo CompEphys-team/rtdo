@@ -44,7 +44,7 @@ signals:
 
 protected:
     friend class Session;
-    void load(const QString &action, const QString &args, QFile &results, Result r);
+    Result *load(const QString &action, const QString &args, QFile &results, Result r);
 
 private:
     UniversalLibrary &lib;

@@ -22,6 +22,7 @@ Session::Session(Project &p, const QString &sessiondir) :
         } else {
             dir = QDir(sessiondir);
         }
+        dispatcher.dir = dir;
     }
 
     dispatcher.moveToThread(&thread);
@@ -292,6 +293,44 @@ void Session::abort()
         m_gafitter->abort();
 }
 
+void Session::desiccate(QString &file, QString &directory)
+{
+    if ( dispatcher.busy.load() )
+        return;
+    std::ofstream desic(file.toStdString(), std::ios_base::out | std::ios_base::trunc);
+    desic << "#project " << project.projectfile() << '\n';
+    desic << "#session " << dir.absolutePath() << '\n';
+    desic.close();
+    m_log.setLogFile(file);
+    dispatcher.dir = QDir(directory);
+    dispatcher.dryrun = true;
+    dispatcher.running = true;
+    emit doDispatch();
+}
+
+void Session::exec_desiccated(QString &file, bool synchronous)
+{
+    using std::swap;
+    SessionLog existingLog;
+    existingLog.setLogFile(file);
+
+    swap(m_log, existingLog);
+    std::vector<SessionLog::Entry> plannedActions = load(true);
+    swap(m_log, existingLog);
+
+    for ( SessionLog::Entry &e : plannedActions ) {
+        e.res->dryrun = false;
+        m_log.queue(e);
+    }
+
+    dispatcher.running = true;
+
+    if ( synchronous )
+        dispatcher.dispatch();
+    else
+        emit doDispatch();
+}
+
 void Session::queue(QString actor, QString action, QString args, Result *res, bool wake)
 {
     m_log.queue(actor, action, args, res);
@@ -312,30 +351,37 @@ StimulationData Session::stimulationData(int i) const { return getSettings(i).st
 GAFitterSettings Session::gaFitterSettings(int i) const { return getSettings(i).gafs; }
 DAQData Session::daqData(int i) const { return getSettings(i).daqd; }
 
-void Session::load()
+std::vector<SessionLog::Entry> Session::load(bool dryrun)
 {
     Result result;
+    std::vector<SessionLog::Entry> ret;
     for ( int row = 0; row < m_log.rowCount(); row++ ) {
         initial = false;
         SessionLog::Entry entry = m_log.entry(row);
         QString filename = results(row, entry.actor, entry.action);
         QFile file(dir.filePath(filename));
         result.resultIndex = row;
+        result.dryrun = dryrun;
         try {
             if ( entry.actor == wavegen().actorName() )
-                wavegen().load(entry.action, entry.args, file, result);
+                entry.res = wavegen().load(entry.action, entry.args, file, result);
             else if ( entry.actor == profiler().actorName() )
-                profiler().load(entry.action, entry.args, file, result);
+                entry.res = profiler().load(entry.action, entry.args, file, result);
             else if ( entry.actor == "Config" ) {
                 readConfig(file.fileName());
-                hist_settings.push_back(std::make_pair(row, q_settings));
-                m_settings = q_settings;
+                if ( dryrun ) {
+                    entry.res = new Settings(q_settings);
+                } else {
+                    hist_settings.push_back(std::make_pair(row, q_settings));
+                    m_settings = q_settings;
+                    entry.res =& hist_settings.back().second;
+                }
             } else if ( entry.actor == wavesets().actorName() ) {
-                wavesets().load(entry.action, entry.args, file, result);
+                entry.res = wavesets().load(entry.action, entry.args, file, result);
             } else if ( entry.actor == gaFitter().actorName() ) {
-                gaFitter().load(entry.action, entry.args, file, result);
+                entry.res = gaFitter().load(entry.action, entry.args, file, result);
             } else if ( entry.actor == samplingProfiler().actorName() ) {
-                samplingProfiler().load(entry.action, entry.args, file, result);
+                entry.res = samplingProfiler().load(entry.action, entry.args, file, result);
             } else {
                 throw std::runtime_error(std::string("Unknown actor: ") + entry.actor.toStdString());
             }
@@ -344,7 +390,9 @@ void Session::load()
                       << ", " << filename << ") : "
                       << err.what() << std::endl;
         }
+        ret.push_back(entry);
     }
+    return ret;
 }
 
 bool Session::readConfig(const QString &filename, bool incremental)
@@ -467,7 +515,8 @@ void Dispatcher::dispatch()
             break;
 
         bool success = false;
-        QFile file(s.dir.filePath(s.results(nextEntry.res->resultIndex, nextEntry.actor, nextEntry.action)));
+        QFile file(dir.filePath(s.results(nextEntry.res->resultIndex, nextEntry.actor, nextEntry.action)));
+        nextEntry.res->dryrun = dryrun;
 
         if ( nextEntry.actor == s.wavegen().actorName() ) {
             success = s.wavegen().execute(nextEntry.action, nextEntry.args, nextEntry.res, file);
@@ -506,6 +555,8 @@ void Dispatcher::dispatch()
         }
         emit actionComplete(success);
     }
+    dryrun = false;
+    dir = s.dir;
     busy = false;
 }
 

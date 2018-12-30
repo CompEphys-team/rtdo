@@ -35,6 +35,12 @@ bool WavesetCreator::execute(QString action, QString, Result *res, QFile &file)
 {
     QDataStream os;
 
+    if ( res->dryrun ) {
+        std::cerr << "Error: Waveset creation is not supported in dry run mode." << std::endl;
+        delete res;
+        return false;
+    }
+
     if ( action == actionSelect ) {
         m_selections.push_back(*static_cast<WavegenSelection*>(res));
         WavegenSelection &sel = m_selections.back();
@@ -130,7 +136,7 @@ std::vector<WaveSource> WavesetCreator::sources() const
     return src;
 }
 
-void WavesetCreator::load(const QString &action, const QString &, QFile &results, Result r)
+Result *WavesetCreator::load(const QString &action, const QString &, QFile &results, Result r)
 {
     QDataStream is;
     quint32 version;
@@ -210,6 +216,8 @@ void WavesetCreator::load(const QString &action, const QString &, QFile &results
     } else {
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     }
+
+    return nullptr;
 }
 
 

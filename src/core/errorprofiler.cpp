@@ -19,7 +19,7 @@ ErrorProfiler::~ErrorProfiler()
     lib.destroySimulator(daq);
 }
 
-void ErrorProfiler::load(const QString &act, const QString &, QFile &results, Result r)
+Result *ErrorProfiler::load(const QString &act, const QString &, QFile &results, Result r)
 {
     if ( act != action )
         throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
@@ -28,9 +28,17 @@ void ErrorProfiler::load(const QString &act, const QString &, QFile &results, Re
     if ( ver < 100 || ver > version )
         throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
-    m_profiles.push_back(ErrorProfile(session, r));
-    m_profiles.back().version = ver;
-    is >> m_profiles.back();
+    ErrorProfile *prof;
+    if ( r.dryrun )
+        prof = new ErrorProfile(session, r);
+    else {
+        m_profiles.push_back(ErrorProfile(session, r));
+        prof =& m_profiles.back();
+    }
+    prof->version = ver;
+    is >> (*prof);
+
+    return prof;
 }
 
 void ErrorProfiler::queueProfile(ErrorProfile &&p)
@@ -53,6 +61,14 @@ bool ErrorProfiler::execute(QString action, QString, Result *result, QFile &file
     } catch (std::bad_alloc) {
         delete result;
         return false;
+    }
+
+    if ( result->dryrun ) {
+        QDataStream os;
+        if ( openSaveStream(file, os, magic, version) )
+            os << ep;
+        delete result;
+        return;
     }
 
     auto iter = ep.errors.begin();
@@ -79,6 +95,7 @@ bool ErrorProfiler::execute(QString action, QString, Result *result, QFile &file
     if ( openSaveStream(file, os, magic, version) )
         os << m_profiles.back();
 
+    delete result;
     return true;
 }
 

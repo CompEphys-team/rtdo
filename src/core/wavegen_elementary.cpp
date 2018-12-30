@@ -261,9 +261,15 @@ scalar scoreAndInsert(const std::vector<iStimulation> &stims, UniversalLibrary &
 
 bool Wavegen::ee_exec(QFile &file, Result *result)
 {
+    bool dryrun = result->dryrun;
     current = Archive(-1, searchd, *result);
     delete result;
     result = nullptr;
+
+    if ( dryrun ) {
+        ee_save(file);
+        return true;
+    }
 
     emit startedSearch(-1);
 
@@ -380,9 +386,9 @@ bool Wavegen::ee_exec(QFile &file, Result *result)
     current.nElites.squeeze();
     current.meanFitness.squeeze();
     current.maxFitness.squeeze();
-    m_archives.push_back(std::move(current));
 
     ee_save(file);
+    m_archives.push_back(std::move(current));
 
     emit done();
 
@@ -394,20 +400,20 @@ void Wavegen::ee_save(QFile &file)
     QDataStream os;
     if ( !openSaveStream(file, os, ee_magic, ee_version) )
         return;
-    Archive &arch = m_archives.back();
-    os << quint32(arch.precision);
-    os << quint32(arch.iterations);
-    os << arch.nCandidates << arch.nInsertions << arch.nReplacements << arch.nElites;
-    os << arch.deltabar;
 
-    os << quint32(arch.elites.size());
-    os << quint32(arch.elites.front().bin.size());
-    os << quint32(arch.elites.front().deviations.size());
+    os << quint32(current.precision);
+    os << quint32(current.iterations);
+    os << current.nCandidates << current.nInsertions << current.nReplacements << current.nElites;
+    os << current.deltabar;
+
+    os << quint32(current.elites.size());
+    os << quint32(current.elites.front().bin.size());
+    os << quint32(current.elites.front().deviations.size());
     os << quint32(iObservations::maxObs);
 
     // Separate waves into unique and shared to reduce the number of lookups
     std::vector<iStimulation*> w_unique, w_shared;
-    for ( MAPElite const& e : arch.elites ) {
+    for ( MAPElite const& e : current.elites ) {
         os << e.fitness;
         for ( size_t b : e.bin )
             os << quint32(b);
@@ -438,29 +444,34 @@ void Wavegen::ee_save(QFile &file)
         os << *pstim;
 }
 
-void Wavegen::ee_load(QFile &file, const QString &, Result r)
+Result *Wavegen::ee_load(QFile &file, const QString &, Result r)
 {
     QDataStream is;
     quint32 version = openLoadStream(file, is, ee_magic);
     if ( version < 100 || version > ee_version )
         throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
 
-    m_archives.emplace_back(-1, searchd, r);
-    Archive &arch = m_archives.back();
+    Archive *arch;
+    if ( r.dryrun )
+        arch = new Archive(-1, searchd, r);
+    else {
+        m_archives.emplace_back(-1, searchd, r);
+        arch =& m_archives.back();
+    }
 
     quint32 precision, iterations, archSize, nBins, nParams, maxObs;
     is >> precision >> iterations;
-    arch.precision = precision;
-    arch.iterations = iterations;
-    is >> arch.nCandidates >> arch.nInsertions >> arch.nReplacements >> arch.nElites;
-    is >> arch.deltabar;
+    arch->precision = precision;
+    arch->iterations = iterations;
+    is >> arch->nCandidates >> arch->nInsertions >> arch->nReplacements >> arch->nElites;
+    is >> arch->deltabar;
 
     is >> archSize >> nBins >> nParams >> maxObs;
-    arch.elites.resize(archSize);
+    arch->elites.resize(archSize);
     std::vector<qint32> stimIdx(archSize);
     auto idxIt = stimIdx.begin();
     quint32 tmp, start, stop;
-    for ( auto el = arch.elites.begin(); el != arch.elites.end(); el++, idxIt++ ) {
+    for ( auto el = arch->elites.begin(); el != arch->elites.end(); el++, idxIt++ ) {
         is >> el->fitness;
         el->bin.resize(nBins);
         for ( size_t &b : el->bin ) {
@@ -499,10 +510,12 @@ void Wavegen::ee_load(QFile &file, const QString &, Result r)
     }
 
     idxIt = stimIdx.begin();
-    for ( auto el = arch.elites.begin(); el != arch.elites.end(); el++, idxIt++ ) {
+    for ( auto el = arch->elites.begin(); el != arch->elites.end(); el++, idxIt++ ) {
         if ( *idxIt < 0 )
             el->wave = w_unique[-1 - *idxIt];
         else
             el->wave = w_shared[*idxIt];
     }
+
+    return arch;
 }

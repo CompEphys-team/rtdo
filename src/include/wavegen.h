@@ -114,21 +114,21 @@ signals:
 
 protected:
     friend class Session;
-    void load(const QString &action, const QString &args, QFile &results, Result r);
+    Result *load(const QString &action, const QString &args, QFile &results, Result r);
 
     /// Helper functions
     bool sigmaAdjust_exec(QFile &file, Result *r);
     void sigmaAdjust_save(QFile &file);
-    void sigmaAdjust_load(QFile &file, Result r);
+    Result *sigmaAdjust_load(QFile &file, Result r);
     void propagateAdjustedSigma();
 
     bool search_exec(QFile &file, Result *r);
     void search_save(QFile &file);
-    void search_load(QFile &file, const QString &args, Result r);
+    Result *search_load(QFile &file, const QString &args, Result r);
 
     bool ee_exec(QFile &file, Result *r);
     void ee_save(QFile &file);
-    void ee_load(QFile &file, const QString &args, Result r);
+    Result *ee_load(QFile &file, const QString &args, Result r);
 
     /**
      * @brief initModels initialises model parameters with random values. Typically, every WavegenData::nGroupsPerWave groups, there
