@@ -70,10 +70,8 @@ public:
      * @param args is an arbitrary string (no newlines) that may be used for both visual identification or functional purposes
      * @param res is a pointer to a Result object containing e.g. bulkier arguments to the action. SessionLog takes ownership of this
      * pointer, handing it back in a call to Worker::execute() or deleting it when the queue entry is removed.
-     * @param wake indicates whether work should be dispatched immediately. This only has an effect if work has been suspended
-     * upon reaching the end of the queue. For control over the running state properly speaking, use @fn pause() and @fn resume().
      */
-    void queue(QString actor, QString action, QString args, Result *res, bool wake = true);
+    void queue(QString actor, QString action, QString args, Result *res);
 
     inline SessionLog *getLog() { return &m_log; }
 

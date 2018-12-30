@@ -63,11 +63,11 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
 
     connect(ui->saveSet, &QPushButton::clicked, [=](){
         WavesetCreator &creator = this->session.wavesets();
-        this->session.queue(creator.actorName(), creator.actionManual, "", new ManualWaveset(stims), false);
+        this->session.queue(creator.actorName(), creator.actionManual, "", new ManualWaveset(stims));
     });
     connect(ui->saveDeck, &QPushButton::clicked, [=](){
         WavesetCreator &creator = this->session.wavesets();
-        this->session.queue(creator.actorName(), creator.actionManualDeck, "", new ManualWaveset(stims), false);
+        this->session.queue(creator.actorName(), creator.actionManualDeck, "", new ManualWaveset(stims));
     });
 
     connect(ui->copy, &QPushButton::clicked, [=](){

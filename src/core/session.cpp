@@ -331,11 +331,9 @@ void Session::exec_desiccated(QString &file, bool synchronous)
         emit doDispatch();
 }
 
-void Session::queue(QString actor, QString action, QString args, Result *res, bool wake)
+void Session::queue(QString actor, QString action, QString args, Result *res)
 {
     m_log.queue(actor, action, args, res);
-    if ( wake )
-        emit doDispatch();
 }
 
 Settings Session::getSettings(int i) const

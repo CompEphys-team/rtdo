@@ -396,5 +396,5 @@ void ProfilePlotter::selectSubset()
     if ( indices.empty() || indices.size() == size ) // Ignore empty and complete selections
         return;
     WavesetCreator &creator = session.wavesets();
-    session.queue(creator.actorName(), creator.actionSubset, "", new WaveSubset(src, indices), false);
+    session.queue(creator.actorName(), creator.actionSubset, "", new WaveSubset(src, indices));
 }
