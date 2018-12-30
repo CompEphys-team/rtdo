@@ -67,13 +67,17 @@ private slots:
 
     void on_actionCrossload_from_other_session_triggered();
 
-    void on_runCtrl_activated(int index);
-
     void on_abort_clicked();
 
     void on_remove_clicked();
 
     void on_actionScope_triggered();
+
+    void on_runBtn_clicked();
+
+    void on_pauseBtn_clicked();
+
+    void on_desiccate_clicked();
 
 private:
     Ui::MainWindow *ui;

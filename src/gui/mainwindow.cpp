@@ -52,6 +52,7 @@ MainWindow::MainWindow(QWidget *parent) :
             sessionOpened();
         }
     });
+    ui->pauseBtn->setDown(true);
 }
 
 MainWindow::~MainWindow()
@@ -335,16 +336,10 @@ void MainWindow::on_actionCrossload_from_other_session_triggered()
     session->crossloadConfig(loc);
 }
 
-void MainWindow::on_runCtrl_activated(int index)
-{
-    if ( index == 0 )
-        session->resume();
-    else
-        session->pause();
-}
-
 void MainWindow::on_abort_clicked()
 {
+    ui->runBtn->setDown(false);
+    ui->pauseBtn->setDown(true);
     session->abort();
 }
 
@@ -352,4 +347,32 @@ void MainWindow::on_remove_clicked()
 {
     QModelIndexList selectedRows = ui->log->selectionModel()->selectedRows();
     session->getLog()->removeQueued(selectedRows.first().row(), selectedRows.back().row());
+}
+
+void MainWindow::on_runBtn_clicked()
+{
+    ui->runBtn->setDown(true);
+    ui->pauseBtn->setDown(false);
+    session->resume();
+}
+
+void MainWindow::on_pauseBtn_clicked()
+{
+    ui->pauseBtn->setDown(true);
+    ui->runBtn->setDown(false);
+    session->pause();
+}
+
+void MainWindow::on_desiccate_clicked()
+{
+    QString loc = QFileDialog::getExistingDirectory(this, "Select directory for task files");
+    if ( loc.isEmpty() )
+        return;
+
+    QString desic = QFileDialog::getSaveFileName(this, "Select task log file");
+    if ( desic.isEmpty() )
+        return;
+
+    session->desiccate(desic, loc);
+    std::cout << "To run the desiccated tasks, copy the task files from " << loc << " to the session directory and run `rtdo " << desic << "`." << std::endl;
 }
