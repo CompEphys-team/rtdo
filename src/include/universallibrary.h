@@ -94,7 +94,7 @@ public:
 
         void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
 
-        int (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
+        void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
                         std::vector<double> deltabar, bool pull);
         void (*pullClusters)(int nStims);
         int (*pullPrimitives)(int nStims, int duration, int secLen);
@@ -181,7 +181,7 @@ public:
     /// Expects assignment TIMESERIES_COMPARE_NONE with models sequentially detuned along and across their ee trajectories, as well as
     /// an appropriate individual obs in each stim's first trajectory starting point model
     /// @return nPartitions, as required for pullClusters() and further processing of clusterMasks: The number of partitions of 32 secs each
-    inline int cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
+    inline void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
                         int nTraj, /* Number of EE trajectories */
                         int duration, /* nSamples of each trace, cf. resizeOutput() */
                         int secLen, /* sampling resolution (in ticks) */
@@ -189,10 +189,10 @@ public:
                         int minClusterLen, /* Minimum duration for a cluster to be considered valid (in ticks) */
                         std::vector<double> deltabar, /* RMS current deviation, cf. find_deltabar() */
                         bool pull_results) /* True to copy results immediately; false to defer to pullClusters(), allowing time for CPU processing */ {
-        return pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, pull_results);
+        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, pull_results);
     }
     /// Copy cluster() results to clusters, clusterMasks and clusterCurrent.
-    /// Note, nStims = NMODELS/(trajLen*nTraj); nPartitions = ((duration+secLen-1)/secLen+31)/32.
+    /// Note, nStims = NMODELS/(trajLen*nTraj)
     inline void pullClusters(int nStims) { pointers.pullClusters(nStims); }
     /// Copy cluster() intermediates (section primitives) to clusterPrimitives, and return the section stride
     inline int pullPrimitives(int nStims, int duration, int secLen) { return pointers.pullPrimitives(nStims, duration, secLen); }

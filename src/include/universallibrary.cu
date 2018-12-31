@@ -680,7 +680,7 @@ extern "C" int pullPrimitives(int nStims, int duration, int secLen)
     return nPartitions * PARTITION_SIZE;
 }
 
-extern "C" int cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
+extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=32) */
                        int nTraj, /* Number of EE trajectories */
                        int duration,
                        int secLen,
@@ -721,7 +721,6 @@ extern "C" int cluster(int trajLen, /* length of EE trajectory (power of 2, <=32
     if ( pull_results )
         pullClusters(nStims);
 
-    return nPartitions;
 }
 
 
