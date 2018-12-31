@@ -293,7 +293,7 @@ void Session::abort()
         m_gafitter->abort();
 }
 
-void Session::desiccate(QString &file, QString &directory)
+void Session::desiccate(const QString &file, const QString &directory)
 {
     if ( dispatcher.busy.load() )
         return;
@@ -308,16 +308,12 @@ void Session::desiccate(QString &file, QString &directory)
     emit doDispatch();
 }
 
-void Session::exec_desiccated(QString &file, bool synchronous)
+void Session::exec_desiccated(const QString &file, bool synchronous)
 {
     using std::swap;
-    SessionLog existingLog;
-    existingLog.setLogFile(file);
-
-    swap(m_log, existingLog);
-    std::vector<SessionLog::Entry> plannedActions = load(true);
-    swap(m_log, existingLog);
-
+    SessionLog plannedLog;
+    plannedLog.setLogFile(file);
+    std::vector<SessionLog::Entry> plannedActions = load(true, &plannedLog);
     for ( SessionLog::Entry &e : plannedActions ) {
         e.res->dryrun = false;
         m_log.queue(e);
@@ -349,13 +345,15 @@ StimulationData Session::stimulationData(int i) const { return getSettings(i).st
 GAFitterSettings Session::gaFitterSettings(int i) const { return getSettings(i).gafs; }
 DAQData Session::daqData(int i) const { return getSettings(i).daqd; }
 
-std::vector<SessionLog::Entry> Session::load(bool dryrun)
+std::vector<SessionLog::Entry> Session::load(bool dryrun, SessionLog *log)
 {
+    if ( !log )
+        log =& m_log;
     Result result;
     std::vector<SessionLog::Entry> ret;
-    for ( int row = 0; row < m_log.rowCount(); row++ ) {
+    for ( int row = 0; row < log->rowCount(); row++ ) {
         initial = false;
-        SessionLog::Entry entry = m_log.entry(row);
+        SessionLog::Entry entry = log->entry(row);
         QString filename = results(row, entry.actor, entry.action);
         QFile file(dir.filePath(filename));
         result.resultIndex = row;
@@ -384,7 +382,7 @@ std::vector<SessionLog::Entry> Session::load(bool dryrun)
                 throw std::runtime_error(std::string("Unknown actor: ") + entry.actor.toStdString());
             }
         } catch (std::runtime_error err) {
-            std::cerr << "An action could not be loaded (" << m_log.data(m_log.index(row, 0), Qt::UserRole).toString()
+            std::cerr << "An action could not be loaded (" << log->data(log->index(row, 0), Qt::UserRole).toString()
                       << ", " << filename << ") : "
                       << err.what() << std::endl;
         }

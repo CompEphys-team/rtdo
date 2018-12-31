@@ -14,22 +14,22 @@ int main(int argc, char *argv[])
 
         return a.exec();
     } else {
-        std::ifstream loader_file(argv[1]);
-        if ( !loader_file.good() ) {
+        std::ifstream is(argv[1]);
+        if ( !is.good() ) {
             std::cerr << "Failed to open loader file \"" << argv[1] << "\"." << std::endl;
-            return;
+            return -1;
         }
         std::string head, dopfile, sessdir;
         is >> head;
         if ( head != "#project" ) {
             std::cerr << "Unexpected \"" << head << "\" on line 1 (expected \"#project\")." << std::endl;
-            return;
+            return -2;
         }
         std::getline(is, dopfile);
         QFileInfo dopfile_info(QString::fromStdString(dopfile));
         if ( !dopfile_info.exists() || !dopfile_info.isReadable() ) {
             std::cerr << "Failed to access project file \"" << dopfile << "\"." << std::endl;
-            return;
+            return -3;
         }
 
         Project project(QString::fromStdString(dopfile));
@@ -37,18 +37,18 @@ int main(int argc, char *argv[])
         is >> head;
         if ( head != "#session" ) {
             std::cerr << "Unexpected \"" << head << "\" on line 2 (expected \"#session\")." << std::endl;
-            return;
+            return -4;
         }
         std::getline(is, sessdir);
         QFileInfo sessdir_info(QString::fromStdString(sessdir));
         if ( !sessdir_info.exists() || !sessdir_info.isDir() ) {
             std::cerr << "Failed to access session directory \"" << dopfile << "\"." << std::endl;
-            return;
+            return -5;
         }
 
         Session session(project, QString::fromStdString(sessdir));
 
-        session.exec_desiccated(is);
+        session.exec_desiccated(QString(argv[1]));
         return 0;
     }
 }

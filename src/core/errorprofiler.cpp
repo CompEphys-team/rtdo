@@ -68,7 +68,7 @@ bool ErrorProfiler::execute(QString action, QString, Result *result, QFile &file
         if ( openSaveStream(file, os, magic, version) )
             os << ep;
         delete result;
-        return;
+        return true;
     }
 
     auto iter = ep.errors.begin();
