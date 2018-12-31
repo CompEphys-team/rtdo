@@ -62,20 +62,6 @@ void GAFitter::run(WaveSource src, QString VCRecord, bool readRecConfig)
     session.queue(actorName(), action, src.prettyName(), new Output(src, VCRecord, session.cdaq_assoc));
 }
 
-std::vector<Stimulation> GAFitter::sanitiseDeck(std::vector<Stimulation> stimulations, bool useQueuedSettings)
-{
-    double dt = (useQueuedSettings ? session.qRunData().dt : session.runData().dt);
-    for ( Stimulation &stim : stimulations ) {
-        // Expand observation window to complete time steps
-        stim.tObsBegin = floor(stim.tObsBegin / dt) * dt;
-        stim.tObsEnd = ceil(stim.tObsEnd / dt) * dt;
-        // Shorten stim
-        stim.duration = stim.tObsEnd;
-    }
-
-    return stimulations;
-}
-
 bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 {
     if ( action != this->action )
@@ -105,7 +91,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     double simtime = 0;
     qT = 0;
 
-    std::vector<Stimulation> astims = sanitiseDeck(output.stimSource.stimulations());
+    std::vector<Stimulation> astims = output.stimSource.stimulations();
 
     daq = new DAQFilter(session, session.getSettings());
 
@@ -318,7 +304,7 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
         is >> out.VCRecord;
         if ( session.daqData().simulate < 0 ) {
             CannedDAQ tmp(session, session.getSettings());
-            tmp.setRecord(sanitiseDeck(out.stimSource.stimulations()), out.VCRecord, false);
+            tmp.setRecord(out.stimSource.stimulations(), out.VCRecord, false);
             for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
                 if ( settings.constraints[i] != 3 ) // Never overwrite fixed target
                     out.targets[i] = tmp.getAdjustableParam(i);

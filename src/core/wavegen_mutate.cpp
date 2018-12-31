@@ -2,7 +2,20 @@
 #include "session.h"
 #include <cassert>
 
-iStimulation Wavegen::getRandomStim() const
+inline bool validStim(iStimulation I, const iStimData &istimd, const StimulationData &stimd)
+{
+    bool valid = ((int)I.size() >= stimd.minSteps) && ((int)I.size() <= stimd.maxSteps);
+    for ( auto it = I.begin(); it != I.end(); it++ ) {
+        valid &= (it->t >= istimd.iMinStep) && (it->t <= istimd.iDuration - istimd.iMinStep);
+        if ( it != I.begin() ) {
+            valid &= (it->t - (it-1)->t >= istimd.iMinStep);
+        }
+        valid &= (it->V >= stimd.minVoltage) && (it->V <= stimd.maxVoltage);
+    }
+    return valid;
+}
+
+iStimulation Wavegen::getRandomStim(const StimulationData &stimd, const iStimData &istimd) const
 {
     iStimulation I = iStimulation();
     int failedPos, failedAgain = 0;
@@ -45,6 +58,7 @@ tryagain:
             failedPos = 0;
         }
     }
+    assert(validStim(I, istimd, stimd));
     return I;
 }
 
@@ -77,17 +91,7 @@ iStimulation Wavegen::mutate(const iStimulation &parent, const iStimulation &xov
             mutateType(I);
         }
     }
-    assert([&](){
-        bool valid = ((int)I.size() >= stimd.minSteps) && ((int)I.size() <= stimd.maxSteps);
-        for ( auto it = I.begin(); it != I.end(); it++ ) {
-            valid &= (it->t >= istimd.iMinStep) && (it->t <= istimd.iDuration - istimd.iMinStep);
-            if ( it != I.begin() ) {
-                valid &= (it->t - (it-1)->t >= istimd.iMinStep);
-            }
-            valid &= (it->V >= stimd.minVoltage) && (it->V <= stimd.maxVoltage);
-        }
-        return valid;
-    }());
+    assert(validStim(I, istimd, stimd));
     return I;
 }
 
@@ -158,6 +162,7 @@ void Wavegen::mutateCrossover(iStimulation &I, const iStimulation &parent)
             I.insert(I.end(), std::move(s));
         return;
     } while ( ++failCount < 10 );
+    assert(validStim(I, istimd, stimd));
 }
 
 void Wavegen::mutateVoltage(iStimulation &I)
@@ -167,6 +172,7 @@ void Wavegen::mutateVoltage(iStimulation &I)
     while ( newV > stimd.maxVoltage || newV < stimd.minVoltage )
         newV = session.RNG.variate<double>(subject.V, stimd.muta.sdLevel);
     subject.V = newV;
+    assert(validStim(I, istimd, stimd));
 }
 
 void Wavegen::mutateNumber(iStimulation &I)
@@ -199,6 +205,7 @@ void Wavegen::mutateNumber(iStimulation &I)
     } else {
         I.erase(session.RNG.choose(I));
     }
+    assert(validStim(I, istimd, stimd));
 }
 
 void Wavegen::mutateSwap(iStimulation &I)
@@ -213,20 +220,22 @@ void Wavegen::mutateSwap(iStimulation &I)
     using std::swap;
     swap(src->V, dest->V);
     swap(src->ramp, dest->ramp);
+    assert(validStim(I, istimd, stimd));
 }
 
 void Wavegen::mutateTime(iStimulation &I)
 {
+    iStimulation::Step *target;
+    int newT;
     bool tooClose;
+    auto it = I.begin();
     do {
         tooClose = false;
-        iStimulation::Step *target = session.RNG.choose(I);
-        int newT;
+        target = session.RNG.choose(I);
         do {
             newT = lrint(session.RNG.variate<double>(target->t, stimd.muta.sdTime / session.runData().dt));
         } while ( newT < istimd.iMinStep || newT > istimd.iDuration - istimd.iMinStep );
-        auto it = I.begin();
-        for ( ; it != I.end(); it++ ) {
+        for ( it = I.begin(); it != I.end(); it++ ) {
             if ( it != target && abs(it->t - newT) < istimd.iMinStep ) {
                 tooClose = true;
                 break;
@@ -235,21 +244,20 @@ void Wavegen::mutateTime(iStimulation &I)
                 break;
             }
         }
-        if ( !tooClose ) {
-            if ( it == target+1 ) {
-                target->t = newT;
-            } else {
-                iStimulation::Step tmp = *target;
-                I.erase(target);
-                I.insert(it - (it > target), std::move(tmp));
-            }
-            return;
-        }
     } while ( tooClose );
+
+    target->t = newT;
+    if ( it != target+1 ) {
+        iStimulation::Step tmp = *target;
+        I.erase(target);
+        I.insert(it - (it > target), std::move(tmp));
+    }
+    assert(validStim(I, istimd, stimd));
 }
 
 void Wavegen::mutateType(iStimulation &I)
 {
     bool &r = session.RNG.pick(I).ramp;
     r = !r;
+    assert(validStim(I, istimd, stimd));
 }

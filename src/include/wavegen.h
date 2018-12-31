@@ -4,6 +4,7 @@
 #include "sessionworker.h"
 #include <QVector>
 #include "wavegenlibrary.h"
+#include "universallibrary.h"
 
 class Wavegen : public SessionWorker
 {
@@ -50,7 +51,7 @@ public:
     /**
      * @brief getRandomStim generates a fully randomised stimulation according to the Wavegen's StimulationData
      */
-    iStimulation getRandomStim() const;
+    iStimulation getRandomStim(const StimulationData &stimd, const iStimData &istimd) const;
 
     inline QString actorName() const { return "Wavegen"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
@@ -83,11 +84,6 @@ public slots: // Asynchronous calls that queue via Session
      * as identified by UniversalLibrary::cluster().
      */
     void elementaryEffects();
-
-    /**
-     * @brief recalcIstimd populates iStimd from the latest searchd/stimd. Called automatically on session-registered changes.
-     */
-    void recalcIstimd();
 
 public: // Synchronous calls
     /**
@@ -199,6 +195,8 @@ protected:
                 + (group/lib.numGroupsPerBlock) * lib.numModelsPerBlock; // Modelspace offset of the block this group belongs to
     }
 
+    QVector<double> getDeltabar(UniversalLibrary &ulib);
+
     Archive current;
 
     std::vector<Archive> m_archives; //!< All archives
@@ -207,11 +205,6 @@ protected:
     static quint32 sigmaAdjust_magic, search_magic, ee_magic;
     static quint32 sigmaAdjust_version, search_version, ee_version;
 
-    struct iStimData
-    {
-        int iMinStep;
-        int iDuration;
-    };
     iStimData istimd;
 };
 

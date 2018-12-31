@@ -140,8 +140,7 @@ void GAFitterWidget::on_VCChannels_clicked()
         return;
     CannedDAQ daq(session, session.qSettings());
     WaveSource src = session.wavesets().sources().at(ui->decks->currentIndex());
-    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(src.stimulations());
-    daq.setRecord(stims, record, false);
+    daq.setRecord(src.stimulations(), record, false);
     CannedChannelAssociationDialog *dlg = new CannedChannelAssociationDialog(session, &daq, this);
     dlg->open();
 }
@@ -158,7 +157,7 @@ void GAFitterWidget::on_VCCreate_clicked()
     if ( !of.good() )
         return;
     WaveSource src = session.wavesets().sources().at(ui->decks->currentIndex());
-    std::vector<Stimulation> stims = session.gaFitter().sanitiseDeck(src.stimulations(), true);
+    std::vector<Stimulation> stims = src.stimulations();
 
     int nTotal, nSamples, nBuffer;
     double dt = session.qRunData().dt;

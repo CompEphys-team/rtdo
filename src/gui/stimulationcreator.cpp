@@ -57,7 +57,9 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     connect(ui->steps, SIGNAL(cellChanged(int,int)), this, SLOT(updateStimulation()));
 
     connect(ui->randomise, &QPushButton::clicked, [=](){
-        *stim = Stimulation(this->session.wavegen().getRandomStim(), this->session.runData().dt);
+        const StimulationData &stimd = this->session.qStimulationData();
+        const RunData &rd = this->session.qRunData();
+        *stim = Stimulation(this->session.wavegen().getRandomStim(stimd, iStimData(stimd, rd.dt)), rd.dt);
         setStimulation();
     });
 
@@ -581,9 +583,8 @@ void StimulationCreator::on_paramTrace_clicked()
         } else {
             rec->getCannedDAQ()->assoc = fit.assoc;
         }
-        std::vector<Stimulation> sanitisedStims = session.gaFitter().sanitiseDeck(stims);
-        rec->getCannedDAQ()->setRecord(sanitisedStims, fit.VCRecord);
-        actualStim = sanitisedStims[stim - stims.begin()];
+        rec->getCannedDAQ()->setRecord(stims, fit.VCRecord);
+        actualStim = *stim;
         daq = rec;
     } else {
         for ( int i = 0; i < nParams; i++ ) {

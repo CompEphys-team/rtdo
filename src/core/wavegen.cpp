@@ -21,14 +21,6 @@ Wavegen::Wavegen(Session &session) :
     stimd(session.stimulationData()),
     lib(session.project.wavegen())
 {
-    connect(&session, &Session::stimulationDataChanged, this, &Wavegen::recalcIstimd);
-    connect(&session, &Session::runDataChanged, this, &Wavegen::recalcIstimd);
-}
-
-void Wavegen::recalcIstimd()
-{
-    istimd.iDuration = lrint(stimd.duration / session.runData().dt);
-    istimd.iMinStep = lrint(stimd.minStepLength / session.runData().dt);
 }
 
 Result *Wavegen::load(const QString &action, const QString &args, QFile &results, Result r)
@@ -46,6 +38,7 @@ Result *Wavegen::load(const QString &action, const QString &args, QFile &results
 bool Wavegen::execute(QString action, QString, Result *res, QFile &file)
 {
     clearAbort();
+    istimd = iStimData(stimd, session.runData().dt);
     if ( action == sigmaAdjust_action )
         return sigmaAdjust_exec(file, res);
     else if ( action == search_action )
@@ -163,7 +156,7 @@ std::vector<double> Wavegen::getMeanParamError()
 
         // Generate random wave/s
         for ( iStimulation &w : waves )
-            w = getRandomStim();
+            w = getRandomStim(stimd, istimd);
 
         // Simulate
         pushStims(waves);

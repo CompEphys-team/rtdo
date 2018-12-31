@@ -49,7 +49,7 @@ bool Wavegen::search_exec(QFile &file, Result *result)
 
     // Initialise the population for episode 1:
     for ( iStimulation &w : waves_ep1 )
-        w = getRandomStim();
+        w = getRandomStim(stimd, istimd);
     size_t nInitialWaves = numWavesPerEpisode;
 
     // Initiate a first stimulation with nothing going on in parallel:
@@ -71,7 +71,7 @@ bool Wavegen::search_exec(QFile &file, Result *result)
 
     // Prepare the second episode:
     for ( iStimulation &w : waves_ep2 )
-        w = getRandomStim();
+        w = getRandomStim(stimd, istimd);
     nInitialWaves += numWavesPerEpisode;
     bool initialising = nInitialWaves < searchd.nInitialWaves;
 
@@ -119,7 +119,7 @@ bool Wavegen::search_exec(QFile &file, Result *result)
         if ( initialising ) {
             // Generate at random
             for ( iStimulation &w : *newWaves )
-                w = getRandomStim();
+                w = getRandomStim(stimd, istimd);
             nInitialWaves += numWavesPerEpisode;
             initialising = nInitialWaves < searchd.nInitialWaves;
         } else {

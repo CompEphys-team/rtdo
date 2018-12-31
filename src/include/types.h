@@ -284,6 +284,16 @@ struct StimulationData
     scalar baseV = -60;
     MutationData muta;
 };
+struct iStimData
+{
+    iStimData() = default;
+    iStimData(const StimulationData &stimd, double dt) :
+        iMinStep(lrint(stimd.minStepLength / dt)),
+        iDuration(lrint(stimd.duration / dt))
+    {}
+    int iMinStep;
+    int iDuration;
+};
 
 struct RunData
 {

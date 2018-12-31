@@ -96,13 +96,13 @@ public:
 
         int (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
                         std::vector<double> deltabar, bool pull);
-        void (*pullClusters)(int nStims, int nPartitions);
+        void (*pullClusters)(int nStims);
         int (*pullPrimitives)(int nStims, int duration, int secLen);
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
         scalar **clusters;
-        unsigned int **clusterMasks;
         scalar **clusterCurrent;
         scalar **clusterPrimitives;
+        iObservations **clusterObs;
 
         void (*observe_no_steps)(int blankCycles);
     };
@@ -193,7 +193,7 @@ public:
     }
     /// Copy cluster() results to clusters, clusterMasks and clusterCurrent.
     /// Note, nStims = NMODELS/(trajLen*nTraj); nPartitions = ((duration+secLen-1)/secLen+31)/32.
-    inline void pullClusters(int nStims, int nPartitions) { pointers.pullClusters(nStims, nPartitions); }
+    inline void pullClusters(int nStims) { pointers.pullClusters(nStims); }
     /// Copy cluster() intermediates (section primitives) to clusterPrimitives, and return the section stride
     inline int pullPrimitives(int nStims, int duration, int secLen) { return pointers.pullPrimitives(nStims, duration, secLen); }
 
@@ -224,6 +224,7 @@ private:
     scalar *dummyScalarPtr = nullptr;
     int *dummyIntPtr = nullptr;
     unsigned int *dummyUIntPtr = nullptr;
+    iObservations *dummyObsPtr = nullptr;
 
 public:
     // Globals
@@ -236,9 +237,9 @@ public:
     scalar *&output;
 
     scalar *&clusters;
-    unsigned int *&clusterMasks; //!< Layout: [stimIdx][clusterIdx][partitionIdx]
     scalar *&clusterCurrent; //!< Layout: [stimIdx][clusterIdx]
     scalar *&clusterPrimitives; //!< Layout: [stimIdx][paramIdx][secIdx]. Get the section stride (padded nSecs) from the call to pullPrimitives().
+    iObservations *&clusterObs; //!< Layout: [stimIdx][clusterIdx]
 
     unsigned int assignment_base = 0;
 };
