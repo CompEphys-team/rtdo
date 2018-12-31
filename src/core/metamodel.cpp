@@ -403,6 +403,20 @@ std::string MetaModel::structDeclarations() const
         ss << "\n        this->" << p.name << " = __shfl_sync(mask, p." << p.name << ", srcLane, width);";
     ss << "\n    }";
 
+    ss << "\n    __host__ __device__ inline scalar mean() const {";
+    ss << "\n        return (";
+    for ( const AdjustableParam &p : adjustableParams )
+        ss << "\n            + this->" << p.name;
+    ss << "\n        ) / " << adjustableParams.size() << ";"
+       << "\n    }";
+
+    ss << "\n    __host__ __device__ inline scalar operator[](const unsigned int idx) const {";
+    ss << "\n        switch ( idx ) {";
+    for ( size_t i = 0; i < adjustableParams.size(); i++ )
+        ss << "\n        case " << i << ": return this->" << adjustableParams[i].name << ";";
+    ss << "\n        default: return 0;"
+       << "\n        }"
+       << "\n    }";
 
     ss << "};" << endl;
     ss << endl;

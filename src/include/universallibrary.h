@@ -104,6 +104,10 @@ public:
         scalar **clusterPrimitives;
         iObservations **clusterObs;
 
+        void (*bubble)(int trajLen, int nTraj, int duration, int secLen, std::vector<double> deltabar, bool pull_results);
+        void (*pullBubbles)(int nStims);
+        Bubble **bubbles;
+
         void (*observe_no_steps)(int blankCycles);
     };
 
@@ -177,7 +181,7 @@ public:
         pointers.profile(nSamples, stride, adjustableParams[targetParam].d_v, accuracy, median_norm_gradient);
     }
 
-    /// post-run() workhorse for elementary effects wavegen
+    /// post-run() workhorse for cluster-based wavegen
     /// Expects assignment TIMESERIES_COMPARE_NONE with models sequentially detuned along and across their ee trajectories, as well as
     /// an appropriate individual obs in each stim's first trajectory starting point model
     /// @return nPartitions, as required for pullClusters() and further processing of clusterMasks: The number of partitions of 32 secs each
@@ -196,6 +200,20 @@ public:
     inline void pullClusters(int nStims) { pointers.pullClusters(nStims); }
     /// Copy cluster() intermediates (section primitives) to clusterPrimitives, and return the section stride
     inline int pullPrimitives(int nStims, int duration, int secLen) { return pointers.pullPrimitives(nStims, duration, secLen); }
+
+    /// post-run() workhorse for bubble-based wavegen
+    /// Expects assignment TIMESERIES_COMPARE_NONE with models sequentially detuned along and across their ee trajectories, as well as
+    /// an appropriate individual obs in each stim's first trajectory starting point model
+    inline void bubble(int trajLen, /* length of EE trajectory (power of 2, <=32) */
+                       int nTraj, /* Number of EE trajectories */
+                       int duration,
+                       int secLen,
+                       std::vector<double> deltabar,
+                       bool pull_results) {
+        pointers.bubble(trajLen, nTraj, duration, secLen, deltabar, pull_results);
+    }
+    /// Copy bubble() results to bubbles, clusters, and clusterCurrent.
+    inline void pullBubbles(int nStims) { pointers.pullBubbles(nStims); }
 
     /// post-run() calculation of RMS current deviation from each detuned parameter. Reports the RMSD per tick, per single detuning,
     /// as required by cluster().
@@ -225,6 +243,7 @@ private:
     int *dummyIntPtr = nullptr;
     unsigned int *dummyUIntPtr = nullptr;
     iObservations *dummyObsPtr = nullptr;
+    Bubble *dummyBubblePtr = nullptr;
 
 public:
     // Globals
@@ -240,6 +259,8 @@ public:
     scalar *&clusterCurrent; //!< Layout: [stimIdx][clusterIdx]
     scalar *&clusterPrimitives; //!< Layout: [stimIdx][paramIdx][secIdx]. Get the section stride (padded nSecs) from the call to pullPrimitives().
     iObservations *&clusterObs; //!< Layout: [stimIdx][clusterIdx]
+
+    Bubble *&bubbles; //!< Layout: [stimIdx][targetParamIdx]
 
     unsigned int assignment_base = 0;
 };

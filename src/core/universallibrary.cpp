@@ -46,7 +46,9 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     clusters(light ? dummyScalarPtr : *pointers.clusters),
     clusterCurrent(light ? dummyScalarPtr : *pointers.clusterCurrent),
     clusterPrimitives(light ? dummyScalarPtr : *pointers.clusterPrimitives),
-    clusterObs(light ? dummyObsPtr : *pointers.clusterObs)
+    clusterObs(light ? dummyObsPtr : *pointers.clusterObs),
+
+    bubbles(light ? dummyBubblePtr : *pointers.bubbles)
 {
 }
 
@@ -395,6 +397,8 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.cluster =& cluster;" << endl;
     ss << "    pointers.pullClusters =& pullClusters;" << endl;
     ss << "    pointers.pullPrimitives =& pullPrimitives;" << endl;
+    ss << "    pointers.bubble =& bubble;" << endl;
+    ss << "    pointers.pullBubbles =& pullBubbles;" << endl;
     ss << "    pointers.find_deltabar =& find_deltabar;" << endl;
     ss << "    pointers.observe_no_steps =& observe_no_steps;" << endl;
     ss << "    return pointers;" << endl;
