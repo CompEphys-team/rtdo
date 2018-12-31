@@ -297,34 +297,31 @@ void Session::desiccate(const QString &file, const QString &directory)
 {
     if ( dispatcher.busy.load() )
         return;
-    std::ofstream desic(file.toStdString(), std::ios_base::out | std::ios_base::trunc);
-    desic << "#project " << project.projectfile() << '\n';
-    desic << "#session " << dir.absolutePath() << '\n';
-    desic.close();
-    m_log.setLogFile(file);
+    m_log.setDesiccateFile(file, project.projectfile(), dir.absolutePath());
     dispatcher.dir = QDir(directory);
     dispatcher.dryrun = true;
     dispatcher.running = true;
     emit doDispatch();
 }
 
-void Session::exec_desiccated(const QString &file, bool synchronous)
+void Session::exec_desiccated(const QString &file)
 {
-    using std::swap;
     SessionLog plannedLog;
     plannedLog.setLogFile(file);
-    std::vector<SessionLog::Entry> plannedActions = load(true, &plannedLog);
+    std::vector<SessionLog::Entry> plannedActions = load(true, &plannedLog, m_log.rowCount());
     for ( SessionLog::Entry &e : plannedActions ) {
         e.res->dryrun = false;
         m_log.queue(e);
     }
 
-    dispatcher.running = true;
+    int nTotal = plannedActions.size();
+    connect(this, &Session::actionLogged, this, [=](QString, QString, QString, int idx){
+        static int nDone = 0;
+        std::cout << "Action " << ++nDone << '/' << nTotal << " complete: " << m_log.data(m_log.index(idx, 0), Qt::UserRole).toString() << std::endl;
+    });
 
-    if ( synchronous )
-        dispatcher.dispatch();
-    else
-        emit doDispatch();
+    dispatcher.running = true;
+    emit doDispatch();
 }
 
 void Session::queue(QString actor, QString action, QString args, Result *res)
@@ -345,7 +342,7 @@ StimulationData Session::stimulationData(int i) const { return getSettings(i).st
 GAFitterSettings Session::gaFitterSettings(int i) const { return getSettings(i).gafs; }
 DAQData Session::daqData(int i) const { return getSettings(i).daqd; }
 
-std::vector<SessionLog::Entry> Session::load(bool dryrun, SessionLog *log)
+std::vector<SessionLog::Entry> Session::load(bool dryrun, SessionLog *log, int rowOffset)
 {
     if ( !log )
         log =& m_log;
@@ -354,9 +351,9 @@ std::vector<SessionLog::Entry> Session::load(bool dryrun, SessionLog *log)
     for ( int row = 0; row < log->rowCount(); row++ ) {
         initial = false;
         SessionLog::Entry entry = log->entry(row);
-        QString filename = results(row, entry.actor, entry.action);
+        QString filename = results(row + rowOffset, entry.actor, entry.action);
         QFile file(dir.filePath(filename));
-        result.resultIndex = row;
+        result.resultIndex = row + rowOffset;
         result.dryrun = dryrun;
         try {
             if ( entry.actor == wavegen().actorName() )
@@ -368,7 +365,7 @@ std::vector<SessionLog::Entry> Session::load(bool dryrun, SessionLog *log)
                 if ( dryrun ) {
                     entry.res = new Settings(q_settings);
                 } else {
-                    hist_settings.push_back(std::make_pair(row, q_settings));
+                    hist_settings.push_back(std::make_pair(row + rowOffset, q_settings));
                     m_settings = q_settings;
                     entry.res =& hist_settings.back().second;
                 }
@@ -553,7 +550,10 @@ void Dispatcher::dispatch()
     }
     dryrun = false;
     dir = s.dir;
+    s.m_log.clearDesiccateFile();
     busy = false;
+
+    emit s.dispatchComplete();
 }
 
 void Session::getNextEntry()

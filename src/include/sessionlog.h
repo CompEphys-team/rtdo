@@ -31,6 +31,8 @@ public:
     };
 
     void setLogFile(const QString &path);
+    void setDesiccateFile(const QString &path, const QString &dopfile, const QString &sessdir);
+    void clearDesiccateFile();
 
     int nextIndex() const { return m_data.size(); }
 
@@ -59,6 +61,7 @@ protected:
     bool m_hasActive = false;
 
     std::ofstream m_file;
+    std::ofstream m_sicfile;
 };
 
 #endif // SESSIONLOG_H

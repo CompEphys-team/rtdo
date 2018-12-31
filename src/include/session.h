@@ -60,7 +60,7 @@ public:
     void abort();
 
     void desiccate(const QString &file, const QString &directory);
-    void exec_desiccated(const QString &file, bool synchronous = true);
+    void exec_desiccated(const QString &file);
 
     /**
      * @brief queue adds an action to the queue, starting asynchronous execution immediately (unless paused).
@@ -147,7 +147,7 @@ protected:
     SessionLog m_log;
 
     void addAPs();
-    std::vector<SessionLog::Entry> load(bool dryrun = false, SessionLog *log = nullptr);
+    std::vector<SessionLog::Entry> load(bool dryrun = false, SessionLog *log = nullptr, int rowOffset = 0);
     bool readConfig(const QString &filename, bool incremental = false);
 
     void sanitiseSettings(Settings &s);
@@ -162,6 +162,7 @@ protected slots:
 signals:
     void actionLogged(QString actorName, QString action, QString args, int idx);
     void doDispatch();
+    void dispatchComplete();
 
     void runDataChanged();
     void wavegenDataChanged();

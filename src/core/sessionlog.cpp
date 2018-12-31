@@ -37,6 +37,22 @@ void SessionLog::setLogFile(const QString &path)
     m_file.open(path.toStdString(), std::ios_base::out | std::ios_base::app);
 }
 
+void SessionLog::setDesiccateFile(const QString &path, const QString &dopfile, const QString &sessdir)
+{
+    if ( path.isEmpty() ) {
+    } else {
+        m_sicfile.open(path.toStdString(), std::ios_base::out | std::ios_base::trunc);
+        m_sicfile << "#project " << dopfile << '\n'
+                  << "#session " << sessdir << std::endl;
+    }
+}
+
+void SessionLog::clearDesiccateFile()
+{
+    if ( m_sicfile.is_open() )
+        m_sicfile.close();
+}
+
 void SessionLog::queue(QString actor, QString action, QString args, Result *res)
 {
     queue(Entry {QDateTime::currentDateTime(), actor, action, args, res});
@@ -95,12 +111,17 @@ void SessionLog::clearActive(bool success)
         emit dataChanged(index(row, 0), index(row, columnCount()));
 
         // Write to log file
-        if ( m_file.is_open() )
+        if ( m_sicfile.is_open() ) {
+            m_sicfile << data(index(row, 0), Qt::UserRole).toString() << std::endl;
+            beginRemoveRows(QModelIndex(), row, row);
+            m_data.pop_back();
+            endRemoveRows();
+        } else if ( m_file.is_open() )
             m_file << data(index(row, 0), Qt::UserRole).toString() << std::endl;
     } else {
         beginRemoveRows(QModelIndex(), row, row);
         m_hasActive = false;
-        endInsertRows();
+        endRemoveRows();
     }
 }
 

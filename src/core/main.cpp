@@ -14,6 +14,7 @@ int main(int argc, char *argv[])
 
         return a.exec();
     } else {
+        QCoreApplication a(argc, argv);
         std::ifstream is(argv[1]);
         if ( !is.good() ) {
             std::cerr << "Failed to open loader file \"" << argv[1] << "\"." << std::endl;
@@ -26,13 +27,14 @@ int main(int argc, char *argv[])
             return -2;
         }
         std::getline(is, dopfile);
-        QFileInfo dopfile_info(QString::fromStdString(dopfile));
+        QString dopfile_trimmed = QString::fromStdString(dopfile).trimmed();
+        QFileInfo dopfile_info(dopfile_trimmed);
         if ( !dopfile_info.exists() || !dopfile_info.isReadable() ) {
-            std::cerr << "Failed to access project file \"" << dopfile << "\"." << std::endl;
+            std::cerr << "Failed to access project file \"" << dopfile_trimmed << "\"." << std::endl;
             return -3;
         }
 
-        Project project(QString::fromStdString(dopfile));
+        Project project(dopfile_trimmed);
 
         is >> head;
         if ( head != "#session" ) {
@@ -40,15 +42,19 @@ int main(int argc, char *argv[])
             return -4;
         }
         std::getline(is, sessdir);
-        QFileInfo sessdir_info(QString::fromStdString(sessdir));
+        QString sessdir_trimmed = QString::fromStdString(sessdir).trimmed();
+        QFileInfo sessdir_info(sessdir_trimmed);
         if ( !sessdir_info.exists() || !sessdir_info.isDir() ) {
-            std::cerr << "Failed to access session directory \"" << dopfile << "\"." << std::endl;
+            std::cerr << "Failed to access session directory \"" << sessdir_trimmed << "\"." << std::endl;
             return -5;
         }
 
-        Session session(project, QString::fromStdString(sessdir));
+        Session session(project, sessdir_trimmed);
+
+        QObject::connect(&session, &Session::dispatchComplete, &a, &QCoreApplication::quit);
 
         session.exec_desiccated(QString(argv[1]));
-        return 0;
+
+        return a.exec();
     }
 }
