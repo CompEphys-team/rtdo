@@ -23,7 +23,7 @@ WavegenDialog::WavegenDialog(Session &s, QWidget *parent) :
         session.wavegen().search(ui->cbSearch->currentIndex());
     });
 
-    connect(ui->btnEE, &QPushButton::clicked, &session.wavegen(), &Wavegen::elementaryEffects);
+    connect(ui->btnEE, &QPushButton::clicked, &session.wavegen(), &Wavegen::clusterSearch);
 
     connect(ui->btnAbort, &QPushButton::clicked, &session, &Session::abort);
 

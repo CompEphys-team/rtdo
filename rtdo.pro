@@ -83,7 +83,8 @@ SOURCES += \
     src/gui/fiterrorplotter.cpp \
     src/core/universallibrary.cpp \
     src/core/wavegen_elementary.cpp \
-    src/gui/scope.cpp
+    src/gui/scope.cpp \
+    src/core/wavegen_cluster.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \

@@ -3,6 +3,7 @@
 
 #include "sessionworker.h"
 #include <QVector>
+#include <forward_list>
 #include "wavegenlibrary.h"
 #include "universallibrary.h"
 
@@ -16,6 +17,7 @@ public:
     const StimulationData &stimd;
 
     WavegenLibrary &lib;
+    UniversalLibrary &ulib;
 
     static inline size_t mape_multiplier(size_t precision) { return size_t(1) << precision; }
 
@@ -77,13 +79,13 @@ public slots: // Asynchronous calls that queue via Session
     void search(int param);
 
     /**
-     * @brief elementaryEffects searches for Stimulations using Elementary Effects detuning in the UniversalLibrary.
+     * @brief clusterSearch searches for Stimulations using Elementary Effects detuning and a clustering algorithm.
      * All parameters are scored simultaneously. The resulting Archive's primary dimension, in addition to any dimensions set by the user,
      * is MAPEDimension::Func::EE_ParamIndex, so the Archive can be easily separated into parameter-specific selections.
      * The MAPElite fitness value is the normalised current deviation for the given parameter's detuning within a cluster
      * as identified by UniversalLibrary::cluster().
      */
-    void elementaryEffects();
+    void clusterSearch();
 
 public: // Synchronous calls
     /**
@@ -122,9 +124,9 @@ protected:
     void search_save(QFile &file);
     Result *search_load(QFile &file, const QString &args, Result r);
 
-    bool ee_exec(QFile &file, Result *r);
-    void ee_save(QFile &file);
-    Result *ee_load(QFile &file, const QString &args, Result r);
+    bool cluster_exec(QFile &file, Result *r);
+    void cluster_save(QFile &file);
+    Result *cluster_load(QFile &file, const QString &args, Result r);
 
     /**
      * @brief initModels initialises model parameters with random values. Typically, every WavegenData::nGroupsPerWave groups, there
@@ -175,6 +177,15 @@ protected:
     void mape_insert(std::vector<MAPElite> &candidates);
     void construct_next_generation(std::vector<iStimulation> &stims);
 
+    /// Elementary Effects helper functions
+    void prepare_EE_models();
+    void settle_EE_models();
+    void pushStimsAndObserve(const std::vector<iStimulation> &stims, int nModelsPerStim, int blankCycles);
+    QVector<double> getDeltabar();
+    std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElite>> &candidates_by_param, const std::vector<MAPEDimension> &dims);
+
+    scalar cluster_scoreAndInsert(const std::vector<iStimulation> &stims, const int nStims, const std::vector<MAPEDimension> &dims);
+
     /**
      * @brief mape_bin returns a vector of discretised behavioural measures used as MAPE dimensions.
      * It adheres to the level of precision indicated in current.precision.
@@ -195,15 +206,13 @@ protected:
                 + (group/lib.numGroupsPerBlock) * lib.numModelsPerBlock; // Modelspace offset of the block this group belongs to
     }
 
-    QVector<double> getDeltabar(UniversalLibrary &ulib);
-
     Archive current;
 
     std::vector<Archive> m_archives; //!< All archives
 
-    static QString sigmaAdjust_action, search_action, ee_action;
-    static quint32 sigmaAdjust_magic, search_magic, ee_magic;
-    static quint32 sigmaAdjust_version, search_version, ee_version;
+    static QString sigmaAdjust_action, search_action, cluster_action;
+    static quint32 sigmaAdjust_magic, search_magic, cluster_magic;
+    static quint32 sigmaAdjust_version, search_version, cluster_version;
 
     iStimData istimd;
 };

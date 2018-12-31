@@ -19,7 +19,8 @@ Wavegen::Wavegen(Session &session) :
     SessionWorker(session),
     searchd(session.wavegenData()),
     stimd(session.stimulationData()),
-    lib(session.project.wavegen())
+    lib(session.project.wavegen()),
+    ulib(session.project.universal())
 {
 }
 
@@ -29,8 +30,8 @@ Result *Wavegen::load(const QString &action, const QString &args, QFile &results
         return sigmaAdjust_load(results, r);
     else if ( action == search_action )
         return search_load(results, args, r);
-    else if ( action == ee_action )
-        return ee_load(results, args, r);
+    else if ( action == cluster_action )
+        return cluster_load(results, args, r);
     else
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
 }
@@ -43,8 +44,8 @@ bool Wavegen::execute(QString action, QString, Result *res, QFile &file)
         return sigmaAdjust_exec(file, res);
     else if ( action == search_action )
         return search_exec(file, res);
-    else if ( action == ee_action )
-        return ee_exec(file, res);
+    else if ( action == cluster_action )
+        return cluster_exec(file, res);
     else
         return false;
 }

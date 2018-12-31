@@ -51,7 +51,7 @@
    <item row="0" column="4">
     <widget class="QPushButton" name="btnEE">
      <property name="text">
-      <string>EE Search</string>
+      <string>Search for clusters</string>
      </property>
     </widget>
    </item>
