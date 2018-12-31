@@ -52,7 +52,6 @@ MainWindow::MainWindow(QWidget *parent) :
             sessionOpened();
         }
     });
-    ui->pauseBtn->setDown(true);
 }
 
 MainWindow::~MainWindow()
@@ -240,6 +239,11 @@ void MainWindow::sessionOpened()
     connect(&session->gaFitter(), &GAFitter::done, [=](){
         workerStatus->setText("GAFitter complete.");
     });
+    connect(session, &Session::dispatchComplete, [=](){
+        ui->pauseBtn->setText("[[ Pause ]]");
+        ui->runBtn->setText("Run");
+        ui->abort->setText("Abort");
+    });
 }
 
 void MainWindow::setTitle()
@@ -338,9 +342,11 @@ void MainWindow::on_actionCrossload_from_other_session_triggered()
 
 void MainWindow::on_abort_clicked()
 {
-    ui->runBtn->setDown(false);
-    ui->pauseBtn->setDown(true);
-    session->abort();
+    if ( session->busy() ) {
+        ui->runBtn->setText("Run");
+        ui->abort->setText("[[ Abort ]]");
+        session->abort();
+    }
 }
 
 void MainWindow::on_remove_clicked()
@@ -351,15 +357,15 @@ void MainWindow::on_remove_clicked()
 
 void MainWindow::on_runBtn_clicked()
 {
-    ui->runBtn->setDown(true);
-    ui->pauseBtn->setDown(false);
+    ui->runBtn->setText("[[ Run ]]");
+    ui->pauseBtn->setText("Pause");
     session->resume();
 }
 
 void MainWindow::on_pauseBtn_clicked()
 {
-    ui->pauseBtn->setDown(true);
-    ui->runBtn->setDown(false);
+    ui->pauseBtn->setText("<< Pause >>");
+    ui->runBtn->setText("[ Run ]");
     session->pause();
 }
 
