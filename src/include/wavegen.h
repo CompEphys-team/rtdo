@@ -87,6 +87,15 @@ public slots: // Asynchronous calls that queue via Session
      */
     void clusterSearch();
 
+    /**
+     * @brief bubbleSearch searches for Stimulations using Elementary Effects detuning and a bubble algorithm.
+     * All parameters are scored simultaneously. The resulting Archive's primary dimension, in addition to any dimensions set by the user,
+     * is MAPEDimension::Func::EE_ParamIndex, so the Archive can be easily separated into parameter-specific selections.
+     * The MAPElite fitness value is the mean ratio between the normalised current deviation for the target parameter's detuning and the mean
+     * normalised current deviation for all parameter detunings, within a "bubble" as defined by the former rising above the latter.
+     */
+    void bubbleSearch();
+
 public: // Synchronous calls
     /**
      * @brief diagnose runs an ad-hoc stimulation through a settled, detuned model group, populating lib.diagDelta with a time course of
@@ -127,6 +136,12 @@ protected:
     bool cluster_exec(QFile &file, Result *r);
     void cluster_save(QFile &file);
     Result *cluster_load(QFile &file, const QString &args, Result r);
+    scalar cluster_scoreAndInsert(const std::vector<iStimulation> &stims, const int nStims, const std::vector<MAPEDimension> &dims);
+
+    bool bubble_exec(QFile &file, Result *r);
+    void bubble_save(QFile &file);
+    Result *bubble_load(QFile &file, const QString &args, Result r);
+    scalar bubble_scoreAndInsert(const std::vector<iStimulation> &stims, const int nStims, const std::vector<MAPEDimension> &dims);
 
     /**
      * @brief initModels initialises model parameters with random values. Typically, every WavegenData::nGroupsPerWave groups, there
@@ -184,8 +199,6 @@ protected:
     QVector<double> getDeltabar();
     std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElite>> &candidates_by_param, const std::vector<MAPEDimension> &dims);
 
-    scalar cluster_scoreAndInsert(const std::vector<iStimulation> &stims, const int nStims, const std::vector<MAPEDimension> &dims);
-
     /**
      * @brief mape_bin returns a vector of discretised behavioural measures used as MAPE dimensions.
      * It adheres to the level of precision indicated in current.precision.
@@ -210,9 +223,9 @@ protected:
 
     std::vector<Archive> m_archives; //!< All archives
 
-    static QString sigmaAdjust_action, search_action, cluster_action;
-    static quint32 sigmaAdjust_magic, search_magic, cluster_magic;
-    static quint32 sigmaAdjust_version, search_version, cluster_version;
+    static QString sigmaAdjust_action, search_action, cluster_action, bubble_action;
+    static quint32 sigmaAdjust_magic, search_magic, cluster_magic, bubble_magic;
+    static quint32 sigmaAdjust_version, search_version, cluster_version, bubble_version;
 
     iStimData istimd;
 };
