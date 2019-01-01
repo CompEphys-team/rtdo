@@ -278,6 +278,34 @@ size_t MAPEDimension::bin(const iStimulation &I, size_t paramIdx, size_t cluster
     }
 }
 
+size_t MAPEDimension::bin(const MAPElite &el, double dt, size_t multiplier) const
+{
+    switch ( func ) {
+    case Func::EE_MeanCurrent:
+        return bin(el.current, multiplier);
+    case Func::BestBubbleTime:
+        return bin(el.obs.start[0] * dt, multiplier);
+    case Func::BestBubbleDuration:
+    {
+        unsigned int t = 0;
+        for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
+            if ( el.obs.stop[i] == 0 )
+                break;
+            t += el.obs.stop[i] - el.obs.start[i];
+        }
+        return bin(t * dt, multiplier);
+    }
+    case Func::VoltageDeviation:
+    case Func::VoltageIntegral:
+        return bin(*el.wave, multiplier, dt);
+    default:
+    case Func::EE_ClusterIndex:
+    case Func::EE_NumClusters:
+    case Func::EE_ParamIndex:
+        return 0; // These three can't be populated from a MAPElite
+    }
+}
+
 scalar MAPEDimension::bin_inverse(size_t bin, size_t multiplier) const
 {
     switch ( func ) {

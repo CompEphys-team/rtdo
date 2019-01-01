@@ -374,6 +374,7 @@ struct MAPEDimension
     size_t bin(const iStimulation &I,
                size_t paramIdx, size_t clusterIdx, size_t nClusters,
                size_t multiplier, double dt) const; //!< As above, but for all functions
+    size_t bin(const MAPElite &el, double dt, size_t multiplier = 1) const; //!< Classifies for all variable-resolution functions (others return 0).
     scalar bin_inverse(size_t bin, size_t multiplier) const; //!< Inverse function of bin(scalar, size_t), aliased to the lower boundary of the bin.
 
     void setDefaultMinMax(StimulationData d, size_t nParams);
