@@ -958,6 +958,7 @@ __global__ void buildBubbles(const int nPartitions,
         dev = warpReduceSum(sh_deviation[laneid]);
         if ( laneid == 0 ) {
             out_bubbleCurrents[stimIdx * NPARAMS + targetParamIdx] = current;
+            dev /= std::sqrt(dev.dotp(dev));
             dev.store(out_deviations + stimIdx * NPARAMS * NPARAMS + targetParamIdx * NPARAMS);
         }
     }
