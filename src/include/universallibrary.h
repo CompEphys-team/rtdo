@@ -255,8 +255,8 @@ public:
     scalar *&target;
     scalar *&output;
 
-    scalar *&clusters;
-    scalar *&clusterCurrent; //!< Layout: [stimIdx][clusterIdx]
+    scalar *&clusters; //!< Layout: [stimIdx][clusterIdx][paramIdx] (after clustering) or [stimIdx][targetParamIdx][paramIdx] (after bubbling)
+    scalar *&clusterCurrent; //!< Layout: [stimIdx][clusterIdx] (after clustering) or [stimIdx][targetParamIdx] (after bubbling)
     scalar *&clusterPrimitives; //!< Layout: [stimIdx][paramIdx][secIdx]. Get the section stride (padded nSecs) from the call to pullPrimitives().
     iObservations *&clusterObs; //!< Layout: [stimIdx][clusterIdx]
 
