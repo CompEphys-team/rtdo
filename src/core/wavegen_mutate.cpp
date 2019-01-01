@@ -15,6 +15,48 @@ inline bool validStim(iStimulation I, const iStimData &istimd, const Stimulation
     return valid;
 }
 
+void Wavegen::construct_next_generation(std::vector<iStimulation> &stims)
+{
+    const int nStims = stims.size();
+    std::vector<std::list<MAPElite>::const_iterator> parents(2 * nStims);
+
+    // Sample the archive space with a bunch of random indices
+    std::vector<size_t> idx(2 * nStims);
+    session.RNG.generate(idx, size_t(0), current.elites.size() - 1);
+    std::sort(idx.begin(), idx.end());
+
+    // Insert the sampling into parents in a single run through
+    auto archIter = current.elites.begin();
+    size_t pos = 0;
+    for ( int i = 0; i < 2*nStims; i++ ) {
+        std::advance(archIter, idx[i] - pos);
+        pos = idx[i];
+        parents[i] = archIter;
+    }
+
+    // Shuffle the parents, but ensure that xover isn't incestuous
+    session.RNG.shuffle(parents);
+    for ( int i = 0; i < nStims; i++ ) {
+        if ( parents[2*i] == parents[2*i + 1] ) {
+            while ( true ) {
+                int otherPair = session.RNG.uniform(0, nStims-2);
+                otherPair += (otherPair >= i);
+                if ( parents[2*otherPair] != parents[2*i] && parents[2*otherPair+1] != parents[2*i] ) {
+                    // Both of the other pair are different from the incestuous couple => swap one of them over
+                    parents[2*i+1] = parents[2*otherPair];
+                    parents[2*otherPair] = parents[2*i];
+                    break;
+                }
+            }
+        }
+    }
+
+    // Mutate
+    for ( int i = 0; i < nStims; i++ ) {
+        stims[i] = mutate(*parents[2*i]->wave, *parents[2*i + 1]->wave);
+    }
+}
+
 iStimulation Wavegen::getRandomStim(const StimulationData &stimd, const iStimData &istimd) const
 {
     iStimulation I = iStimulation();
