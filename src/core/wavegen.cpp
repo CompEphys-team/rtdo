@@ -7,10 +7,6 @@
 #include "util.h"
 #include "session.h"
 
-QString Wavegen::sigmaAdjust_action = QString("sigmaAdjust");
-quint32 Wavegen::sigmaAdjust_magic = 0xf084d24b;
-quint32 Wavegen::sigmaAdjust_version = 101;
-
 Wavegen::Wavegen(Session &session) :
     SessionWorker(session),
     searchd(session.wavegenData()),
@@ -22,9 +18,7 @@ Wavegen::Wavegen(Session &session) :
 
 Result *Wavegen::load(const QString &action, const QString &args, QFile &results, Result r)
 {
-    if ( action == sigmaAdjust_action )
-        return sigmaAdjust_load(results, r);
-    else if ( action == cluster_action )
+    if ( action == cluster_action )
         return cluster_load(results, args, r);
     else if ( action == bubble_action )
         return bubble_load(results, args, r);
@@ -36,37 +30,12 @@ bool Wavegen::execute(QString action, QString, Result *res, QFile &file)
 {
     clearAbort();
     istimd = iStimData(stimd, session.runData().dt);
-    if ( action == sigmaAdjust_action )
-        return sigmaAdjust_exec(file, res);
-    else if ( action == cluster_action )
+    if ( action == cluster_action )
         return cluster_exec(file, res);
     else if ( action == bubble_action )
         return bubble_exec(file, res);
     else
         return false;
-}
-
-std::vector<double> Wavegen::getSigmaMaxima()
-{
-    // Sigmas probably shouldn't exceed 10% of a parameter's range, so let's use that as a maximum:
-    constexpr double factor = 0.1;
-    std::vector<double> sigmax(lib.adjustableParams.size());
-    int k = 0;
-    for ( const AdjustableParam &p : lib.adjustableParams ) {
-        if ( p.multiplicative ) {
-            // Multiplicative with a range crossing or ending at 0 is daft, but this isn't the place to fail:
-            if ( p.max == 0 || p.min == 0 || p.min * p.max < 0 )
-                sigmax[k] = factor;
-            else
-                sigmax[k] = (p.max / p.min) * factor;
-        } else {
-            sigmax[k] = (p.max - p.min) * factor;
-        }
-        if ( p.sigma > sigmax[k] )
-            sigmax[k] = p.sigma;
-        ++k;
-    }
-    return sigmax;
 }
 
 void Wavegen::initModels(bool withBase)
@@ -128,11 +97,6 @@ void Wavegen::settle()
     lib.settling = false;
 }
 
-void Wavegen::adjustSigmas()
-{
-    session.queue(actorName(), sigmaAdjust_action, "", new Result());
-}
-
 std::vector<double> Wavegen::getMeanParamError()
 {
     for ( int i = 0; i < lib.numModels; i++ )
@@ -176,110 +140,6 @@ std::vector<double> Wavegen::getMeanParamError()
         sumParamErr[i] /= nValid[i] * istimd.iDuration;
 
     return sumParamErr;
-}
-
-bool Wavegen::sigmaAdjust_exec(QFile &file, Result *res)
-{
-    bool dryrun = res->dryrun;
-    delete res;
-    res = nullptr;
-    if ( dryrun ) {
-        return true;
-    }
-
-    initModels(false);
-    detune();
-    settle();
-
-    std::vector<double> meanParamErr = getMeanParamError();
-
-    // Find the median of mean parameter errors:
-    double medianErr; {
-        std::vector<double> sortedErrs(meanParamErr);
-        std::sort(sortedErrs.begin(), sortedErrs.end());
-        if ( lib.adjustableParams.size() % 2 )
-            medianErr = 0.5 * (sortedErrs[lib.adjustableParams.size()/2] + sortedErrs[lib.adjustableParams.size()/2 - 1]);
-        else
-            medianErr = sortedErrs[lib.adjustableParams.size()/2];
-    }
-
-    // Set sigmaAdjust to draw each parameter error average towards the median of parameter error averages
-    // Assume a more-or-less linear relationship, where doubling the sigma roughly doubles the deviation.
-    // This is a simplification, but it should work well enough for small sigmas and small increments thereof.
-    std::vector<double> sigmaAdjust(lib.adjustableParams.size(), 1);
-    std::vector<double> sigmax = getSigmaMaxima();
-    double maxExcess = 1;
-    for ( size_t k = 0; k < lib.adjustableParams.size(); k++ ) {
-        sigmaAdjust[k] *= medianErr / meanParamErr[k];
-        if ( sigmaAdjust[k] * lib.adjustableParams[k].adjustedSigma > sigmax[k] ) {
-            double excess = sigmaAdjust[k] * lib.adjustableParams[k].adjustedSigma / sigmax[k];
-            if ( excess > maxExcess )
-                maxExcess = excess;
-        }
-    }
-    // Ensure that no sigmaAdjust exceeds its sigmax boundaries:
-    if ( maxExcess > 1 )
-        for ( double &adj : sigmaAdjust )
-            adj /= maxExcess;
-
-    // Apply
-    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
-        lib.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma*sigmaAdjust[i];
-    propagateAdjustedSigma();
-
-    // Report
-    std::cout << "Perturbation adjustment complete." << std::endl;
-    std::cout << "Mean deviation in nA across all random waveforms, adjustment, and new perturbation factor:" << std::endl;
-    for ( int i = 0; i < (int)lib.adjustableParams.size(); i++ )
-        std::cout << lib.adjustableParams[i].name << ":\t" << meanParamErr[i] << '\t'
-                  << sigmaAdjust[i] << '\t' << lib.adjustableParams[i].adjustedSigma << std::endl;
-    std::cout << "These adjustments are applied to all future actions." << std::endl;
-
-    // Save
-    sigmaAdjust_save(file);
-
-    emit done();
-    return true;
-}
-
-void Wavegen::sigmaAdjust_save(QFile &file)
-{
-    QDataStream os;
-    if ( !openSaveStream(file, os, sigmaAdjust_magic, sigmaAdjust_version) )
-        return;
-    for ( const AdjustableParam &p : lib.adjustableParams )
-        os << p.adjustedSigma;
-}
-
-Result *Wavegen::sigmaAdjust_load(QFile &file, Result r)
-{
-    if ( r.dryrun )
-        return new Result(r);
-
-    QDataStream is;
-    quint32 version = openLoadStream(file, is, sigmaAdjust_magic);
-    if ( version < 100 || version > sigmaAdjust_version )
-        throw std::runtime_error(std::string("File version mismatch: ") + file.fileName().toStdString());
-    if ( version < 101 ) {
-        QVector<double> sigmaAdjust;
-        is >> sigmaAdjust;
-        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
-            lib.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].sigma * sigmaAdjust[i];
-    } else {
-        for ( AdjustableParam &p : lib.adjustableParams )
-            is >> p.adjustedSigma;
-    }
-    propagateAdjustedSigma();
-
-    return new Result(r);
-}
-
-void Wavegen::propagateAdjustedSigma()
-{
-    UniversalLibrary &uni(session.project.universal());
-    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-        uni.adjustableParams[i].adjustedSigma = lib.adjustableParams[i].adjustedSigma;
-    }
 }
 
 void Wavegen::pushStims(const std::vector<iStimulation> &stim)

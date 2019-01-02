@@ -60,16 +60,6 @@ public:
 
 public slots: // Asynchronous calls that queue via Session
     /**
-     * @brief adjustSigmas changes the perturbation factor for adjustableParams such that each perturbation causes
-     * roughly the same error (current deviation, vs the corresponding tuned model, during a waveform injection).
-     * A number (>= WavegenData::numSigmaAdjustWaveforms) of randomly generated waveforms is used to estimate the average
-     * error for each adjustableParam, and an adjustment factor computed to bring the error closer to the median error
-     * across all parameters. Multiple invocations may improve convergence.
-     * Changes: getErr to true, host err to 0, targetParam to -1, calls @fn detune, @fn settle and @fn stimulate.
-     */
-    void adjustSigmas();
-
-    /**
      * @brief clusterSearch searches for Stimulations using Elementary Effects detuning and a clustering algorithm.
      * All parameters are scored simultaneously. The resulting Archive's primary dimension, in addition to any dimensions set by the user,
      * is MAPEDimension::Func::EE_ParamIndex, so the Archive can be easily separated into parameter-specific selections.
@@ -113,12 +103,6 @@ signals:
 protected:
     friend class Session;
     Result *load(const QString &action, const QString &args, QFile &results, Result r);
-
-    /// Helper functions
-    bool sigmaAdjust_exec(QFile &file, Result *r);
-    void sigmaAdjust_save(QFile &file);
-    Result *sigmaAdjust_load(QFile &file, Result r);
-    void propagateAdjustedSigma();
 
     bool cluster_exec(QFile &file, Result *r);
     void cluster_save(QFile &file);
@@ -183,11 +167,6 @@ protected:
     std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElite>> &candidates_by_param, const std::vector<MAPEDimension> &dims);
 
     /**
-     * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
-     */
-    std::vector<double> getSigmaMaxima();
-
-    /**
      * @brief baseModelIndex calculates the modelspace index of a given group's tuned model.
      * @param group The global group index
      */
@@ -200,9 +179,9 @@ protected:
 
     std::vector<Archive> m_archives; //!< All archives
 
-    static QString sigmaAdjust_action, cluster_action, bubble_action;
-    static quint32 sigmaAdjust_magic, cluster_magic, bubble_magic;
-    static quint32 sigmaAdjust_version, cluster_version, bubble_version;
+    static QString cluster_action, bubble_action;
+    static quint32 cluster_magic, bubble_magic;
+    static quint32 cluster_version, bubble_version;
 
     iStimData istimd;
 };
