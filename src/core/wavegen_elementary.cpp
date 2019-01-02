@@ -70,19 +70,27 @@ QVector<double> Wavegen::getDeltabar()
 {
     int nModelsPerStim = searchd.nTrajectories * searchd.trajectoryLength;
     std::vector<iStimulation> stims(ulib.NMODELS / nModelsPerStim);
-    for ( iStimulation &stim : stims )
-        stim = session.wavegen().getRandomStim(stimd, istimd);
+    size_t nParams = ulib.adjustableParams.size();
+    std::vector<double> deltabar(nParams, 0);
 
     ulib.iSettleDuration[0] = 0;
     ulib.push(ulib.iSettleDuration);
-
-    pushStimsAndObserve(stims, nModelsPerStim, session.gaFitterSettings().cluster_blank_after_step / session.runData().dt);
-
     ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
-    ulib.run();
 
-    std::vector<double> dbar = ulib.find_deltabar(searchd.trajectoryLength, searchd.nTrajectories, stims[0].duration);
-    return QVector<double>::fromStdVector(dbar);
+    for ( size_t runIdx = 0; runIdx < searchd.nDeltabarRuns; runIdx++ ) {
+        for ( iStimulation &stim : stims )
+            stim = session.wavegen().getRandomStim(stimd, istimd);
+        pushStimsAndObserve(stims, nModelsPerStim, session.gaFitterSettings().cluster_blank_after_step / session.runData().dt);
+        ulib.run();
+
+        std::vector<double> dbar = ulib.find_deltabar(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration);
+        for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+            deltabar[paramIdx] += dbar[paramIdx];
+    }
+
+    for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+        deltabar[paramIdx] /= searchd.nDeltabarRuns;
+    return QVector<double>::fromStdVector(deltabar);
 }
 
 /// Radix sort by MAPElite::bin, starting from dimension @a firstDimIdx upwards.

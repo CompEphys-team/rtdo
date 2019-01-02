@@ -397,6 +397,7 @@ struct WavegenData
                            //! detuned with respect to the precedent. Every stim gets the same set of starting points and trajectories.
                            //! nTraj is adjusted down to fit nTraj*trajLen squarely into UniLib::NMODELS.
     int trajectoryLength = 32; //!< Length of each trajectory, including the starting point. Must be one of {2,4,8,16,32}.
+    size_t nDeltabarRuns = 1; //!< Number of full trajectory sets to find a good average deltabar
 };
 
 struct GAFitterSettings {

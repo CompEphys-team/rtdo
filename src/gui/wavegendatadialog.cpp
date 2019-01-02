@@ -65,6 +65,7 @@ void WavegenDataDialog::importData()
 
     ui->nTrajectories->setValue(p.nTrajectories);
     ui->trajectoryLength->setValue(p.trajectoryLength);
+    ui->nDeltabarRuns->setValue(p.nDeltabarRuns);
 }
 
 void WavegenDataDialog::exportData()
@@ -107,6 +108,7 @@ void WavegenDataDialog::exportData()
 
     p.nTrajectories = ui->nTrajectories->value();
     p.trajectoryLength = ui->trajectoryLength->value();
+    p.nDeltabarRuns = ui->nDeltabarRuns->value();
 
     emit apply(p);
 }
