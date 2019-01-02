@@ -146,14 +146,11 @@ void WavegenProgressPlotter::replot()
     const Wavegen::Archive &arch = (ui->archive->currentIndex() < int(session->wavegen().archives().size()))
             ? session->wavegen().archives().at(ui->archive->currentIndex())
             : session->wavegen().currentArchive();
-    double factor = arch.param < 0
-        ? 1
-        : double(session->wavegen().lib.numGroups) / session->wavegenData(arch.resultIndex).nGroupsPerWave / session->wavegenData(arch.resultIndex).nWavesPerEpoch;
 
     QCPGraph *g;
     for ( AbstractGraphProxy *proxy : proxies ) {
         proxy->archive =& arch;
-        proxy->populate(factor);
+        proxy->populate(1);
         g = ui->plot->addGraph(proxy->xAxis, proxy->yAxis);
         g->setData(proxy->dataPtr);
         g->setPen(QPen(proxy->color));

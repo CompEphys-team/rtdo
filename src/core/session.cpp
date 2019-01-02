@@ -89,15 +89,10 @@ void Session::addAPs()
     addAP(runAP, "S.Run.dt", &q_settings, &Settings::rund, &RunData::dt);
     addAP(runAP, "S.Run.Imax", &q_settings, &Settings::rund, &RunData::Imax);
 
-    addAP(searchAP, "S.Wavegen.numSigmaAdjustWaveforms", &q_settings, &Settings::searchd, &WavegenData::numSigmaAdjustWaveforms);
     addAP(searchAP, "S.Wavegen.nInitialWaves", &q_settings, &Settings::searchd, &WavegenData::nInitialWaves);
-    addAP(searchAP, "S.Wavegen.nGroupsPerWave", &q_settings, &Settings::searchd, &WavegenData::nGroupsPerWave);
     addAP(searchAP, "S.Wavegen.useBaseParameters", &q_settings, &Settings::searchd, &WavegenData::useBaseParameters);
-    addAP(searchAP, "S.Wavegen.nWavesPerEpoch", &q_settings, &Settings::searchd, &WavegenData::nWavesPerEpoch);
-    addAP(searchAP, "S.Wavegen.rerandomiseParameters", &q_settings, &Settings::searchd, &WavegenData::rerandomiseParameters);
     addAP(searchAP, "S.Wavegen.precisionIncreaseEpochs[#]", &q_settings, &Settings::searchd, &WavegenData::precisionIncreaseEpochs);
     addAP(searchAP, "S.Wavegen.maxIterations", &q_settings, &Settings::searchd, &WavegenData::maxIterations);
-    addAP(searchAP, "S.Wavegen.noise_sd", &q_settings, &Settings::searchd, &WavegenData::noise_sd);
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].func", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::func);
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].min", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::min);
     addAP(searchAP, "S.Wavegen.mapeDimensions[#].max", &q_settings, &Settings::searchd, &WavegenData::mapeDimensions, &MAPEDimension::max);
@@ -169,15 +164,6 @@ void Session::addAPs()
 
 void Session::sanitiseSettings(Settings &s)
 {
-    if ( s.searchd.nGroupsPerWave > (size_t) project.wavegen().numGroups )
-        s.searchd.nGroupsPerWave = project.wavegen().numGroups;
-    while ( project.wavegen().numGroups % s.searchd.nGroupsPerWave ||
-            !(s.searchd.nGroupsPerWave%32==0 || s.searchd.nGroupsPerWave==16 || s.searchd.nGroupsPerWave==8
-              || s.searchd.nGroupsPerWave==4 || s.searchd.nGroupsPerWave==2 || s.searchd.nGroupsPerWave==1) )
-        --s.searchd.nGroupsPerWave;
-    int nWavesPerKernel = project.wavegen().numGroups / s.searchd.nGroupsPerWave;
-    s.searchd.nWavesPerEpoch = ((s.searchd.nWavesPerEpoch + nWavesPerKernel - 1) / nWavesPerKernel) * nWavesPerKernel;
-
     if ( s.searchd.trajectoryLength >= 32 )
         s.searchd.trajectoryLength = 32;
     else if ( s.searchd.trajectoryLength >= 16 )

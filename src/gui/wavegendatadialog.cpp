@@ -28,13 +28,9 @@ WavegenDataDialog::~WavegenDataDialog()
 void WavegenDataDialog::importData()
 {
     WavegenData p = historicIndex < 0 ? session.qWavegenData() : session.wavegenData(historicIndex);
-    ui->numSigmaAdjustWaveforms->setValue(p.numSigmaAdjustWaveforms);
     ui->nInitialWaves->setValue(p.nInitialWaves);
-    ui->nGroupsPerWave->setValue(p.nGroupsPerWave);
-    ui->nWavesPerEpoch->setValue(p.nWavesPerEpoch);
     ui->maxIterations->setValue(p.maxIterations);
     ui->useBaseParameters->setChecked(p.useBaseParameters);
-    ui->rerandomiseParameters->setChecked(p.rerandomiseParameters);
 
     QStringList str;
     for ( size_t i : p.precisionIncreaseEpochs )
@@ -67,8 +63,6 @@ void WavegenDataDialog::importData()
         }
     }
 
-    ui->noise_sd->setValue(p.noise_sd);
-
     ui->nTrajectories->setValue(p.nTrajectories);
     ui->trajectoryLength->setValue(p.trajectoryLength);
 }
@@ -76,13 +70,9 @@ void WavegenDataDialog::importData()
 void WavegenDataDialog::exportData()
 {
     WavegenData p;
-    p.numSigmaAdjustWaveforms = ui->numSigmaAdjustWaveforms->value();
     p.nInitialWaves = ui->nInitialWaves->value();
-    p.nGroupsPerWave = ui->nGroupsPerWave->value();
-    p.nWavesPerEpoch = ui->nWavesPerEpoch->value();
     p.maxIterations = ui->maxIterations->value();
     p.useBaseParameters = ui->useBaseParameters->isChecked();
-    p.rerandomiseParameters = ui->rerandomiseParameters->isChecked();
 
     std::vector<size_t> prec;
     for ( QString n : ui->precisionIncreaseEpochs->text().split(',', QString::SkipEmptyParts) ) {
@@ -114,8 +104,6 @@ void WavegenDataDialog::exportData()
     if ( ui->nBinsMeanCurrent->value() > 0 )
         dims.push_back(MAPEDimension {MAPEDimension::Func::EE_MeanCurrent, 0, (scalar)ui->meanCurrent_max->value(), (size_t)ui->nBinsMeanCurrent->value()});
     p.mapeDimensions = dims;
-
-    p.noise_sd = ui->noise_sd->value();
 
     p.nTrajectories = ui->nTrajectories->value();
     p.trajectoryLength = ui->trajectoryLength->value();

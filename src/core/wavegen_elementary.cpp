@@ -10,17 +10,17 @@ void Wavegen::prepare_EE_models()
     for ( size_t i = 0; i < ulib.NMODELS; i++ ) {
         if ( i % searchd.trajectoryLength == 0 ) { // Pick a starting point
             // For the benefit of rerandomiseParameters && useBaseParameters, provide each new stim with a trajectory from base model
-            if ( i % nModelsPerStim == 0 ) {
-                initial = true;
+            if ( i % nModelsPerStim == 0 )
                 nextParam = 0;
-            }
-            if ( searchd.useBaseParameters && initial ) // Reset to base model
-                for ( int j = 0; j < nParams; j++ )
-                    values[j] = ulib.adjustableParams[j].initial;
-            else if ( searchd.rerandomiseParameters || i < nModelsPerStim ) // Randomise uniformly
-                for ( int j = 0; j < nParams; j++ )
-                    values[j] = session.RNG.uniform(ulib.adjustableParams[j].min, ulib.adjustableParams[j].max);
-            else // Copy from first stim
+
+            if ( i < nModelsPerStim ) {
+                if ( initial && searchd.useBaseParameters )
+                    for ( int j = 0; j < nParams; j++ )
+                        values[j] = ulib.adjustableParams[j].initial;
+                else
+                    for ( int j = 0; j < nParams; j++ )
+                        values[j] = session.RNG.uniform(ulib.adjustableParams[j].min, ulib.adjustableParams[j].max);
+            } else // Copy from first stim
                 for ( int j = 0; j < nParams; j++ )
                     values[j] = ulib.adjustableParams[j][i % nModelsPerStim];
         } else {

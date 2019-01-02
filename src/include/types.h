@@ -387,35 +387,14 @@ std::istream& operator>>(std::istream& is, MAPEDimension::Func &f);
 
 struct WavegenData
 {
-    int numSigmaAdjustWaveforms = 1e5; //!< Number of random waveforms used to normalise the perturbation rate.
-                                       //!< If parameters are not permuted, this number is rounded up to the
-                                       //!< nearest multiple of the waveform population size.
     size_t nInitialWaves = 1e5; //!< Number of randomly initialised waveforms used to start the search
-    size_t nGroupsPerWave = 32; //!< Number of model groups (base + each param detuned) used for each waveform.
-                                 //! The number must be a power of two or multiple of 32, as well as an integer divisor of project.wgNumGroups.
-                                 //! Values that do not fulfill these conditions are rounded down to the next value that does.
-                                 //! Groups are randomised within parameter range; optionally (see useBaseParameters),
-                                 //! one group per wave is always the base model.
-                                 //! Note that while nGroupsPerWave has a direct impact on runtime, the number of epochs/iterations
-                                 //! is independent of it.
-    bool useBaseParameters = true; //!< Indicates whether the base parameter set is included among the otherwise randomised parameter
-                                   //! sets against which each waveform is evaluated.
-    size_t nWavesPerEpoch = 8192; //!< Number of waveforms that constitute one "epoch" or iteration for the purposes of
-                                   //! precisionIncreaseEpochs, maxIterations etc. nWavesPerEpoch is rounded up to the nearest
-                                   //! multiple of project.wgNumGroups / round_down(nGroupsPerWave).
-    bool rerandomiseParameters = false; //!< Indicates whether model parameters should be randomised at each epoch, rather than only
-                                        //! once per run.
+    bool useBaseParameters = true; //!< Indicates whether the initial parameter set is to be used as a trajectory starting point
     std::vector<MAPEDimension> mapeDimensions; //!< List of dimensions along which stimulation behaviour is to be measured
     std::vector<size_t> precisionIncreaseEpochs; //!< Epochs on which MAPE precision/resolution is to double
     size_t maxIterations = 1000; //!< Total number of epochs (cf nWavesPerEpoch)
-    double noise_sd = 0.; //!< Expected instrument/environment current noise standard deviation (nA)
-
     int nTrajectories = 1; //!< Number of EE trajectories with independent starting points for each stimulation. Parameters are cycled across
                            //! trajectories (e.g. b012; b340; b123 etc., where b is a starting point, and the numbers indicate the parameter
-                           //! detuned with respect to the precedent. With useBaseParameters==true, the initial model is used as starting point
-                           //! until each parameter has been touched at least once. With rerandomiseParameters==true, each free starting point is
-                           //! chosen independently, whereas otherwise, every stim gets the same set of starting points. The starting points never
-                           //! change between epochs.
+                           //! detuned with respect to the precedent. Every stim gets the same set of starting points and trajectories.
                            //! nTraj is adjusted down to fit nTraj*trajLen squarely into UniLib::NMODELS.
     int trajectoryLength = 32; //!< Length of each trajectory, including the starting point. Must be one of {2,4,8,16,32}.
 };
