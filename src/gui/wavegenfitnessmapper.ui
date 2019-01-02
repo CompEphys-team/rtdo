@@ -14,20 +14,10 @@
    <string>Wavegen fitness map</string>
   </property>
   <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,1,0,0">
-   <item row="2" column="2">
+   <item row="2" column="3">
     <widget class="QPushButton" name="readMinFitness">
      <property name="text">
       <string>From scale bar</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="1">
-    <widget class="QDoubleSpinBox" name="minFitness">
-     <property name="decimals">
-      <number>3</number>
-     </property>
-     <property name="maximum">
-      <double>999999999.998999953269958</double>
      </property>
     </widget>
    </item>
@@ -38,7 +28,36 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="4">
+   <item row="2" column="4">
+    <widget class="QPushButton" name="pdf">
+     <property name="text">
+      <string>PDF...</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QSpinBox" name="limit">
+     <property name="suffix">
+      <string> waveforms</string>
+     </property>
+     <property name="minimum">
+      <number>1</number>
+     </property>
+     <property name="maximum">
+      <number>99999999</number>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="4">
+    <widget class="QComboBox" name="limitAxis">
+     <item>
+      <property name="text">
+       <string>fitness</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="5">
     <widget class="QTableWidget" name="dimensions">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
@@ -91,47 +110,14 @@
      </column>
     </widget>
    </item>
-   <item row="2" column="3">
-    <widget class="QPushButton" name="pdf">
+   <item row="3" column="0">
+    <widget class="QCheckBox" name="limitCheck">
      <property name="text">
-      <string>PDF...</string>
+      <string>Limit size to</string>
      </property>
     </widget>
    </item>
-   <item row="0" column="3">
-    <widget class="QPushButton" name="btnAdd">
-     <property name="text">
-      <string>Add to selections</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2">
-    <widget class="QPushButton" name="btnDraw">
-     <property name="text">
-      <string>Draw</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0" colspan="2">
-    <widget class="QComboBox" name="combo"/>
-   </item>
-   <item row="4" column="0" colspan="4">
-    <widget class="QCustomPlot" name="plot" native="true"/>
-   </item>
-   <item row="3" column="1">
-    <widget class="QSpinBox" name="limit">
-     <property name="suffix">
-      <string> waveforms</string>
-     </property>
-     <property name="minimum">
-      <number>1</number>
-     </property>
-     <property name="maximum">
-      <number>99999999</number>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="2">
+   <item row="3" column="3">
     <widget class="QComboBox" name="limitDirection">
      <item>
       <property name="text">
@@ -145,20 +131,43 @@
      </item>
     </widget>
    </item>
-   <item row="3" column="3">
-    <widget class="QComboBox" name="limitAxis">
-     <item>
-      <property name="text">
-       <string>fitness</string>
-      </property>
-     </item>
+   <item row="0" column="3">
+    <widget class="QPushButton" name="btnDraw">
+     <property name="text">
+      <string>Draw</string>
+     </property>
     </widget>
    </item>
-   <item row="3" column="0">
-    <widget class="QCheckBox" name="limitCheck">
+   <item row="0" column="0" colspan="2">
+    <widget class="QComboBox" name="combo"/>
+   </item>
+   <item row="0" column="4">
+    <widget class="QPushButton" name="btnAdd">
      <property name="text">
-      <string>Limit size to</string>
+      <string>Add to selections</string>
      </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QDoubleSpinBox" name="minFitness">
+     <property name="decimals">
+      <number>3</number>
+     </property>
+     <property name="maximum">
+      <double>999999999.998999953269958</double>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0" colspan="5">
+    <widget class="QCustomPlot" name="plot" native="true"/>
+   </item>
+   <item row="0" column="2">
+    <widget class="QComboBox" name="targetParam">
+     <item>
+      <property name="text">
+       <string>All params</string>
+      </property>
+     </item>
     </widget>
    </item>
   </layout>

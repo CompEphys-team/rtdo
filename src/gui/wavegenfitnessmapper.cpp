@@ -17,10 +17,13 @@ WavegenFitnessMapper::WavegenFitnessMapper(Session &session, QWidget *parent) :
 
     updateCombo();
     updateDimensions();
+    for ( const AdjustableParam &p : session.project.model().adjustableParams )
+        ui->targetParam->addItem(QString::fromStdString(p.name));
 
     connect(&session.wavesets(), SIGNAL(addedSet()), this, SLOT(updateCombo()));
     connect(ui->combo, SIGNAL(currentIndexChanged(int)), this, SLOT(updateDimensions()));
     connect(ui->btnDraw, SIGNAL(clicked(bool)), this, SLOT(replot()));
+    connect(ui->targetParam, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
 }
 
 WavegenFitnessMapper::~WavegenFitnessMapper()
@@ -75,7 +78,7 @@ void WavegenFitnessMapper::updateDimensions()
         return;
 
     WaveSource src = ui->combo->currentData().value<WaveSource>();
-    int i = 0, n = session.wavegenData(src.archive()->resultIndex).mapeDimensions.size();
+    int i = 0, n = session.wavegenData(src.archive()->resultIndex).mapeDimensions.size() - 1;
     groupx = new QButtonGroup(this);
     groupy = new QButtonGroup(this);
     mins.resize(n);
@@ -84,6 +87,8 @@ void WavegenFitnessMapper::updateDimensions()
     ui->dimensions->setRowCount(n);
     QStringList labels;
     for ( MAPEDimension d : session.wavegenData(src.archive()->resultIndex).mapeDimensions ) {
+        if ( d.func == MAPEDimension::Func::EE_ParamIndex )
+            continue;
         labels << QString::fromStdString(toString(d.func));
 
         QRadioButton *x = new QRadioButton();
@@ -160,11 +165,17 @@ bool WavegenFitnessMapper::select(bool flattenToPlot)
         selection.reset(new WavegenSelection(session, src.idx));
     }
 
+    if ( ui->targetParam->currentIndex() > 0 ) {
+        size_t targetParam = ui->targetParam->currentIndex()-1;
+        selection->limit(0, targetParam, targetParam, false);
+    } else {
+        selection->limit(0, 0, session.project.model().adjustableParams.size(), true);
+    }
     for ( int i = 0; i < ui->dimensions->rowCount(); i++ ) {
         bool flatten = collapse[i]->isChecked();
         if ( flattenToPlot )
             flatten |= !(groupx->checkedId() == i || groupy->checkedId() == i);
-        selection->limit(i, mins[i]->value(), maxes[i]->value(), flatten);
+        selection->limit(i+1, mins[i]->value(), maxes[i]->value(), flatten);
     }
     selection->minFitness = ui->minFitness->value();
     selection->finalise();
@@ -178,7 +189,7 @@ bool WavegenFitnessMapper::select(bool flattenToPlot)
             reFinalise = ui->minFitness->value() != selection->minFitness;
             ui->minFitness->setValue(selection->minFitness);
         } else { // MAPE Dimension
-            size_t dim = ui->limitAxis->currentIndex() - 1;
+            size_t dim = ui->limitAxis->currentIndex();
             bool descending = ui->limitDirection->currentIndex()==0;
             size_t lim = selection->getSizeLimit(ui->limit->value(), dim, descending);
             if ( descending ) {
@@ -203,8 +214,8 @@ bool WavegenFitnessMapper::select(bool flattenToPlot)
 
 void WavegenFitnessMapper::replot()
 {
-    int x = groupx->checkedId(), y = groupy->checkedId();
-    if ( x == y || x < 0 || y < 0 )
+    int x = groupx->checkedId() + 1, y = groupy->checkedId() + 1;
+    if ( x == y || x < 1 || y < 1 )
         return;
 
     if ( !select(true) )
