@@ -86,13 +86,13 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     std::function<void(void)> evaluate, pull;
     std::function<scalar(std::vector<iStimulation>&)> score_and_insert;
     if ( action == cluster_action ) {
-        evaluate = [&](){ ulib.bubble(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                                      sectionLength, deltabar, false); };
+        evaluate = [&](){ ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
+                                       sectionLength, dotp_threshold, minClusterLen, deltabar, false); };
         pull = [&](){ ulib.pullClusters(nStimsPerEpoch); };
         score_and_insert = [&](std::vector<iStimulation> &waves){ return cluster_scoreAndInsert(waves, nStimsPerEpoch, dims); };
     } else if ( action == bubble_action ) {
-        evaluate = [&](){ ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                                       sectionLength, dotp_threshold, minClusterLen, deltabar, false); };
+        evaluate = [&](){ ulib.bubble(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
+                                      sectionLength, deltabar, false); };
         pull = [&](){ ulib.pullBubbles(nStimsPerEpoch); };
         score_and_insert = [&](std::vector<iStimulation> &waves){ return bubble_scoreAndInsert(waves, nStimsPerEpoch, dims); };
     }

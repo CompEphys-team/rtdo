@@ -90,6 +90,7 @@ scalar Wavegen::cluster_scoreAndInsert(const std::vector<iStimulation> &stims, c
             for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
                 if ( el.deviations[paramIdx] > 0 ) {
                     el.bin[paramIdx_bin] = paramIdx;
+                    el.fitness = el.deviations[paramIdx];
                     candidates_by_param[paramIdx].push_front(el);
                     ++nCandidates;
                 }
