@@ -99,7 +99,7 @@ WavegenProgressPlotter::WavegenProgressPlotter(QWidget *parent) :
 void WavegenProgressPlotter::init(Session &session)
 {
     this->session =& session;
-    connect(&session.wavegen(), SIGNAL(done(int)), this, SLOT(updateArchives()));
+    connect(&session.wavegen(), SIGNAL(done()), this, SLOT(updateArchives()));
     connect(&session.wavegen(), SIGNAL(searchTick(int)), this, SLOT(searchTick(int)));
     updateArchives();
 }

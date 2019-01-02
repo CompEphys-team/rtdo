@@ -24,7 +24,7 @@ const quint32 WavesetCreator::versionManualDeck = 100;
 WavesetCreator::WavesetCreator(Session &session) :
     SessionWorker(session)
 {
-    connect(&session.wavegen(), SIGNAL(done(int)), this, SIGNAL(addedSet()));
+    connect(&session.wavegen(), SIGNAL(done()), this, SIGNAL(addedSet()));
     connect(this, SIGNAL(addedSelection()), this, SIGNAL(addedSet()));
     connect(this, SIGNAL(addedSubset()), this, SIGNAL(addedSet()));
     connect(this, SIGNAL(addedDeck()), this, SIGNAL(addedSet()));
