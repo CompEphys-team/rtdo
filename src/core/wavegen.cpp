@@ -5,7 +5,6 @@ Wavegen::Wavegen(Session &session) :
     SessionWorker(session),
     searchd(session.wavegenData()),
     stimd(session.stimulationData()),
-    lib(session.project.wavegen()),
     ulib(session.project.universal())
 {
 }

@@ -477,7 +477,7 @@ void StimulationCreator::diagnose()
     makeHidable(g);
 
     for ( int i = 1; i < nGraphs; i++ ) {
-        const AdjustableParam &p = session.wavegen().lib.adjustableParams[i-1];
+        const AdjustableParam &p = session.project.model().adjustableParams[i-1];
         g = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
         g->setName(QString::fromStdString(p.name));
         g->setData(keys, values[i], true);

@@ -24,8 +24,7 @@ Project::Project(const QString &projectfile, bool light) :
         return;
     }
 
-    // Load libraries from existing files
-    wglib.reset(new WavegenLibrary(*this, false, light));
+    // Load library from existing file
     unilib.reset(new UniversalLibrary(*this, false, light));
 
     frozen = true;
@@ -180,7 +179,6 @@ bool Project::compile()
         }
     }
     loadExtraModels();
-    wglib.reset(new WavegenLibrary(*this, true));
     unilib.reset(new UniversalLibrary(*this, true));
     std::ofstream proj(p_projectfile.toStdString());
     for ( auto const& p : ap )

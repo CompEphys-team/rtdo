@@ -4,7 +4,6 @@
 #include "sessionworker.h"
 #include <QVector>
 #include <forward_list>
-#include "wavegenlibrary.h"
 #include "universallibrary.h"
 
 class Wavegen : public SessionWorker
@@ -16,7 +15,6 @@ public:
     const WavegenData &searchd;
     const StimulationData &stimd;
 
-    WavegenLibrary &lib;
     UniversalLibrary &ulib;
 
     static const QString cluster_action, bubble_action;

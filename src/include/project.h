@@ -52,7 +52,7 @@ public:
     const MetaModel &model(int simNo = 0) const { return simNo==0 ? *m_model : m_extraModels.at(simNo-1); }
     MetaModel &model(int simNo = 0) { return simNo==0 ? *m_model : m_extraModels.at(simNo-1); }
     const std::vector<MetaModel> &extraModels() const { return m_extraModels; }
-    WavegenLibrary &wavegen() const { return *wglib; }
+
     UniversalLibrary &universal() const { return *unilib; }
 
     /// Get/Set project default DAQ settings
@@ -86,7 +86,6 @@ protected:
     bool loadExisting;
 
     std::unique_ptr<MetaModel> m_model;
-    std::unique_ptr<WavegenLibrary> wglib;
     std::unique_ptr<UniversalLibrary> unilib;
 
     std::vector<QString> m_extraModelFiles;
