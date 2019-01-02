@@ -75,12 +75,12 @@ QVector<double> Wavegen::getDeltabar()
 
     ulib.iSettleDuration[0] = 0;
     ulib.push(ulib.iSettleDuration);
-    ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
 
     for ( size_t runIdx = 0; runIdx < searchd.nDeltabarRuns; runIdx++ ) {
         for ( iStimulation &stim : stims )
             stim = session.wavegen().getRandomStim(stimd, istimd);
         pushStimsAndObserve(stims, nModelsPerStim, session.gaFitterSettings().cluster_blank_after_step / session.runData().dt);
+        ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
         ulib.run();
 
         std::vector<double> dbar = ulib.find_deltabar(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration);
@@ -88,8 +88,11 @@ QVector<double> Wavegen::getDeltabar()
             deltabar[paramIdx] += dbar[paramIdx];
     }
 
-    for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+    std::cout << "Mean current delta from detuning (nA):" << '\n';
+    for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
         deltabar[paramIdx] /= searchd.nDeltabarRuns;
+        std::cout << ulib.adjustableParams[paramIdx].name << ":\t" << deltabar[paramIdx] << std::endl;
+    }
     return QVector<double>::fromStdVector(deltabar);
 }
 
