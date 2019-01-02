@@ -77,24 +77,6 @@ public slots: // Asynchronous calls that queue via Session
      */
     void bubbleSearch();
 
-public: // Synchronous calls
-    /**
-     * @brief diagnose runs an ad-hoc stimulation through a settled, detuned model group, populating lib.diagDelta with a time course of
-     * raw deltaI = I_detuned - I_reference. lib.diagDelta is sized and ordered as (nParams+1) x I.duration, I_reference on parameter index 0.
-     * Note, diagnose is performed synchronously and not logged.
-     * @param I : a stimulation from any source.
-     * @param dt : Temporarily overrides WavegenData::dt
-     * @param simCycles : Number of RK4 cycles per dt
-     */
-    void diagnose(iStimulation I, double dt, int simCycles);
-
-    /**
-     * @brief getMeanParamError runs a number of randomly generated stimulations, returning the average error per cycle
-     * produced by each parameter detuning.
-     * Note, this standalone call does not do any preparatory work (initModels, detune, settle, ...)
-     */
-    std::vector<double> getMeanParamError();
-
 signals:
     void done(int arg = -1);
     void startedSearch(int param);
@@ -113,35 +95,6 @@ protected:
     void bubble_save(QFile &file);
     Result *bubble_load(QFile &file, const QString &args, Result r);
     scalar bubble_scoreAndInsert(const std::vector<iStimulation> &stims, const int nStims, const std::vector<MAPEDimension> &dims);
-
-    /**
-     * @brief initModels initialises model parameters with random values. Typically, every WavegenData::nGroupsPerWave groups, there
-     * is a base parameter set. If only randomised models are to be generated, supply withBase==false.
-     * Changes: Host parameter values
-     */
-    void initModels(bool withBase = true);
-
-    /**
-     * @brief detune changes one adjustableParam per model, such that each model block has a tuned version [0]
-     * and one detuned version for each adjustableParam.
-     * Changes: Host values of adjustable parameters.
-     * Note: Detuned values are based on the tuned model's values, such that multiple calls to detune do not change the outcome.
-     */
-    void detune();
-
-    /**
-     * @brief settle puts all models into a settled state clamped at StimulationData::baseV by simulating
-     * for the configured time (see RunData::settleTime).
-     * Changes: getErr to false, waveforms. Pushes full state to device, simulates, and saves final state on device.
-     */
-    void settle();
-
-    /**
-     * @brief pushStims pushes waveforms to the library, dispersing them as appropriate for the size of @p stim.
-     * Changes: waveforms.
-     * @param stim A vector with 1, lib.numGroups/searchd.nGroupsPerWave, or lib.numGroups elements.
-     */
-    void pushStims(const std::vector<iStimulation> &stim);
 
     /**
      * @brief mutate returns a mutant offspring of the @p parent.
@@ -165,15 +118,6 @@ protected:
     void pushStimsAndObserve(const std::vector<iStimulation> &stims, int nModelsPerStim, int blankCycles);
     QVector<double> getDeltabar();
     std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElite>> &candidates_by_param, const std::vector<MAPEDimension> &dims);
-
-    /**
-     * @brief baseModelIndex calculates the modelspace index of a given group's tuned model.
-     * @param group The global group index
-     */
-    inline int baseModelIndex(int group) const {
-        return group % lib.numGroupsPerBlock                 // Group index within the block
-                + (group/lib.numGroupsPerBlock) * lib.numModelsPerBlock; // Modelspace offset of the block this group belongs to
-    }
 
     Archive current;
 
