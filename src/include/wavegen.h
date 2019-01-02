@@ -70,15 +70,6 @@ public slots: // Asynchronous calls that queue via Session
     void adjustSigmas();
 
     /**
-     * @brief search runs a MAP-Elites algorithm, evolving Stimulations that maximise fitness for a given parameter.
-     * The algorithm will stop after searchd.maxIterations iterations, evaluating one final set of Stimulations before returning.
-     * The archive of elite Stimulations are made available in archives() at the end of the search.
-     * @see archives()
-     * @param param is the index of the parameter to optimise for (0-based, same as for MetaModel::adjustableParams).
-     */
-    void search(int param);
-
-    /**
      * @brief clusterSearch searches for Stimulations using Elementary Effects detuning and a clustering algorithm.
      * All parameters are scored simultaneously. The resulting Archive's primary dimension, in addition to any dimensions set by the user,
      * is MAPEDimension::Func::EE_ParamIndex, so the Archive can be easily separated into parameter-specific selections.
@@ -128,10 +119,6 @@ protected:
     void sigmaAdjust_save(QFile &file);
     Result *sigmaAdjust_load(QFile &file, Result r);
     void propagateAdjustedSigma();
-
-    bool search_exec(QFile &file, Result *r);
-    void search_save(QFile &file);
-    Result *search_load(QFile &file, const QString &args, Result r);
 
     bool cluster_exec(QFile &file, Result *r);
     void cluster_save(QFile &file);
@@ -186,10 +173,6 @@ protected:
     void mutateSwap(iStimulation&);
     void mutateTime(iStimulation&);
     void mutateType(iStimulation&);
-
-    /// MAP-Elites helper functions
-    void mape_tournament(std::vector<iStimulation> &);
-    void mape_insert(std::vector<MAPElite> &candidates);
     void construct_next_generation(std::vector<iStimulation> &stims);
 
     /// Elementary Effects helper functions
@@ -198,12 +181,6 @@ protected:
     void pushStimsAndObserve(const std::vector<iStimulation> &stims, int nModelsPerStim, int blankCycles);
     QVector<double> getDeltabar();
     std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElite>> &candidates_by_param, const std::vector<MAPEDimension> &dims);
-
-    /**
-     * @brief mape_bin returns a vector of discretised behavioural measures used as MAPE dimensions.
-     * It adheres to the level of precision indicated in current.precision.
-     */
-    std::vector<size_t> mape_bin(const iStimulation &I);
 
     /**
      * @brief getSigmaMaxima generates sensible upper bounds on the perturbation factor for each adjustableParam
@@ -223,9 +200,9 @@ protected:
 
     std::vector<Archive> m_archives; //!< All archives
 
-    static QString sigmaAdjust_action, search_action, cluster_action, bubble_action;
-    static quint32 sigmaAdjust_magic, search_magic, cluster_magic, bubble_magic;
-    static quint32 sigmaAdjust_version, search_version, cluster_version, bubble_version;
+    static QString sigmaAdjust_action, cluster_action, bubble_action;
+    static quint32 sigmaAdjust_magic, cluster_magic, bubble_magic;
+    static quint32 sigmaAdjust_version, cluster_version, bubble_version;
 
     iStimData istimd;
 };

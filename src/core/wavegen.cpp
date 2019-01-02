@@ -11,10 +11,6 @@ QString Wavegen::sigmaAdjust_action = QString("sigmaAdjust");
 quint32 Wavegen::sigmaAdjust_magic = 0xf084d24b;
 quint32 Wavegen::sigmaAdjust_version = 101;
 
-QString Wavegen::search_action = QString("search");
-quint32 Wavegen::search_magic = 0x8a33c402;
-quint32 Wavegen::search_version = 112;
-
 Wavegen::Wavegen(Session &session) :
     SessionWorker(session),
     searchd(session.wavegenData()),
@@ -28,8 +24,6 @@ Result *Wavegen::load(const QString &action, const QString &args, QFile &results
 {
     if ( action == sigmaAdjust_action )
         return sigmaAdjust_load(results, r);
-    else if ( action == search_action )
-        return search_load(results, args, r);
     else if ( action == cluster_action )
         return cluster_load(results, args, r);
     else if ( action == bubble_action )
@@ -44,8 +38,6 @@ bool Wavegen::execute(QString action, QString, Result *res, QFile &file)
     istimd = iStimData(stimd, session.runData().dt);
     if ( action == sigmaAdjust_action )
         return sigmaAdjust_exec(file, res);
-    else if ( action == search_action )
-        return search_exec(file, res);
     else if ( action == cluster_action )
         return cluster_exec(file, res);
     else if ( action == bubble_action )
