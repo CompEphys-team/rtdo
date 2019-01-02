@@ -13,75 +13,85 @@ scalar Wavegen::cluster_scoreAndInsert(const std::vector<iStimulation> &stims, c
     int nCandidates = 0;
     scalar maxCurrent = 0;
 
-    // Note the dimensions that can't be computed once for an entire stim
-    // NOTE: This expects that the first dimension is always EE_ParamIdx.
-    constexpr int bin_for_paramIdx = 0;
-    int bin_for_clusterIdx = -1, bin_for_clusterDuration = -1, bin_for_current = -1;
-    for ( int i = 0; i < nBins; i++ ) {
-        if ( dims[i].func == MAPEDimension::Func::EE_ClusterIndex )
-            bin_for_clusterIdx = i;
-        else if ( dims[i].func == MAPEDimension::Func::BestBubbleDuration )
-            bin_for_clusterDuration = i;
-        else if ( dims[i].func == MAPEDimension::Func::EE_MeanCurrent )
-            bin_for_current = i;
+    std::vector<size_t> stim_bins, cluster_bins;
+    constexpr size_t paramIdx_bin = 0;
+    size_t clusterIdx_bin = 0, numClusters_bin = 0;
+    for ( size_t i = 1; i < dims.size(); i++ ) {
+        switch ( dims[i].func ) {
+        case MAPEDimension::Func::BestBubbleDuration:
+        case MAPEDimension::Func::BestBubbleTime:
+        case MAPEDimension::Func::EE_MeanCurrent:
+            cluster_bins.push_back(i);
+            break;
+        case MAPEDimension::Func::VoltageDeviation:
+        case MAPEDimension::Func::VoltageIntegral:
+            stim_bins.push_back(i);
+            break;
+        case MAPEDimension::Func::EE_ClusterIndex:
+            clusterIdx_bin = i;
+            break;
+        case MAPEDimension::Func::EE_NumClusters:
+            numClusters_bin = i;
+            break;
+        default:
+            break;
+        }
     }
 
+    std::vector<bool> clusterValid(ulib.maxClusters);
     for ( int stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
         std::shared_ptr<iStimulation> stim = std::make_shared<iStimulation>(stims[stimIdx]);
-        stim->tObsBegin = 0;
 
-        // Find number of valid clusters
+        // Find valid clusters
         size_t nClusters = 0, nValidClusters = 0;
         for ( size_t clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ ) {
             const iObservations &obs = ulib.clusterObs[stimIdx * ulib.maxClusters + clusterIdx];
             int len = 0;
             for ( size_t i = 0; i < iObservations::maxObs; i++ )
                 len += obs.stop[i] - obs.start[i];
-            if ( len >= minLength )
+            if ( len >= minLength ) {
                 ++nValidClusters;
+                clusterValid[clusterIdx] = true;
+            } else {
+                clusterValid[clusterIdx] = false;
+            }
             if ( len == 0 )
                 break;
             ++nClusters;
         }
 
-        // Populate all bins (with some garbage for clusterIdx, paramIdx, clusterDuration)
-        for ( int binIdx = 0; binIdx < nBins; binIdx++ )
-            bins[binIdx] = dims[binIdx].bin(*stim, 0, 0, nValidClusters, 1, dt);
+        // Populate stim-wide bins
+        for ( size_t binIdx : stim_bins )
+            bins[binIdx] = dims[binIdx].bin(*stim, 1, dt);
+        if ( numClusters_bin )
+            bins[numClusters_bin] = nValidClusters;
 
         // Construct a MAPElite for each non-zero parameter contribution of each valid cluster
         for ( size_t clusterIdx = 0; clusterIdx < nClusters; clusterIdx++ ) {
-            const iObservations &obs = ulib.clusterObs[stimIdx * ulib.maxClusters + clusterIdx];
+            if ( !clusterValid[clusterIdx] )
+                continue;
 
-            // Check for valid length
-            int len = 0;
-            for ( size_t i = 0; i < iObservations::maxObs; i++ )
-                len += obs.stop[i] - obs.start[i];
-            if ( len >= minLength ) {
-                scalar meanCurrent = ulib.clusterCurrent[stimIdx * ulib.maxClusters + clusterIdx];
-                if ( meanCurrent > maxCurrent )
-                    maxCurrent = meanCurrent;
+            MAPElite el(bins, stim, 0, std::vector<scalar>(nParams), ulib.clusterObs[stimIdx * ulib.maxClusters + clusterIdx]);
 
-                // Populate cluster-level bins
-                if ( bin_for_clusterDuration > 0 ) {
-                    stim->tObsEnd = len;
-                    bins[bin_for_clusterDuration] = dims[bin_for_clusterDuration].bin(*stim, 1, dt);
-                }
-                if ( bin_for_clusterIdx > 0 )
-                    bins[bin_for_clusterIdx] = dims[bin_for_clusterIdx].bin(*stim, 0, clusterIdx, 0, 1, dt);
-                if ( bin_for_current > 0 )
-                    bins[bin_for_current] = dims[bin_for_current].bin(meanCurrent, 1);
+            for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+                el.deviations[paramIdx] = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
 
-                // One entry for each parameter
-                std::vector<scalar> contrib(nParams);
-                for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
-                    contrib[paramIdx] = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
-                for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
-                    if ( contrib[paramIdx] > 0 ) {
-                        bins[bin_for_paramIdx] = dims[bin_for_paramIdx].bin(*stim, paramIdx, 0, 0, 1, dt);
-                        candidates_by_param[paramIdx].emplace_front(MAPElite {bins, stim, contrib[paramIdx], contrib, obs});
-                        candidates_by_param[paramIdx].front().current = meanCurrent;
-                        ++nCandidates;
-                    }
+            el.current = ulib.clusterCurrent[stimIdx * ulib.maxClusters + clusterIdx];
+            if ( el.current > maxCurrent )
+                maxCurrent = el.current;
+
+            // Populate cluster-level bins
+            for ( size_t binIdx : cluster_bins )
+                el.bin[binIdx] = dims[binIdx].bin(el, dt);
+            if ( clusterIdx_bin )
+                el.bin[clusterIdx_bin] = clusterIdx;
+
+            // One entry for each parameter
+            for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
+                if ( el.deviations[paramIdx] > 0 ) {
+                    el.bin[paramIdx_bin] = paramIdx;
+                    candidates_by_param[paramIdx].push_front(el);
+                    ++nCandidates;
                 }
             }
         }

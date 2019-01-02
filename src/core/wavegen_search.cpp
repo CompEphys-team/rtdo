@@ -14,7 +14,7 @@ scalar Wavegen::bubble_scoreAndInsert(const std::vector<iStimulation> &stims, co
 
     std::vector<size_t> stim_bins, bubble_bins;
     constexpr size_t paramIdx_bin = 0;
-    for ( size_t i = 0; i < dims.size(); i++ ) {
+    for ( size_t i = 1; i < dims.size(); i++ ) {
         switch ( dims[i].func ) {
         case MAPEDimension::Func::BestBubbleDuration:
         case MAPEDimension::Func::BestBubbleTime:
@@ -24,7 +24,7 @@ scalar Wavegen::bubble_scoreAndInsert(const std::vector<iStimulation> &stims, co
         case MAPEDimension::Func::VoltageDeviation:
         case MAPEDimension::Func::VoltageIntegral:
             stim_bins.push_back(i);
-        default: // ignore paramIdx (dealt with individually through paramIdx_bin) and clusterIdx/numClusters (left at 0)
+        default: // ignore clusterIdx/numClusters (left at 0)
             break;
         }
     }
