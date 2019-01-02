@@ -15,15 +15,8 @@ const QString Wavegen::bubble_action = QString("bubble");
 
 void Wavegen::search(const QString &action)
 {
-    if ( session.qWavegenData().mapeDimensions[0].func != MAPEDimension::Func::EE_ParamIndex ) {
-        WavegenData d = session.qWavegenData();
-        d.mapeDimensions.insert(d.mapeDimensions.begin(), MAPEDimension {
-                                    MAPEDimension::Func::EE_ParamIndex,
-                                    0,
-                                    scalar(lib.adjustableParams.size()),
-                                    lib.adjustableParams.size()});
-        session.setWavegenData(d);
-    }
+    if ( action != cluster_action && action != bubble_action )
+        throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     session.queue(actorName(), action, "", new Result());
 }
 

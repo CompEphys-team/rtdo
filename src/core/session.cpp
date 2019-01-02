@@ -156,13 +156,12 @@ void Session::addAPs()
     Project::addDaqAPs(daqAP, &q_settings.daqd);
 
     // Defaults
+    size_t nParams = project.model().adjustableParams.size();
     q_settings.searchd.mapeDimensions = {
-        {MAPEDimension::Func::BestBubbleDuration,   0, 0, 128},
-        {MAPEDimension::Func::BestBubbleTime,       0, 0,  32},
-        {MAPEDimension::Func::VoltageDeviation,     0, 0,  32}
+        {MAPEDimension::Func::EE_ParamIndex,        0, scalar(nParams),             nParams},
+        {MAPEDimension::Func::BestBubbleDuration,   0, q_settings.stimd.duration,   64},
+        {MAPEDimension::Func::EE_MeanCurrent,       0, 10000,                       64},
     };
-    for ( MAPEDimension &m : q_settings.searchd.mapeDimensions )
-        m.setDefaultMinMax(q_settings.stimd, project.model().adjustableParams.size());
     q_settings.searchd.precisionIncreaseEpochs = { 100 };
 
     sanitiseSettings(q_settings);
@@ -195,6 +194,15 @@ void Session::sanitiseSettings(Settings &s)
         --s.searchd.nTrajectories;
 
     size_t n = project.model().adjustableParams.size();
+    if ( s.searchd.mapeDimensions.front().func != MAPEDimension::Func::EE_ParamIndex )
+        s.searchd.mapeDimensions.insert(s.searchd.mapeDimensions.begin(), MAPEDimension {MAPEDimension::Func::EE_ParamIndex, 0, scalar(n), n});
+    for ( size_t i = 1; i < s.searchd.mapeDimensions.size(); i++ ) {
+        if ( s.searchd.mapeDimensions[i].func == MAPEDimension::Func::EE_ParamIndex ) {
+            s.searchd.mapeDimensions.erase(s.searchd.mapeDimensions.begin() + i);
+            --i;
+        }
+    }
+
     if ( s.gafs.constraints.empty() ) {
         s.gafs.constraints = std::vector<int>(n, 0);
         s.gafs.min.resize(n);
