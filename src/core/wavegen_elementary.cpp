@@ -135,3 +135,24 @@ std::forward_list<MAPElite> Wavegen::sortCandidates(std::vector<std::forward_lis
     }
     return ret;
 }
+
+void Wavegen::insertCandidates(std::forward_list<MAPElite> candidates)
+{
+    // Insert into archive
+    int nInserted = 0, nReplaced = 0;
+    auto archIter = current.elites.begin();
+    for ( auto candIter = candidates.begin(); candIter != candidates.end(); candIter++ ) {
+        while ( archIter != current.elites.end() && *archIter < *candIter ) // Advance to the first archive element with coords >= candidate
+            ++archIter;
+        if ( archIter == current.elites.end() || *candIter < *archIter ) { // No elite at candidate's coords, insert implicitly
+            archIter = current.elites.insert(archIter, std::move(*candIter));
+            ++nInserted;
+        } else { // preexisting elite at the candidate's coords, compete
+            nReplaced += archIter->compete(*candIter);
+        }
+    }
+
+    current.nInsertions.push_back(nInserted);
+    current.nReplacements.push_back(nReplaced);
+    current.nElites.push_back(current.elites.size());
+}
