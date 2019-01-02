@@ -37,7 +37,7 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
         return true;
     }
 
-    emit startedSearch(action == cluster_action ? -1 : -2);
+    emit startedSearch(action);
 
     const int nModelsPerStim = searchd.trajectoryLength * searchd.nTrajectories;
     const int nStimsPerEpoch = ulib.NMODELS / nModelsPerStim;

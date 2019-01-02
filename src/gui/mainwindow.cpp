@@ -208,15 +208,15 @@ void MainWindow::sessionOpened()
     ui->log->setColumnWidth(0, 130);
 
     QString *paramName = new QString();
-    connect(&session->wavegen(), &Wavegen::startedSearch, [=](int p){
-        *paramName = p < 0 ? "elementary effects" : QString::fromStdString(project->model().adjustableParams[p].name);
-        workerStatus->setText(QString("Wavegen searching for %1 ...").arg(*paramName));
+    connect(&session->wavegen(), &Wavegen::startedSearch, [=](QString action){
+        *paramName = action;
+        workerStatus->setText(QString("Wavegen searching (%1) ...").arg(*paramName));
     });
     connect(&session->wavegen(), &Wavegen::searchTick, [=](int e){
-        workerStatus->setText(QString("Wavegen searching for %1 ... epoch %2").arg(*paramName).arg(e));
+        workerStatus->setText(QString("Wavegen searching (%1) ... epoch %2").arg(*paramName).arg(e));
     });
-    connect(&session->wavegen(), &Wavegen::done, [=](int) {
-        workerStatus->setText(QString("Wavegen search for %1 complete.").arg(*paramName));
+    connect(&session->wavegen(), &Wavegen::done, [=]() {
+        workerStatus->setText(QString("Wavegen search (%1) complete.").arg(*paramName));
     });
     connect(&session->profiler(), &ErrorProfiler::progress, [=](int nth, int total){
         workerStatus->setText(QString("ErrorProfiler %1/%2").arg(nth).arg(total));

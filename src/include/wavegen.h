@@ -77,8 +77,8 @@ public slots: // Asynchronous calls that queue via Session
     void search(const QString &action);
 
 signals:
-    void done(int arg = -1);
-    void startedSearch(int param);
+    void done();
+    void startedSearch(QString action);
     void searchTick(int epoch);
 
 protected:
