@@ -10,8 +10,8 @@ WavegenDialog::WavegenDialog(Session &s, QWidget *parent) :
     ui->setupUi(this);
     this->setWindowFlags(Qt::Window);
 
-    connect(ui->btnBubble, &QPushButton::clicked, &session.wavegen(), &Wavegen::bubbleSearch);
-    connect(ui->btnCluster, &QPushButton::clicked, &session.wavegen(), &Wavegen::clusterSearch);
+    connect(ui->btnBubble, &QPushButton::clicked, [&](){ session.wavegen().search(Wavegen::bubble_action); });
+    connect(ui->btnCluster, &QPushButton::clicked, [&](){ session.wavegen().search(Wavegen::cluster_action); });
     connect(ui->btnAbort, &QPushButton::clicked, &session, &Session::abort);
 
     ui->progressPlotter->init(session);

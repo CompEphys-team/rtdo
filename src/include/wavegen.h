@@ -19,6 +19,10 @@ public:
     WavegenLibrary &lib;
     UniversalLibrary &ulib;
 
+    static const QString cluster_action, bubble_action;
+    static constexpr quint32 search_magic = 0xc9fd545f;
+    static constexpr quint32 search_version = 100;
+
     static inline size_t mape_multiplier(size_t precision) { return size_t(1) << precision; }
 
     struct Archive : public Result
@@ -60,22 +64,17 @@ public:
 
 public slots: // Asynchronous calls that queue via Session
     /**
-     * @brief clusterSearch searches for Stimulations using Elementary Effects detuning and a clustering algorithm.
+     * @brief search() searches for Stimulations using Elementary Effects detuning and a MAPElites algorithm.
      * All parameters are scored simultaneously. The resulting Archive's primary dimension, in addition to any dimensions set by the user,
      * is MAPEDimension::Func::EE_ParamIndex, so the Archive can be easily separated into parameter-specific selections.
-     * The MAPElite fitness value is the normalised current deviation for the given parameter's detuning within a cluster
+     * @param action (see Wavegen::*_action) defines the fitness function, as follows:
+     * - cluster_action: The fitness value is the normalised current deviation for the given parameter's detuning within a cluster
      * as identified by UniversalLibrary::cluster().
+     * - bubble_action: The fitness value is the mean ratio between the normalised current deviation for the target parameter's detuning and the mean
+     * normalised current deviation for all parameter detunings, within a "bubble" as defined by the former rising above the latter. See also
+     * UniversalLibrary::bubble().
      */
-    void clusterSearch();
-
-    /**
-     * @brief bubbleSearch searches for Stimulations using Elementary Effects detuning and a bubble algorithm.
-     * All parameters are scored simultaneously. The resulting Archive's primary dimension, in addition to any dimensions set by the user,
-     * is MAPEDimension::Func::EE_ParamIndex, so the Archive can be easily separated into parameter-specific selections.
-     * The MAPElite fitness value is the mean ratio between the normalised current deviation for the target parameter's detuning and the mean
-     * normalised current deviation for all parameter detunings, within a "bubble" as defined by the former rising above the latter.
-     */
-    void bubbleSearch();
+    void search(const QString &action);
 
 signals:
     void done(int arg = -1);
@@ -85,16 +84,12 @@ signals:
 protected:
     friend class Session;
     Result *load(const QString &action, const QString &args, QFile &results, Result r);
+    void save(QFile &file, const QString &action);
 
-    bool cluster_exec(QFile &file, Result *r);
-    void cluster_save(QFile &file);
-    Result *cluster_load(QFile &file, const QString &args, Result r);
     scalar cluster_scoreAndInsert(const std::vector<iStimulation> &stims, const int nStims, const std::vector<MAPEDimension> &dims);
-
-    bool bubble_exec(QFile &file, Result *r);
-    void bubble_save(QFile &file);
-    Result *bubble_load(QFile &file, const QString &args, Result r);
     scalar bubble_scoreAndInsert(const std::vector<iStimulation> &stims, const int nStims, const std::vector<MAPEDimension> &dims);
+
+    void insertCandidates(std::forward_list<MAPElite> candidates);
 
     /**
      * @brief mutate returns a mutant offspring of the @p parent.
@@ -122,10 +117,6 @@ protected:
     Archive current;
 
     std::vector<Archive> m_archives; //!< All archives
-
-    static QString cluster_action, bubble_action;
-    static quint32 cluster_magic, bubble_magic;
-    static quint32 cluster_version, bubble_version;
 
     iStimData istimd;
 };
