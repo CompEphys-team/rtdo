@@ -152,17 +152,19 @@ void ProfileDialog::on_btnPreset_clicked()
     int preset = ui->preset->currentIndex();
 
     if ( preset < nHardPresets ) {
-        if ( src.archive() && src.archive()->param >= 0 ) {
-            if ( ns[src.archive()->param]->value() == 0 ) // Target: Set full range via valueChanged signal
-                ns[src.archive()->param]->valueChanged(0);
+        int targetParam = -1;
+        if ( src.selection() && src.selection()->width(0) == 1 ) {
+            targetParam = src.selection()->ranges[0].min;
+            if ( ns[targetParam]->value() == 0 ) // Target: Set full range via valueChanged signal
+                ns[targetParam]->valueChanged(0);
             else
-                ns[src.archive()->param]->setValue(0);
+                ns[targetParam]->setValue(0);
             if ( preset == 1 || preset == 3 || preset == 5 ) { // Target: set close range
-                setCloseRange(src.archive()->param);
+                setCloseRange(targetParam);
             }
             if ( preset == 0 || preset == 1 ) { // Target only
                 for ( int i = 0; i < int(ns.size()); i++ ) {
-                    if ( i != src.archive()->param ) {
+                    if ( i != targetParam ) {
                         ns[i]->setValue(1);
                     }
                 }
@@ -174,14 +176,14 @@ void ProfileDialog::on_btnPreset_clicked()
         }
         if ( preset == 2 || preset == 3 ) { // Others: set close range
             for ( int i = 0; i < int(ns.size()); i++ ) {
-                if ( !src.archive() || i != src.archive()->param ) {
+                if ( i != targetParam ) {
                     ns[i]->setValue(ui->presetN->value());
                     setCloseRange(i);
                 }
             }
         } else if ( preset == 4 || preset == 5 ) { // Others: set full range
             for ( int i = 0; i < int(ns.size()); i++ ) {
-                if ( !src.archive() || i != src.archive()->param ) {
+                if ( i != targetParam ) {
                     ns[i]->setValue(ui->presetN->value());
                     mins[i]->setValue(mins[i]->minimum());
                     maxes[i]->setValue(maxes[i]->maximum());

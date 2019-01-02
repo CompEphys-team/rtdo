@@ -27,7 +27,7 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
         return false;
 
     bool dryrun = result->dryrun;
-    current = Archive(-2, searchd, *result);
+    current = Archive(action, searchd, *result);
     delete result;
     result = nullptr;
 
@@ -231,9 +231,9 @@ Result *Wavegen::load(const QString &action, const QString &, QFile &file, Resul
 
     Archive *arch;
     if ( r.dryrun )
-        arch = new Archive(-1, searchd, r);
+        arch = new Archive(action, searchd, r);
     else {
-        m_archives.emplace_back(-1, searchd, r);
+        m_archives.emplace_back(action, searchd, r);
         arch =& m_archives.back();
     }
 

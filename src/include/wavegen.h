@@ -28,11 +28,11 @@ public:
         std::list<MAPElite> elites;
         size_t precision = 0;
         size_t iterations = 0;
-        int param;
+        QString action;
         QVector<quint32> nCandidates, nInsertions, nReplacements, nElites;
         inline QString prettyName() const { return QString("%1 iterations").arg(iterations); }
         Archive(Result r = Result()) : Result(r) {}
-        Archive(int param, WavegenData searchd, Result r = Result()) : Result(r), param(param)
+        Archive(QString action, WavegenData searchd, Result r = Result()) : Result(r), action(action)
         {
             nCandidates.reserve(searchd.maxIterations);
             nInsertions.reserve(searchd.maxIterations);
