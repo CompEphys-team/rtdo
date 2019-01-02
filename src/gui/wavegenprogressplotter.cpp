@@ -47,17 +47,11 @@ WavegenProgressPlotter::WavegenProgressPlotter(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    auto *meanFitnessProxy = new GraphProxy<double>(&Wavegen::Archive::meanFitness, Qt::magenta, ui->meanFitness);
-    meanFitnessProxy->yAxis = ui->plot->yAxis2;
-    auto *maxFitnessProxy = new GraphProxy<double>(&Wavegen::Archive::maxFitness, Qt::black, ui->maxFitness);
-    maxFitnessProxy->yAxis = ui->plot->yAxis2;
     proxies = {
         new GraphProxy<quint32>(&Wavegen::Archive::nElites, Qt::red, ui->nElites),
         new GraphProxy<quint32>(&Wavegen::Archive::nCandidates, Qt::green, ui->nCandidates),
         new GraphProxy<quint32>(&Wavegen::Archive::nInsertions, Qt::blue, ui->nInsertions),
-        new GraphProxy<quint32>(&Wavegen::Archive::nReplacements, Qt::cyan, ui->nReplacements),
-        meanFitnessProxy,
-        maxFitnessProxy
+        new GraphProxy<quint32>(&Wavegen::Archive::nReplacements, Qt::cyan, ui->nReplacements)
     };
 
     for ( size_t i = 0; i < proxies.size(); i++ ) {

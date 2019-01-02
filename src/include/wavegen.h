@@ -30,7 +30,6 @@ public:
         size_t iterations = 0;
         int param;
         QVector<quint32> nCandidates, nInsertions, nReplacements, nElites;
-        QVector<double> meanFitness, maxFitness;
         inline QString prettyName() const { return QString("%1 iterations").arg(iterations); }
         Archive(Result r = Result()) : Result(r) {}
         Archive(int param, WavegenData searchd, Result r = Result()) : Result(r), param(param)
@@ -38,8 +37,6 @@ public:
             nCandidates.reserve(searchd.maxIterations);
             nInsertions.reserve(searchd.maxIterations);
             nReplacements.reserve(searchd.maxIterations);
-            meanFitness.reserve(searchd.maxIterations);
-            maxFitness.reserve(searchd.maxIterations);
         }
 
         QVector<double> deltabar;

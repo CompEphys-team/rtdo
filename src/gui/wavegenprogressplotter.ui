@@ -14,30 +14,6 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="0">
-    <widget class="QCheckBox" name="nElites">
-     <property name="text">
-      <string>Archive size</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="QCheckBox" name="nCandidates">
-     <property name="text">
-      <string>Candidates</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="4">
-    <widget class="QCheckBox" name="meanFitness">
-     <property name="text">
-      <string>Mean fitness</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0" colspan="6">
-    <widget class="QCustomPlot" name="plot" native="true"/>
-   </item>
    <item row="1" column="2">
     <widget class="QCheckBox" name="nInsertions">
      <property name="text">
@@ -45,10 +21,10 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="5">
-    <widget class="QCheckBox" name="maxFitness">
+   <item row="1" column="0">
+    <widget class="QCheckBox" name="nElites">
      <property name="text">
-      <string>Max fitness</string>
+      <string>Archive size</string>
      </property>
     </widget>
    </item>
@@ -59,7 +35,17 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="0" colspan="6">
+   <item row="1" column="1">
+    <widget class="QCheckBox" name="nCandidates">
+     <property name="text">
+      <string>Candidates</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="4">
+    <widget class="QCustomPlot" name="plot" native="true"/>
+   </item>
+   <item row="0" column="0" colspan="4">
     <widget class="QComboBox" name="archive"/>
    </item>
   </layout>

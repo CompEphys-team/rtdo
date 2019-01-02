@@ -157,8 +157,6 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     current.nInsertions.squeeze();
     current.nReplacements.squeeze();
     current.nElites.squeeze();
-    current.meanFitness.squeeze();
-    current.maxFitness.squeeze();
 
     save(file, action);
     m_archives.push_back(std::move(current));
