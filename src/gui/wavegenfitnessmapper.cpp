@@ -169,7 +169,7 @@ bool WavegenFitnessMapper::select(bool flattenToPlot)
         size_t targetParam = ui->targetParam->currentIndex()-1;
         selection->limit(0, targetParam, targetParam, false);
     } else {
-        selection->limit(0, 0, session.project.model().adjustableParams.size(), true);
+        selection->limit(0, 0, session.project.model().adjustableParams.size(), flattenToPlot);
     }
     for ( int i = 0; i < ui->dimensions->rowCount(); i++ ) {
         bool flatten = collapse[i]->isChecked();
