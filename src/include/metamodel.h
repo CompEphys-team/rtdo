@@ -20,7 +20,6 @@ public:
     std::string populateStructs(std::string paramPre = "$(", std::string paramPost = ")",
                                 std::string rundPre = "$(", std::string rundPost = ")") const;
     std::string extractState(std::string pre = "$(", std::string post = ")") const;
-    std::string kernel(const std::string &tab, bool wrapVariables, bool defineCurrents) const;
     std::string daqCode(int ordinal) const;
 
     std::string name() const; //!< Model name, no suffix
