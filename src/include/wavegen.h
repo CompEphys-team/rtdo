@@ -56,7 +56,7 @@ public:
     inline QString actorName() const { return "Wavegen"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
 
-public slots: // Asynchronous calls that queue via Session
+public slots:
     /**
      * @brief search() searches for Stimulations using Elementary Effects detuning and a MAPElites algorithm.
      * All parameters are scored simultaneously. The resulting Archive's primary dimension, in addition to any dimensions set by the user,
@@ -67,8 +67,19 @@ public slots: // Asynchronous calls that queue via Session
      * - bubble_action: The fitness value is the mean ratio between the normalised current deviation for the target parameter's detuning and the mean
      * normalised current deviation for all parameter detunings, within a "bubble" as defined by the former rising above the latter. See also
      * UniversalLibrary::bubble().
+     * Asynchronous.
      */
     void search(const QString &action);
+
+    /**
+     * @brief findObservations runs the bubble or cluster algorithm on the given stims, picking out the most suitable observation
+     * @param stims: The set of iStimulations to be evaluated
+     * @param action: The algorithm to be used (Wavegen::bubble_action or Wavegen::cluster_action)
+     * @param targetParam: The index of the target parameter for the extracted observations
+     * @return A MAPElite for each stim, fully populated (excl. bin) with the highest-fitness observation sequence for the target param
+     * Synchronous.
+     */
+    std::vector<MAPElite> findObservations(const std::vector<iStimulation> &stims, const QString &action, size_t targetParam);
 
 signals:
     void done();
