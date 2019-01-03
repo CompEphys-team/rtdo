@@ -59,9 +59,13 @@ void Wavegen::settle_EE_models()
 void Wavegen::pushStimsAndObserve(const std::vector<iStimulation> &stims, int nModelsPerStim, int blankCycles)
 {
     ulib.setSingularStim(false);
-    for ( size_t i = 0; i < ulib.NMODELS; i++ ) {
+    size_t nTotalStims = stims.size()*nModelsPerStim;
+    for ( size_t i = 0, end = std::min(ulib.NMODELS, nTotalStims); i < end; i++ ) {
         ulib.stim[i] = stims[i / nModelsPerStim];
     }
+    if ( nTotalStims < ulib.NMODELS )
+        for ( size_t i = nTotalStims; i < ulib.NMODELS; i++ )
+            ulib.stim[i].duration = 0;
     ulib.push(ulib.stim);
     ulib.observe_no_steps(blankCycles);
 }
