@@ -105,7 +105,7 @@ protected:
     void prepare_EE_models();
     void settle_EE_models();
     void pushStimsAndObserve(const std::vector<iStimulation> &stims, int nModelsPerStim, int blankCycles);
-    QVector<double> getDeltabar();
+    std::vector<double> getDeltabar();
     std::forward_list<MAPElite> sortCandidates(std::vector<std::forward_list<MAPElite>> &candidates_by_param, const std::vector<MAPEDimension> &dims);
 
     Archive current;

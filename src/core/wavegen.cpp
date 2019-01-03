@@ -72,8 +72,8 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     std::vector<iStimulation> *returnedWaves = &waves_ep1, *newWaves = &waves_ep2;
 
     // Run a set of stims through a deltabar finding mission
-    current.deltabar = getDeltabar();
-    std::vector<double> deltabar = current.deltabar.toStdVector();
+    std::vector<double> deltabar = getDeltabar();
+    current.deltabar = QVector<double>::fromStdVector(deltabar);
 
     std::function<void(void)> evaluate, pull;
     std::function<scalar(std::vector<iStimulation>&)> score_and_insert;

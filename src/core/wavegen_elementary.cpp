@@ -66,7 +66,7 @@ void Wavegen::pushStimsAndObserve(const std::vector<iStimulation> &stims, int nM
     ulib.observe_no_steps(blankCycles);
 }
 
-QVector<double> Wavegen::getDeltabar()
+std::vector<double> Wavegen::getDeltabar()
 {
     int nModelsPerStim = searchd.nTrajectories * searchd.trajectoryLength;
     std::vector<iStimulation> stims(ulib.NMODELS / nModelsPerStim);
@@ -93,7 +93,7 @@ QVector<double> Wavegen::getDeltabar()
         deltabar[paramIdx] /= searchd.nDeltabarRuns;
         std::cout << ulib.adjustableParams[paramIdx].name << ":\t" << deltabar[paramIdx] << std::endl;
     }
-    return QVector<double>::fromStdVector(deltabar);
+    return deltabar;
 }
 
 /// Radix sort by MAPElite::bin, starting from dimension @a firstDimIdx upwards.
