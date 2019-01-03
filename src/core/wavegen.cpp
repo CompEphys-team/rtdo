@@ -9,6 +9,17 @@ Wavegen::Wavegen(Session &session) :
 {
 }
 
+WavegenData Wavegen::Archive::searchd(const Session &s) const
+{
+    WavegenData sd = s.wavegenData(resultIndex);
+    if ( sd.adjustToMaxCurrent ) {
+        for ( MAPEDimension &dim : sd.mapeDimensions )
+            if ( dim.func == MAPEDimension::Func::EE_MeanCurrent )
+                dim.max = maxCurrent;
+    }
+    return sd;
+}
+
 const QString Wavegen::cluster_action = QString("cluster");
 const QString Wavegen::bubble_action = QString("bubble");
 
@@ -49,6 +60,7 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
 
     std::vector<MAPEDimension> dims = session.wavegenData().mapeDimensions;
     std::vector<size_t> variablePrecisionDims;
+    size_t meanCurrentDim = 0;
     for ( size_t i = 0; i < dims.size(); i++ ) {
         if ( dims[i].hasVariableResolution() )
             variablePrecisionDims.push_back(i);
@@ -56,6 +68,8 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
             std::cerr << "Warning: ClusterIndex dimension invalid for bubble search" << std::endl;
         else if ( action == bubble_action && dims[i].func == MAPEDimension::Func::EE_NumClusters )
             std::cerr << "Warning: NumClusters dimension invalid for bubble search" << std::endl;
+        if ( dims[i].func == MAPEDimension::Func::EE_MeanCurrent )
+            meanCurrentDim = i;
     }
 
     ulib.resizeOutput(istimd.iDuration);
@@ -111,8 +125,14 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
         // score and insert returnedWaves into archive
         scalar epoch_maxCurrent = score_and_insert(*returnedWaves);
         sum_maxCurrents += epoch_maxCurrent;
-        if ( epoch_maxCurrent > run_maxCurrent )
+        if ( epoch_maxCurrent > run_maxCurrent ) {
             run_maxCurrent = epoch_maxCurrent;
+            // Adjust MeanCurrent dim to max observed current
+            if ( searchd.adjustToMaxCurrent && meanCurrentDim && epoch_maxCurrent > dims[meanCurrentDim].max ) {
+                dims[meanCurrentDim].max = epoch_maxCurrent;
+                rebinMeanCurrent(meanCurrentDim, dims);
+            }
+        }
 
         // Swap waves: After this, returnedWaves points at those in progress, and newWaves are ready for new adventures
         using std::swap;
@@ -149,6 +169,7 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
         }
     }
 
+    current.maxCurrent = run_maxCurrent;
     std::cout << "Overall maximum observed current: " << run_maxCurrent
               << " nA; average maximum across epochs: " << (sum_maxCurrents/current.iterations) << " nA."
               << std::endl;
@@ -166,6 +187,23 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     return true;
 }
 
+void Wavegen::rebinMeanCurrent(size_t meanCurrentDim, const std::vector<MAPEDimension> &dims)
+{
+    for ( MAPElite &e : current.elites )
+        e.bin[meanCurrentDim] = dims.at(meanCurrentDim).bin(e, session.runData().dt);
+    current.elites.sort();
+    // Renormalise newly double-booked bins
+    for ( auto it = current.elites.begin(); it != current.elites.end(); it++ ) {
+        auto next = it;
+        ++next;
+        while ( next != current.elites.end() && next->bin == it->bin ) {
+            it->compete(*next);
+            next = current.elites.erase(next);
+        }
+    }
+    current.nElites.back() = current.elites.size();
+}
+
 void Wavegen::save(QFile &file, const QString &action)
 {
     if ( action != cluster_action && action != bubble_action )
@@ -179,7 +217,7 @@ void Wavegen::save(QFile &file, const QString &action)
     os << quint32(current.precision);
     os << quint32(current.iterations);
     os << current.nCandidates << current.nInsertions << current.nReplacements << current.nElites;
-    os << current.deltabar;
+    os << current.deltabar << current.maxCurrent;
 
     os << quint32(current.elites.size());
     os << quint32(current.elites.front().bin.size());
@@ -242,7 +280,7 @@ Result *Wavegen::load(const QString &action, const QString &, QFile &file, Resul
     arch->precision = precision;
     arch->iterations = iterations;
     is >> arch->nCandidates >> arch->nInsertions >> arch->nReplacements >> arch->nElites;
-    is >> arch->deltabar;
+    is >> arch->deltabar >> arch->maxCurrent;
 
     is >> archSize >> nBins >> nParams >> maxObs;
     arch->elites.resize(archSize);

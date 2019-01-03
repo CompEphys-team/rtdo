@@ -98,6 +98,7 @@ void Session::addAPs()
     addAP(searchAP, "S.Wavegen.nTrajectories", &q_settings, &Settings::searchd, &WavegenData::nTrajectories);
     addAP(searchAP, "S.Wavegen.trajectoryLength", &q_settings, &Settings::searchd, &WavegenData::trajectoryLength);
     addAP(searchAP, "S.Wavegen.nDeltabarRuns", &q_settings, &Settings::searchd, &WavegenData::nDeltabarRuns);
+    addAP(searchAP, "S.Wavegen.adjustToMaxCurrent", &q_settings, &Settings::searchd, &WavegenData::adjustToMaxCurrent);
 
     addAP(stimAP, "S.Stimulation.baseV", &q_settings, &Settings::stimd, &StimulationData::baseV);
     addAP(stimAP, "S.Stimulation.duration", &q_settings, &Settings::stimd, &StimulationData::duration);

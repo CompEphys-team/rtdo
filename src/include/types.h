@@ -398,6 +398,8 @@ struct WavegenData
                            //! nTraj is adjusted down to fit nTraj*trajLen squarely into UniLib::NMODELS.
     int trajectoryLength = 32; //!< Length of each trajectory, including the starting point. Must be one of {2,4,8,16,32}.
     size_t nDeltabarRuns = 1; //!< Number of full trajectory sets to find a good average deltabar
+    bool adjustToMaxCurrent = true; //!< Adjust the EE_MeanCurrent dimension's maximum upwards during a run to reflect the observed maximum
+                                    //! This causes rebinning along the MeanCurrent axis at each adjustment.
 };
 
 struct GAFitterSettings {

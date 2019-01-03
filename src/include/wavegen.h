@@ -30,7 +30,12 @@ public:
         size_t iterations = 0;
         QString action;
         QVector<quint32> nCandidates, nInsertions, nReplacements, nElites;
+        QVector<double> deltabar;
+        double maxCurrent = 0;
+
         inline QString prettyName() const { return QString("%1 iterations").arg(iterations); }
+        WavegenData searchd(const Session &s) const;
+
         Archive(Result r = Result()) : Result(r) {}
         Archive(QString action, WavegenData searchd, Result r = Result()) : Result(r), action(action)
         {
@@ -39,7 +44,6 @@ public:
             nReplacements.reserve(searchd.maxIterations);
         }
 
-        QVector<double> deltabar;
     };
 
     inline const std::vector<Archive> &archives() const { return m_archives; }
@@ -95,6 +99,8 @@ protected:
     scalar bubble_scoreAndInsert(const std::vector<iStimulation> &stims, const int nStims, const std::vector<MAPEDimension> &dims);
 
     void insertCandidates(std::forward_list<MAPElite> candidates);
+
+    void rebinMeanCurrent(size_t meanCurrentDim, const std::vector<MAPEDimension> &dims);
 
     /**
      * @brief mutate returns a mutant offspring of the @p parent.
