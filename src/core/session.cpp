@@ -22,8 +22,8 @@ Session::Session(Project &p, const QString &sessiondir) :
         } else {
             dir = QDir(sessiondir);
         }
-        dispatcher.dir = dir;
     }
+    dispatcher.dir = dir;
 
     dispatcher.moveToThread(&thread);
     thread.start();
