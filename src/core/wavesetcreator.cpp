@@ -54,6 +54,9 @@ bool WavesetCreator::execute(QString action, QString, Result *res, QFile &file)
         for ( WavegenSelection::Range const& r : sel.ranges )
             os << quint32(r.min) << quint32(r.max) << r.collapse;
         os << sel.minFitness;
+        os << sel.paretoFront << sel.paretoFitnessTol;
+        for ( size_t i = 0; i < sel.ranges.size(); i++ )
+            os << bool(sel.paretoMaximise[i]) << quint32(sel.paretoTolerance[i]);
 
         emit addedSelection();
     } else if ( action == actionSubset ) {
@@ -145,7 +148,7 @@ Result *WavesetCreator::load(const QString &action, const QString &, QFile &resu
         if ( version < 100 || version > versionSelect )
             throw std::runtime_error(std::string("File version mismatch: ") + results.fileName().toStdString());
 
-        quint32 idx, nranges, min, max;
+        quint32 idx, nranges, min, max, tol;
         is >> idx >> nranges;
         WavegenSelection sel(session, session.wavegen().archives().size() - idx, r);
         sel.ranges.resize(nranges);
@@ -155,6 +158,16 @@ Result *WavesetCreator::load(const QString &action, const QString &, QFile &resu
             r.max = max;
         }
         is >> sel.minFitness;
+        is >> sel.paretoFront >> sel.paretoFitnessTol;
+        sel.paretoMaximise.resize(nranges);
+        sel.paretoTolerance.resize(nranges);
+        for ( size_t i = 0; i < nranges; i++ ) {
+            bool maximise;
+            is >> maximise >> tol;
+            sel.paretoMaximise[i] = maximise;
+            sel.paretoTolerance[i] = tol;
+        }
+
         sel.finalise();
         m_selections.push_back(std::move(sel));
     } else if ( action == actionSubset ) {
