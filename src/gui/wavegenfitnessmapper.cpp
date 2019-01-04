@@ -85,6 +85,7 @@ void WavegenFitnessMapper::updateDimensions()
     maxes.resize(n);
     collapse.resize(n);
     pareto.resize(n);
+    tolerance.resize(n);
     ui->dimensions->setRowCount(n);
     QStringList labels;
     for ( MAPEDimension d : src.archive()->searchd(session).mapeDimensions ) {
@@ -109,6 +110,12 @@ void WavegenFitnessMapper::updateDimensions()
         cb->addItem("min");
         ui->dimensions->setCellWidget(i, 5, cb);
         pareto[i] = cb;
+
+        QSpinBox *tol = new QSpinBox();
+        tol->setMinimum(1);
+        tol->setSuffix(" bins");
+        ui->dimensions->setCellWidget(i, 6, tol);
+        tolerance[i] = tol;
 
         double step = (d.max - d.min) / (d.multiplier(src.archive()->precision) * d.resolution);
         int decimals = 1 - log10(step);
@@ -135,6 +142,7 @@ void WavegenFitnessMapper::updateDimensions()
             max->setValue(src.selection()->rmax(i+1) + step/2);
             c->setChecked(src.selection()->ranges.at(i+1).collapse);
             cb->setCurrentIndex(!src.selection()->paretoMaximise.at(i+1));
+            tol->setValue(src.selection()->paretoTolerance.at(i+1));
         }
         if ( !src.selection() || src.selection()->width(i+1) > 1 ) {
             if ( groupx->checkedId() < 0 )
@@ -149,6 +157,7 @@ void WavegenFitnessMapper::updateDimensions()
 
     ui->minFitness->setValue(src.selection() ? src.selection()->minFitness : 0);
     ui->paretoFront->setChecked(src.selection() ? !src.selection()->paretoFront : false);
+    ui->fitnessTolerance->setValue(src.selection() ? src.selection()->paretoFitnessTol : 0);
 
     int axis = ui->limitAxis->currentIndex();
     for ( int i = ui->limitAxis->count() - 1; i > 0; i-- )
@@ -186,9 +195,11 @@ bool WavegenFitnessMapper::select(bool flattenToPlot)
             flatten |= !(groupx->checkedId() == i || groupy->checkedId() == i);
         selection->limit(i+1, mins[i]->value(), maxes[i]->value(), flatten);
         selection->paretoMaximise[i+1] = !pareto[i]->currentIndex();
+        selection->paretoTolerance[i+1] = tolerance[i]->value();
     }
     selection->minFitness = ui->minFitness->value();
     selection->paretoFront = ui->paretoFront->isChecked();
+    selection->paretoFitnessTol = ui->fitnessTolerance->value();
     selection->finalise();
 
     if ( ui->limitCheck->isChecked() ) {

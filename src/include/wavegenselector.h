@@ -18,6 +18,8 @@ public:
     };
     std::vector<Range> ranges;
     std::vector<bool> paretoMaximise;
+    std::vector<size_t> paretoTolerance;
+    double paretoFitnessTol = 0;
     bool paretoFront = false;
     double minFitness = 0;
     std::vector<const MAPElite*> selection;

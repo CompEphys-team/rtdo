@@ -6,7 +6,8 @@ WavegenSelection::WavegenSelection(Session &session, size_t archive_idx, Result 
     session(session),
     archive_idx(archive_idx),
     ranges(session.wavegenData(archive().resultIndex).mapeDimensions.size()),
-    paretoMaximise(ranges.size(), true)
+    paretoMaximise(ranges.size(), true),
+    paretoTolerance(ranges.size(), 1)
 {
 }
 
@@ -317,14 +318,79 @@ void WavegenSelection::select_pareto()
             anchors.push_back(probe);
     }
 
-    std::vector<const MAPElite*> anchorsOnly(selection.size(), nullptr);
+    // Include the anchors
+    std::vector<const MAPElite*> redux(selection.size(), nullptr);
     nFinal = anchors.size();
     for ( const Anchor &anchor : anchors ) {
         size_t index = index_relative(anchor.idx);
-        anchorsOnly[index] = selection[index];
+        redux[index] = selection[index];
     }
+
+    // Precalculate offsets
+    std::vector<int> offset_indices;
+    size_t start_index = index_relative(start);
+    std::vector<size_t> offset(dimensions, 0);
+    size_t nOffsetIndices = 1, n = 0;
+    for ( size_t i : probeDims )
+        nOffsetIndices *= paretoTolerance[i];
+    while ( ++n < nOffsetIndices ) {
+        for ( size_t i : probeDims ) {
+            if ( ++offset[i] == paretoTolerance[i] ) {
+                offset[i] = 0;
+            } else {
+                break;
+            }
+        }
+        for ( size_t i : probeDims )
+            probe.idx[i] = start[i] + step[i]*offset[i];
+        offset_indices.push_back(start_index - index_relative(probe.idx));
+    }
+
+    // Include non-pareto-optimal points that are near enough to anchors, as defined by depth
+    if ( nOffsetIndices > 1 ) {
+        for ( const Anchor &anchor : anchors ) {
+            size_t nBoundedIndices = 1;
+            std::vector<size_t> trueDepth(probeDims.size());
+            for ( size_t i : probeDims ) {
+                size_t availableDepth = step[i] * ((int)end[i] - (int)anchor.idx[i]);
+                trueDepth[i] = std::min(availableDepth, paretoTolerance[i]);
+                nBoundedIndices *= trueDepth[i];
+            }
+
+            scalar shiftedFitness = anchor.fitness - paretoFitnessTol;
+            if ( nBoundedIndices < nOffsetIndices ) {
+                offset.assign(dimensions, 0);
+                n = 0;
+                while ( ++n < nBoundedIndices ) {
+                    for ( size_t i : probeDims ) {
+                        if ( ++offset[i] == trueDepth[i] ) {
+                            offset[i] = 0;
+                        } else {
+                            break;
+                        }
+                    }
+                    for ( size_t i : probeDims )
+                        probe.idx[i] = anchor.idx[i] + step[i]*offset[i];
+                    size_t index = index_relative(probe.idx);
+                    if ( !redux[index] && selection[index] && selection[index]->fitness >= shiftedFitness ) {
+                        redux[index] = selection[index];
+                        ++nFinal;
+                    }
+                }
+            } else {
+                size_t index = index_relative(anchor.idx);
+                for ( int off : offset_indices ) {
+                    if ( !redux[index-off] && selection[index-off] && selection[index-off]->fitness >= shiftedFitness ) {
+                        redux[index - off] = selection[index-off];
+                        ++nFinal;
+                    }
+                }
+            }
+        }
+    }
+
     using std::swap;
-    swap(anchorsOnly, selection);
+    swap(redux, selection);
 }
 
 void WavegenSelection::finalise()

@@ -11,6 +11,7 @@ class QButtonGroup;
 class QDoubleSpinBox;
 class QCheckBox;
 class QComboBox;
+class QSpinBox;
 class QCPColorMap;
 
 class WavegenFitnessMapper : public QWidget
@@ -41,6 +42,7 @@ private:
     std::vector<QDoubleSpinBox*> mins, maxes;
     std::vector<QCheckBox*> collapse;
     std::vector<QComboBox*> pareto;
+    std::vector<QSpinBox*> tolerance;
 
     std::unique_ptr<WavegenSelection> selection;
     QCPColorMap *colorMap;
