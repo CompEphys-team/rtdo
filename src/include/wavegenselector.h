@@ -82,6 +82,8 @@ public:
 
 protected:
     size_t index_relative(std::vector<size_t> idx, bool *ok = nullptr) const;
+    void select_uncollapsed();
+    void collapse();
 };
 
 #endif // WAVEGENSELECTOR_H

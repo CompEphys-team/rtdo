@@ -140,28 +140,27 @@ void WavegenSelection::limit(size_t dimension, Range range)
     ranges.at(dimension) = range;
 }
 
-void WavegenSelection::finalise()
+void WavegenSelection::select_uncollapsed()
 {
     const size_t dimensions = ranges.size();
     std::list<MAPElite>::const_iterator default_iterator = archive().elites.end();
-    size_t uncollapsed_size = 1, collapsed_size = 1;
+    size_t uncollapsed_size = 1;
     std::vector<size_t> offsets, sizes;
     std::vector<size_t> offset_index(dimensions, 0);
     std::vector<size_t> true_index(dimensions);
     for ( Range const& r : ranges ) {
         size_t s(r.max - r.min + 1);
         uncollapsed_size *= s;
-        collapsed_size *= r.collapse ? 1 : s;
         offsets.push_back(r.min);
         sizes.push_back(s);
     }
-    std::vector<const MAPElite*> uncollapsed(uncollapsed_size, nullptr);
+    selection.assign(uncollapsed_size, nullptr);
     std::list<MAPElite>::const_iterator archIter = archive().elites.begin();
     nFinal = 0;
 
     // Populate `uncollapsed` with iterators to the archive by walking the area covered by the selection
     // Cells that are unavailable in the archive remain unchanged in uncollapsed.
-    for ( const MAPElite* &element : uncollapsed ) {
+    for ( const MAPElite* &element : selection ) {
         // Update comparator index
         for ( size_t i = 0; i < dimensions; i++ )
             true_index[i] = offsets[i] + offset_index[i];
@@ -189,19 +188,25 @@ void WavegenSelection::finalise()
             }
         }
     }
+}
 
-    // If no dimension needs explicit collapsing, our work here is done
-    if ( collapsed_size == uncollapsed_size ) {
-        selection = std::move(uncollapsed);
-        return;
+void WavegenSelection::collapse()
+{
+    const size_t dimensions = ranges.size();
+    size_t collapsed_size = 1;
+    std::vector<size_t> sizes;
+    std::vector<size_t> offset_index(dimensions, 0);
+    for ( Range const& r : ranges ) {
+        size_t s(r.max - r.min + 1);
+        collapsed_size *= r.collapse ? 1 : s;
+        sizes.push_back(s);
     }
 
-    selection = std::vector<const MAPElite*>(collapsed_size, nullptr);
+    std::vector<const MAPElite*> uncollapsed;
+    using std::swap;
+    swap(selection, uncollapsed);
+    selection.assign(collapsed_size, nullptr);
     nFinal = 0;
-
-    // Reset uncollapsed index
-    for ( size_t &o : offset_index )
-        o = 0;
 
     for ( const MAPElite* element : uncollapsed ) {
         // Take the final selection that we're collapsing to
@@ -223,6 +228,17 @@ void WavegenSelection::finalise()
             }
         }
     }
+}
+
+void WavegenSelection::finalise()
+{
+    select_uncollapsed();
+
+    bool needs_collapse = false;
+    for ( const Range &r : ranges )
+        needs_collapse |= (r.collapse && (r.max > r.min));
+    if ( needs_collapse )
+        collapse();
 }
 
 size_t WavegenSelection::getSizeLimit(size_t n, size_t dimension, bool descending)
