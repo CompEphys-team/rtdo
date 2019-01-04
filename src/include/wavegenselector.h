@@ -17,6 +17,8 @@ public:
         bool collapse;
     };
     std::vector<Range> ranges;
+    std::vector<bool> paretoMaximise;
+    bool paretoFront = false;
     double minFitness = 0;
     std::vector<const MAPElite*> selection;
 
@@ -82,8 +84,10 @@ public:
 
 protected:
     size_t index_relative(std::vector<size_t> idx, bool *ok = nullptr) const;
+
     void select_uncollapsed();
     void collapse();
+    void select_pareto();
 };
 
 #endif // WAVEGENSELECTOR_H

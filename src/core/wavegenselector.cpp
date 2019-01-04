@@ -5,7 +5,8 @@ WavegenSelection::WavegenSelection(Session &session, size_t archive_idx, Result 
     Result(r),
     session(session),
     archive_idx(archive_idx),
-    ranges(session.wavegenData(archive().resultIndex).mapeDimensions.size())
+    ranges(session.wavegenData(archive().resultIndex).mapeDimensions.size()),
+    paretoMaximise(ranges.size(), true)
 {
 }
 
@@ -230,6 +231,102 @@ void WavegenSelection::collapse()
     }
 }
 
+struct Anchor {
+    std::vector<size_t> idx;
+    scalar fitness;
+    bool dominates(const Anchor &rhs, std::vector<int> direction /* positive: larger preferred */) const
+    {
+        bool dom = false;
+        if ( fitness < rhs.fitness )
+            return false;
+        else if ( fitness > rhs.fitness )
+            dom |= true;
+        for ( size_t i = 0; i < idx.size(); i++ ) {
+            if ( direction[i] > 0 ) {
+                if ( idx[i] < rhs.idx[i] )
+                    return false;
+                else if ( idx[i] > rhs.idx[i] )
+                    dom |= true;
+            } else if ( direction[i] < 0 ) {
+                if ( idx[i] > rhs.idx[i] )
+                    return false;
+                else if ( idx[i] < rhs.idx[i] )
+                    dom |= true;
+            }
+        }
+        return dom;
+    }
+};
+
+void WavegenSelection::select_pareto()
+{
+    const size_t dimensions = ranges.size();
+    std::vector<size_t> start(dimensions), end(dimensions);
+    std::vector<int> step(dimensions), direction(dimensions);
+    std::vector<size_t> probeDims;
+    for ( size_t i = 0; i < dimensions; i++ ) {
+        const Range &r = ranges[i];
+        if ( r.collapse || r.max == r.min ) {
+            direction[i] = 0;
+            start[i] = 0;
+        } else {
+            direction[i] = paretoMaximise[i] ? 1 : -1;
+            start[i] = paretoMaximise[i] ? r.max : r.min;
+            end[i] = paretoMaximise[i] ? r.min-1 : r.max+1;
+            step[i] = paretoMaximise[i] ? -1 : 1;
+            probeDims.push_back(i);
+        }
+    }
+    std::vector<Anchor> anchors;
+    Anchor probe = {start, 0};
+    probe.idx[probeDims.front()] -= step[probeDims.front()]; // Initial position just before start
+    scalar latestFitness = 0;
+    while ( probe.idx != end ) {
+        bool found = false, done = false;
+        while ( !found && !done ) {
+            for ( size_t i : probeDims ) {
+                probe.idx[i] += step[i];
+                if ( probe.idx[i] == end[i] ) {
+                    if ( i == probeDims.back() ) {
+                        done = true;
+                        break;
+                    }
+                    probe.idx[i] = start[i];
+                    latestFitness = 0;
+                } else {
+                    const MAPElite *el = data_relative(probe.idx, &found);
+                    if ( found && el->fitness > latestFitness )
+                        probe.fitness = el->fitness;
+                    else
+                        found = false;
+                    break;
+                }
+            }
+        }
+        if ( done )
+            break;
+
+        bool dom = false;
+        for ( const Anchor &anchor : anchors ) {
+            if ( anchor.dominates(probe, direction) ) {
+                dom = true;
+                break;
+            }
+        }
+        if ( !dom )
+            anchors.push_back(probe);
+    }
+
+    std::vector<const MAPElite*> anchorsOnly(selection.size(), nullptr);
+    nFinal = anchors.size();
+    for ( const Anchor &anchor : anchors ) {
+        size_t index = index_relative(anchor.idx);
+        anchorsOnly[index] = selection[index];
+    }
+    using std::swap;
+    swap(anchorsOnly, selection);
+}
+
 void WavegenSelection::finalise()
 {
     select_uncollapsed();
@@ -239,6 +336,9 @@ void WavegenSelection::finalise()
         needs_collapse |= (r.collapse && (r.max > r.min));
     if ( needs_collapse )
         collapse();
+
+    if ( paretoFront )
+        select_pareto();
 }
 
 size_t WavegenSelection::getSizeLimit(size_t n, size_t dimension, bool descending)
