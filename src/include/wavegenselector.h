@@ -79,6 +79,9 @@ public:
      * @return the fitness value of the threshold
      */
     double getFitnessSizeLimit(size_t n);
+
+protected:
+    size_t index_relative(std::vector<size_t> idx, bool *ok = nullptr) const;
 };
 
 #endif // WAVEGENSELECTOR_H

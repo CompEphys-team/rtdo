@@ -42,17 +42,29 @@ double WavegenSelection::rmax(size_t i) const
     return dim.bin_inverse(ranges.at(i).max, dim.multiplier(archive().precision));
 }
 
-const MAPElite* WavegenSelection::data_relative(std::vector<size_t> idx, bool *ok) const
+size_t WavegenSelection::index_relative(std::vector<size_t> idx, bool *ok) const
 {
     size_t index = 0, multiplier = 1;
     for ( int i = ranges.size()-1; i >= 0; i-- ) {
-        if ( !ranges[i].collapse && idx[i] >= width(i) ) {
-            if ( ok )
+        if ( !ranges[i].collapse ) {
+            if ( ok && idx[i] >= width(i) ) {
                 *ok = false;
-            return nullptr;
+                return 0;
+            }
+            index += idx[i]*multiplier;
+            multiplier *= width(i);
         }
-        index += idx[i]*multiplier;
-        multiplier *= width(i);
+    }
+    return index;
+}
+
+const MAPElite* WavegenSelection::data_relative(std::vector<size_t> idx, bool *ok) const
+{
+    bool idx_ok = true;
+    size_t index = index_relative(idx, &idx_ok);
+    if ( !idx_ok ) {
+        if ( ok ) *ok = false;
+        return nullptr;
     }
     auto ret = selection.at(index);
     if ( ok )
@@ -191,10 +203,9 @@ void WavegenSelection::finalise()
     for ( size_t &o : offset_index )
         o = 0;
 
-    size_t collapsed_index = 0;
     for ( const MAPElite* element : uncollapsed ) {
         // Take the final selection that we're collapsing to
-        const MAPElite* &collapsed = selection.at(collapsed_index);
+        const MAPElite* &collapsed = selection.at(index_relative(offset_index));
 
         // Collapse element onto the final selection if it's better
         if ( element != nullptr && (collapsed == nullptr || element->fitness > collapsed->fitness) ) {
@@ -209,16 +220,6 @@ void WavegenSelection::finalise()
                 offset_index[i] = 0;
             } else {
                 break;
-            }
-        }
-
-        // Update collapsed index
-        size_t multiplier = 1;
-        collapsed_index = 0;
-        for ( int i = dimensions-1; i >= 0; i-- ) {
-            if ( !ranges[i].collapse ) {
-                collapsed_index += offset_index[i] * multiplier;
-                multiplier *= width(i);
             }
         }
     }
