@@ -124,11 +124,11 @@ void WavegenFitnessMapper::updateDimensions()
 
         if ( src.selection() ) {
             // Set selection parameters; ensure that min/max aren't rounded the wrong way by placing the values in the center of the bin
-            min->setValue(src.selection()->rmin(i) + step/2);
-            max->setValue(src.selection()->rmax(i) + step/2);
-            c->setChecked(src.selection()->ranges.at(i).collapse);
+            min->setValue(src.selection()->rmin(i+1) + step/2);
+            max->setValue(src.selection()->rmax(i+1) + step/2);
+            c->setChecked(src.selection()->ranges.at(i+1).collapse);
         }
-        if ( !src.selection() || src.selection()->width(i) > 1 ) {
+        if ( !src.selection() || src.selection()->width(i+1) > 1 ) {
             if ( groupx->checkedId() < 0 )
                 x->setChecked(true);
             else if ( groupy->checkedId() < 0 )
