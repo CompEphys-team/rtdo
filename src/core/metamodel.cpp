@@ -418,6 +418,14 @@ std::string MetaModel::structDeclarations() const
        << "\n        }"
        << "\n    }";
 
+    ss << "\n    __host__ __device__ inline scalar &operator[](const unsigned int idx) {";
+    ss << "\n        switch ( idx ) {";
+    ss << "\n        default:";
+    for ( size_t i = 0; i < adjustableParams.size(); i++ )
+        ss << "\n        case " << i << ": return this->" << adjustableParams[i].name << ";";
+    ss << "\n        }"
+       << "\n    }";
+
     ss << "};" << endl;
     ss << endl;
 
