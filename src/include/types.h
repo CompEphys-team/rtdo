@@ -121,6 +121,7 @@ struct iObservations
     int stop[maxObs];
 
     inline void operator=(double) {}
+    inline int duration() const { int r=0; for (size_t i=0; i<maxObs; i++) r += stop[i]-start[i]; return r; }
 };
 std::ostream &operator<<(std::ostream&, const iObservations&);
 
