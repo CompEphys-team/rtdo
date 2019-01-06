@@ -160,7 +160,6 @@ void SamplingProfileDialog::on_btnStart_clicked()
         prof.value1[i] = mins[i]->value();
         prof.value2[i] = maxes[i]->value();
     }
-    prof.samplingInterval = ui->interval->value();
 
     emit generate(prof);
 }

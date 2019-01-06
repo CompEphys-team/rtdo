@@ -5,8 +5,7 @@
 #include "cuda_helper.h"
 
 #include <thrust/device_vector.h>
-#include <thrust/sort.h>
-#include <thrust/count.h>
+#include <thrust/inner_product.h>
 
 static scalar *target = nullptr, *d_target = nullptr;
 static __constant__ scalar *dd_target = nullptr;
@@ -28,9 +27,8 @@ static __constant__ scalar singular_dt;
 static __constant__ size_t singular_targetOffset;
 
 // profiler memory space
-static constexpr unsigned int NPAIRS = NMODELS/2;
-static scalar *d_gradient;
-static constexpr unsigned int gradientSz = NPAIRS * (NPAIRS - 1); // No diagonal
+static scalar *d_prof_error, *d_prof_dist_uw, *d_prof_dist_to, *d_prof_dist_w;
+static constexpr unsigned int profSz = NMODELS * (NMODELS - 1); // No diagonal
 
 // elementary effects wg / clustering memory space
 static scalar *clusters = nullptr, *d_clusters = nullptr;
@@ -92,7 +90,10 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 
     cudaGetSymbolAddress((void **)&lib.targetOffset.singular_v, singular_targetOffset);
 
-    CHECK_CUDA_ERRORS(cudaMalloc(&d_gradient, gradientSz * sizeof(scalar)));
+    CHECK_CUDA_ERRORS(cudaMalloc(&d_prof_error, profSz * sizeof(scalar)));
+    CHECK_CUDA_ERRORS(cudaMalloc(&d_prof_dist_uw, profSz * sizeof(scalar)));
+    CHECK_CUDA_ERRORS(cudaMalloc(&d_prof_dist_to, profSz * sizeof(scalar)));
+    CHECK_CUDA_ERRORS(cudaMalloc(&d_prof_dist_w, profSz * sizeof(scalar)));
 }
 
 extern "C" void libExit(UniversalLibrary::Pointers &pointers)
@@ -158,7 +159,11 @@ __device__ inline Parameters warpReduceSum<Parameters>(Parameters val, int cutof
 
 // Compute the current deviation of both tuned and untuned models against each tuned model
 // Models are interleaved (even id = tuned, odd id = detuned) in SamplingProfiler
-__global__ void compute_gradient(int nSamples, int stride, scalar *targetParam, scalar *gradient)
+__global__ void collect_dist_and_err(int nSamples, scalar **params, int targetParam, Parameters weight,
+                                     scalar *error, /* RMS current error between tuned probe and reference */
+                                     scalar *distance_unweighted, /* euclidean param-space distance between tuned probe and reference */
+                                     scalar *distance_target_only, /* distance along the target param axis only */
+                                     scalar *distance_weighted ) /* euclidean distance, with each axis scaled by @a weight */
 {
     unsigned int xThread = blockIdx.x * blockDim.x + threadIdx.x; // probe
     unsigned int yThread = blockIdx.y * blockDim.y + threadIdx.y; // reference
@@ -166,77 +171,84 @@ __global__ void compute_gradient(int nSamples, int stride, scalar *targetParam, 
     if ( xThread < yThread ) { // transpose subdiagonal half of the top-left quadrant to run on the supradiagonal half of bottom-right quadrant
         // the coordinate transformation is equivalent to squashing the bottom-right supradiagonal triangle to the left border,
         // then flipping it up across the midline.
-        x = xThread + NPAIRS - yThread; // xnew = x + n-y
-        y = NPAIRS - yThread - 1;       // ynew = n-y - 1
+        x = xThread + NMODELS - yThread; // xnew = x + n-y
+        y = NMODELS - yThread - 1;       // ynew = n-y - 1
     } else {
         x = xThread;
         y = yThread;
     }
 
-    scalar err_tx_ty = 0., err_tx_dy = 0., err_dx_ty = 0., err;
-    int i = 0;
-    for ( ; i < nSamples; i += stride ) {
-        scalar xval = dd_timeseries[2*x + NMODELS*i];
-        scalar yval = dd_timeseries[2*y + NMODELS*i];
-
-        err = xval - yval;
-        err_tx_ty += err*err;
-
-        err = xval - dd_timeseries[2*y+1 + NMODELS*i];
-        err_tx_dy += err*err;
-
-        err = yval - dd_timeseries[2*x+1 + NMODELS*i];
-        err_dx_ty += err*err;
+    scalar err = 0.;
+    for ( int i = 0; i < nSamples; ++i ) {
+        scalar e = dd_timeseries[x + NMODELS*i] - dd_timeseries[y + NMODELS*i];
+        err += e*e;
     }
+    err = std::sqrt(err / nSamples);
 
-    i = nSamples/stride; // Using i as nSamplesUsed
-    err_tx_ty = std::sqrt(err_tx_ty / i);
-    err_tx_dy = std::sqrt(err_tx_dy / i);
-    err_dx_ty = std::sqrt(err_dx_ty / i);
-
-    if ( x != y ) { // Ignore diagonal (don't probe against self)
-        // invert sign as appropriate, such that detuning in the direction of the reference is reported as positive
-        i = (1 - 2 * (targetParam[2*x] < targetParam[2*y])); // using i as sign
-
-        // fractional change in error ( (d_err-t_err)/t_err) "how much does the error improve by detuning, relative to total error?")
-        err = ((err_dx_ty / err_tx_ty) - 1) * i;
-
-        // Put invalid values to the end of the scale, positive or negative; heuristically balance both sides
-        if ( ::isnan(err) )
-            err = i * SCALAR_MAX;
-
+    if ( x != y ) {
         // Addressing: Squish the diagonal out to prevent extra zeroes
-        gradient[xThread + NPAIRS*yThread - yThread - (xThread>yThread)] = err;
+        unsigned int idx = xThread + NMODELS*yThread - yThread - (xThread>yThread);
 
-        err = (1 - (err_tx_dy / err_tx_ty)) * i; // = ((err_tx_dy / err_tx_ty) - 1) * -i
-        if ( ::isnan(err) )
-            err = -i * SCALAR_MAX;
-        gradient[xThread + NPAIRS*yThread - yThread - (xThread>yThread) + (NPAIRS-1)*(NPAIRS/2)] = err;
+        scalar dist = 0, noweight_dist = 0;
+        for ( int i = 0; i < NPARAMS; i++ ) {
+            scalar d = (params[i][x] - params[i][y]);
+            noweight_dist += d*d;
+            d *= weight[i];
+            dist += d*d;
+        }
+        error[idx] = err;
+        distance_weighted[idx] = std::sqrt(dist);
+        distance_target_only[idx] = std::fabs(params[targetParam][x] - params[targetParam][y]);
+        distance_unweighted[idx] = std::sqrt(noweight_dist);
     }
 }
 
-struct is_positive : public thrust::unary_function<scalar, bool>
+extern "C" void profile(int nSamples, const std::vector<AdjustableParam> &params, size_t targetParam, std::vector<scalar> deviations,
+                        double &rho_weighted, double &rho_unweighted, double &rho_target_only)
 {
-    __host__ __device__ bool operator()(scalar x){
-        return x > 0;
+    scalar *d_params[NPARAMS];
+    Parameters weight;
+    for ( size_t i = 0; i < NPARAMS; i++ ) {
+        d_params[i] = params[i].d_v;
+        weight[i] = deviations[i];
     }
-};
+    scalar **dd_params;
+    CHECK_CUDA_ERRORS(cudaMalloc((void ***)&dd_params,NPARAMS*sizeof(scalar*)));
+    CHECK_CUDA_ERRORS(cudaMemcpy(dd_params,d_params,NPARAMS*sizeof(scalar*),cudaMemcpyHostToDevice));
 
-extern "C" void profile(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient)
-{
-    dim3 block(32, 16);
-    dim3 grid(NPAIRS/32, NPAIRS/32);
-    compute_gradient<<<grid, block>>>(nSamples, stride, d_targetParam, d_gradient);
+    dim3 block(32, 32);
+    dim3 grid(NMODELS/32, NMODELS/32);
+    collect_dist_and_err<<<grid, block>>>(nSamples, dd_params, targetParam, weight,
+                                          d_prof_error, d_prof_dist_uw, d_prof_dist_to, d_prof_dist_w);
 
-    thrust::device_ptr<scalar> gradient = thrust::device_pointer_cast(d_gradient);
-    thrust::sort(gradient, gradient + gradientSz);
+    thrust::device_ptr<scalar> dist_w = thrust::device_pointer_cast(d_prof_dist_w);
+    thrust::device_ptr<scalar> error = thrust::device_pointer_cast(d_prof_error);
+    double sum_sq_dist = thrust::inner_product(dist_w, dist_w + profSz, dist_w, scalar(0));   // sum(dist^2)
+    double sum_sq_err = thrust::inner_product(error, error + profSz, error, scalar(0));          // sum(err^2)
+    double sum_dist_err = thrust::inner_product(dist_w, dist_w + profSz, error, scalar(0));     // sum(dist*err)
+    double sum_dist = thrust::reduce(dist_w, dist_w + profSz);                          // sum(dist)
+    double sum_err = thrust::reduce(error, error + profSz);                                 // sum(err)
 
-    double nPositive = thrust::count_if(gradient, gradient + gradientSz, is_positive());
-    accuracy = nPositive / gradientSz;
+    // See 10.1109/ISSPIT.2012.6621260
+    double dist_sd = std::sqrt((sum_sq_dist + (sum_dist * sum_dist / profSz)) / (profSz-1));
+    double err_sd = std::sqrt((sum_sq_err + (sum_err * sum_err / profSz)) / (profSz-1));
+    rho_weighted = (sum_dist_err - sum_dist * sum_err / profSz) / ((profSz-1) * dist_sd * err_sd);
 
-    scalar median_g[2];
-    CHECK_CUDA_ERRORS(cudaMemcpy(median_g, d_gradient + gradientSz/2, 2*sizeof(scalar), cudaMemcpyDeviceToHost));
-    median_norm_gradient = (median_g[0] + median_g[1]) / 2;
+    thrust::device_ptr<scalar> dist_uw = thrust::device_pointer_cast(d_prof_dist_uw);
+    double sum_sq_dist_uw = thrust::inner_product(dist_uw, dist_uw + profSz, dist_uw, scalar(0));
+    double sum_dist_uw_err = thrust::inner_product(dist_uw, dist_uw + profSz, error, scalar(0));
+    double sum_dist_uw = thrust::reduce(dist_uw, dist_uw + profSz);
+    double dist_uw_sd = std::sqrt((sum_sq_dist_uw + (sum_dist_uw * sum_dist_uw / profSz)) / (profSz-1));
+    rho_unweighted = (sum_dist_uw_err - sum_dist_uw * sum_err / profSz) / ((profSz-1) * dist_uw_sd * err_sd);
+
+    thrust::device_ptr<scalar> dist_to = thrust::device_pointer_cast(d_prof_dist_to);
+    double sum_sq_dist_to = thrust::inner_product(dist_to, dist_to + profSz, dist_to, scalar(0));
+    double sum_dist_to_err = thrust::inner_product(dist_to, dist_to + profSz, error, scalar(0));
+    double sum_dist_to = thrust::reduce(dist_to, dist_to + profSz);
+    double dist_to_sd = std::sqrt((sum_sq_dist_to + (sum_dist_to * sum_dist_to / profSz)) / (profSz-1));
+    rho_target_only = (sum_dist_to_err - sum_dist_to * sum_err / profSz) / ((profSz-1) * dist_to_sd * err_sd);
+
+    CHECK_CUDA_ERRORS(cudaFree((void **)dd_params));
 }
 
 

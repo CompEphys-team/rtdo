@@ -105,7 +105,7 @@ void SamplingProfilePlotter::setProfile(int idx)
 
     // Update data points
     points.clear();
-    points.resize(prof.gradient.size(), DataPoint{0,0,0,false,false});
+    points.resize(prof.rho_weighted.size(), DataPoint{0,0,0,false,false});
     for ( size_t i = 0; i < points.size(); i++ )
         points[i].idx = i;
 
@@ -126,21 +126,25 @@ double SamplingProfilePlotter::value(int i,
     if ( dimension == 0 )
         return i;
     else if ( dimension == 1 )
-        return prof.accuracy[i];
+        return prof.rho_weighted[i];
     else if ( dimension == 2 )
-        return prof.gradient[i];
+        return prof.rho_unweighted[i];
     else if ( dimension == 3 )
-        return elites.at(i).fitness;
+        return prof.rho_target_only[i];
     else if ( dimension == 4 )
-        return ( (sstr.weightF * (elites.at(i).fitness-sstr.minF))
-               + (sstr.weightG * (prof.gradient[i]-sstr.minG))
-               + (sstr.weightA * (prof.accuracy[i]-sstr.minA))
-               ) / sstr.norm;
+        return elites.at(i).fitness;
     else if ( dimension == 5 )
-        return ( (sstr.sweightF * (elites.at(i).fitness-sstr.sminF))
-               + (sstr.sweightG * (prof.gradient[i]-sstr.sminG))
-               + (sstr.sweightA * (prof.accuracy[i]-sstr.sminA))
-               ) / sstr.snorm;
+        return 0;
+//        return ( (sstr.weightF * (elites.at(i).fitness-sstr.minF))
+//               + (sstr.weightG * (prof.gradient[i]-sstr.minG))
+//               + (sstr.weightA * (prof.accuracy[i]-sstr.minA))
+//               ) / sstr.norm;
+    else if ( dimension == 6 )
+        return 0;
+//        return ( (sstr.sweightF * (elites.at(i).fitness-sstr.sminF))
+//               + (sstr.sweightG * (prof.gradient[i]-sstr.sminG))
+//               + (sstr.sweightA * (prof.accuracy[i]-sstr.sminA))
+//               ) / sstr.snorm;
     else
         return dim.at(dimension-nFixedColumns).bin_inverse(
                 elites.at(i).bin[dimension-nFixedColumns],
@@ -153,31 +157,31 @@ SamplingProfilePlotter::ScoreStruct SamplingProfilePlotter::getScoreStruct(
         bool scoreF, bool scoreG, bool scoreA)
 {
     ScoreStruct ret;
-    for ( size_t i = 0; i < points.size(); i++ ) {
-        if ( elites.at(points[i].idx).fitness < ret.minF )  ret.minF = elites.at(points[i].idx).fitness;
-        if ( elites.at(points[i].idx).fitness > ret.maxF )  ret.maxF = elites.at(points[i].idx).fitness;
-        if ( prof.accuracy[points[i].idx] < ret.minA )      ret.minA = prof.accuracy[points[i].idx];
-        if ( prof.accuracy[points[i].idx] > ret.maxA )      ret.maxA = prof.accuracy[points[i].idx];
-        if ( prof.gradient[points[i].idx] < ret.minG )      ret.minG = prof.gradient[points[i].idx];
-        if ( prof.gradient[points[i].idx] > ret.maxG )      ret.maxG = prof.gradient[points[i].idx];
-        if ( points[i].hidden )
-            continue;
-        if ( elites.at(points[i].idx).fitness < ret.sminF )  ret.sminF = elites.at(points[i].idx).fitness;
-        if ( elites.at(points[i].idx).fitness > ret.smaxF )  ret.smaxF = elites.at(points[i].idx).fitness;
-        if ( prof.accuracy[points[i].idx] < ret.sminA )      ret.sminA = prof.accuracy[points[i].idx];
-        if ( prof.accuracy[points[i].idx] > ret.smaxA )      ret.smaxA = prof.accuracy[points[i].idx];
-        if ( prof.gradient[points[i].idx] < ret.sminG )      ret.sminG = prof.gradient[points[i].idx];
-        if ( prof.gradient[points[i].idx] > ret.smaxG )      ret.smaxG = prof.gradient[points[i].idx];
-    }
-    // score = sum(weight * (value-min)/(max-min)) / sum(weights) | weight = (max-min)/(max+min)
-    ret.weightF = scoreF/(ret.maxF+ret.minF);
-    ret.weightG = scoreG/(ret.maxG+ret.minG);
-    ret.weightA = scoreA/(ret.maxA+ret.minA);
-    ret.norm = (ret.maxF-ret.minF)*ret.weightF + (ret.maxG-ret.minG)*ret.weightG + (ret.maxA-ret.minA)*ret.weightA;
-    ret.sweightF = scoreF/(ret.smaxF+ret.sminF);
-    ret.sweightG = scoreG/(ret.smaxG+ret.sminG);
-    ret.sweightA = scoreA/(ret.smaxA+ret.sminA);
-    ret.snorm = (ret.smaxF-ret.sminF)*ret.sweightF + (ret.smaxG-ret.sminG)*ret.sweightG + (ret.smaxA-ret.sminA)*ret.sweightA;
+//    for ( size_t i = 0; i < points.size(); i++ ) {
+//        if ( elites.at(points[i].idx).fitness < ret.minF )  ret.minF = elites.at(points[i].idx).fitness;
+//        if ( elites.at(points[i].idx).fitness > ret.maxF )  ret.maxF = elites.at(points[i].idx).fitness;
+//        if ( prof.accuracy[points[i].idx] < ret.minA )      ret.minA = prof.accuracy[points[i].idx];
+//        if ( prof.accuracy[points[i].idx] > ret.maxA )      ret.maxA = prof.accuracy[points[i].idx];
+//        if ( prof.gradient[points[i].idx] < ret.minG )      ret.minG = prof.gradient[points[i].idx];
+//        if ( prof.gradient[points[i].idx] > ret.maxG )      ret.maxG = prof.gradient[points[i].idx];
+//        if ( points[i].hidden )
+//            continue;
+//        if ( elites.at(points[i].idx).fitness < ret.sminF )  ret.sminF = elites.at(points[i].idx).fitness;
+//        if ( elites.at(points[i].idx).fitness > ret.smaxF )  ret.smaxF = elites.at(points[i].idx).fitness;
+//        if ( prof.accuracy[points[i].idx] < ret.sminA )      ret.sminA = prof.accuracy[points[i].idx];
+//        if ( prof.accuracy[points[i].idx] > ret.smaxA )      ret.smaxA = prof.accuracy[points[i].idx];
+//        if ( prof.gradient[points[i].idx] < ret.sminG )      ret.sminG = prof.gradient[points[i].idx];
+//        if ( prof.gradient[points[i].idx] > ret.smaxG )      ret.smaxG = prof.gradient[points[i].idx];
+//    }
+//    // score = sum(weight * (value-min)/(max-min)) / sum(weights) | weight = (max-min)/(max+min)
+//    ret.weightF = scoreF/(ret.maxF+ret.minF);
+//    ret.weightG = scoreG/(ret.maxG+ret.minG);
+//    ret.weightA = scoreA/(ret.maxA+ret.minA);
+//    ret.norm = (ret.maxF-ret.minF)*ret.weightF + (ret.maxG-ret.minG)*ret.weightG + (ret.maxA-ret.minA)*ret.weightA;
+//    ret.sweightF = scoreF/(ret.smaxF+ret.sminF);
+//    ret.sweightG = scoreG/(ret.smaxG+ret.sminG);
+//    ret.sweightA = scoreA/(ret.smaxA+ret.sminA);
+//    ret.snorm = (ret.smaxF-ret.sminF)*ret.sweightF + (ret.smaxG-ret.sminG)*ret.sweightG + (ret.smaxA-ret.sminA)*ret.sweightA;
     return ret;
 }
 

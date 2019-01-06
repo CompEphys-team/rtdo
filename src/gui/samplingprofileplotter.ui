@@ -27,7 +27,7 @@
        <item row="0" column="1">
         <widget class="QComboBox" name="y">
          <property name="currentIndex">
-          <number>1</number>
+          <number>4</number>
          </property>
          <property name="sizeAdjustPolicy">
           <enum>QComboBox::AdjustToContents</enum>
@@ -39,12 +39,17 @@
          </item>
          <item>
           <property name="text">
-           <string>Accuracy</string>
+           <string>Weighted correlation coefficient</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Gradient</string>
+           <string>Unweighted correlation coefficient</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Target only correlation coefficient</string>
           </property>
          </item>
          <item>
@@ -80,7 +85,7 @@
        <item row="0" column="3">
         <widget class="QComboBox" name="x">
          <property name="currentIndex">
-          <number>2</number>
+          <number>1</number>
          </property>
          <property name="sizeAdjustPolicy">
           <enum>QComboBox::AdjustToContents</enum>
@@ -92,12 +97,17 @@
          </item>
          <item>
           <property name="text">
-           <string>Accuracy</string>
+           <string>Weighted correlation coefficient</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Gradient</string>
+           <string>Unweighted correlation coefficient</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Target only correlation coefficient</string>
           </property>
          </item>
          <item>
@@ -176,6 +186,9 @@
          <property name="sortingEnabled">
           <bool>true</bool>
          </property>
+         <attribute name="horizontalHeaderDefaultSectionSize">
+          <number>110</number>
+         </attribute>
          <attribute name="verticalHeaderVisible">
           <bool>false</bool>
          </attribute>
@@ -186,12 +199,17 @@
          </column>
          <column>
           <property name="text">
-           <string>Accuracy</string>
+           <string>Weighted corr.</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>Gradient</string>
+           <string>Unweighted corr.</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Target only corr.</string>
           </property>
          </column>
          <column>
@@ -224,6 +242,9 @@
    </item>
    <item row="1" column="2">
     <widget class="QCheckBox" name="gradient">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="text">
       <string>Gradient</string>
      </property>
@@ -231,6 +252,9 @@
    </item>
    <item row="1" column="1">
     <widget class="QCheckBox" name="accuracy">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="text">
       <string>Accuracy</string>
      </property>
@@ -241,6 +265,9 @@
    </item>
    <item row="1" column="3">
     <widget class="QCheckBox" name="fitness">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="text">
       <string>Fitness</string>
      </property>

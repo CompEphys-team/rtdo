@@ -92,7 +92,8 @@ public:
         void(*pullOutput)(void);
         scalar **output;
 
-        void (*profile)(int nSamples, int stride, scalar *d_targetParam, double &accuracy, double &median_norm_gradient);
+        void (*profile)(int nSamples, const std::vector<AdjustableParam> &params, size_t targetParam, std::vector<scalar> deviations,
+                        double &rho_weighted, double &rho_unweighted, double &rho_target_only);
 
         void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
                         std::vector<double> deltabar, bool pull);
@@ -176,9 +177,10 @@ public:
     void setRundata(size_t modelIndex, const RunData &rund);
 
     /// post-run() workhorse for SamplingProfiler
-    /// Expects assignments TIMESERIES_COMPARE_NONE | TIMESERIES_COMPACT with adjacent pairs of tuned/detuned models
-    inline void profile(int nSamples, int stride, size_t targetParam, double &accuracy, double &median_norm_gradient) {
-        pointers.profile(nSamples, stride, adjustableParams[targetParam].d_v, accuracy, median_norm_gradient);
+    /// Expects assignments TIMESERIES_COMPARE_NONE | TIMESERIES_COMPACT
+    inline void profile(int nSamples, size_t targetParam, std::vector<scalar> deviations,
+                        double &rho_weighted, double &rho_unweighted, double &rho_target_only) {
+        pointers.profile(nSamples, adjustableParams, targetParam, deviations, rho_weighted, rho_unweighted, rho_target_only);
     }
 
     /// post-run() workhorse for cluster-based wavegen

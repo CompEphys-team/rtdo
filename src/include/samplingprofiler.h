@@ -18,15 +18,14 @@ public:
         Profile(WaveSource src, size_t target, Result r = Result()); //!< Populates sensible defaults for sigma and sizes the vectors.
         WaveSource src; //!< Stimulations to profile.
         size_t target; //!< Parameter to profile.
-        double sigma; //!< Detuning coefficient
-        size_t samplingInterval; //!< in cycles; frequency of current evaluation. Defaults to 1.
 
         QVector<bool> uniform; //!< Flag for each parameter: true to interpret value1/value2 as min/max rather than mean/sd.
         QVector<double> value1, value2; //!< min/max or mean/sd for each parameter, depending on uniform. No distinction is made between additive and multiplicative params.
 
         // Outputs, each sized src.stimulations().size():
-        QVector<double> gradient; //!< Output: Normalised median error gradient for each stimulation
-        QVector<double> accuracy; //!< Output: Fraction of gradients correctly indicating target direction
+        QVector<double> rho_weighted;       //!< Output: Pearson's correlation coefficient between error and deviation-weighted param space distance
+        QVector<double> rho_unweighted;     //!< Output: Correlation between error and euclidean param space distance
+        QVector<double> rho_target_only;    //!< Output: Correlation between error and target parameter distance
     };
 
     const inline std::vector<Profile> &profiles() const { return m_profiles; }

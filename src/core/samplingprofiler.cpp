@@ -2,7 +2,7 @@
 #include "session.h"
 
 const QString SamplingProfiler::action = QString("generate");
-const quint32 SamplingProfiler::magic = 0x674b5c54;
+const quint32 SamplingProfiler::magic = 0x678b5c54;
 const quint32 SamplingProfiler::version = 100;
 
 QDataStream &operator<<(QDataStream &os, const SamplingProfiler::Profile &);
@@ -59,36 +59,23 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     }
 
     const RunData &rd = session.runData();
-    std::vector<iStimulation> stims = prof.src.iStimulations(rd.dt);
-    std::vector<iObservations> obs = prof.src.observations(rd.dt);
+    std::vector<MAPElite> elites = prof.src.elites();
 
     int maxObsDuration = 0;
-    for ( const iObservations &o : obs ) {
-        int obsDuration = 0;
-        for ( size_t i = 0; i < iObservations::maxObs; i++ )
-            obsDuration += o.stop[i] - o.start[i];
+    for ( const MAPElite &el : elites ) {
+        int obsDuration = el.obs.duration();
         maxObsDuration = std::max(maxObsDuration, obsDuration);
     }
 
     // Populate
     for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
         AdjustableParam &p = lib.adjustableParams[param];
-        std::function<scalar(void)> uniform = [=](){ return session.RNG.uniform<scalar>(prof.value1[param], prof.value2[param]); };
-        std::function<scalar(void)> gaussian = [=](){ return session.RNG.variate<scalar, std::normal_distribution>(prof.value1[param], prof.value2[param]); };
-        auto gen = prof.uniform[param] ? uniform : gaussian;
-        if ( param == prof.target ) {
-            for ( size_t pair = 0; pair < lib.NMODELS/2; pair++ ) {
-                double value = gen();
-                p[2*pair] = value;
-                p[2*pair+1] = value + prof.sigma;
-            }
-        } else {
-            for ( size_t pair = 0; pair < lib.NMODELS/2; pair++ ) {
-                double value = gen();
-                p[2*pair] = value;
-                p[2*pair+1] = value;
-            }
-        }
+        if ( prof.uniform[param] )
+            for ( size_t i = 0; i < lib.NMODELS; i++ )
+                p[i] = session.RNG.uniform<scalar>(prof.value1[param], prof.value2[param]);
+        else
+            for ( size_t i = 0; i < lib.NMODELS; i++ )
+                p[i] = session.RNG.variate<scalar, std::normal_distribution>(prof.value1[param], prof.value2[param]);
     }
 
     // Set up library
@@ -108,23 +95,24 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     unsigned int assignment = lib.assignment_base
             | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPACT | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
 
-    prof.gradient.resize(stims.size());
-    prof.accuracy.resize(stims.size());
+    prof.rho_weighted.resize(elites.size());
+    prof.rho_unweighted.resize(elites.size());
+    prof.rho_target_only.resize(elites.size());
 
     // Run
-    for ( size_t i = 0; i < stims.size(); i++ ) {
+    for ( size_t i = 0; i < elites.size(); i++ ) {
         if ( isAborted() ) {
             delete res;
             return false;
         }
 
-        lib.stim[0] = stims[i];
-        lib.obs[0] = obs[i];
+        lib.stim[0] = *elites[i].wave;
+        lib.obs[0] = elites[i].obs;
         lib.push(lib.stim);
         lib.push(lib.obs);
 
         // Settle, if necessary - lib maintains settled state
-        if ( i == 0 || stims[i-1].baseV != stims[i].baseV ) {
+        if ( i == 0 || elites[i-1].wave->baseV != elites[i].wave->baseV ) {
             lib.iSettleDuration[0] = rd.settleDuration / rd.dt;
             lib.push(lib.iSettleDuration);
 
@@ -140,10 +128,9 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
         lib.run();
 
         // Profile
-        int nSamples = stims[i].tObsEnd - stims[i].tObsBegin;
-        lib.profile(nSamples, prof.samplingInterval, prof.target, prof.accuracy[i], prof.gradient[i]);
-        prof.gradient[i] /= prof.sigma;
-        emit progress(i, stims.size());
+        lib.profile(elites[i].obs.duration(), prof.target, elites[i].deviations,
+                    prof.rho_weighted[i], prof.rho_unweighted[i], prof.rho_target_only[i]);
+        emit progress(i, elites.size());
     }
 
     m_profiles.push_back(std::move(prof));
@@ -160,20 +147,19 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
 
 QDataStream &operator<<(QDataStream &os, const SamplingProfiler::Profile &p)
 {
-    os << p.src << quint32(p.target) << p.sigma << quint32(p.samplingInterval);
+    os << p.src << quint32(p.target);
     os << p.uniform << p.value1 << p.value2;
-    os << p.gradient << p.accuracy;
+    os << p.rho_weighted << p.rho_unweighted << p.rho_target_only;
     return os;
 }
 
 QDataStream &operator>>(QDataStream &is, SamplingProfiler::Profile &p)
 {
-    quint32 target, samplingInterval;
-    is >> p.src >> target >> p.sigma >> samplingInterval;
+    quint32 target;
+    is >> p.src >> target;
     p.target = target;
-    p.samplingInterval = samplingInterval;
     is >> p.uniform >> p.value1 >> p.value2;
-    is >> p.gradient >> p.accuracy;
+    is >> p.rho_weighted >> p.rho_unweighted >> p.rho_target_only;
     return is;
 }
 
@@ -181,11 +167,7 @@ SamplingProfiler::Profile::Profile(WaveSource src, size_t target, Result r) :
     Result(r),
     src(src),
     target(target),
-    sigma(src.session->project.model().adjustableParams[target].sigma),
-    samplingInterval(1),
     uniform(src.session->project.model().adjustableParams.size()),
     value1(uniform.size()),
-    value2(uniform.size()),
-    gradient(src.stimulations().size()),
-    accuracy(gradient.size())
+    value2(uniform.size())
 {}
