@@ -112,7 +112,6 @@ void WavegenFitnessMapper::updateDimensions()
         pareto[i] = cb;
 
         QSpinBox *tol = new QSpinBox();
-        tol->setMinimum(1);
         tol->setSuffix(" bins");
         ui->dimensions->setCellWidget(i, 6, tol);
         tolerance[i] = tol;

@@ -246,171 +246,117 @@ void WavegenSelection::collapse()
     }
 }
 
-struct Anchor {
-    std::vector<size_t> idx;
-    scalar fitness;
-    bool dominates(const Anchor &rhs, std::vector<int> direction /* positive: larger preferred */) const
-    {
-        bool dom = false;
-        if ( fitness < rhs.fitness )
-            return false;
-        else if ( fitness > rhs.fitness )
-            dom |= true;
-        for ( size_t i = 0; i < idx.size(); i++ ) {
-            if ( direction[i] > 0 ) {
-                if ( idx[i] < rhs.idx[i] )
-                    return false;
-                else if ( idx[i] > rhs.idx[i] )
-                    dom |= true;
-            } else if ( direction[i] < 0 ) {
-                if ( idx[i] > rhs.idx[i] )
-                    return false;
-                else if ( idx[i] < rhs.idx[i] )
-                    dom |= true;
-            }
+int WavegenSelection::dominatesIntolerant(const MAPElite *lhs, const MAPElite *rhs) const
+{
+    int dir = 0;
+    if ( lhs->fitness > rhs->fitness )
+        dir = 1;
+    else if ( lhs->fitness < rhs->fitness )
+        dir = -1;
+    int dom = dir;
+    int strictDir = dir;
+    for ( size_t i = 0; i < ranges.size(); i++ ) {
+        if ( lhs->bin[i] > rhs->bin[i] )
+            dir = paretoMaximise[i] ? 1 : -1;
+        else if ( lhs->bin[i] < rhs->bin[i] )
+            dir = paretoMaximise[i] ? -1 : 1;
+        else
+            continue;
+        if ( dir ) {
+            if ( strictDir && dir != strictDir )
+                return 0;
+            strictDir = dir;
+            dom += dir;
         }
-        return dom;
     }
-};
+    return dom;
+}
+
+int WavegenSelection::dominatesTolerant(const MAPElite *lhs, const MAPElite *rhs) const
+{
+    int dir = 0;
+    bool tolerate = true;
+    if ( lhs->fitness > rhs->fitness ) {
+        dir = 1;
+        tolerate &= lhs->fitness <= rhs->fitness + paretoFitnessTol;
+    } else if ( lhs->fitness < rhs->fitness ) {
+        dir = -1;
+        tolerate &= lhs->fitness + paretoFitnessTol >= rhs->fitness;
+    }
+    int dom = dir;
+    int strictDir = dir;
+    for ( size_t i = 0; i < ranges.size(); i++ ) {
+        if ( lhs->bin[i] > rhs->bin[i] ) {
+            dir = paretoMaximise[i] ? 1 : -1;
+            tolerate &= lhs->bin[i] <= rhs->bin[i] + paretoTolerance[i]*(paretoMaximise[i] ? 1 : -1);
+        } else if ( lhs->bin[i] < rhs->bin[i] ) {
+            dir = paretoMaximise[i] ? -1 : 1;
+            tolerate &= lhs->bin[i] + paretoTolerance[i]*(paretoMaximise[i] ? 1 : -1) >= rhs->bin[i];
+        } else {
+            continue;
+        }
+        if ( dir ) {
+            if ( strictDir && dir != strictDir )
+                return 0;
+            strictDir = dir;
+            dom += dir;
+        }
+    }
+    return tolerate ? dir : 2*dom;
+}
 
 void WavegenSelection::select_pareto()
 {
-    const size_t dimensions = ranges.size();
-    std::vector<size_t> start(dimensions), end(dimensions);
-    std::vector<int> step(dimensions), direction(dimensions);
-    std::vector<size_t> probeDims;
-    for ( size_t i = 0; i < dimensions; i++ ) {
-        const Range &r = ranges[i];
-        if ( r.collapse || r.max == r.min ) {
-            direction[i] = 0;
-            start[i] = 0;
-        } else if ( paretoMaximise[i] ) {
-            direction[i] = 1;
-            step[i] = -1;
-            start[i] = width(i);
-            end[i] = size_t(0) - 1;
-            probeDims.push_back(i);
-        } else {
-            direction[i] = -1;
-            start[i] = 0;
-            end[i] = width(i) + 1;
-            step[i] = 1;
-            probeDims.push_back(i);
-        }
-    }
-    std::vector<Anchor> anchors;
-    Anchor probe = {start, 0};
-    probe.idx[probeDims.front()] -= step[probeDims.front()]; // Initial position just before start
-    scalar latestFitness = 0;
-    while ( probe.idx != end ) {
-        bool found = false, done = false;
-        while ( !found && !done ) {
-            for ( size_t i : probeDims ) {
-                probe.idx[i] += step[i];
-                if ( probe.idx[i] == end[i] ) {
-                    if ( i == probeDims.back() ) {
-                        done = true;
-                        break;
-                    }
-                    probe.idx[i] = start[i];
-                    latestFitness = 0;
-                } else {
-                    const MAPElite *el = data_relative(probe.idx, &found);
-                    if ( found && el->fitness > latestFitness )
-                        probe.fitness = el->fitness;
-                    else
-                        found = false;
-                    break;
-                }
-            }
-        }
-        if ( done )
-            break;
+    bool tolerant = paretoFitnessTol > 0;
+    for ( size_t tol : paretoTolerance )
+        tolerant &= tol>0;
+    auto dominates = tolerant ? &WavegenSelection::dominatesTolerant : &WavegenSelection::dominatesIntolerant;
 
-        bool dom = false;
-        for ( const Anchor &anchor : anchors ) {
-            if ( anchor.dominates(probe, direction) ) {
-                dom = true;
+    std::vector<const MAPElite*> front;
+    std::vector<std::vector<const MAPElite*>> flocks;
+    for ( const MAPElite *el : selection ) {
+        if ( !el )
+            continue;
+        bool dominated = false;
+        std::vector<const MAPElite*> myFlock;
+        auto flockIt = flocks.begin();
+        for ( auto it = front.begin(); it != front.end(); ++it, ++flockIt ) {
+            int dom = (this->*dominates)(el, *it);
+            if ( dom > 0 ) { // el dominates it => remove it from front
+                if ( tolerant ) {
+                    for ( const MAPElite *sheep : *flockIt ) // Add any tolerable sheep to flock
+                        if ( (this->*dominates)(el, sheep) == 1 )
+                            myFlock.push_back(sheep);
+                    if ( dom == 1 )
+                        myFlock.push_back(*it);
+                    flockIt = flocks.erase(flockIt) - 1;
+                }
+                it = front.erase(it) - 1;
+            } else if ( dom < 0 ) {
+                if ( tolerant && dom == -1 )
+                    flockIt->push_back(el);
+                dominated = true; // it dominates el => cancel search, don't add el
                 break;
             }
         }
-        if ( !dom )
-            anchors.push_back(probe);
-    }
-
-    // Include the anchors
-    std::vector<const MAPElite*> redux(selection.size(), nullptr);
-    nFinal = anchors.size();
-    for ( const Anchor &anchor : anchors ) {
-        size_t index = index_relative(anchor.idx);
-        redux[index] = selection[index];
-    }
-
-    // Precalculate offsets
-    std::vector<int> offset_indices;
-    size_t start_index = index_relative(start);
-    std::vector<size_t> offset(dimensions, 0);
-    size_t nOffsetIndices = 1, n = 0;
-    for ( size_t i : probeDims )
-        nOffsetIndices *= paretoTolerance[i];
-    while ( ++n < nOffsetIndices ) {
-        for ( size_t i : probeDims ) {
-            if ( ++offset[i] == paretoTolerance[i] ) {
-                offset[i] = 0;
-            } else {
-                break;
-            }
-        }
-        for ( size_t i : probeDims )
-            probe.idx[i] = start[i] + step[i]*offset[i];
-        offset_indices.push_back(start_index - index_relative(probe.idx));
-    }
-
-    // Include non-pareto-optimal points that are near enough to anchors, as defined by depth
-    if ( nOffsetIndices > 1 ) {
-        for ( const Anchor &anchor : anchors ) {
-            size_t nBoundedIndices = 1;
-            std::vector<size_t> trueDepth(probeDims.size());
-            for ( size_t i : probeDims ) {
-                size_t availableDepth = step[i] * ((int)end[i] - (int)anchor.idx[i]);
-                trueDepth[i] = std::min(availableDepth, paretoTolerance[i]);
-                nBoundedIndices *= trueDepth[i];
-            }
-
-            scalar shiftedFitness = anchor.fitness - paretoFitnessTol;
-            if ( nBoundedIndices < nOffsetIndices ) {
-                offset.assign(dimensions, 0);
-                n = 0;
-                while ( ++n < nBoundedIndices ) {
-                    for ( size_t i : probeDims ) {
-                        if ( ++offset[i] == trueDepth[i] ) {
-                            offset[i] = 0;
-                        } else {
-                            break;
-                        }
-                    }
-                    for ( size_t i : probeDims )
-                        probe.idx[i] = anchor.idx[i] + step[i]*offset[i];
-                    size_t index = index_relative(probe.idx);
-                    if ( !redux[index] && selection[index] && selection[index]->fitness >= shiftedFitness ) {
-                        redux[index] = selection[index];
-                        ++nFinal;
-                    }
-                }
-            } else {
-                size_t index = index_relative(anchor.idx);
-                for ( int off : offset_indices ) {
-                    if ( !redux[index-off] && selection[index-off] && selection[index-off]->fitness >= shiftedFitness ) {
-                        redux[index - off] = selection[index-off];
-                        ++nFinal;
-                    }
-                }
-            }
+        if ( !dominated ) {
+            front.push_back(el);
+            if ( tolerant )
+                flocks.push_back(myFlock);
         }
     }
 
-    using std::swap;
-    swap(redux, selection);
+    selection.assign(selection.size(), nullptr);
+    nFinal = front.size();
+    for ( const MAPElite *f : front )
+        selection[index_absolute(f->bin)] = f;
+    if ( tolerant ) {
+        for ( const std::vector<const MAPElite*> &flock : flocks ) {
+            for ( const MAPElite *f : flock )
+                selection[index_absolute(f->bin)] = f;
+            nFinal += flock.size();
+        }
+    }
 }
 
 void WavegenSelection::finalise()

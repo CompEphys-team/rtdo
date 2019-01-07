@@ -88,6 +88,9 @@ protected:
     size_t index_relative(const std::vector<size_t> &idx, bool *ok = nullptr) const;
     size_t index_absolute(std::vector<size_t> idx, bool *ok = nullptr) const;
 
+    int dominatesTolerant(const MAPElite *lhs, const MAPElite *rhs) const;
+    int dominatesIntolerant(const MAPElite *lhs, const MAPElite *rhs) const;
+
     void select_uncollapsed();
     void collapse();
     void select_pareto();
