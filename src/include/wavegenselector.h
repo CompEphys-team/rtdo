@@ -85,7 +85,8 @@ public:
     double getFitnessSizeLimit(size_t n);
 
 protected:
-    size_t index_relative(std::vector<size_t> idx, bool *ok = nullptr) const;
+    size_t index_relative(const std::vector<size_t> &idx, bool *ok = nullptr) const;
+    size_t index_absolute(std::vector<size_t> idx, bool *ok = nullptr) const;
 
     void select_uncollapsed();
     void collapse();

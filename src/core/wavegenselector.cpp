@@ -44,7 +44,7 @@ double WavegenSelection::rmax(size_t i) const
     return dim.bin_inverse(ranges.at(i).max, dim.multiplier(archive().precision));
 }
 
-size_t WavegenSelection::index_relative(std::vector<size_t> idx, bool *ok) const
+size_t WavegenSelection::index_relative(const std::vector<size_t> &idx, bool *ok) const
 {
     size_t index = 0, multiplier = 1;
     for ( int i = ranges.size()-1; i >= 0; i-- ) {
@@ -58,6 +58,25 @@ size_t WavegenSelection::index_relative(std::vector<size_t> idx, bool *ok) const
         }
     }
     return index;
+}
+
+size_t WavegenSelection::index_absolute(std::vector<size_t> idx, bool *ok) const
+{
+    for ( size_t i = 0; i < ranges.size(); i++ ) {
+        if ( ranges[i].collapse ) {
+            // ignore collapsed dimension
+            idx[i] = 0;
+        } else if ( idx[i] < ranges[i].min || idx[i] > ranges[i].max ) {
+            // idx out of selected range, fail
+            if ( ok )
+                *ok = false;
+            return 0;
+        } else {
+            // Offset index to range-relative
+            idx[i] -= ranges[i].min;
+        }
+    }
+    return index_relative(idx);
 }
 
 const MAPElite* WavegenSelection::data_relative(std::vector<size_t> idx, bool *ok) const
@@ -90,21 +109,16 @@ const MAPElite* WavegenSelection::data_relative(std::vector<double> idx, bool *o
 
 const MAPElite* WavegenSelection::data_absolute(std::vector<size_t> idx, bool *ok) const
 {
-    for ( size_t i = 0; i < ranges.size(); i++ ) {
-        if ( ranges[i].collapse ) {
-            // ignore collapsed dimension
-            idx[i] = 0;
-        } else if ( idx[i] < ranges[i].min || idx[i] > ranges[i].max ) {
-            // idx out of selected range, fail
-            if ( ok )
-                *ok = false;
-            return nullptr;
-        } else {
-            // Offset index to range-relative
-            idx[i] -= ranges[i].min;
-        }
+    bool idx_ok = true;
+    size_t index = index_absolute(idx, &idx_ok);
+    if ( !idx_ok ) {
+        if ( ok ) *ok = false;
+        return nullptr;
     }
-    return data_relative(idx, ok);
+    auto ret = selection.at(index);
+    if ( ok )
+        *ok = (ret != nullptr);
+    return ret;
 }
 
 const MAPElite* WavegenSelection::data_absolute(std::vector<double> idx, bool *ok) const
