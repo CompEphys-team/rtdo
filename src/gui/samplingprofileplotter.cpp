@@ -307,18 +307,24 @@ void SamplingProfilePlotter::on_pdf_clicked()
     ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), ui->profile->currentText());
 }
 
-int dominates(const std::vector<double> &lhs, const std::vector<double> &rhs, const std::vector<int> &direction) {
-    int dom = 0, n = lhs.size();
-    for ( int i = 0; i < n; i++ ) {
+int dominates(const std::vector<double> &lhs, const std::vector<double> &rhs, const std::vector<int> &direction)
+{
+    int dir = 0, strictDir = 0, dom = 0;
+    for ( size_t i = 0; i < lhs.size(); i++ ) {
         if ( lhs[i] > rhs[i] )
-            dom += direction[i];
+            dir = direction[i];
         else if ( lhs[i] < rhs[i] )
-            dom -= direction[i];
+            dir = -direction[i];
+        else
+            continue;
+        if ( dir ) {
+            if ( strictDir && dir != strictDir )
+                return 0;
+            strictDir = dir;
+            dom += dir;
+        }
     }
-    if ( dom > -n && dom < n )
-        return 0;
-    else
-        return dom;
+    return dom;
 }
 
 void SamplingProfilePlotter::on_pareto_clicked()
