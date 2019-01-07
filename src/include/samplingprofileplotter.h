@@ -12,16 +12,6 @@ class SamplingProfilePlotter : public QWidget
 {
     Q_OBJECT
 
-    struct ScoreStruct {
-        double minF = __DBL_MAX__, maxF = 0, weightF;
-        double minG = __DBL_MAX__, maxG = 0, weightG;
-        double minA = __DBL_MAX__, maxA = 0, weightA;
-        double sminF = __DBL_MAX__, smaxF = 0, sweightF;
-        double sminG = __DBL_MAX__, smaxG = 0, sweightG;
-        double sminA = __DBL_MAX__, smaxA = 0, sweightA;
-        double norm, snorm;
-    };
-
 public:
     explicit SamplingProfilePlotter(Session &s, QWidget *parent = 0);
     ~SamplingProfilePlotter();
@@ -30,11 +20,7 @@ protected:
     double value(int i, int dimension,
                  const SamplingProfiler::Profile &prof,
                  const std::vector<MAPElite> &elites,
-                 const std::vector<MAPEDimension> &dim,
-                 const ScoreStruct &sstr);
-    ScoreStruct getScoreStruct(const SamplingProfiler::Profile &prof,
-                               const std::vector<MAPElite> &elites,
-                               bool scoreF, bool scoreG, bool scoreA);
+                 const std::vector<MAPEDimension> &dim);
 
 protected slots:
     void updateTable();
@@ -51,7 +37,7 @@ private:
     Ui::SamplingProfilePlotter *ui;
     Session &session;
 
-    static constexpr int nFixedColumns = 10;
+    static constexpr int nFixedColumns = 8;
 
     bool updating;
 

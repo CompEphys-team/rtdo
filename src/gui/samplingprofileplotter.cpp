@@ -14,12 +14,6 @@ SamplingProfilePlotter::SamplingProfilePlotter(Session &s, QWidget *parent) :
     connect(ui->profile, SIGNAL(currentIndexChanged(int)), this, SLOT(setProfile(int)));
     connect(ui->x, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
     connect(ui->y, SIGNAL(currentIndexChanged(int)), this, SLOT(replot()));
-    connect(ui->fitness, SIGNAL(toggled(bool)), this, SLOT(replot()));
-    connect(ui->gradient, SIGNAL(toggled(bool)), this, SLOT(replot()));
-    connect(ui->accuracy, SIGNAL(toggled(bool)), this, SLOT(replot()));
-    connect(ui->fitness, SIGNAL(toggled(bool)), this, SLOT(updateTable()));
-    connect(ui->gradient, SIGNAL(toggled(bool)), this, SLOT(updateTable()));
-    connect(ui->accuracy, SIGNAL(toggled(bool)), this, SLOT(updateTable()));
 
     connect(ui->hideUnselected, SIGNAL(clicked(bool)), this, SLOT(hideUnselected()));
     connect(ui->showAll, SIGNAL(clicked(bool)), this, SLOT(showAll()));
@@ -120,8 +114,7 @@ double SamplingProfilePlotter::value(int i,
                                      int dimension,
                                      const SamplingProfiler::Profile &prof,
                                      const std::vector<MAPElite> &elites,
-                                     const std::vector<MAPEDimension> &dim,
-                                     const ScoreStruct &sstr)
+                                     const std::vector<MAPEDimension> &dim)
 {
     if ( dimension == 0 )
         return i;
@@ -139,56 +132,10 @@ double SamplingProfilePlotter::value(int i,
         return prof.grad_target_only[i];
     else if ( dimension == 7 )
         return elites.at(i).fitness;
-    else if ( dimension == 8 )
-        return 0;
-//        return ( (sstr.weightF * (elites.at(i).fitness-sstr.minF))
-//               + (sstr.weightG * (prof.gradient[i]-sstr.minG))
-//               + (sstr.weightA * (prof.accuracy[i]-sstr.minA))
-//               ) / sstr.norm;
-    else if ( dimension == 9 )
-        return 0;
-//        return ( (sstr.sweightF * (elites.at(i).fitness-sstr.sminF))
-//               + (sstr.sweightG * (prof.gradient[i]-sstr.sminG))
-//               + (sstr.sweightA * (prof.accuracy[i]-sstr.sminA))
-//               ) / sstr.snorm;
     else
         return dim.at(dimension-nFixedColumns).bin_inverse(
                 elites.at(i).bin[dimension-nFixedColumns],
                 Wavegen::mape_multiplier(prof.src.archive()->precision));
-}
-
-SamplingProfilePlotter::ScoreStruct SamplingProfilePlotter::getScoreStruct(
-        const SamplingProfiler::Profile &prof,
-        const std::vector<MAPElite> &elites,
-        bool scoreF, bool scoreG, bool scoreA)
-{
-    ScoreStruct ret;
-//    for ( size_t i = 0; i < points.size(); i++ ) {
-//        if ( elites.at(points[i].idx).fitness < ret.minF )  ret.minF = elites.at(points[i].idx).fitness;
-//        if ( elites.at(points[i].idx).fitness > ret.maxF )  ret.maxF = elites.at(points[i].idx).fitness;
-//        if ( prof.accuracy[points[i].idx] < ret.minA )      ret.minA = prof.accuracy[points[i].idx];
-//        if ( prof.accuracy[points[i].idx] > ret.maxA )      ret.maxA = prof.accuracy[points[i].idx];
-//        if ( prof.gradient[points[i].idx] < ret.minG )      ret.minG = prof.gradient[points[i].idx];
-//        if ( prof.gradient[points[i].idx] > ret.maxG )      ret.maxG = prof.gradient[points[i].idx];
-//        if ( points[i].hidden )
-//            continue;
-//        if ( elites.at(points[i].idx).fitness < ret.sminF )  ret.sminF = elites.at(points[i].idx).fitness;
-//        if ( elites.at(points[i].idx).fitness > ret.smaxF )  ret.smaxF = elites.at(points[i].idx).fitness;
-//        if ( prof.accuracy[points[i].idx] < ret.sminA )      ret.sminA = prof.accuracy[points[i].idx];
-//        if ( prof.accuracy[points[i].idx] > ret.smaxA )      ret.smaxA = prof.accuracy[points[i].idx];
-//        if ( prof.gradient[points[i].idx] < ret.sminG )      ret.sminG = prof.gradient[points[i].idx];
-//        if ( prof.gradient[points[i].idx] > ret.smaxG )      ret.smaxG = prof.gradient[points[i].idx];
-//    }
-//    // score = sum(weight * (value-min)/(max-min)) / sum(weights) | weight = (max-min)/(max+min)
-//    ret.weightF = scoreF/(ret.maxF+ret.minF);
-//    ret.weightG = scoreG/(ret.maxG+ret.minG);
-//    ret.weightA = scoreA/(ret.maxA+ret.minA);
-//    ret.norm = (ret.maxF-ret.minF)*ret.weightF + (ret.maxG-ret.minG)*ret.weightG + (ret.maxA-ret.minA)*ret.weightA;
-//    ret.sweightF = scoreF/(ret.smaxF+ret.sminF);
-//    ret.sweightG = scoreG/(ret.smaxG+ret.sminG);
-//    ret.sweightA = scoreA/(ret.smaxA+ret.sminA);
-//    ret.snorm = (ret.smaxF-ret.sminF)*ret.sweightF + (ret.smaxG-ret.sminG)*ret.sweightG + (ret.smaxA-ret.sminA)*ret.sweightA;
-    return ret;
 }
 
 void SamplingProfilePlotter::replot(bool discardSelection, bool showAll)
@@ -204,14 +151,13 @@ void SamplingProfilePlotter::replot(bool discardSelection, bool showAll)
     std::vector<MAPEDimension> dim;
     if ( prof.src.archive() )
         dim = prof.src.archive()->searchd(session).mapeDimensions;
-    ScoreStruct sstr = getScoreStruct(prof, elites, ui->fitness->isChecked(), ui->gradient->isChecked(), ui->accuracy->isChecked());
 
     // Populate data points
     std::vector<size_t> shownPoints;
     shownPoints.reserve(points.size());
     for ( size_t i = 0; i < points.size(); i++ ) {
-        points[i].key = value(points[i].idx, ui->x->currentIndex(), prof, elites, dim, sstr);
-        points[i].value = value(points[i].idx, ui->y->currentIndex(), prof, elites, dim, sstr);
+        points[i].key = value(points[i].idx, ui->x->currentIndex(), prof, elites, dim);
+        points[i].value = value(points[i].idx, ui->y->currentIndex(), prof, elites, dim);
         points[i].selected = false;
         if ( !points[i].hidden )
             shownPoints.push_back(i);
@@ -315,7 +261,6 @@ void SamplingProfilePlotter::updateTable()
     std::vector<MAPEDimension> dim;
     if ( prof.src.archive() )
         dim = prof.src.archive()->searchd(session).mapeDimensions;
-    ScoreStruct sstr = getScoreStruct(prof, elites, ui->fitness->isChecked(), ui->gradient->isChecked(), ui->accuracy->isChecked());
 
     // Update table contents
     ui->table->setSortingEnabled(false);
@@ -326,7 +271,7 @@ void SamplingProfilePlotter::updateTable()
         for ( size_t j = 0; j < dim.size() + nFixedColumns; j++ ) {
             QTableWidgetItem *item = new QTableWidgetItem();
             item->setFlags(Qt::ItemIsEnabled);
-            item->setData(Qt::DisplayRole, value(points[i].idx, j, prof, elites, dim, sstr));
+            item->setData(Qt::DisplayRole, value(points[i].idx, j, prof, elites, dim));
             ui->table->setItem(row, j, item);
         }
         ++row;
