@@ -92,8 +92,10 @@ public:
         void(*pullOutput)(void);
         scalar **output;
 
-        void (*profile)(int nSamples, const std::vector<AdjustableParam> &params, size_t targetParam, std::vector<scalar> deviations,
-                        double &rho_weighted, double &rho_unweighted, double &rho_target_only);
+        void (*profile)(int nSamples, const std::vector<AdjustableParam> &params, size_t targetParam, std::vector<scalar> weight,
+                        double &rho_weighted, double &rho_unweighted, double &rho_target_only,
+                        double &grad_weighted, double &grad_unweighted, double &grad_target_only,
+                        std::vector<double> &invariants);
 
         void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
                         std::vector<double> deltabar, bool pull);
@@ -178,9 +180,17 @@ public:
 
     /// post-run() workhorse for SamplingProfiler
     /// Expects assignments TIMESERIES_COMPARE_NONE | TIMESERIES_COMPACT
-    inline void profile(int nSamples, size_t targetParam, std::vector<scalar> deviations,
-                        double &rho_weighted, double &rho_unweighted, double &rho_target_only) {
-        pointers.profile(nSamples, adjustableParams, targetParam, deviations, rho_weighted, rho_unweighted, rho_target_only);
+    /// @a invariants should be an empty array when a new parameter set is presented. It will be populated with intermediate values
+    /// related to unweighted and target-only distance measures, which can be reused on subsequent calls for the same parameter set
+    /// for a reduction in computational load.
+    inline void profile(int nSamples, size_t targetParam, std::vector<scalar> weight,
+                        double &rho_weighted, double &rho_unweighted, double &rho_target_only,
+                        double &grad_weighted, double &grad_unweighted, double &grad_target_only,
+                        std::vector<double> &invariants) {
+        pointers.profile(nSamples, adjustableParams, targetParam, weight,
+                         rho_weighted, rho_unweighted, rho_target_only,
+                         grad_weighted, grad_unweighted, grad_target_only,
+                         invariants);
     }
 
     /// post-run() workhorse for cluster-based wavegen

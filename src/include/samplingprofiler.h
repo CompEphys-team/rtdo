@@ -26,6 +26,11 @@ public:
         QVector<double> rho_weighted;       //!< Output: Pearson's correlation coefficient between error and deviation-weighted param space distance
         QVector<double> rho_unweighted;     //!< Output: Correlation between error and euclidean param space distance
         QVector<double> rho_target_only;    //!< Output: Correlation between error and target parameter distance
+
+        // Corresponding gradients (mean err / mean distance)
+        QVector<double> grad_weighted;
+        QVector<double> grad_unweighted;
+        QVector<double> grad_target_only;
     };
 
     const inline std::vector<Profile> &profiles() const { return m_profiles; }

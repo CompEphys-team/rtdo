@@ -163,7 +163,8 @@ __global__ void collect_dist_and_err(int nSamples, scalar **params, int targetPa
                                      scalar *error, /* RMS current error between tuned probe and reference */
                                      scalar *distance_unweighted, /* euclidean param-space distance between tuned probe and reference */
                                      scalar *distance_target_only, /* distance along the target param axis only */
-                                     scalar *distance_weighted ) /* euclidean distance, with each axis scaled by @a weight */
+                                     scalar *distance_weighted, /* euclidean distance, with each axis scaled by @a weight */
+                                     bool get_invariants)
 {
     unsigned int xThread = blockIdx.x * blockDim.x + threadIdx.x; // probe
     unsigned int yThread = blockIdx.y * blockDim.y + threadIdx.y; // reference
@@ -198,28 +199,40 @@ __global__ void collect_dist_and_err(int nSamples, scalar **params, int targetPa
         }
         error[idx] = err;
         distance_weighted[idx] = std::sqrt(dist);
-        distance_target_only[idx] = std::fabs(params[targetParam][x] - params[targetParam][y]);
-        distance_unweighted[idx] = std::sqrt(noweight_dist);
+        if ( get_invariants ) {
+            distance_target_only[idx] = std::fabs(params[targetParam][x] - params[targetParam][y]);
+            distance_unweighted[idx] = std::sqrt(noweight_dist);
+        } else {
+            distance_target_only[idx] = err * std::fabs(params[targetParam][x] - params[targetParam][y]);
+            distance_unweighted[idx] = err * std::sqrt(noweight_dist);
+        }
     }
 }
 
-extern "C" void profile(int nSamples, const std::vector<AdjustableParam> &params, size_t targetParam, std::vector<scalar> deviations,
-                        double &rho_weighted, double &rho_unweighted, double &rho_target_only)
+extern "C" void profile(int nSamples, const std::vector<AdjustableParam> &params, size_t targetParam, std::vector<scalar> weight,
+                        double &rho_weighted, double &rho_unweighted, double &rho_target_only,
+                        double &grad_weighted, double &grad_unweighted, double &grad_target_only,
+                        std::vector<double> &invariants)
 {
     scalar *d_params[NPARAMS];
-    Parameters weight;
+    Parameters weightP;
     for ( size_t i = 0; i < NPARAMS; i++ ) {
         d_params[i] = params[i].d_v;
-        weight[i] = deviations[i];
+        weightP[i] = weight[i];
     }
     scalar **dd_params;
     CHECK_CUDA_ERRORS(cudaMalloc((void ***)&dd_params,NPARAMS*sizeof(scalar*)));
     CHECK_CUDA_ERRORS(cudaMemcpy(dd_params,d_params,NPARAMS*sizeof(scalar*),cudaMemcpyHostToDevice));
 
+    bool get_invariants = invariants.empty();
+    if ( get_invariants )
+        invariants.resize(4);
+
     dim3 block(32, 16);
     dim3 grid(NMODELS/32, NMODELS/32);
-    collect_dist_and_err<<<grid, block>>>(nSamples, dd_params, targetParam, weight,
-                                          d_prof_error, d_prof_dist_uw, d_prof_dist_to, d_prof_dist_w);
+    collect_dist_and_err<<<grid, block>>>(nSamples, dd_params, targetParam, weightP,
+                                          d_prof_error, d_prof_dist_uw, d_prof_dist_to, d_prof_dist_w,
+                                          get_invariants);
 
     thrust::device_ptr<scalar> dist_w = thrust::device_pointer_cast(d_prof_dist_w);
     thrust::device_ptr<scalar> error = thrust::device_pointer_cast(d_prof_error);
@@ -233,20 +246,43 @@ extern "C" void profile(int nSamples, const std::vector<AdjustableParam> &params
     double dist_sd = std::sqrt((sum_sq_dist + (sum_dist * sum_dist / profSz)) / (profSz-1));
     double err_sd = std::sqrt((sum_sq_err + (sum_err * sum_err / profSz)) / (profSz-1));
     rho_weighted = (sum_dist_err - sum_dist * sum_err / profSz) / ((profSz-1) * dist_sd * err_sd);
+    grad_weighted = sum_err / sum_dist;
 
+    double sum_sq_dist_uw, sum_dist_uw_err, sum_dist_uw, dist_uw_sd;
     thrust::device_ptr<scalar> dist_uw = thrust::device_pointer_cast(d_prof_dist_uw);
-    double sum_sq_dist_uw = thrust::inner_product(dist_uw, dist_uw + profSz, dist_uw, scalar(0));
-    double sum_dist_uw_err = thrust::inner_product(dist_uw, dist_uw + profSz, error, scalar(0));
-    double sum_dist_uw = thrust::reduce(dist_uw, dist_uw + profSz);
-    double dist_uw_sd = std::sqrt((sum_sq_dist_uw + (sum_dist_uw * sum_dist_uw / profSz)) / (profSz-1));
-    rho_unweighted = (sum_dist_uw_err - sum_dist_uw * sum_err / profSz) / ((profSz-1) * dist_uw_sd * err_sd);
+    if ( get_invariants ) {
+        sum_sq_dist_uw = thrust::inner_product(dist_uw, dist_uw + profSz, dist_uw, scalar(0));
+        sum_dist_uw_err = thrust::inner_product(dist_uw, dist_uw + profSz, error, scalar(0));
+        sum_dist_uw = thrust::reduce(dist_uw, dist_uw + profSz);
+        dist_uw_sd = std::sqrt((sum_sq_dist_uw + (sum_dist_uw * sum_dist_uw / profSz)) / (profSz-1));
 
+        invariants[0] = sum_dist_uw;
+        invariants[1] = dist_uw_sd;
+    } else {
+        sum_dist_uw_err = thrust::reduce(dist_uw, dist_uw + profSz); // Note dist_uw[i] = err*dist_uw in kernel
+        sum_dist_uw = invariants[0];
+        dist_uw_sd = invariants[1];
+    }
+    rho_unweighted = (sum_dist_uw_err - sum_dist_uw * sum_err / profSz) / ((profSz-1) * dist_uw_sd * err_sd);
+    grad_unweighted = sum_err / sum_dist_uw;
+
+    double sum_sq_dist_to, sum_dist_to_err, sum_dist_to, dist_to_sd;
     thrust::device_ptr<scalar> dist_to = thrust::device_pointer_cast(d_prof_dist_to);
-    double sum_sq_dist_to = thrust::inner_product(dist_to, dist_to + profSz, dist_to, scalar(0));
-    double sum_dist_to_err = thrust::inner_product(dist_to, dist_to + profSz, error, scalar(0));
-    double sum_dist_to = thrust::reduce(dist_to, dist_to + profSz);
-    double dist_to_sd = std::sqrt((sum_sq_dist_to + (sum_dist_to * sum_dist_to / profSz)) / (profSz-1));
+    if ( get_invariants ) {
+        sum_sq_dist_to = thrust::inner_product(dist_to, dist_to + profSz, dist_to, scalar(0));
+        sum_dist_to_err = thrust::inner_product(dist_to, dist_to + profSz, error, scalar(0));
+        sum_dist_to = thrust::reduce(dist_to, dist_to + profSz);
+        dist_to_sd = std::sqrt((sum_sq_dist_to + (sum_dist_to * sum_dist_to / profSz)) / (profSz-1));
+
+        invariants[2] = sum_dist_to;
+        invariants[3] = dist_to_sd;
+    } else {
+        sum_dist_to_err = thrust::reduce(dist_to, dist_to + profSz);
+        sum_dist_to = invariants[2];
+        dist_to_sd = invariants[3];
+    }
     rho_target_only = (sum_dist_to_err - sum_dist_to * sum_err / profSz) / ((profSz-1) * dist_to_sd * err_sd);
+    grad_target_only = sum_err / sum_dist_to;
 
     CHECK_CUDA_ERRORS(cudaFree((void **)dd_params));
 }

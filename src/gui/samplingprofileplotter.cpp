@@ -132,14 +132,20 @@ double SamplingProfilePlotter::value(int i,
     else if ( dimension == 3 )
         return prof.rho_target_only[i];
     else if ( dimension == 4 )
-        return elites.at(i).fitness;
+        return prof.grad_weighted[i];
     else if ( dimension == 5 )
+        return prof.grad_unweighted[i];
+    else if ( dimension == 6 )
+        return prof.grad_target_only[i];
+    else if ( dimension == 7 )
+        return elites.at(i).fitness;
+    else if ( dimension == 8 )
         return 0;
 //        return ( (sstr.weightF * (elites.at(i).fitness-sstr.minF))
 //               + (sstr.weightG * (prof.gradient[i]-sstr.minG))
 //               + (sstr.weightA * (prof.accuracy[i]-sstr.minA))
 //               ) / sstr.norm;
-    else if ( dimension == 6 )
+    else if ( dimension == 9 )
         return 0;
 //        return ( (sstr.sweightF * (elites.at(i).fitness-sstr.sminF))
 //               + (sstr.sweightG * (prof.gradient[i]-sstr.sminG))

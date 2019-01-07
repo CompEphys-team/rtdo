@@ -98,6 +98,11 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     prof.rho_weighted.resize(elites.size());
     prof.rho_unweighted.resize(elites.size());
     prof.rho_target_only.resize(elites.size());
+    prof.grad_weighted.resize(elites.size());
+    prof.grad_unweighted.resize(elites.size());
+    prof.grad_target_only.resize(elites.size());
+
+    std::vector<double> invariants;
 
     // Run
     for ( size_t i = 0; i < elites.size(); i++ ) {
@@ -129,7 +134,9 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
 
         // Profile
         lib.profile(elites[i].obs.duration(), prof.target, elites[i].deviations,
-                    prof.rho_weighted[i], prof.rho_unweighted[i], prof.rho_target_only[i]);
+                    prof.rho_weighted[i], prof.rho_unweighted[i], prof.rho_target_only[i],
+                    prof.grad_weighted[i], prof.grad_unweighted[i], prof.grad_target_only[i],
+                    invariants);
         emit progress(i, elites.size());
     }
 
@@ -150,6 +157,7 @@ QDataStream &operator<<(QDataStream &os, const SamplingProfiler::Profile &p)
     os << p.src << quint32(p.target);
     os << p.uniform << p.value1 << p.value2;
     os << p.rho_weighted << p.rho_unweighted << p.rho_target_only;
+    os << p.grad_weighted << p.grad_unweighted << p.grad_target_only;
     return os;
 }
 
@@ -160,6 +168,7 @@ QDataStream &operator>>(QDataStream &is, SamplingProfiler::Profile &p)
     p.target = target;
     is >> p.uniform >> p.value1 >> p.value2;
     is >> p.rho_weighted >> p.rho_unweighted >> p.rho_target_only;
+    is >> p.grad_weighted >> p.grad_unweighted >> p.grad_target_only;
     return is;
 }
 

@@ -51,7 +51,7 @@ private:
     Ui::SamplingProfilePlotter *ui;
     Session &session;
 
-    static constexpr int nFixedColumns = 7;
+    static constexpr int nFixedColumns = 10;
 
     bool updating;
 

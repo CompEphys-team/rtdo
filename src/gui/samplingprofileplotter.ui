@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>685</width>
+    <width>843</width>
     <height>503</height>
    </rect>
   </property>
@@ -27,7 +27,7 @@
        <item row="0" column="1">
         <widget class="QComboBox" name="y">
          <property name="currentIndex">
-          <number>4</number>
+          <number>7</number>
          </property>
          <property name="sizeAdjustPolicy">
           <enum>QComboBox::AdjustToContents</enum>
@@ -39,17 +39,32 @@
          </item>
          <item>
           <property name="text">
-           <string>Weighted correlation coefficient</string>
+           <string>𝛒 weighted</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Unweighted correlation coefficient</string>
+           <string>𝛒 unweighted</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Target only correlation coefficient</string>
+           <string>𝛒 target only</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>𝛁 weighted</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>𝛁 unweighted</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>𝛁 target only</string>
           </property>
          </item>
          <item>
@@ -97,17 +112,32 @@
          </item>
          <item>
           <property name="text">
-           <string>Weighted correlation coefficient</string>
+           <string>𝛒 weighted</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Unweighted correlation coefficient</string>
+           <string>𝛒 unweighted</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Target only correlation coefficient</string>
+           <string>𝛒 target only</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>𝛁 weighted</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>𝛁 unweighted</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>𝛁 target only</string>
           </property>
          </item>
          <item>
@@ -187,7 +217,7 @@
           <bool>true</bool>
          </property>
          <attribute name="horizontalHeaderDefaultSectionSize">
-          <number>110</number>
+          <number>90</number>
          </attribute>
          <attribute name="verticalHeaderVisible">
           <bool>false</bool>
@@ -199,17 +229,32 @@
          </column>
          <column>
           <property name="text">
-           <string>Weighted corr.</string>
+           <string>𝛒 weighted</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>Unweighted corr.</string>
+           <string>𝛒 unweighted</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>Target only corr.</string>
+           <string>𝛒 target only</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>𝛁 weighted</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>𝛁 unweighted</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>𝛁 target only</string>
           </property>
          </column>
          <column>
