@@ -137,7 +137,7 @@
          </item>
         </widget>
        </item>
-       <item row="0" column="5">
+       <item row="0" column="6">
         <widget class="QPushButton" name="hideUnselected">
          <property name="text">
           <string>Hide unselected</string>
@@ -164,22 +164,32 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="6">
+       <item row="0" column="7">
         <widget class="QPushButton" name="showAll">
          <property name="text">
           <string>Show all</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="7">
+       <item row="0" column="8">
         <widget class="QPushButton" name="pdf">
          <property name="text">
           <string>PDF...</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="0" colspan="8">
+       <item row="1" column="0" colspan="9">
         <widget class="QCustomPlot" name="plot" native="true"/>
+       </item>
+       <item row="0" column="5">
+        <widget class="QPushButton" name="pareto">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Selects the pareto front along the dimensions checked in the table.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Select pareto front</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -240,6 +250,70 @@
          <column>
           <property name="text">
            <string>Fitness</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>Pareto front dimensions</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="0" column="0">
+        <widget class="QTableWidget" name="paretoDims">
+         <property name="selectionMode">
+          <enum>QAbstractItemView::NoSelection</enum>
+         </property>
+         <row>
+          <property name="text">
+           <string>𝛒 weighted</string>
+          </property>
+         </row>
+         <row>
+          <property name="text">
+           <string>𝛒 unweighted</string>
+          </property>
+         </row>
+         <row>
+          <property name="text">
+           <string>𝛒 target only</string>
+          </property>
+         </row>
+         <row>
+          <property name="text">
+           <string>𝛁 weighted</string>
+          </property>
+         </row>
+         <row>
+          <property name="text">
+           <string>𝛁 unweighted</string>
+          </property>
+         </row>
+         <row>
+          <property name="text">
+           <string>𝛁 target only</string>
+          </property>
+         </row>
+         <row>
+          <property name="text">
+           <string>Fitness</string>
+          </property>
+         </row>
+         <column>
+          <property name="text">
+           <string>Minimise</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Maximise</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Not included</string>
           </property>
          </column>
         </widget>

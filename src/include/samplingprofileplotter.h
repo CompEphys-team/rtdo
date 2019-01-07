@@ -2,6 +2,7 @@
 #define SAMPLINGPROFILEPLOTTER_H
 
 #include <QWidget>
+#include <QButtonGroup>
 #include "session.h"
 
 namespace Ui {
@@ -35,6 +36,8 @@ protected slots:
 private slots:
     void on_pdf_clicked();
 
+    void on_pareto_clicked();
+
 private:
     Ui::SamplingProfilePlotter *ui;
     Session &session;
@@ -50,6 +53,8 @@ private:
         bool hidden;
     };
     std::vector<DataPoint> points;
+
+    std::vector<QButtonGroup *> paretoGroups;
 };
 
 #endif // SAMPLINGPROFILEPLOTTER_H

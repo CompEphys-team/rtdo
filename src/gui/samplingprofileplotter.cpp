@@ -87,11 +87,14 @@ void SamplingProfilePlotter::setProfile(int idx)
     if ( prof.src.archive() ) {
         dim = prof.src.archive()->searchd(session).mapeDimensions;
         ui->table->setColumnCount(nFixedColumns + dim.size());
+        ui->paretoDims->setRowCount(nFixedColumns + dim.size() - 1);
+        paretoGroups.resize(nFixedColumns + dim.size() - 1, nullptr);
         for ( size_t j = 0; j < dim.size(); j++ ) {
             QString str = QString::fromStdString(toString(dim[j].func));
             ui->table->setHorizontalHeaderItem(nFixedColumns + j, new QTableWidgetItem(str));
             ui->x->addItem(str);
             ui->y->addItem(str);
+            ui->paretoDims->setVerticalHeaderItem(nFixedColumns + j - 1, new QTableWidgetItem(str));
         }
     }
     ui->x->setCurrentIndex(x);
@@ -105,6 +108,19 @@ void SamplingProfilePlotter::setProfile(int idx)
 
     // Update table
     updateTable();
+
+    // Update pareto dimensions
+    for ( size_t row = 0; row < paretoGroups.size(); row++ ) {
+        if ( !paretoGroups[row] ) {
+            paretoGroups[row] = new QButtonGroup(this);
+            for ( int col = 0; col < 3; col++ ) {
+                QRadioButton *btn = new QRadioButton();
+                btn->setChecked(col == 2);
+                ui->paretoDims->setCellWidget(row, col, btn);
+                paretoGroups[row]->addButton(btn, col);
+            }
+        }
+    }
 
     updating = false;
     replot(Selection::None);
@@ -289,4 +305,73 @@ void SamplingProfilePlotter::on_pdf_clicked()
     if ( !file.endsWith(".pdf") )
         file.append(".pdf");
     ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), ui->profile->currentText());
+}
+
+int dominates(const std::vector<double> &lhs, const std::vector<double> &rhs, const std::vector<int> &direction) {
+    int dom = 0, n = lhs.size();
+    for ( int i = 0; i < n; i++ ) {
+        if ( lhs[i] > rhs[i] )
+            dom += direction[i];
+        else if ( lhs[i] < rhs[i] )
+            dom -= direction[i];
+    }
+    if ( dom > -n && dom < n )
+        return 0;
+    else
+        return dom;
+}
+
+void SamplingProfilePlotter::on_pareto_clicked()
+{
+    std::vector<int> dims;
+    std::vector<int> direction;
+    for ( size_t i = 0; i < paretoGroups.size(); i++ ) {
+        if ( paretoGroups[i]->checkedId() == 2 )
+            continue;
+        dims.push_back(i+1); // +1 to compensate for lack of stimIdx in pareto table
+        direction.push_back(2*paretoGroups[i]->checkedId() - 1);
+    }
+
+    int nPoints = 0, nDims = dims.size();
+    for ( const DataPoint &p : points )
+        nPoints += !p.hidden;
+
+    const SamplingProfiler::Profile &prof = session.samplingProfiler().profiles().at(ui->profile->currentIndex());
+    std::vector<MAPElite> elites = prof.src.elites();
+    std::vector<MAPEDimension> mapedim;
+    if ( prof.src.archive() )
+        mapedim = prof.src.archive()->searchd(session).mapeDimensions;
+
+    std::vector<std::vector<double>> myPoints(nPoints, std::vector<double>(nDims));
+    std::vector<int> pointsIdx(nPoints);
+    int idx = 0;
+    for ( size_t i = 0; i < points.size(); i++ ) {
+        points[i].selected = false;
+        if ( points[i].hidden )
+            continue;
+        for ( int j = 0; j < nDims; j++ ) {
+            myPoints[idx][j] = value(points[i].idx, dims[j], prof, elites, mapedim);
+        }
+        pointsIdx[idx] = i;
+        ++idx;
+    }
+
+    for ( int idx = 0; idx < nPoints; idx++ ) {
+        bool dominated = false;
+        for ( int ref = 0; ref < idx; ref++ ) {
+            if ( !points[pointsIdx[ref]].selected )
+                continue;
+            int dom = dominates(myPoints[idx], myPoints[ref], direction);
+            if ( dom > 0 )
+                points[pointsIdx[ref]].selected = false; // idx dominates ref => deselect ref
+            else if ( dom < 0 ) {
+                dominated = true; // ref dominates idx => cancel search, don't select idx
+                break;
+            }
+        }
+        if ( !dominated )
+            points[pointsIdx[idx]].selected = true;
+    }
+
+    replot(Selection::Data);
 }
