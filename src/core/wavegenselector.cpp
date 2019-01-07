@@ -270,11 +270,17 @@ void WavegenSelection::select_pareto()
         if ( r.collapse || r.max == r.min ) {
             direction[i] = 0;
             start[i] = 0;
+        } else if ( paretoMaximise[i] ) {
+            direction[i] = 1;
+            step[i] = -1;
+            start[i] = width(i);
+            end[i] = size_t(0) - 1;
+            probeDims.push_back(i);
         } else {
-            direction[i] = paretoMaximise[i] ? 1 : -1;
-            start[i] = paretoMaximise[i] ? r.max : r.min;
-            end[i] = paretoMaximise[i] ? r.min-1 : r.max+1;
-            step[i] = paretoMaximise[i] ? -1 : 1;
+            direction[i] = -1;
+            start[i] = 0;
+            end[i] = width(i) + 1;
+            step[i] = 1;
             probeDims.push_back(i);
         }
     }
