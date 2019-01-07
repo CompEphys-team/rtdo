@@ -156,8 +156,9 @@ void WavegenFitnessMapper::updateDimensions()
     ui->dimensions->setVerticalHeaderLabels(labels);
 
     ui->minFitness->setValue(src.selection() ? src.selection()->minFitness : 0);
-    ui->paretoFront->setChecked(src.selection() ? !src.selection()->paretoFront : false);
+    ui->paretoFront->setChecked(src.selection() ? src.selection()->paretoFront : false);
     ui->fitnessTolerance->setValue(src.selection() ? src.selection()->paretoFitnessTol : 0);
+    ui->targetParam->setCurrentIndex((src.selection() && src.selection()->width(0)==1) ? src.selection()->ranges[0].min+1 : 0);
 
     int axis = ui->limitAxis->currentIndex();
     for ( int i = ui->limitAxis->count() - 1; i > 0; i-- )
