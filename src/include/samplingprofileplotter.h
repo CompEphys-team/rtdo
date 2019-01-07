@@ -22,11 +22,13 @@ protected:
                  const std::vector<MAPElite> &elites,
                  const std::vector<MAPEDimension> &dim);
 
+    enum class Selection {None, Plot, Data};
+
 protected slots:
     void updateTable();
     void updateProfiles();
     void setProfile(int);
-    void replot(bool discardSelection = false, bool showAll = false);
+    void replot(Selection sel = Selection::Plot, bool showAll = false);
     void hideUnselected();
     void showAll();
 

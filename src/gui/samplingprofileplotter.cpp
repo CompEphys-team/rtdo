@@ -107,7 +107,7 @@ void SamplingProfilePlotter::setProfile(int idx)
     updateTable();
 
     updating = false;
-    replot(true);
+    replot(Selection::None);
 }
 
 double SamplingProfilePlotter::value(int i,
@@ -138,7 +138,7 @@ double SamplingProfilePlotter::value(int i,
                 Wavegen::mape_multiplier(prof.src.archive()->precision));
 }
 
-void SamplingProfilePlotter::replot(bool discardSelection, bool showAll)
+void SamplingProfilePlotter::replot(Selection sel, bool showAll)
 {
     if ( updating || ui->profile->currentIndex() < 0 || ui->x->currentIndex() < 0 || ui->y->currentIndex() < 0 )
         return;
@@ -158,13 +158,14 @@ void SamplingProfilePlotter::replot(bool discardSelection, bool showAll)
     for ( size_t i = 0; i < points.size(); i++ ) {
         points[i].key = value(points[i].idx, ui->x->currentIndex(), prof, elites, dim);
         points[i].value = value(points[i].idx, ui->y->currentIndex(), prof, elites, dim);
-        points[i].selected = false;
+        if ( sel != Selection::Data )
+            points[i].selected = false;
         if ( !points[i].hidden )
             shownPoints.push_back(i);
     }
 
     // Maintain selection: Use currently plotted points to set "selected" flag on the new points
-    if ( !discardSelection )
+    if ( sel == Selection::Plot )
         for ( const QCPDataRange &r : ui->plot->graph()->selection().dataRanges() )
             for ( int i = r.begin(); i < r.end(); i++ )
                 points[shownPoints[i]].selected = true;
@@ -193,7 +194,7 @@ void SamplingProfilePlotter::replot(bool discardSelection, bool showAll)
     g->setData(keys, values, true);
 
     // Maintain selection: Use "selected" flag set above to reconstitute the equivalent selection in the new points
-    if ( !discardSelection ) {
+    if ( sel != Selection::None ) {
         QCPDataSelection selection;
         size_t i = 0;
         for ( DataPoint &p : points ) {
@@ -240,12 +241,12 @@ void SamplingProfilePlotter::hideUnselected()
     updateTable();
 
     // Replot, selecting nothing
-    replot(true);
+    replot(Selection::None);
 }
 
 void SamplingProfilePlotter::showAll()
 {
-    replot(false, true);
+    replot(Selection::Plot, true);
     updateTable();
 }
 
