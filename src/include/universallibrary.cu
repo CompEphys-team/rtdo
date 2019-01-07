@@ -28,7 +28,7 @@ static __constant__ size_t singular_targetOffset;
 
 // profiler memory space
 static scalar *d_prof_error, *d_prof_dist_uw, *d_prof_dist_to, *d_prof_dist_w;
-static constexpr unsigned int profSz = NMODELS * (NMODELS - 1); // No diagonal
+static constexpr unsigned int profSz = NMODELS * (NMODELS - 1) / 2; // No diagonal
 
 // elementary effects wg / clustering memory space
 static scalar *clusters = nullptr, *d_clusters = nullptr;
@@ -216,7 +216,7 @@ extern "C" void profile(int nSamples, const std::vector<AdjustableParam> &params
     CHECK_CUDA_ERRORS(cudaMalloc((void ***)&dd_params,NPARAMS*sizeof(scalar*)));
     CHECK_CUDA_ERRORS(cudaMemcpy(dd_params,d_params,NPARAMS*sizeof(scalar*),cudaMemcpyHostToDevice));
 
-    dim3 block(32, 32);
+    dim3 block(32, 16);
     dim3 grid(NMODELS/32, NMODELS/32);
     collect_dist_and_err<<<grid, block>>>(nSamples, dd_params, targetParam, weight,
                                           d_prof_error, d_prof_dist_uw, d_prof_dist_to, d_prof_dist_w);
