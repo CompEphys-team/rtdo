@@ -91,7 +91,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     double simtime = 0;
     qT = 0;
 
-    std::vector<Stimulation> astims = output.stimSource.stimulations();
+    astims = output.stimSource.stimulations();
 
     daq = new DAQFilter(session, session.getSettings());
 
@@ -107,14 +107,14 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
         }
     }
 
-    setup(astims);
+    setup();
 
     populate();
 
     simtime = fit();
 
     // Finalise ranking and select winning parameter set
-    simtime += finalise(astims);
+    simtime += finalise();
 
     double wallclockms = wallclock.msecsTo(QTime::currentTime());
     std::cout << "ms elapsed: " << wallclockms << std::endl;
@@ -135,7 +135,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     return true;
 }
 
-void GAFitter::setup(const std::vector<Stimulation> &astims)
+void GAFitter::setup()
 {
     int nParams = lib.adjustableParams.size();
 
@@ -146,67 +146,74 @@ void GAFitter::setup(const std::vector<Stimulation> &astims)
 
     bias.assign(nParams, 0);
 
-    stims.resize(nParams);
-    obsTimes.assign(nParams, {});
-    errNorm.assign(nParams, 0);
-
     epoch = targetParam = 0;
     targetParam = findNextStim();
+
+    stims.resize(nParams);
+    obs.resize(nParams);
+    baseF.resize(nParams);
+
+    QString obsSource = QString::fromStdString(settings.obsSource);
+    if ( obsSource == Wavegen::cluster_action || obsSource == Wavegen::bubble_action ) {
+        auto elites = session.wavegen().findObservations(output.stimSource.iStimulations(session.runData().dt), obsSource);
+        std::vector<Stimulation> astims_ordered(nParams);
+        for ( int paramIdx = 0; paramIdx < nParams; paramIdx++ ) {
+            scalar bestFitness = 0;
+            size_t bestStimIdx = 0;
+            for ( size_t stimIdx = 0; stimIdx < elites[paramIdx].size(); stimIdx++ ) {
+                const MAPElite &el = elites[paramIdx][stimIdx];
+                if ( el.fitness > bestFitness ) {
+                    bestFitness = el.fitness;
+                    bestStimIdx = stimIdx;
+                }
+            }
+            stims[paramIdx] = *elites[paramIdx][bestStimIdx].wave;
+            obs[paramIdx] = elites[paramIdx][bestStimIdx].obs;
+            baseF[paramIdx].resize(nParams);
+            for ( int i = 0; i < nParams; i++ )
+                baseF[paramIdx][i] = elites[paramIdx][bestStimIdx].deviations[i];
+            astims_ordered[paramIdx] = astims[bestStimIdx];
+        }
+        using std::swap;
+        swap(astims, astims_ordered);
+    } else {
+        int paramIdx = 0;
+        for ( const MAPElite &el : output.stimSource.elites() ) {
+            stims[paramIdx] = *el.wave;
+            obs[paramIdx] = el.obs;
+
+            double sumDev = 0;
+            for ( const scalar &dev : el.deviations )
+                sumDev += dev;
+            if ( sumDev == 0 ) {
+                // TODO (manual stims)
+                throw std::runtime_error("Wavegen::evaluatePremade() not yet implemented");
+            } else {
+                baseF[paramIdx].resize(nParams);
+                for ( int i = 0; i < nParams; i++ )
+                    baseF[paramIdx][i] = el.deviations[i];
+            }
+            ++paramIdx;
+        }
+    }
 
     if ( settings.mutationSelectivity == 2 ) {
         baseF.assign(nParams, std::vector<double>(nParams, 0));
         for ( int i = 0; i < nParams; i++ )
             baseF[i][i] = 1;
-    } else {
+    } else if ( settings.mutationSelectivity == 0 ) {
         baseF.assign(nParams, std::vector<double>(nParams, 1));
     }
 
-    if ( settings.useClustering ) {
-        auto options = extractSeparatingClusters(constructClustersByStim(astims), nParams);
-        for ( int i = 0; i < nParams; i++ ) {
-            stims[i] = astims[std::get<0>(options[i])];
-            for ( const Section &sec : std::get<2>(options[i]) ) {
-                errNorm[i] += sec.end - sec.start;
-                obsTimes[i].push_back(std::make_pair(sec.start, sec.end));
-            }
+    errNorm.resize(nParams);
+    for ( int paramIdx = 0; paramIdx < nParams; paramIdx++ )
+        errNorm[paramIdx] = obs[paramIdx].duration();
 
-            if ( settings.mutationSelectivity == 1 )
-                baseF[i] = std::get<1>(options[i]);
-        }
-    } else {
-        stims = astims;
-
-        std::vector<std::vector<scalar*>> pDelta;
-        if ( settings.mutationSelectivity == 1 )
-            pDelta = getDetunedDiffTraces(stims, lib, session.runData());
-
-        for ( int i = 0; i < nParams; i++ ) {
-            iStimulation I(stims[i], session.runData().dt);
-            errNorm[i] = I.tObsEnd - I.tObsBegin;
-            obsTimes[i] = {std::make_pair(I.tObsBegin, I.tObsEnd)};
-
-            if ( settings.mutationSelectivity == 1 ) {
-                std::vector<Section> tObs;
-                constructSections(pDelta[i], lib.NMODELS, I.tObsBegin, I.tObsEnd, std::vector<double>(nParams, 1),
-                                  I.tObsEnd - I.tObsBegin + 1, tObs);
-                double norm = 0;
-                for ( int j = 0; j < nParams; j++ )
-                    if ( norm < fabs(tObs.front().deviations[j]) )
-                        norm = fabs(tObs.front().deviations[j]);
-                for ( int j = 0; j < nParams; j++ )
-                    baseF[i][j] = fabs(tObs.front().deviations[j])/norm;
-            }
-        }
-    }
-
-    output.stims = QVector<Stimulation>::fromStdVector(stims);
-    output.obsTimes.resize(nParams);
+    output.stims = QVector<iStimulation>::fromStdVector(stims);
+    output.obs = QVector<iObservations>::fromStdVector(obs);
     output.baseF.resize(nParams);
-    for ( int i = 0; i < nParams; i++ ) {
-        for ( const std::pair<int,int> &p : obsTimes[i] )
-            output.obsTimes[i].push_back(QPair<int,int>(p.first, p.second));
+    for ( int i = 0; i < nParams; i++ )
         output.baseF[i] = QVector<double>::fromStdVector(baseF[i]);
-    }
 }
 
 double GAFitter::fit()
@@ -250,7 +257,7 @@ void GAFitter::save(QFile &file)
         os << out.VCRecord;
         os << out.variance;
         os << out.stims;
-        os << out.obsTimes;
+        os << out.obs;
         os << out.baseF;
         os << qint32(out.assoc.Iidx) << qint32(out.assoc.Vidx) << qint32(out.assoc.V2idx);
         os << out.assoc.Iscale << out.assoc.Vscale << out.assoc.V2scale;
@@ -314,7 +321,7 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
         is >> out.variance;
     if ( ver >= 105 ) {
         is >> out.stims;
-        is >> out.obsTimes;
+        is >> out.obs;
         is >> out.baseF;
     }
     if ( ver >= 106 ) {
@@ -522,20 +529,43 @@ void GAFitter::procreate()
     }
 }
 
-double GAFitter::finalise(const std::vector<Stimulation> &astims)
+iObservations iObserveNoSteps(iStimulation iStim, int blankCycles)
 {
-    stims = astims;
-    obsTimes.resize(stims.size());
+    int tStart = 0, nextObs = 0;
+    iObservations obs = {{}, {}};
+    for ( const auto step : iStim ) {
+        if ( step.t > iStim.duration )
+            break;
+        if ( !step.ramp ) {
+            if ( tStart < step.t ) {
+                obs.start[nextObs] = tStart;
+                obs.stop[nextObs] = step.t;
+                ++nextObs;
+            }
+            tStart = step.t + blankCycles;
+        }
+    }
+    if ( tStart < iStim.duration ) {
+        obs.start[nextObs] = tStart;
+        obs.stop[nextObs] = iStim.duration;
+    }
+    return obs;
+}
 
+double GAFitter::finalise()
+{
     std::vector<errTupel> f_err(lib.NMODELS);
     int t = 0;
     double dt = session.runData().dt, simt = 0;
 
+    // restore original stims as specified in source
+    astims = output.stimSource.stimulations();
+    stims = output.stimSource.iStimulations(dt);
+
     // Evaluate existing population on all stims
     for ( targetParam = 0; targetParam < stims.size() && !isAborted(); targetParam++ ) {
-        obsTimes[targetParam] = observeNoSteps(iStimulation(astims[targetParam], dt), settings.cluster_blank_after_step/dt);
-        for ( const std::pair<int,int> &p : obsTimes[targetParam] )
-            t += p.second - p.first;
+        obs[targetParam] = iObserveNoSteps(stims[targetParam], settings.cluster_blank_after_step/dt);
+        t += obs[targetParam].duration();
         simt += stimulate(targetParam>0 ? ASSIGNMENT_SUMMARY_PERSIST : 0);
     }
 
@@ -561,8 +591,8 @@ double GAFitter::finalise(const std::vector<Stimulation> &astims)
 double GAFitter::stimulate(unsigned int extra_assignments)
 {
     const RunData &rd = session.runData();
-    const Stimulation &aI = stims[targetParam];
-    iStimulation I(aI, rd.dt);
+    const Stimulation &aI = astims[targetParam];
+    iStimulation I = stims[targetParam];
 
     // Set up library
     lib.setSingularRund();
@@ -572,14 +602,7 @@ double GAFitter::stimulate(unsigned int extra_assignments)
 
     lib.setSingularStim();
     lib.stim[0] = I;
-    for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
-        if ( i < obsTimes[targetParam].size() ) {
-            lib.obs[0].start[i] = obsTimes[targetParam][i].first;
-            lib.obs[0].stop[i] = obsTimes[targetParam][i].second;
-        } else {
-            lib.obs[0].start[i] = lib.obs[0].stop[i] = 0;
-        }
-    }
+    lib.obs[0] = obs[targetParam];
 
     lib.setSingularTarget();
     lib.resizeTarget(1, I.duration);
@@ -621,27 +644,6 @@ void GAFitter::pushToQ(double t, double V, double I, double O)
         qI->push({t,I});
     if ( qO )
         qO->push({t,O});
-}
-
-std::vector<std::vector<std::vector<Section>>> GAFitter::constructClustersByStim(std::vector<Stimulation> astims)
-{
-    double dt = session.runData().dt;
-    int nParams = lib.adjustableParams.size();
-    std::vector<double> norm(nParams, 1);
-
-    std::vector<std::vector<std::vector<Section>>> clusters(astims.size());
-    std::vector<std::vector<scalar*>> pDelta = getDetunedDiffTraces(astims, lib, session.runData());
-    for ( size_t i = 0; i < pDelta.size(); i++ ) {
-        clusters[i] = constructClusters(iStimulation(astims[i], dt),
-                                        pDelta[i],
-                                        lib.NMODELS,
-                                        settings.cluster_blank_after_step/dt,
-                                        norm,
-                                        settings.cluster_fragment_dur/dt,
-                                        settings.cluster_threshold,
-                                        settings.cluster_min_dur/settings.cluster_fragment_dur);
-    }
-    return clusters;
 }
 
 void GAFitter::procreateDE()

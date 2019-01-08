@@ -438,6 +438,8 @@ struct GAFitterSettings {
     bool useDE = false;
     bool useClustering = false;
     int mutationSelectivity = 2; // 0: Nonspecific mutation, 1: Graded mutation rates, 2: Target parameter only
+
+    std::string obsSource;
 };
 
 

@@ -41,8 +41,8 @@ public:
         std::vector<scalar> finalParams; //!< Final best-performing model across all stimulations
         std::vector<scalar> finalError; //!< Error of the final model on each stimulation
 
-        QVector<Stimulation> stims; //!< Stimulations used by parameter
-        QVector<QVector<QPair<int,int>>> obsTimes; //!< Observation times by stim, in sets of [start,end] pairs
+        QVector<iStimulation> stims; //!< Stimulations used by parameter
+        QVector<iObservations> obs; //!< Observations by stim
         QVector<QVector<double>> baseF; //!< Mutation rate by stim
     };
 
@@ -73,14 +73,14 @@ protected:
     quint32 epoch;
     std::vector<double> bias;
 
-    void setup(const std::vector<Stimulation> &astims);
+    void setup();
     double fit();
 
     double getVariance(Stimulation stim);
     void populate();
     double stimulate(unsigned int extra_assignments = 0);
     void procreate();
-    double finalise(const std::vector<Stimulation> &astims);
+    double finalise();
     quint32 findNextStim();
     bool finished();
     void pushToQ(double t, double V, double I, double O);
@@ -108,8 +108,9 @@ protected:
     std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
     std::vector<double> DEpX;
 
-    std::vector<Stimulation> stims;
-    std::vector<std::vector<std::pair<int,int>>> obsTimes;
+    std::vector<Stimulation> astims;
+    std::vector<iStimulation> stims;
+    std::vector<iObservations> obs;
     std::vector<int> errNorm;
     std::vector<std::vector<double>> baseF;
 };
