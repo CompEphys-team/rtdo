@@ -6,7 +6,7 @@
 
 const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 106;
+const quint32 GAFitter::version = 107;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -320,8 +320,25 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
     if ( ver >= 104 )
         is >> out.variance;
     if ( ver >= 105 ) {
-        is >> out.stims;
-        is >> out.obs;
+        if ( ver < 107 ) {
+            QVector<Stimulation> stims;
+            QVector<QVector<QPair<int,int>>> obsTimes;
+            is >> stims >> obsTimes;
+            for ( const Stimulation &I : stims )
+                out.stims.push_back(iStimulation(I, session.runData().dt));
+            for ( QVector<QPair<int,int>> obst : obsTimes ) {
+                out.obs.push_back({{},{}});
+                for ( int i = 0; i < obst.size(); i++ ) {
+                    if ( i < int(iObservations::maxObs) ) {
+                        out.obs.back().start[i] = obst[i].first;
+                        out.obs.back().stop[i] = obst[i].second;
+                    }
+                }
+            }
+        } else {
+            is >> out.stims;
+            is >> out.obs;
+        }
         is >> out.baseF;
     }
     if ( ver >= 106 ) {
