@@ -264,13 +264,12 @@ void FitErrorPlotter::on_run_clicked()
     for ( int iProtocol : protocol_indices ) {
         Protocol &prot = protocols[iProtocol];
         int blankCycles = session->qGaFitterSettings().cluster_blank_after_step/prot.dt;
-        for ( size_t i = 0; i < prot.stims.size(); i++ ) {
-            if ( blankCycles != prot.blankCycles ) {
+        if ( blankCycles != prot.blankCycles ) {
+            prot.blankCycles = blankCycles;
+            for ( size_t i = 0; i < prot.stims.size(); i++ ) {
                 prot.iObs[i] = iObserveNoSteps(prot.istims[i], blankCycles);
-                prot.blankCycles = blankCycles;
+                maxStimLen = std::max(maxStimLen, prot.istims[i].duration);
             }
-
-            maxStimLen = std::max(maxStimLen, prot.istims[i].duration);
         }
     }
 
