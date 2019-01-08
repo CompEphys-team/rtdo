@@ -18,6 +18,9 @@ QDataStream &operator>>(QDataStream &, Stimulation &);
 QDataStream &operator<<(QDataStream &, const iStimulation &);
 QDataStream &operator>>(QDataStream &, iStimulation &);
 
+QDataStream &operator<<(QDataStream &, const iObservations &);
+QDataStream &operator>>(QDataStream &, iObservations&);
+
 // For backcompatibility with pre-iStimulation saves:
 struct MAPElite__scalarStim
 {

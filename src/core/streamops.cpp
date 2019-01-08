@@ -117,6 +117,29 @@ QDataStream &operator>>(QDataStream &is, iStimulation &stim)
     return is;
 }
 
+QDataStream &operator<<(QDataStream &os, const iObservations &obs)
+{
+    os << quint32(iObservations::maxObs);
+    for ( size_t i = 0; i < iObservations::maxObs; i++ )
+        os << quint32(obs.start[i]) << quint32(obs.stop[i]);
+    return os;
+}
+
+QDataStream &operator>>(QDataStream &is, iObservations &obs)
+{
+    quint32 maxObs, start, stop;
+    obs = {{}, {}};
+    is >> maxObs;
+    for ( size_t i = 0; i < maxObs; i++ ) {
+        is >> start >> stop;
+        if ( i < iObservations::maxObs ) {
+            obs.start[i] = start;
+            obs.stop[i] = stop;
+        }
+    }
+    return is;
+}
+
 QDataStream &operator>>(QDataStream &is, MAPElite__scalarStim &e)
 {
     is >> e.wave >> e.fitness;
