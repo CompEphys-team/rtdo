@@ -76,14 +76,14 @@ public slots:
     void search(const QString &action);
 
     /**
-     * @brief findObservations runs the bubble or cluster algorithm on the given stims, picking out the most suitable observation
+     * @brief findObservations runs the bubble or cluster algorithm on the given stims, picking out the most suitable observations
      * @param stims: The set of iStimulations to be evaluated
      * @param action: The algorithm to be used (Wavegen::bubble_action or Wavegen::cluster_action)
-     * @param targetParam: The index of the target parameter for the extracted observations
-     * @return A MAPElite for each stim, fully populated (excl. bin) with the highest-fitness observation sequence for the target param
+     * @return A MAPElite for each stim, fully populated (excl. bin) with the highest-fitness observation sequence for the target param,
+     * ordered by [targetParam][stimIdx]
      * Synchronous.
      */
-    std::vector<MAPElite> findObservations(const std::vector<iStimulation> &stims, const QString &action, size_t targetParam);
+    std::vector<std::vector<MAPElite>> findObservations(const std::vector<iStimulation> &stims, const QString &action);
 
 signals:
     void done();

@@ -336,7 +336,7 @@ Result *Wavegen::load(const QString &action, const QString &, QFile &file, Resul
     return arch;
 }
 
-std::vector<MAPElite> Wavegen::findObservations(const std::vector<iStimulation> &stims, const QString &action, size_t targetParam)
+std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<iStimulation> &stims, const QString &action)
 {
     istimd = iStimData(stimd, session.runData().dt);
     const int nModelsPerStim = searchd.trajectoryLength * searchd.nTrajectories;
@@ -347,8 +347,7 @@ std::vector<MAPElite> Wavegen::findObservations(const std::vector<iStimulation> 
     const int minClusterLen = session.gaFitterSettings().cluster_min_dur / session.runData().dt;
     const size_t nParams = ulib.adjustableParams.size();
 
-    std::vector<MAPElite> ret;
-    ret.reserve(stims.size());
+    std::vector<std::vector<MAPElite>> ret(nParams, std::vector<MAPElite>(stims.size()));
 
     ulib.resizeOutput(istimd.iDuration);
     prepare_EE_models();
@@ -363,6 +362,7 @@ std::vector<MAPElite> Wavegen::findObservations(const std::vector<iStimulation> 
         start = end;
     }
 
+    int nProcessedStims = 0;
     for ( const std::vector<iStimulation> &chunk : stimChunks ) {
         pushStimsAndObserve(chunk, nModelsPerStim, blankCycles);
         ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
@@ -372,8 +372,8 @@ std::vector<MAPElite> Wavegen::findObservations(const std::vector<iStimulation> 
                          sectionLength, dotp_threshold, minClusterLen, deltabar, false);
             ulib.pullClusters(nStimsPerEpoch);
             for ( size_t stimIdx = 0; stimIdx < chunk.size(); stimIdx++ ) {
-                size_t bestClusterIdx = 0;
-                scalar bestClusterFitness = 0;
+                std::vector<size_t> bestClusterIdx(nParams, 0);
+                std::vector<scalar> bestClusterFitness(nParams, 0);
                 for ( size_t clusterIdx = 0; clusterIdx < ulib.maxClusters; clusterIdx++ ) {
                     const iObservations &obs = ulib.clusterObs[stimIdx * ulib.maxClusters + clusterIdx];
                     int len = 0;
@@ -384,41 +384,49 @@ std::vector<MAPElite> Wavegen::findObservations(const std::vector<iStimulation> 
                     if ( len < minClusterLen )
                         continue;
 
-                    scalar fitness = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + targetParam];
-                    if ( fitness > bestClusterFitness ) {
-                        bestClusterIdx = clusterIdx;
-                        bestClusterFitness = fitness;
+                    for ( size_t targetParam = 0; targetParam < nParams; targetParam++ ) {
+                        scalar fitness = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + targetParam];
+                        if ( fitness > bestClusterFitness[targetParam] ) {
+                            bestClusterIdx[targetParam] = clusterIdx;
+                            bestClusterFitness[targetParam] = fitness;
+                        }
                     }
                 }
 
-                ret.emplace_back();
-                MAPElite &el = ret.back();
-                el.wave.reset(new iStimulation(chunk[stimIdx]));
-                el.current = ulib.clusterCurrent[stimIdx * ulib.maxClusters + bestClusterIdx];
-                el.fitness = bestClusterFitness;
-                el.obs = ulib.clusterObs[stimIdx * ulib.maxClusters + bestClusterIdx];
-                el.deviations.resize(nParams);
-                for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
-                    el.deviations[paramIdx] = ulib.clusters[stimIdx*ulib.maxClusters*nParams + bestClusterIdx*nParams + paramIdx];
+                iStimulation *wave = new iStimulation(chunk[stimIdx]);
+                for ( size_t targetParam = 0; targetParam < nParams; targetParam++ ) {
+                    MAPElite &el = ret[targetParam][nProcessedStims + stimIdx];
+                    el.wave.reset(wave);
+                    el.current = ulib.clusterCurrent[stimIdx * ulib.maxClusters + bestClusterIdx[targetParam]];
+                    el.fitness = bestClusterFitness[targetParam];
+                    el.obs = ulib.clusterObs[stimIdx * ulib.maxClusters + bestClusterIdx[targetParam]];
+                    el.deviations.resize(nParams);
+                    for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+                        el.deviations[paramIdx] = ulib.clusters[stimIdx*ulib.maxClusters*nParams + bestClusterIdx[targetParam]*nParams + paramIdx];
+                }
             }
         } else if ( action == bubble_action ) {
             ulib.bubble(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
                         sectionLength, deltabar, false);
             ulib.pullBubbles(nStimsPerEpoch);
             for ( size_t stimIdx = 0; stimIdx < chunk.size(); stimIdx++ ) {
-                ret.emplace_back();
-                MAPElite &el = ret.back();
-                const Bubble &bubble = ulib.bubbles[stimIdx * nParams + targetParam];
-                el.wave.reset(new iStimulation(chunk[stimIdx]));
-                el.current = ulib.clusterCurrent[stimIdx * nParams + targetParam];
-                el.fitness = bubble.value;
-                el.obs.start[0] = bubble.startCycle;
-                el.obs.stop[0] = bubble.startCycle + bubble.cycles;
-                el.deviations.resize(nParams);
-                for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
-                    el.deviations[paramIdx] = ulib.clusters[stimIdx*nParams*nParams + targetParam*nParams + paramIdx];
+                iStimulation *wave = new iStimulation(chunk[stimIdx]);
+                for ( size_t targetParam = 0; targetParam < nParams; targetParam++ ) {
+                    MAPElite &el = ret[targetParam][nProcessedStims + stimIdx];
+                    const Bubble &bubble = ulib.bubbles[stimIdx * nParams + targetParam];
+                    el.wave.reset(wave);
+                    el.current = ulib.clusterCurrent[stimIdx * nParams + targetParam];
+                    el.fitness = bubble.value;
+                    el.obs.start[0] = bubble.startCycle;
+                    el.obs.stop[0] = bubble.startCycle + bubble.cycles;
+                    el.deviations.resize(nParams);
+                    for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+                        el.deviations[paramIdx] = ulib.clusters[stimIdx*nParams*nParams + targetParam*nParams + paramIdx];
+                }
             }
         }
+
+        nProcessedStims += chunk.size();
     }
     return ret;
 }
