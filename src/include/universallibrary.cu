@@ -294,8 +294,17 @@ extern "C" void profile(int nSamples, const std::vector<AdjustableParam> &params
 /// ******************************************************************************************************************************
 ///  >============================     Elementary Effects WG: Clustering    ====================================================<
 /// ******************************************************************************************************************************
-static constexpr int STIMS_PER_CLUSTER_BLOCK = 16;
 static constexpr int PARTITION_SIZE = 32;
+static constexpr int STIMS_PER_CLUSTER_BLOCK =
+        ( (16*NPARAMS*(PARTITION_SIZE+1) + 16*(PARTITION_SIZE+1)) * sizeof(scalar) < 0xc000 )
+        ? 16
+        : ( (8*NPARAMS*(PARTITION_SIZE+1) + 8*(PARTITION_SIZE+1)) * sizeof(scalar) < 0xc000 )
+        ? 8
+        : ( (4*NPARAMS*(PARTITION_SIZE+1) + 4*(PARTITION_SIZE+1)) * sizeof(scalar) < 0xc000 )
+        ? 4
+        : ( (2*NPARAMS*(PARTITION_SIZE+1) + 2*(PARTITION_SIZE+1)) * sizeof(scalar) < 0xc000 )
+        ? 2
+        : 1;
 
 /**
  * @brief build_section_primitives chops the EE traces in d_timeseries into deltabar-normalised deviation vectors ("sections")
