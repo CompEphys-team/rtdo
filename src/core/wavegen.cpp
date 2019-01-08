@@ -51,10 +51,9 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
 
     const int nModelsPerStim = searchd.trajectoryLength * searchd.nTrajectories;
     const int nStimsPerEpoch = ulib.NMODELS / nModelsPerStim;
-    const int blankCycles = session.gaFitterSettings().cluster_blank_after_step / session.runData().dt;
-    const int sectionLength = session.gaFitterSettings().cluster_fragment_dur / session.runData().dt;
-    const scalar dotp_threshold = session.gaFitterSettings().cluster_threshold;
-    const int minClusterLen = session.gaFitterSettings().cluster_min_dur / session.runData().dt;
+    const int blankCycles = searchd.cluster.blank / session.runData().dt;
+    const int sectionLength = searchd.cluster.secLen / session.runData().dt;
+    const int minClusterLen = searchd.cluster.minLen / session.runData().dt;
 
     double run_maxCurrent = 0, sum_maxCurrents = 0;
 
@@ -93,7 +92,7 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     std::function<scalar(std::vector<iStimulation>&)> score_and_insert;
     if ( action == cluster_action ) {
         evaluate = [&](){ ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                                       sectionLength, dotp_threshold, minClusterLen, deltabar, false); };
+                                       sectionLength, searchd.cluster.dotp_threshold, minClusterLen, deltabar, false); };
         pull = [&](){ ulib.pullClusters(nStimsPerEpoch); };
         score_and_insert = [&](std::vector<iStimulation> &waves){ return cluster_scoreAndInsert(waves, nStimsPerEpoch, dims); };
     } else if ( action == bubble_action ) {
@@ -341,10 +340,9 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
     istimd = iStimData(stimd, session.runData().dt);
     const int nModelsPerStim = searchd.trajectoryLength * searchd.nTrajectories;
     const int nStimsPerEpoch = ulib.NMODELS / nModelsPerStim;
-    const int blankCycles = session.gaFitterSettings().cluster_blank_after_step / session.runData().dt;
-    const int sectionLength = session.gaFitterSettings().cluster_fragment_dur / session.runData().dt;
-    const scalar dotp_threshold = session.gaFitterSettings().cluster_threshold;
-    const int minClusterLen = session.gaFitterSettings().cluster_min_dur / session.runData().dt;
+    const int blankCycles = searchd.cluster.blank / session.runData().dt;
+    const int sectionLength = searchd.cluster.secLen / session.runData().dt;
+    const int minClusterLen = searchd.cluster.minLen / session.runData().dt;
     const size_t nParams = ulib.adjustableParams.size();
 
     std::vector<std::vector<MAPElite>> ret(nParams, std::vector<MAPElite>(stims.size()));
@@ -369,7 +367,7 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
         ulib.run();
         if ( action == cluster_action ) {
             ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                         sectionLength, dotp_threshold, minClusterLen, deltabar, false);
+                         sectionLength, searchd.cluster.dotp_threshold, minClusterLen, deltabar, false);
             ulib.pullClusters(nStimsPerEpoch);
             for ( size_t stimIdx = 0; stimIdx < chunk.size(); stimIdx++ ) {
                 std::vector<size_t> bestClusterIdx(nParams, 0);

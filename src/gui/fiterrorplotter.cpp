@@ -169,7 +169,7 @@ void FitErrorPlotter::on_register_path_textChanged(const QString &arg1)
             // Prepare iStims and observations
             protocol.istims.reserve(protocol.stims.size());
             protocol.iObs.reserve(protocol.stims.size());
-            protocol.blankCycles = session->qGaFitterSettings().cluster_blank_after_step/protocol.dt;
+            protocol.blankCycles = session->qWavegenData().cluster.blank/protocol.dt;
             for ( const Stimulation &stim : protocol.stims ) {
                 protocol.istims.push_back(iStimulation(stim, protocol.dt));
                 protocol.iObs.push_back(iObserveNoSteps(protocol.istims.back(), protocol.blankCycles));
@@ -263,7 +263,7 @@ void FitErrorPlotter::on_run_clicked()
     int maxStimLen = 0;
     for ( int iProtocol : protocol_indices ) {
         Protocol &prot = protocols[iProtocol];
-        int blankCycles = session->qGaFitterSettings().cluster_blank_after_step/prot.dt;
+        int blankCycles = session->qWavegenData().cluster.blank/prot.dt;
         if ( blankCycles != prot.blankCycles ) {
             prot.blankCycles = blankCycles;
             for ( size_t i = 0; i < prot.stims.size(); i++ ) {

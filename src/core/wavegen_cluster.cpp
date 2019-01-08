@@ -4,7 +4,7 @@
 scalar Wavegen::cluster_scoreAndInsert(const std::vector<iStimulation> &stims, const int nStims, const std::vector<MAPEDimension> &dims)
 {
     const double dt = session.runData().dt;
-    const int minLength = session.gaFitterSettings().cluster_min_dur / dt;
+    const int minLength = searchd.cluster.minLen / dt;
     const size_t nParams = ulib.adjustableParams.size();
 
     const int nBins = dims.size();

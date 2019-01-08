@@ -558,7 +558,7 @@ double GAFitter::finalise()
 
     // Evaluate existing population on all stims
     for ( targetParam = 0; targetParam < stims.size() && !isAborted(); targetParam++ ) {
-        obs[targetParam] = iObserveNoSteps(stims[targetParam], settings.cluster_blank_after_step/dt);
+        obs[targetParam] = iObserveNoSteps(stims[targetParam], session.wavegenData().cluster.blank/dt);
         t += obs[targetParam].duration();
         simt += stimulate(targetParam>0 ? ASSIGNMENT_SUMMARY_PERSIST : 0);
     }

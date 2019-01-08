@@ -494,7 +494,7 @@ void StimulationCreator::diagnose()
 
 void StimulationCreator::clustering()
 {
-    const GAFitterSettings &settings = session.qGaFitterSettings();
+    const ClusterData &settings = session.qWavegenData().cluster;
     const RunData &rd = session.qRunData();
     double dt = rd.dt;
     int nParams = session.project.model().adjustableParams.size();
@@ -508,9 +508,9 @@ void StimulationCreator::clustering()
     if ( pDelta.empty() )
         pDelta = getDetunedDiffTraces(stims, *lib, rd);
 
-    std::vector<std::vector<Section>> clusters = constructClusters(iStim, pDelta[stimIdx], lib->NMODELS, settings.cluster_blank_after_step/dt,
-                                                                   norm, settings.cluster_fragment_dur/dt, settings.cluster_threshold,
-                                                                   settings.cluster_min_dur/settings.cluster_fragment_dur);
+    std::vector<std::vector<Section>> clusters = constructClusters(iStim, pDelta[stimIdx], lib->NMODELS, settings.blank/dt,
+                                                                   norm, settings.secLen/dt, settings.dotp_threshold,
+                                                                   settings.minLen/settings.secLen);
     std::vector<Section> bookkeeping;
     std::cout << "\n*** " << clusters.size() << " natural clusters for stimulation " << (stim-stims.begin()) << std::endl;
     for ( const std::vector<Section> &cluster : clusters ) {
@@ -535,9 +535,9 @@ void StimulationCreator::clustering()
     constructSections(pDelta[stimIdx], lib->NMODELS, iStim.tObsBegin, iStim.tObsEnd, norm, iStim.tObsEnd-iStim.tObsBegin+1, tObs);
     printCluster(tObs, nParams, dt);
 
-    std::vector<Section> primitives = constructSectionPrimitives(iStim, pDelta[stimIdx], lib->NMODELS, settings.cluster_blank_after_step/dt,
-                                                                 norm, settings.cluster_fragment_dur/dt);
-    std::vector<Section> sympa = findSimilarCluster(primitives, nParams, settings.cluster_threshold, tObs[0]);
+    std::vector<Section> primitives = constructSectionPrimitives(iStim, pDelta[stimIdx], lib->NMODELS, settings.blank/dt,
+                                                                 norm, settings.secLen/dt);
+    std::vector<Section> sympa = findSimilarCluster(primitives, nParams, settings.dotp_threshold, tObs[0]);
     if ( !sympa.empty() ) {
         std::cout << "\n*** Sympathetic cluster:\n";
         printCluster(sympa, nParams, dt);

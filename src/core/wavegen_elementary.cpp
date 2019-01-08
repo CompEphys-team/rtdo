@@ -83,7 +83,7 @@ std::vector<double> Wavegen::getDeltabar()
     for ( size_t runIdx = 0; runIdx < searchd.nDeltabarRuns; runIdx++ ) {
         for ( iStimulation &stim : stims )
             stim = session.wavegen().getRandomStim(stimd, istimd);
-        pushStimsAndObserve(stims, nModelsPerStim, session.gaFitterSettings().cluster_blank_after_step / session.runData().dt);
+        pushStimsAndObserve(stims, nModelsPerStim, searchd.cluster.blank / session.runData().dt);
         ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
         ulib.run();
 

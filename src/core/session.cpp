@@ -99,6 +99,10 @@ void Session::addAPs()
     addAP(searchAP, "S.Wavegen.trajectoryLength", &q_settings, &Settings::searchd, &WavegenData::trajectoryLength);
     addAP(searchAP, "S.Wavegen.nDeltabarRuns", &q_settings, &Settings::searchd, &WavegenData::nDeltabarRuns);
     addAP(searchAP, "S.Wavegen.adjustToMaxCurrent", &q_settings, &Settings::searchd, &WavegenData::adjustToMaxCurrent);
+    addAP(searchAP, "S.Wavegen.cluster.blank", &q_settings, &Settings::searchd, &WavegenData::cluster, &ClusterData::blank);
+    addAP(searchAP, "S.Wavegen.cluster.minLen", &q_settings, &Settings::searchd, &WavegenData::cluster, &ClusterData::minLen);
+    addAP(searchAP, "S.Wavegen.cluster.secLen", &q_settings, &Settings::searchd, &WavegenData::cluster, &ClusterData::secLen);
+    addAP(searchAP, "S.Wavegen.cluster.dotp_threshold", &q_settings, &Settings::searchd, &WavegenData::cluster, &ClusterData::dotp_threshold);
 
     addAP(stimAP, "S.Stimulation.baseV", &q_settings, &Settings::stimd, &StimulationData::baseV);
     addAP(stimAP, "S.Stimulation.duration", &q_settings, &Settings::stimd, &StimulationData::duration);
@@ -133,10 +137,6 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.max[#]", &q_settings, &Settings::gafs, &GAFitterSettings::max);
     addAP(gafAP, "S.GAFitter.fixedValue[#]", &q_settings, &Settings::gafs, &GAFitterSettings::fixedValue);
     addAP(gafAP, "S.GAFitter.useLikelihood", &q_settings, &Settings::gafs, &GAFitterSettings::useLikelihood);
-    addAP(gafAP, "S.GAFitter.cluster_blank_after_step", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_blank_after_step);
-    addAP(gafAP, "S.GAFitter.cluster_min_dur", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_min_dur);
-    addAP(gafAP, "S.GAFitter.cluster_fragment_dur", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_fragment_dur);
-    addAP(gafAP, "S.GAFitter.cluster_threshold", &q_settings, &Settings::gafs, &GAFitterSettings::cluster_threshold);
     addAP(gafAP, "S.GAFitter.useDE", &q_settings, &Settings::gafs, &GAFitterSettings::useDE);
     addAP(gafAP, "S.GAFitter.useClustering", &q_settings, &Settings::gafs, &GAFitterSettings::useClustering);
     addAP(gafAP, "S.GAFitter.mutationSelectivity", &q_settings, &Settings::gafs, &GAFitterSettings::mutationSelectivity);

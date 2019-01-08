@@ -78,10 +78,6 @@ void GAFitterSettingsDialog::importData()
     ui->sigmaHalflife->setValue(p.sigmaHalflife);
     ui->sigmaInitial->setValue(p.sigmaInitial);
     ui->useLikelihood->setChecked(historicIndex < 0 ? false : p.useLikelihood);
-    ui->cluster_blank->setValue(p.cluster_blank_after_step);
-    ui->cluster_dur->setValue(p.cluster_min_dur);
-    ui->cluster_res->setValue(p.cluster_fragment_dur);
-    ui->cluster_threshold->setValue(p.cluster_threshold);
     ui->clustering->setChecked(p.useClustering);
     ui->method->setCurrentIndex(p.useDE ? 1 : 0);
     ui->selectivity->setCurrentIndex(p.mutationSelectivity);
@@ -108,10 +104,6 @@ void GAFitterSettingsDialog::exportData()
     p.sigmaHalflife = ui->sigmaHalflife->value();
     p.sigmaInitial = ui->sigmaInitial->value();
     p.useLikelihood = false;
-    p.cluster_blank_after_step = ui->cluster_blank->value();
-    p.cluster_min_dur = ui->cluster_dur->value();
-    p.cluster_fragment_dur = ui->cluster_res->value();
-    p.cluster_threshold = ui->cluster_threshold->value();
     p.useClustering = ui->clustering->isChecked();
     p.useDE = ui->method->currentIndex() == 1;
     p.mutationSelectivity = ui->selectivity->currentIndex();

@@ -386,6 +386,14 @@ std::string toString(const MAPEDimension::Func &f);
 std::ostream& operator<<(std::ostream& os, const MAPEDimension::Func &f);
 std::istream& operator>>(std::istream& is, MAPEDimension::Func &f);
 
+struct ClusterData
+{
+    double blank = 5.;
+    double minLen = 5.;
+    double secLen = 0.5;
+    double dotp_threshold = 0.95;
+};
+
 struct WavegenData
 {
     size_t nInitialWaves = 1e5; //!< Number of randomly initialised waveforms used to start the search
@@ -401,6 +409,7 @@ struct WavegenData
     size_t nDeltabarRuns = 1; //!< Number of full trajectory sets to find a good average deltabar
     bool adjustToMaxCurrent = true; //!< Adjust the EE_MeanCurrent dimension's maximum upwards during a run to reflect the observed maximum
                                     //! This causes rebinning along the MeanCurrent axis at each adjustment.
+    ClusterData cluster;
 };
 
 struct GAFitterSettings {
@@ -429,11 +438,6 @@ struct GAFitterSettings {
     std::vector<scalar> min, max, fixedValue;
 
     bool useLikelihood = false; // Retired 6 Nov 2018
-
-    double cluster_blank_after_step = 5.;
-    double cluster_min_dur = 5.;
-    double cluster_fragment_dur = 0.5;
-    double cluster_threshold = 0.95;
 
     bool useDE = false;
     bool useClustering = false;
