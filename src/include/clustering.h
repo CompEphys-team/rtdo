@@ -28,6 +28,7 @@ std::vector<Section> constructSectionPrimitives(iStimulation iStim, std::vector<
 
 /// Extracts all observation times that exclude hard steps and @a blankCycles thereafter, as (start,end) pairs.
 std::vector<std::pair<int, int>> observeNoSteps(iStimulation iStim, int blankCycles);
+iObservations iObserveNoSteps(iStimulation iStim, int blankCycles);
 
 // ******************** High-level functions: ********************************
 

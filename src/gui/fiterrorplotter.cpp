@@ -172,14 +172,7 @@ void FitErrorPlotter::on_register_path_textChanged(const QString &arg1)
             protocol.blankCycles = session->qGaFitterSettings().cluster_blank_after_step/protocol.dt;
             for ( const Stimulation &stim : protocol.stims ) {
                 protocol.istims.push_back(iStimulation(stim, protocol.dt));
-
-                iObservations obs;
-                std::vector<std::pair<int,int>> pairs = observeNoSteps(protocol.istims.back(), protocol.blankCycles);
-                for ( size_t j = 0; j < pairs.size() && j < iObservations::maxObs; j++ ) {
-                    obs.start[j] = pairs[j].first;
-                    obs.stop[j] = pairs[j].second;
-                }
-                protocol.iObs.push_back(obs);
+                protocol.iObs.push_back(iObserveNoSteps(protocol.istims.back(), protocol.blankCycles));
             }
 
             protocol.idx = protocols.size();
@@ -273,11 +266,7 @@ void FitErrorPlotter::on_run_clicked()
         int blankCycles = session->qGaFitterSettings().cluster_blank_after_step/prot.dt;
         for ( size_t i = 0; i < prot.stims.size(); i++ ) {
             if ( blankCycles != prot.blankCycles ) {
-                std::vector<std::pair<int,int>> pairs = observeNoSteps(prot.istims[i], blankCycles);
-                for ( size_t j = 0; j < pairs.size() && j < iObservations::maxObs; j++ ) {
-                    prot.iObs[i].start[j] = pairs[j].first;
-                    prot.iObs[i].stop[j] = pairs[j].second;
-                }
+                prot.iObs[i] = iObserveNoSteps(prot.istims[i], blankCycles);
                 prot.blankCycles = blankCycles;
             }
 

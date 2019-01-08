@@ -546,29 +546,6 @@ void GAFitter::procreate()
     }
 }
 
-iObservations iObserveNoSteps(iStimulation iStim, int blankCycles)
-{
-    int tStart = 0, nextObs = 0;
-    iObservations obs = {{}, {}};
-    for ( const auto step : iStim ) {
-        if ( step.t > iStim.duration )
-            break;
-        if ( !step.ramp ) {
-            if ( tStart < step.t ) {
-                obs.start[nextObs] = tStart;
-                obs.stop[nextObs] = step.t;
-                ++nextObs;
-            }
-            tStart = step.t + blankCycles;
-        }
-    }
-    if ( tStart < iStim.duration ) {
-        obs.start[nextObs] = tStart;
-        obs.stop[nextObs] = iStim.duration;
-    }
-    return obs;
-}
-
 double GAFitter::finalise()
 {
     std::vector<errTupel> f_err(lib.NMODELS);
