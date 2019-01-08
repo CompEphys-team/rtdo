@@ -93,13 +93,10 @@ ResponsePlotter::~ResponsePlotter()
 void ResponsePlotter::setDAQ(DAQ *daq)
 {
     this->daq = daq;
-    if ( daq )
-        dt = daq->samplingDt();
 }
 
 void ResponsePlotter::start()
 {
-    dt = daq->samplingDt();
     dataTimer.start(10);
 }
 
@@ -131,8 +128,6 @@ void ResponsePlotter::clear()
     ui->plot->xAxis->moveRange(-ui->plot->xAxis->range().lower);
 
     iT = 0;
-    if ( daq )
-        dt = daq->samplingDt();
 
     ui->plot->replot();
 }
@@ -146,6 +141,7 @@ void ResponsePlotter::replot()
     DataPoint point;
 
     if ( daq ) {
+        double dt = daq->samplingDt();
         do {
             point.t = iT*dt;
             daq->next();

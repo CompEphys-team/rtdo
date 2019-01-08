@@ -37,7 +37,6 @@ private:
     Ui::ResponsePlotter *ui;
     QTimer dataTimer;
     DAQ *daq = nullptr;
-    double dt;
     size_t iT = 0;
 };
 
