@@ -66,6 +66,11 @@ void WavegenDataDialog::importData()
     ui->nTrajectories->setValue(p.nTrajectories);
     ui->trajectoryLength->setValue(p.trajectoryLength);
     ui->nDeltabarRuns->setValue(p.nDeltabarRuns);
+
+    ui->cluster_blank->setValue(p.cluster.blank);
+    ui->cluster_minLen->setValue(p.cluster.minLen);
+    ui->cluster_secLen->setValue(p.cluster.secLen);
+    ui->cluster_threshold->setValue(p.cluster.dotp_threshold);
 }
 
 void WavegenDataDialog::exportData()
@@ -109,6 +114,11 @@ void WavegenDataDialog::exportData()
     p.nTrajectories = ui->nTrajectories->value();
     p.trajectoryLength = ui->trajectoryLength->value();
     p.nDeltabarRuns = ui->nDeltabarRuns->value();
+
+    p.cluster.blank = ui->cluster_blank->value();
+    p.cluster.minLen = ui->cluster_minLen->value();
+    p.cluster.secLen = ui->cluster_secLen->value();
+    p.cluster.dotp_threshold = ui->cluster_threshold->value();
 
     emit apply(p);
 }

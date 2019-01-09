@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>417</width>
-    <height>505</height>
+    <width>702</width>
+    <height>393</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,7 +21,7 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="2">
+   <item row="0" column="1">
     <widget class="QSpinBox" name="nInitialWaves">
      <property name="maximum">
       <number>10000000</number>
@@ -35,7 +35,7 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="2">
+   <item row="1" column="1">
     <widget class="QSpinBox" name="nDeltabarRuns">
      <property name="minimum">
       <number>1</number>
@@ -52,167 +52,200 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="2">
+   <item row="2" column="1">
     <widget class="QSpinBox" name="maxIterations">
      <property name="maximum">
       <number>10000000</number>
      </property>
     </widget>
    </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="label_21">
-     <property name="text">
-      <string>Number of EE trajectories</string>
+   <item row="3" column="0" colspan="2">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Elementary effects</string>
      </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_21">
+        <property name="text">
+         <string>Number of EE trajectories</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSpinBox" name="nTrajectories">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_22">
+        <property name="text">
+         <string>Length of EE trajectories (2,4,8,16,32)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="trajectoryLength">
+        <property name="minimum">
+         <number>2</number>
+        </property>
+        <property name="maximum">
+         <number>32</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QCheckBox" name="useBaseParameters">
+        <property name="text">
+         <string>Force use of preset parameter values</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
-   <item row="3" column="2">
-    <widget class="QSpinBox" name="nTrajectories">
-     <property name="minimum">
-      <number>1</number>
+   <item row="0" column="2" rowspan="6">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>MAPElites</string>
      </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Bubble onset time</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QLineEdit" name="precisionIncreaseEpochs">
+        <property name="placeholderText">
+         <string>Comma-separated ints</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="nBinsBubbleDuration">
+        <property name="suffix">
+         <string> bins</string>
+        </property>
+        <property name="maximum">
+         <number>10000000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_23">
+        <property name="text">
+         <string>Mean current maximum value</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>Voltage deviation</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QSpinBox" name="nBinsVoltageDeviation">
+        <property name="suffix">
+         <string> bins</string>
+        </property>
+        <property name="maximum">
+         <number>10000000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Cluster/bubble duration</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QDoubleSpinBox" name="meanCurrent_max">
+        <property name="suffix">
+         <string> nA</string>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QSpinBox" name="nBinsVoltageIntegral">
+        <property name="suffix">
+         <string> bins</string>
+        </property>
+        <property name="maximum">
+         <number>10000000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0" colspan="2">
+       <widget class="QCheckBox" name="mape_nClusters">
+        <property name="text">
+         <string>Use number of clusters as MAPE dimension</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSpinBox" name="nBinsBubbleTime">
+        <property name="suffix">
+         <string> bins</string>
+        </property>
+        <property name="maximum">
+         <number>10000000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QSpinBox" name="nBinsMeanCurrent">
+        <property name="suffix">
+         <string> bins</string>
+        </property>
+        <property name="maximum">
+         <number>10000000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Increase precision in epochs</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Voltage integral</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_14">
+        <property name="text">
+         <string>Mean current</string>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="0" colspan="2">
+       <widget class="QCheckBox" name="mape_clusterIndex">
+        <property name="text">
+         <string>Use cluster index as MAPE dimension</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
-   <item row="4" column="0" colspan="2">
-    <widget class="QLabel" name="label_22">
-     <property name="text">
-      <string>Length of EE trajectories (2,4,8,16,32)</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="2">
-    <widget class="QSpinBox" name="trajectoryLength">
-     <property name="minimum">
-      <number>2</number>
-     </property>
-     <property name="maximum">
-      <number>32</number>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="0" colspan="3">
-    <widget class="QCheckBox" name="useBaseParameters">
-     <property name="text">
-      <string>Force use of preset parameter values</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>Increase precision in epochs</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="1" colspan="2">
-    <widget class="QLineEdit" name="precisionIncreaseEpochs">
-     <property name="placeholderText">
-      <string>Comma-separated integers</string>
-     </property>
-    </widget>
-   </item>
-   <item row="7" column="0" colspan="2">
-    <widget class="QLabel" name="label_7">
-     <property name="text">
-      <string>Initial number of bins for bubble time</string>
-     </property>
-    </widget>
-   </item>
-   <item row="7" column="2">
-    <widget class="QSpinBox" name="nBinsBubbleTime">
-     <property name="maximum">
-      <number>10000000</number>
-     </property>
-    </widget>
-   </item>
-   <item row="8" column="0" colspan="2">
-    <widget class="QLabel" name="label_8">
-     <property name="text">
-      <string>Initial number of bins for bubble duration</string>
-     </property>
-    </widget>
-   </item>
-   <item row="8" column="2">
-    <widget class="QSpinBox" name="nBinsBubbleDuration">
-     <property name="maximum">
-      <number>10000000</number>
-     </property>
-    </widget>
-   </item>
-   <item row="9" column="0" colspan="2">
-    <widget class="QLabel" name="label_9">
-     <property name="text">
-      <string>Initial number of bins for voltage deviation</string>
-     </property>
-    </widget>
-   </item>
-   <item row="9" column="2">
-    <widget class="QSpinBox" name="nBinsVoltageDeviation">
-     <property name="maximum">
-      <number>10000000</number>
-     </property>
-    </widget>
-   </item>
-   <item row="10" column="0" colspan="2">
-    <widget class="QLabel" name="label_10">
-     <property name="text">
-      <string>Initial number of bins for voltage integral</string>
-     </property>
-    </widget>
-   </item>
-   <item row="10" column="2">
-    <widget class="QSpinBox" name="nBinsVoltageIntegral">
-     <property name="maximum">
-      <number>10000000</number>
-     </property>
-    </widget>
-   </item>
-   <item row="11" column="0" colspan="2">
-    <widget class="QLabel" name="label_14">
-     <property name="text">
-      <string>Initial number of bins for mean current</string>
-     </property>
-    </widget>
-   </item>
-   <item row="11" column="2">
-    <widget class="QSpinBox" name="nBinsMeanCurrent">
-     <property name="maximum">
-      <number>10000000</number>
-     </property>
-    </widget>
-   </item>
-   <item row="12" column="0">
-    <widget class="QLabel" name="label_23">
-     <property name="text">
-      <string>Mean current maximum value</string>
-     </property>
-    </widget>
-   </item>
-   <item row="12" column="2">
-    <widget class="QDoubleSpinBox" name="meanCurrent_max">
-     <property name="suffix">
-      <string> nA</string>
-     </property>
-     <property name="maximum">
-      <double>1000000.000000000000000</double>
-     </property>
-    </widget>
-   </item>
-   <item row="13" column="0" colspan="3">
-    <widget class="QCheckBox" name="mape_nClusters">
-     <property name="text">
-      <string>Use number of clusters as MAPE dimension</string>
-     </property>
-    </widget>
-   </item>
-   <item row="14" column="0" colspan="3">
-    <widget class="QCheckBox" name="mape_clusterIndex">
-     <property name="text">
-      <string>Use cluster index as MAPE dimension</string>
-     </property>
-    </widget>
-   </item>
-   <item row="15" column="0" colspan="3">
+   <item row="6" column="2">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -220,6 +253,77 @@
      <property name="standardButtons">
       <set>QDialogButtonBox::Apply|QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>
+    </widget>
+   </item>
+   <item row="4" column="0" rowspan="3" colspan="2">
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="title">
+      <string>Clustering</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_4">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_15">
+        <property name="text">
+         <string>Blank after step</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QDoubleSpinBox" name="cluster_blank">
+        <property name="suffix">
+         <string> ms</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_12">
+        <property name="text">
+         <string>Min cluster duration</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QDoubleSpinBox" name="cluster_minLen">
+        <property name="suffix">
+         <string> ms</string>
+        </property>
+        <property name="maximum">
+         <double>999.990000000000009</double>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_11">
+        <property name="text">
+         <string>Resolution</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDoubleSpinBox" name="cluster_secLen">
+        <property name="suffix">
+         <string> ms</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_13">
+        <property name="text">
+         <string>Similarity threshold</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QDoubleSpinBox" name="cluster_threshold">
+        <property name="decimals">
+         <number>3</number>
+        </property>
+        <property name="maximum">
+         <double>1.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>
