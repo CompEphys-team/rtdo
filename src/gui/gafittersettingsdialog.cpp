@@ -77,8 +77,6 @@ void GAFitterSettingsDialog::importData()
     ui->decaySigma->setChecked(p.decaySigma);
     ui->sigmaHalflife->setValue(p.sigmaHalflife);
     ui->sigmaInitial->setValue(p.sigmaInitial);
-    ui->useLikelihood->setChecked(historicIndex < 0 ? false : p.useLikelihood);
-    ui->clustering->setChecked(p.useClustering);
     ui->method->setCurrentIndex(p.useDE ? 1 : 0);
     ui->selectivity->setCurrentIndex(p.mutationSelectivity);
 
@@ -103,8 +101,6 @@ void GAFitterSettingsDialog::exportData()
     p.decaySigma = ui->decaySigma->isChecked();
     p.sigmaHalflife = ui->sigmaHalflife->value();
     p.sigmaInitial = ui->sigmaInitial->value();
-    p.useLikelihood = false;
-    p.useClustering = ui->clustering->isChecked();
     p.useDE = ui->method->currentIndex() == 1;
     p.mutationSelectivity = ui->selectivity->currentIndex();
 
@@ -115,6 +111,8 @@ void GAFitterSettingsDialog::exportData()
         p.max.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->value());
     }
 
+    p.useLikelihood = false;
+    p.useClustering = false;
     emit apply(p);
 }
 

@@ -47,18 +47,8 @@ void GAFitterWidget::updateDecks()
 
     int idx = ui->decks->currentIndex();
     ui->decks->clear();
-    QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->decks->model());
-    int i = 0;
-    for ( WaveSource &src : session.wavesets().sources() ) {
+    for ( WaveSource &src : session.wavesets().sources() )
         ui->decks->addItem(src.prettyName(), QVariant::fromValue(src));
-        if ( !session.qGaFitterSettings().useClustering ) {
-            if ( i == idx && src.type != WaveSource::Deck )
-                idx = -1;
-            model->item(i++)->setFlags(src.type == WaveSource::Deck
-                                       ? Qt::ItemIsEnabled | Qt::ItemIsSelectable
-                                       : Qt::NoItemFlags);
-        }
-    }
     ui->decks->setCurrentIndex(idx);
 }
 

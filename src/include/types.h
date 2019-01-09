@@ -437,13 +437,14 @@ struct GAFitterSettings {
     std::vector<int> constraints;
     std::vector<scalar> min, max, fixedValue;
 
-    bool useLikelihood = false; // Retired 6 Nov 2018
-
     bool useDE = false;
-    bool useClustering = false;
     int mutationSelectivity = 2; // 0: Nonspecific mutation, 1: Graded mutation rates, 2: Target parameter only
 
     std::string obsSource;
+
+    // Retired values
+    bool useLikelihood = false; // Retired 6 Nov 2018
+    bool useClustering = false; // Retired 9 Jan 2019
 };
 
 

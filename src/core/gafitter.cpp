@@ -51,8 +51,6 @@ void GAFitter::run(WaveSource src, QString VCRecord, bool readRecConfig)
 {
     if ( action != this->action )
         throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
-    if ( src.type != WaveSource::Deck && !session.qGaFitterSettings().useClustering )
-        std::cerr << "Warning: Fitting a non-deck wave source without clustering" << std::endl;
     if ( readRecConfig && session.qDaqData().simulate == -1 ) {
         QString cfg = VCRecord;
         cfg.replace(".atf", ".cfg");
