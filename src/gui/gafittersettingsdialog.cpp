@@ -80,6 +80,13 @@ void GAFitterSettingsDialog::importData()
     ui->method->setCurrentIndex(p.useDE ? 1 : 0);
     ui->selectivity->setCurrentIndex(p.mutationSelectivity);
 
+    if ( p.obsSource == Wavegen::cluster_action.toStdString() )
+        ui->obsSource->setCurrentIndex(1);
+    else if ( p.obsSource == Wavegen::bubble_action.toStdString() )
+        ui->obsSource->setCurrentIndex(2);
+    else
+        ui->obsSource->setCurrentIndex(0);
+
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(p.constraints[i]);
         static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->setValue(p.fixedValue[i]);
@@ -104,6 +111,13 @@ void GAFitterSettingsDialog::exportData()
     p.useDE = ui->method->currentIndex() == 1;
     p.mutationSelectivity = ui->selectivity->currentIndex();
 
+    switch ( ui->obsSource->currentIndex() ) {
+    case 1: p.obsSource = Wavegen::cluster_action.toStdString(); break;
+    case 2: p.obsSource = Wavegen::bubble_action.toStdString(); break;
+    case 0:
+    default: p.obsSource = std::string(); break;
+    }
+
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         p.constraints.push_back(static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex());
         p.fixedValue.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->value());
@@ -113,6 +127,7 @@ void GAFitterSettingsDialog::exportData()
 
     p.useLikelihood = false;
     p.useClustering = false;
+
     emit apply(p);
 }
 
