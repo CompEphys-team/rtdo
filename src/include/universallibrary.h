@@ -57,6 +57,10 @@
 #define ASSIGNMENT_SINGULAR_RUND                 static_cast<unsigned int>(0x1 << 15) /* Load rundata from singular __constant__ var */
 #define ASSIGNMENT_SINGULAR_TARGET                 static_cast<unsigned int>(0x1 << 16) /* Load target from singular __constant__ var */
 
+// Bits 17-18: Noisy integration during observed periods
+#define ASSIGNMENT_NOISY_OBSERVATION            static_cast<unsigned int>(0x1 << 17) /* Add white or O-U noise during observed periods */
+#define ASSIGNMENT_NOISY_CHANNELS               static_cast<unsigned int>(0x3 << 17) /* Add gating noise during observed periods; implies NOISY_OBSERVATION */
+
 class UniversalLibrary
 {
 public:
@@ -76,6 +80,8 @@ public:
         IntegrationMethod *integrator;
         unsigned int *assignment;
         int *targetStride;
+        scalar *noiseExp;
+        scalar *noiseAmplitude;
 
         std::function<void(void*, void*, size_t)> pushV;
         std::function<void(void*, void*, size_t)> pullV;
@@ -237,6 +243,8 @@ public:
     /// Utility call to add full-stim, step-blanked observation windows to the (model-individual) stims residing on the GPU
     inline void observe_no_steps(int blankCycles) { pointers.observe_no_steps(blankCycles); }
 
+    /// Utility call to generate a lot of normally distributed scalars in device memory for use with ASSIGNMENT_NOISY_OBSERVATION
+    /// The RNG is reset to a new seed only if seed != 0; otherwise, the existing RNG state is used.
     inline void generate_random_samples(unsigned int n, scalar mean, scalar sd, unsigned long long seed = 0) { pointers.genRandom(n, mean, sd, seed); }
 
 private:
@@ -259,6 +267,7 @@ private:
     unsigned int *dummyUIntPtr = nullptr;
     iObservations *dummyObsPtr = nullptr;
     Bubble *dummyBubblePtr = nullptr;
+    scalar dummyScalar;
 
 public:
     // Globals
@@ -266,6 +275,8 @@ public:
     IntegrationMethod &integrator;
     unsigned int &assignment;
     int &targetStride;
+    scalar &noiseExp;
+    scalar &noiseAmplitude;
 
     scalar *&target;
     scalar *&output;

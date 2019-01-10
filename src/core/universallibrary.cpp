@@ -39,6 +39,8 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     integrator(light ? dummyIntegrator : *pointers.integrator),
     assignment(light ? dummyUInt : *pointers.assignment),
     targetStride(light ? dummyInt : *pointers.targetStride),
+    noiseExp(light ? dummyScalar : *pointers.noiseExp),
+    noiseAmplitude(light ? dummyScalar : *pointers.noiseAmplitude),
 
     target(light ? dummyScalarPtr : *pointers.target),
     output(light ? dummyScalarPtr : *pointers.output),
@@ -126,7 +128,9 @@ void UniversalLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("simCycles", "", "int"),
         Variable("integrator", "", "IntegrationMethod"),
         Variable("assignment", "", "unsigned int"),
-        Variable("targetStride", "", "int")
+        Variable("targetStride", "", "int"),
+        Variable("noiseExp"),
+        Variable("noiseAmplitude")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -204,6 +208,9 @@ int nextObs = 0;
 t = 0.;
 if ( !($(assignment)&ASSIGNMENT_SUMMARY_PERSIST) )
     $(summary) = 0;
+scalar noiseI[3];
+if ( $(assignment) & ASSIGNMENT_NOISY_OBSERVATION )
+    noiseI[0] = dd_random[id];
 
 while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
         && iT < $(stim).duration
@@ -298,7 +305,18 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
             }
 
             // Integrate forward by one $(dt)
-            if ( $(integrator) == IntegrationMethod::RungeKutta4 ) {
+            if ( $(assignment) & ASSIGNMENT_NOISY_OBSERVATION ) {
+                scalar *offset_rand = dd_random + nSamples * 2*$(simCycles) * NMODELS + id;
+                scalar A = $(noiseAmplitude);
+                if ( $(assignment) & ASSIGNMENT_NOISY_CHANNELS )
+                    A = sqrt(A*A + state.state__variance(params));
+                for ( int mt = 0; mt < $(simCycles); mt++ ) {
+                    noiseI[1] = noiseI[0] * $(noiseExp) + offset_rand[(2*mt+1) * NMODELS] * A;
+                    noiseI[2] = noiseI[1] * $(noiseExp) + offset_rand[(2*mt+2) * NMODELS] * A;
+                    RK4(t + mt*mdt, mdt, state, params, clamp, noiseI);
+                    noiseI[0] = noiseI[2];
+                }
+            } else if ( $(integrator) == IntegrationMethod::RungeKutta4 ) {
                 for ( int mt = 0; mt < $(simCycles); mt++ )
                     RK4(t + mt*mdt, mdt, state, params, clamp);
             } else if ( $(integrator) == IntegrationMethod::ForwardEuler ) {
