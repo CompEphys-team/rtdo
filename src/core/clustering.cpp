@@ -123,7 +123,8 @@ std::vector<std::pair<int, int>> observeNoSteps(iStimulation iStim, int blankCyc
 
 iObservations iObserveNoSteps(iStimulation iStim, int blankCycles)
 {
-    int tStart = 0, nextObs = 0;
+    int tStart = 0;
+    unsigned int nextObs = 0;
     iObservations obs = {{}, {}};
     for ( const auto step : iStim ) {
         if ( step.t > iStim.duration )
@@ -132,12 +133,13 @@ iObservations iObserveNoSteps(iStimulation iStim, int blankCycles)
             if ( tStart < step.t ) {
                 obs.start[nextObs] = tStart;
                 obs.stop[nextObs] = step.t;
-                ++nextObs;
+                if ( ++nextObs == iObservations::maxObs )
+                    break;
             }
             tStart = step.t + blankCycles;
         }
     }
-    if ( tStart < iStim.duration ) {
+    if ( nextObs < iObservations::maxObs && tStart < iStim.duration ) {
         obs.start[nextObs] = tStart;
         obs.stop[nextObs] = iStim.duration;
     }
