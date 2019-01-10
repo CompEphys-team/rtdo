@@ -82,6 +82,8 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     lib.setSingularRund();
     lib.simCycles = rd.simCycles;
     lib.integrator = rd.integrator;
+    lib.noiseExp = rd.noiseExp();
+    lib.noiseAmplitude = rd.noiseAmplitude();
     lib.setRundata(0, rd);
 
     lib.setSingularStim();
@@ -94,6 +96,13 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
 
     unsigned int assignment = lib.assignment_base
             | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPACT | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
+
+    if ( rd.noisy ) {
+        assignment |= (rd.noisyChannels ? ASSIGNMENT_NOISY_CHANNELS : ASSIGNMENT_NOISY_OBSERVATION);
+        lib.generate_random_samples(maxObsDuration * 2*rd.simCycles * lib.NMODELS,
+                                    0, rd.noisyChannels ? 1 : rd.noiseAmplitude(),
+                                    session.RNG.uniform(0ull, std::numeric_limits<unsigned long long>::max()));
+    }
 
     prof.rho_weighted.resize(elites.size());
     prof.rho_unweighted.resize(elites.size());
