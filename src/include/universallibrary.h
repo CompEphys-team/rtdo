@@ -112,6 +112,7 @@ public:
         Bubble **bubbles;
 
         void (*observe_no_steps)(int blankCycles);
+        void (*genRandom)(unsigned int n, scalar mean, scalar sd, unsigned long long seed);
     };
 
     Project &project;
@@ -235,6 +236,8 @@ public:
 
     /// Utility call to add full-stim, step-blanked observation windows to the (model-individual) stims residing on the GPU
     inline void observe_no_steps(int blankCycles) { pointers.observe_no_steps(blankCycles); }
+
+    inline void generate_random_samples(unsigned int n, scalar mean, scalar sd, unsigned long long seed = 0) { pointers.genRandom(n, mean, sd, seed); }
 
 private:
     void *load();

@@ -401,6 +401,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.pullBubbles =& pullBubbles;" << endl;
     ss << "    pointers.find_deltabar =& find_deltabar;" << endl;
     ss << "    pointers.observe_no_steps =& observe_no_steps;" << endl;
+    ss << "    pointers.genRandom =& genRandom;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 

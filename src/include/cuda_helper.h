@@ -17,6 +17,16 @@
 }
 #endif
 
+#define CURAND_CALL(call)                                       \
+{                                                               \
+    curandStatus_t status = (call);                             \
+    if (status != CURAND_STATUS_SUCCESS) {                      \
+        std::cerr << __FILE__ << ": " <<  __LINE__;             \
+        std::cerr << ": curand error " << status << std::endl;  \
+        exit(EXIT_FAILURE);                                     \
+    }                                                           \
+}
+
 #define PULL(namesp, hostvar) \
     CHECK_CUDA_ERRORS(cudaMemcpy(hostvar, \
                                  d_ ## hostvar, \

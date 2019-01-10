@@ -6,6 +6,7 @@
 
 #include <thrust/device_vector.h>
 #include <thrust/inner_product.h>
+#include <curand.h>
 
 static scalar *target = nullptr, *d_target = nullptr;
 static __constant__ scalar *dd_target = nullptr;
@@ -29,6 +30,11 @@ static __constant__ size_t singular_targetOffset;
 // profiler memory space
 static scalar *d_prof_error, *d_prof_dist_uw, *d_prof_dist_to, *d_prof_dist_w;
 static constexpr unsigned int profSz = NMODELS * (NMODELS - 1) / 2; // No diagonal
+
+static scalar *d_random = nullptr;
+static __constant__ scalar *dd_random = nullptr;
+static unsigned int random_size = 0;
+static curandGenerator_t cuRNG;
 
 // elementary effects wg / clustering memory space
 static scalar *clusters = nullptr, *d_clusters = nullptr;
@@ -94,12 +100,16 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
     CHECK_CUDA_ERRORS(cudaMalloc(&d_prof_dist_uw, profSz * sizeof(scalar)));
     CHECK_CUDA_ERRORS(cudaMalloc(&d_prof_dist_to, profSz * sizeof(scalar)));
     CHECK_CUDA_ERRORS(cudaMalloc(&d_prof_dist_w, profSz * sizeof(scalar)));
+
+    // Philox is fastest for normal dist, if developer.nvidia.com/curand is to be believed
+    CURAND_CALL(curandCreateGenerator(&cuRNG, CURAND_RNG_PSEUDO_PHILOX4_32_10));
 }
 
 extern "C" void libExit(UniversalLibrary::Pointers &pointers)
 {
     freeMem();
     pointers.pushV = pointers.pullV = nullptr;
+    CURAND_CALL(curandDestroyGenerator(cuRNG));
 }
 
 extern "C" void resetDevice()
@@ -1232,6 +1242,22 @@ extern "C" void observe_no_steps(int blankCycles)
 {
     dim3 block(256);
     observe_no_steps_kernel<<<((NMODELS+block.x-1)/block.x)*block.x, block.x>>>(blankCycles);
+}
+
+extern "C" void genRandom(unsigned int n, scalar mean, scalar sd, unsigned long long seed)
+{
+    resizeArray(d_random, random_size, n * sizeof(scalar));
+    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(dd_random, &d_random, sizeof(scalar*)));
+
+    if ( seed != 0 )
+        CURAND_CALL(curandSetPseudoRandomGeneratorSeed(cuRNG, seed));
+
+#ifdef USEDOUBLE
+    CURAND_CALL(curandGenerateNormalDouble(cuRNG, d_random, n, mean, sd));
+#else
+    CURAND_CALL(curandGenerateNormal(cuRNG, d_random, n, mean, sd));
+#endif
+
 }
 
 #endif

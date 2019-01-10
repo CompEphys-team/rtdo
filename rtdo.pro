@@ -208,7 +208,7 @@ SOURCES += \
 DEFINES += NVCC=\\\"\"$$(CUDA_PATH)/bin/nvcc\"\\\"
 contains(QMAKE_HOST.arch, x86_64): LIBS += -L$$(CUDA_PATH)/lib64
                              else: LIBS += -L$$(CUDA_PATH)/lib
-LIBS += -lcuda -lcudart
+LIBS += -lcuda -lcudart -lcurand
 
 
 # TinyXML2 lib
