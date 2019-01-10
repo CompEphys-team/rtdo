@@ -51,6 +51,10 @@ void RunDataDialog::importData()
     case IntegrationMethod::RungeKutta4:          ui->integrator->setCurrentIndex(1); break;
     case IntegrationMethod::RungeKuttaFehlberg45: ui->integrator->setCurrentIndex(2); break;
     }
+    ui->noisy->setChecked(p.noisy);
+    ui->noisyChannels->setChecked(p.noisyChannels);
+    ui->noiseStd->setValue(p.noiseStd);
+    ui->noiseTau->setValue(p.noiseTau);
 }
 
 void RunDataDialog::exportData()
@@ -67,6 +71,10 @@ void RunDataDialog::exportData()
     case 1: p.integrator = IntegrationMethod::RungeKutta4;          break;
     case 2: p.integrator = IntegrationMethod::RungeKuttaFehlberg45; break;
     }
+    p.noisy = ui->noisy->isChecked();
+    p.noisyChannels = ui->noisyChannels->isChecked();
+    p.noiseStd = ui->noiseStd->value();
+    p.noiseTau = ui->noiseTau->value();
     emit apply(p);
 }
 

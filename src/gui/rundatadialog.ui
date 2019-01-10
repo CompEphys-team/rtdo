@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>420</width>
-    <height>287</height>
+    <height>384</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -59,7 +59,7 @@
      </property>
     </widget>
    </item>
-   <item row="8" column="1" colspan="2">
+   <item row="9" column="1" colspan="2">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
@@ -170,6 +170,62 @@
      <property name="text">
       <string>Clamp current limit</string>
      </property>
+    </widget>
+   </item>
+   <item row="7" column="0" colspan="3">
+    <widget class="QGroupBox" name="noisy">
+     <property name="title">
+      <string>Inject noise current (SamplingProfiler)</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0" colspan="2">
+       <widget class="QCheckBox" name="noisyChannels">
+        <property name="text">
+         <string>Model channel gating noise</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_33">
+        <property name="text">
+         <string>Standard deviation</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QDoubleSpinBox" name="noiseStd">
+        <property name="suffix">
+         <string> nA</string>
+        </property>
+        <property name="maximum">
+         <double>1000.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_34">
+        <property name="text">
+         <string>Time scale</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDoubleSpinBox" name="noiseTau">
+        <property name="suffix">
+         <string> ms</string>
+        </property>
+        <property name="decimals">
+         <number>3</number>
+        </property>
+        <property name="maximum">
+         <double>999.999000000000024</double>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>

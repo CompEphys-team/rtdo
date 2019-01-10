@@ -86,6 +86,10 @@ void Session::addAPs()
     addAP(runAP, "S.Run.integrator", &q_settings, &Settings::rund, &RunData::integrator);
     addAP(runAP, "S.Run.dt", &q_settings, &Settings::rund, &RunData::dt);
     addAP(runAP, "S.Run.Imax", &q_settings, &Settings::rund, &RunData::Imax);
+    addAP(runAP, "S.Run.noisy", &q_settings, &Settings::rund, &RunData::noisy);
+    addAP(runAP, "S.Run.noisyChannels", &q_settings, &Settings::rund, &RunData::noisyChannels);
+    addAP(runAP, "S.Run.noiseStd", &q_settings, &Settings::rund, &RunData::noiseStd);
+    addAP(runAP, "S.Run.noiseTau", &q_settings, &Settings::rund, &RunData::noiseTau);
 
     addAP(searchAP, "S.Wavegen.nInitialWaves", &q_settings, &Settings::searchd, &WavegenData::nInitialWaves);
     addAP(searchAP, "S.Wavegen.useBaseParameters", &q_settings, &Settings::searchd, &WavegenData::useBaseParameters);

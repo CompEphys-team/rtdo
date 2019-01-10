@@ -305,6 +305,14 @@ struct RunData
     double Imax = 0; // Current ceiling (+-), nA
     IntegrationMethod integrator = IntegrationMethod::RungeKutta4;
     double dt = 0.25;
+    bool noisy = false;
+    bool noisyChannels = false;
+    double noiseStd = 0;
+    double noiseTau = 0.01;
+
+    /// Amplitude & exp for noisy RK4
+    inline double noiseAmplitude() const { return noiseTau > 0 ? sqrt(noiseStd * noiseStd * (1 - exp(-dt/(simCycles*noiseTau)))) : noiseStd; }
+    inline double noiseExp() const { return noiseTau > 0 ? exp(-dt/(2*simCycles*noiseTau)) : 0; }
 };
 
 struct Bubble
