@@ -6,7 +6,7 @@
 	<capacitance>
 		<value>150</value>
 		<range min="50" max="250"/>
-		<perturbation type="*" rate="0.01"/>
+		<perturbation type="*" rate="0.1"/>
 	</capacitance>
 	<current name="I_Kfast">
 		<popen>$(nK)*$(nK)*$(nK)*$(nK)*$(hK)</popen>
@@ -17,6 +17,7 @@
 	<current name="I_Kslow">
 		<popen>$(sK)*$(sK)*$(sK)*$(sK)</popen>
 		<gbar>gK_slow</gbar>
+		<gunit>10e-6</gunit>
 		<E>EK</E>
 	</current>
 	<current name="I_l">
@@ -56,7 +57,7 @@
 	</adjustableParam>
 	<adjustableParam name="EK" value="-70">
 		<range min="-90" max="-40"/>
-		<perturbation type="+" rate="1"/>
+		<perturbation type="+" rate="0.1"/>
 	</adjustableParam>
 
 	<adjustableParam name="gl" value="2">
@@ -65,7 +66,7 @@
 	</adjustableParam>
 	<adjustableParam name="El" value="-10">
 		<range min="-30" max="20"/>
-		<perturbation type="+" rate="1"/>
+		<perturbation type="+" rate="0.1"/>
 	</adjustableParam>
 
 	<parameter name="nK_mid" value="-13.7" />
