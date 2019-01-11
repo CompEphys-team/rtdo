@@ -53,11 +53,7 @@ void Project::loadSettings(const QString &projectfile)
 
 void Project::addAPs()
 {
-    addAP(ap, "dt", this, &Project::m_dt);
-    addAP(ap, "method", this, &Project::m_method);
-    addAP(ap, "Wavegen.numGroups", this, &Project::wg_numGroups);
     addAP(ap, "Experiment.numCandidates", this, &Project::exp_numCandidates);
-    addAP(ap, "Profiler.numPairs", this, &Project::prof_numPairs);
     addDaqAPs(ap, &daqd);
     addAP(ap, "sim.extraModels[#]", this, &Project::m_extraModelFiles);
 }

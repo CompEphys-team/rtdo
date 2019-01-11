@@ -305,8 +305,6 @@ neuronModel MetaModel::generate(NNmodel &m, std::vector<double> &fixedParamIni, 
     GENN_PREFERENCES::optimiseBlockSize = 1;
     GENN_PREFERENCES::userNvccFlags = "-std c++11 -Xcompiler \"-fPIC\" -I" CORE_INCLUDE_PATH " -I" CORE_INCLUDE_PATH "/../../lib/randutils";
 
-    m.setDT(project.dt());
-
 #ifdef USEDOUBLE
     m.setPrecision(GENN_DOUBLE);
 #else

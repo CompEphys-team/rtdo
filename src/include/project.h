@@ -22,20 +22,12 @@ public:
     void setModel(QString const& modelfile); ///!< Loads the model immediately. At compile time, the model file is copied to the project directory.
     void setExtraModels(std::vector<QString> modelfiles); ///!< Load additional models for use as simulated targets
     void setLocation(QString const& projectfile); //!< Sets the project file. The project directory is set to the project file's path.
-    inline void setDt(double dt) { if ( !frozen ) m_dt = dt; }
-    inline void setMethod(IntegrationMethod method) { if ( !frozen ) m_method = method; }
-    inline void setWgNumGroups(size_t num) { if ( !frozen ) wg_numGroups = num; }
-    inline void setExpNumCandidates(size_t num) { if ( !frozen ) exp_numCandidates = 64*int((num+63)/64); /* ensure numPairs == k*32 */ }
-    inline void setProfNumPairs(size_t num) { if ( !frozen ) prof_numPairs = 32*int((num+31)/32); /* ensure numPairs == k*32 */ }
+    inline void setExpNumCandidates(size_t num) { if ( !frozen ) exp_numCandidates = 64*int((num+63)/64); /* ensure numPairs == k*64 */ }
 
     /// Get compile-time parameters
     inline QString modelfile() const { return p_modelfile; }
     inline const std::vector<QString> &extraModelFiles() const { return m_extraModelFiles; }
-    inline double dt() const { return m_dt; }
-    inline IntegrationMethod method() const { return m_method; }
-    inline size_t wgNumGroups() const { return wg_numGroups; }
     inline size_t expNumCandidates() const { return exp_numCandidates; }
-    inline size_t profNumPairs() const { return prof_numPairs; }
 
     QString dir() const; //!< @brief dir() returns the absolute path to the project directory
     inline QString projectfile() const { return p_projectfile; }
@@ -70,14 +62,7 @@ protected:
     QString p_modelfile;
     QString p_projectfile;
 
-    double m_dt = 0.25;
-    IntegrationMethod m_method = IntegrationMethod::RungeKutta4;
-
-    size_t wg_numGroups = 8192; //!< Number of model groups (base + each parameter detuned) per lib step
-
     size_t exp_numCandidates = 10000;
-
-    size_t prof_numPairs = 8192; //!< Number of tuned/detuned model pairs to profile against each other
 
     DAQData daqd;
 
