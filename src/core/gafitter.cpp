@@ -149,7 +149,7 @@ void GAFitter::setup()
 
     stims.resize(nParams);
     obs.resize(nParams);
-    baseF.resize(nParams);
+    baseF.resize(nParams, std::vector<double>(nParams, 0));
 
     QString obsSource = QString::fromStdString(settings.obsSource);
     if ( obsSource == Wavegen::cluster_action || obsSource == Wavegen::bubble_action ) {
@@ -167,7 +167,6 @@ void GAFitter::setup()
             }
             stims[paramIdx] = *elites[paramIdx][bestStimIdx].wave;
             obs[paramIdx] = elites[paramIdx][bestStimIdx].obs;
-            baseF[paramIdx].resize(nParams);
             for ( int i = 0; i < nParams; i++ )
                 baseF[paramIdx][i] = elites[paramIdx][bestStimIdx].deviations[i];
             astims_ordered[paramIdx] = astims[bestStimIdx];
@@ -175,6 +174,7 @@ void GAFitter::setup()
         using std::swap;
         swap(astims, astims_ordered);
     } else {
+        std::vector<int> needPosthocEval;
         int paramIdx = 0;
         for ( const MAPElite &el : output.stimSource.elites() ) {
             stims[paramIdx] = *el.wave;
@@ -184,14 +184,19 @@ void GAFitter::setup()
             for ( const scalar &dev : el.deviations )
                 sumDev += dev;
             if ( sumDev == 0 ) {
-                // TODO (manual stims)
-                throw std::runtime_error("Wavegen::evaluatePremade() not yet implemented");
+                needPosthocEval.push_back(paramIdx);
             } else {
-                baseF[paramIdx].resize(nParams);
                 for ( int i = 0; i < nParams; i++ )
                     baseF[paramIdx][i] = el.deviations[i];
             }
             ++paramIdx;
+        }
+
+        if ( !needPosthocEval.empty() ) {
+            std::vector<MAPElite> posthoc = session.wavegen().evaluatePremade(stims, obs);
+            for ( int paramIdx : needPosthocEval )
+                for ( int i = 0; i < nParams; i++ )
+                    baseF[paramIdx][i] = posthoc[paramIdx].deviations[i];
         }
     }
 
