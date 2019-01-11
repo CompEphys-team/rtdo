@@ -420,6 +420,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.find_deltabar =& find_deltabar;" << endl;
     ss << "    pointers.observe_no_steps =& observe_no_steps;" << endl;
     ss << "    pointers.genRandom =& genRandom;" << endl;
+    ss << "    pointers.get_posthoc_deviations =& get_posthoc_deviations;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 

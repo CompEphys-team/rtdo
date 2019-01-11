@@ -1260,4 +1260,102 @@ extern "C" void genRandom(unsigned int n, scalar mean, scalar sd, unsigned long 
 
 }
 
+/**
+ * @brief get_posthoc_deviations is a reduced version of build_section_primitives designed to get the deviations vector and current for
+ * stimulations with predefined observation windows.
+ * @param out_clusters: Deviation vectors, [stimIdx][paramIdx]
+ * @param out_current: Mean current, [stimIdx]
+ */
+__global__ void get_posthoc_deviations_kernel(const int trajLen,
+                                              const int nTraj,
+                                              const int nStims,
+                                              scalar *out_clusters,
+                                              scalar *out_current)
+{
+    const int warpid = threadIdx.x / 32; // acts as block-local stim idx
+    const int laneid = threadIdx.x & 31;
+    const int stimIdx = (blockIdx.x * blockDim.x + threadIdx.x) / 32; // global stim idx; one stim per warp
+    const int nTraces = trajLen*nTraj; // Total number of traces per stim, including starting point models
+    const int nUsefulTraces = (trajLen-1)*nTraj; // Number of mid-trajectory models per stim
+    const int lane0_offset = stimIdx * nTraces;
+    const int nLoads = (nTraces + 31) & 0xffffffe0;
+    const iObservations obs = dd_obsUNI[stimIdx*nTraces];
+    int nextObs = 0;
+
+    volatile __shared__ scalar sh_contrib[STIMS_PER_CLUSTER_BLOCK][NPARAMS];
+    for ( int i = threadIdx.x; i < STIMS_PER_CLUSTER_BLOCK*NPARAMS; i += blockDim.x )
+        *((scalar*)sh_contrib + i) = 0;
+    __syncthreads();
+
+    if ( stimIdx >= nStims )
+        return;
+
+    // Accumulate current/contribs across observation period
+    scalar current = 0;
+    for ( int t = obs.start[0]; ; ++t ) {
+        if ( t == obs.stop[nextObs] ) {
+            if ( ++nextObs == iObservations::maxObs )
+                break;
+            t = obs.start[nextObs];
+            if ( t == 0 )
+                break;
+        }
+
+        __syncwarp();
+        for ( int i = laneid; i < nLoads; i += warpSize ) {
+            const int paramIdx = (i - 1 - (i/trajLen)) % NPARAMS;
+            scalar current_mylane = 0;
+            if ( i < nTraces )
+                current_mylane = dd_timeseries[t*NMODELS + lane0_offset + i];
+            scalar current_prevlane = __shfl_up_sync(0xffffffff, current_mylane, 1);
+            scalar diff = scalarfabs(current_prevlane - current_mylane);
+            if ( i < nTraces ) {
+                if ( i % trajLen != 0 )
+                    atomicAdd((scalar*)&sh_contrib[warpid][paramIdx], diff);
+                current_mylane = scalarfabs(current_mylane);
+            }
+            current += warpReduceSum(current_mylane);
+        }
+    }
+
+    // Normalise
+    __syncwarp();
+    scalar dotp = 0;
+    for ( int paramIdx = laneid; paramIdx < NPARAMS; paramIdx += warpSize ) {
+        int nContrib = nUsefulTraces/NPARAMS + (paramIdx < (nUsefulTraces % NPARAMS));
+        scalar contrib = sh_contrib[warpid][paramIdx] / (nContrib * deltabar[paramIdx]);
+        dotp += contrib * contrib;
+        sh_contrib[warpid][paramIdx] = contrib;
+    }
+
+    __syncwarp();
+    dotp = std::sqrt(warpReduceSum(dotp));
+    for ( int paramIdx = laneid; paramIdx < NPARAMS; paramIdx += warpSize )
+        out_clusters[stimIdx*NPARAMS + paramIdx] = sh_contrib[warpid][paramIdx] / dotp;
+
+    if ( laneid == 0 )
+        out_current[stimIdx] = current / (obs.duration() * nTraces);
+}
+
+extern "C" void get_posthoc_deviations(int trajLen,
+                                       int nTraj,
+                                       unsigned int nStims,
+                                       std::vector<double> deltabar_arg)
+{
+    resizeArrayPair(clusters, d_clusters, clusters_size, nStims * NPARAMS);
+    resizeArrayPair(clusterCurrent, d_clusterCurrent, clusterCurrent_size, nStims);
+
+    scalar deltabar_array[NPARAMS];
+    for ( int i = 0; i < NPARAMS; i++ )
+        deltabar_array[i] = deltabar_arg[i];
+    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(deltabar, deltabar_array, NPARAMS*sizeof(scalar)));
+
+    dim3 block(STIMS_PER_CLUSTER_BLOCK * 32);
+    dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
+    get_posthoc_deviations_kernel<<<grid, block>>>(trajLen, nTraj, nStims, d_clusters, d_clusterCurrent);
+
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nStims * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERRORS(cudaMemcpy(clusterCurrent, d_clusterCurrent, nStims * sizeof(scalar), cudaMemcpyDeviceToHost));
+}
+
 #endif

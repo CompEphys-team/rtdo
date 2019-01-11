@@ -119,6 +119,7 @@ public:
 
         void (*observe_no_steps)(int blankCycles);
         void (*genRandom)(unsigned int n, scalar mean, scalar sd, unsigned long long seed);
+        void (*get_posthoc_deviations)(int trajLen, int nTraj, unsigned int nStims, std::vector<double> deltabar);
     };
 
     Project &project;
@@ -246,6 +247,12 @@ public:
     /// Utility call to generate a lot of normally distributed scalars in device memory for use with ASSIGNMENT_NOISY_OBSERVATION
     /// The RNG is reset to a new seed only if seed != 0; otherwise, the existing RNG state is used.
     inline void generate_random_samples(unsigned int n, scalar mean, scalar sd, unsigned long long seed = 0) { pointers.genRandom(n, mean, sd, seed); }
+
+    /// post-run() workhorse to get deviations and currents for predefined stims.
+    /// Pulls results to clusters as [stimIdx][paramIdx], and to clusterCurrent as [stimIdx], both with stride nStims.
+    inline void get_posthoc_deviations(int trajLen, int nTraj, unsigned int nStims, std::vector<double> deltabar) {
+        pointers.get_posthoc_deviations(trajLen, nTraj, nStims, deltabar);
+    }
 
 private:
     void *load();

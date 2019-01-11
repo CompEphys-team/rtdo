@@ -60,6 +60,13 @@ public:
     inline QString actorName() const { return "Wavegen"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
 
+    /**
+     * @brief evaluatePremade simulates the given stimulations, observing them at the given times, and returns a MAPElite for each stim
+     * that contains the observed deviations and current.
+     * Synchronous.
+     */
+    std::vector<MAPElite> evaluatePremade(const std::vector<iStimulation> &stims, const std::vector<iObservations> &obs);
+
 public slots:
     /**
      * @brief search() searches for Stimulations using Elementary Effects detuning and a MAPElites algorithm.

@@ -428,3 +428,42 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
     }
     return ret;
 }
+
+std::vector<MAPElite> Wavegen::evaluatePremade(const std::vector<iStimulation> &stims, const std::vector<iObservations> &obs)
+{
+    istimd = iStimData(stimd, session.runData().dt);
+    const int nModelsPerStim = searchd.trajectoryLength * searchd.nTrajectories;
+    const size_t nStimsPerEpoch = ulib.NMODELS / nModelsPerStim;
+    const size_t nParams = ulib.adjustableParams.size();
+
+    std::vector<MAPElite> ret(stims.size());
+
+    ulib.resizeOutput(istimd.iDuration);
+    prepare_EE_models();
+    settle_EE_models();
+    std::vector<double> deltabar = getDeltabar();
+
+    ulib.setSingularStim(false);
+    ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
+
+    for ( size_t nProcessedStims = 0; nProcessedStims < stims.size(); nProcessedStims += nStimsPerEpoch ) {
+        size_t nStims = std::min(stims.size() - nProcessedStims, nStimsPerEpoch);
+        for ( size_t i = 0; i < nStims*nModelsPerStim; i++ ) {
+            ulib.stim[i] = stims[nProcessedStims + (i/nModelsPerStim)];
+            ulib.obs[i] = obs[nProcessedStims + (i/nModelsPerStim)];
+        }
+        if ( nStims*nModelsPerStim < ulib.NMODELS )
+            for ( size_t i = nStims*nModelsPerStim; i < ulib.NMODELS; i++ )
+                ulib.stim[i].duration = 0;
+        ulib.push(ulib.stim);
+        ulib.run();
+        ulib.get_posthoc_deviations(searchd.trajectoryLength, searchd.nTrajectories, nStims, deltabar);
+
+        for ( size_t stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
+            ret[nProcessedStims + stimIdx].current = ulib.clusterCurrent[stimIdx];
+            for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+                ret[nProcessedStims + stimIdx].deviations[paramIdx] = ulib.clusters[stimIdx * nStims + paramIdx];
+        }
+    }
+    return ret;
+}
