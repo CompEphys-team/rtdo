@@ -62,6 +62,7 @@ void WavegenDataDialog::importData()
             ui->meanCurrent_max->setValue(dim.max);
         }
     }
+    ui->adjustMaxCurrent->setChecked(p.adjustToMaxCurrent);
 
     ui->nTrajectories->setValue(p.nTrajectories);
     ui->trajectoryLength->setValue(p.trajectoryLength);
@@ -110,6 +111,7 @@ void WavegenDataDialog::exportData()
     if ( ui->nBinsMeanCurrent->value() > 0 )
         dims.push_back(MAPEDimension {MAPEDimension::Func::EE_MeanCurrent, 0, (scalar)ui->meanCurrent_max->value(), (size_t)ui->nBinsMeanCurrent->value()});
     p.mapeDimensions = dims;
+    p.adjustToMaxCurrent = ui->adjustMaxCurrent->isChecked();
 
     p.nTrajectories = ui->nTrajectories->value();
     p.trajectoryLength = ui->trajectoryLength->value();
