@@ -154,7 +154,7 @@ std::string Project::simulatorCode() const
 
 bool Project::compile()
 {
-    if ( frozen || !m_model || p_modelfile.isEmpty() || p_projectfile.isEmpty() )
+    if ( frozen || !m_model || p_modelfile.isEmpty() || p_projectfile.isEmpty() || !QDir().mkpath(dir()) )
         return false;
     QString dest = dir() + "/model.xml";
     if ( dest != p_modelfile ) {
