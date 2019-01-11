@@ -14,7 +14,7 @@ WavegenData Wavegen::Archive::searchd(const Session &s) const
     WavegenData sd = s.wavegenData(resultIndex);
     if ( sd.adjustToMaxCurrent ) {
         for ( MAPEDimension &dim : sd.mapeDimensions )
-            if ( dim.func == MAPEDimension::Func::EE_MeanCurrent )
+            if ( dim.func == MAPEDimension::Func::EE_MeanCurrent && dim.max < maxCurrent )
                 dim.max = maxCurrent;
     }
     return sd;
