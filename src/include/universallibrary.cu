@@ -365,17 +365,17 @@ __global__ void build_section_primitives(const int trajLen,
         for ( int tEnd = t + secLen; t < tEnd; t++ ) { // Note, t<duration guaranteed by obs.stop
             if ( nextObs < iObservations::maxObs && t >= obs.start[nextObs] ) {
                 if ( t < obs.stop[nextObs] ) {
-                    for ( int i = laneid; i < nLoads; i += warpSize ) {
-                        const int paramIdx = (i - 1 - (i/trajLen)) % NPARAMS;
-                        scalar current_mylane = dd_timeseries[t*NMODELS + lane0_offset + i];
+                    for ( int i = laneid; i < nLoads; i += warpSize ) { // Loop (warp-consistently) nLoads times
+                        const int paramIdx = (i - 1 - (i/trajLen)) % NPARAMS; // idx of the detuned parameter, skipping trajectory base points
+                        scalar current_mylane = 0;
+                        if ( i < nTraces )
+                            current_mylane = dd_timeseries[t*NMODELS + lane0_offset + i];
                         scalar current_prevlane = __shfl_up_sync(0xffffffff, current_mylane, 1);
                         scalar diff = scalarfabs(current_prevlane - current_mylane);
                         if ( i < nTraces ) {
-                            if ( i % trajLen != 0 )
+                            if ( i % trajLen != 0 ) // Add diff to paramIdx's contribution (base points mute; atomic for NPARAMS<31)
                                 atomicAdd((scalar*)&sh_contrib[warpid][paramIdx][secIdx&31], diff);
                             current_mylane = scalarfabs(current_mylane);
-                        } else {
-                            current_mylane = 0;
                         }
                         current_mylane = warpReduceSum(current_mylane);
                         if ( laneid == 0 )
