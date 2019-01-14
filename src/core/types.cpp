@@ -256,7 +256,7 @@ size_t MAPEDimension::bin(const iStimulation &I, size_t multiplier, double dt) c
 
 size_t MAPEDimension::bin(scalar value, size_t multiplier) const
 {
-    if ( value < min )
+    if ( isnan(value) || value < min )
         return 0;
     else if ( value >= max )
         return multiplier * resolution - 1;
