@@ -993,10 +993,11 @@ __global__ void buildBubbles(const int nPartitions,
     // Note the size requirement for 32 scalars and 32 Parameters.
     scalar *sh_current = (scalar*)&shmem[0];
     Parameters *sh_deviation = (Parameters*)&sh_current[32];
-    if ( laneid == 0 ) {
-        sh_current[warpid] = 0;
-        sh_deviation[warpid].zero();
+    if ( warpid == 0 ) {
+        sh_current[laneid] = 0;
+        sh_deviation[laneid].zero();
     }
+    __syncthreads();
 
     // Gather bubble deviation and current
     for ( unsigned int secIdx = start.startCycle, lastSec = start.startCycle + start.cycles; secIdx < (lastSec+31)&0xffffffe0; secIdx += blockDim.x ) {
@@ -1021,7 +1022,8 @@ __global__ void buildBubbles(const int nPartitions,
     __syncthreads();
 
     if ( warpid == 0 ) {
-        scalar current = warpReduceSum(sh_current[laneid]);
+        scalar current = sh_current[laneid];
+        current = warpReduceSum(current);
         dev = warpReduceSum(sh_deviation[laneid]);
         if ( laneid == 0 ) {
             out_bubbleCurrents[stimIdx * NPARAMS + targetParamIdx] = current;
