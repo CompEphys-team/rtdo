@@ -64,7 +64,7 @@ scalar Wavegen::cluster_scoreAndInsert(const std::vector<iStimulation> &stims, c
         for ( size_t binIdx : stim_bins )
             bins[binIdx] = dims[binIdx].bin(*stim, 1, dt);
         if ( numClusters_bin )
-            bins[numClusters_bin] = nValidClusters;
+            bins[numClusters_bin] = nValidClusters-1;
 
         // Construct a MAPElite for each non-zero parameter contribution of each valid cluster
         for ( size_t clusterIdx = 0; clusterIdx < nClusters; clusterIdx++ ) {
