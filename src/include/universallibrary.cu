@@ -1000,7 +1000,7 @@ __global__ void buildBubbles(const int nPartitions,
     __syncthreads();
 
     // Gather bubble deviation and current
-    for ( unsigned int secIdx = start.startCycle, lastSec = start.startCycle + start.cycles; secIdx < (lastSec+31)&0xffffffe0; secIdx += blockDim.x ) {
+    for ( unsigned int secIdx = start.startCycle, lastSec = start.startCycle + start.cycles; secIdx < ((lastSec+31)&0xffffffe0); secIdx += blockDim.x ) {
         scalar current;
         if ( secIdx < lastSec ) {
             dev.load(in_contrib + stimIdx * NPARAMS * nSecs + secIdx, nSecs);
@@ -1026,7 +1026,7 @@ __global__ void buildBubbles(const int nPartitions,
         current = warpReduceSum(current);
         dev = warpReduceSum(sh_deviation[laneid]);
         if ( laneid == 0 ) {
-            out_bubbleCurrents[stimIdx * NPARAMS + targetParamIdx] = current;
+            out_bubbleCurrents[stimIdx * NPARAMS + targetParamIdx] = current/start.cycles;
             dev /= std::sqrt(dev.dotp(dev));
             dev.store(out_deviations + stimIdx * NPARAMS * NPARAMS + targetParamIdx * NPARAMS);
         }
