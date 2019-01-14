@@ -73,12 +73,14 @@ scalar Wavegen::cluster_scoreAndInsert(const std::vector<iStimulation> &stims, c
 
             MAPElite el(bins, stim, 0, std::vector<scalar>(nParams), ulib.clusterObs[stimIdx * ulib.maxClusters + clusterIdx]);
 
-            for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
-                el.deviations[paramIdx] = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
-
             el.current = ulib.clusterCurrent[stimIdx * ulib.maxClusters + clusterIdx];
+            if ( std::isnan(el.current) )
+                continue;
             if ( el.current > maxCurrent )
                 maxCurrent = el.current;
+
+            for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+                el.deviations[paramIdx] = ulib.clusters[stimIdx*ulib.maxClusters*nParams + clusterIdx*nParams + paramIdx];
 
             // Populate cluster-level bins
             for ( size_t binIdx : cluster_bins )

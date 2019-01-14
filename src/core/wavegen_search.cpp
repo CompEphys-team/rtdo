@@ -46,12 +46,14 @@ scalar Wavegen::bubble_scoreAndInsert(const std::vector<iStimulation> &stims, co
             ++nCandidates;
             MAPElite &el = candidates_by_param[targetParamIdx].front();
 
-            for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
-                el.deviations[paramIdx] = ulib.clusters[stimIdx * nParams * nParams + targetParamIdx * nParams + paramIdx];
-
             el.current = ulib.clusterCurrent[stimIdx * nParams + targetParamIdx];
+            if ( std::isnan(el.current) )
+                continue;
             if ( el.current > maxCurrent )
                 maxCurrent = el.current;
+
+            for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
+                el.deviations[paramIdx] = ulib.clusters[stimIdx * nParams * nParams + targetParamIdx * nParams + paramIdx];
 
             el.obs.start[0] = bubble.startCycle;
             el.obs.stop[0] = bubble.startCycle + bubble.cycles;
