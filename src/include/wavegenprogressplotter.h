@@ -15,7 +15,7 @@ struct AbstractGraphProxy
     AbstractGraphProxy(QColor color, QCheckBox *cb);
     virtual ~AbstractGraphProxy() {}
 
-    virtual void populate(double keyFactor) = 0;
+    virtual void populate() = 0;
     virtual void extend() = 0;
 
     QColor color;
@@ -23,7 +23,6 @@ struct AbstractGraphProxy
     QCPAxis *xAxis = 0, *yAxis = 0;
     const Wavegen::Archive *archive;
     QSharedPointer<QCPGraphDataContainer> dataPtr;
-    double factor;
 };
 
 class WavegenProgressPlotter : public QWidget

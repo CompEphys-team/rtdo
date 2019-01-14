@@ -7,15 +7,14 @@ struct GraphProxy : public AbstractGraphProxy
     GraphProxy(QVector<T> Wavegen::Archive::* data, QColor color, QCheckBox *cb) : AbstractGraphProxy(color, cb), data(data) {}
     ~GraphProxy() {}
 
-    void populate(double keyFactor)
+    void populate()
     {
         QVector<QCPGraphData> vec((archive->*data).size());
         for ( int i = 0; i < vec.size(); i++ ) {
-            vec[i].key = i * keyFactor;
+            vec[i].key = i;
             vec[i].value = (archive->*data).at(i);
         }
         dataPtr.reset(new QCPGraphDataContainer);
-        factor = keyFactor;
         extend();
     }
 
@@ -24,7 +23,7 @@ struct GraphProxy : public AbstractGraphProxy
         int size = dataPtr->size();
         QVector<QCPGraphData> vec((archive->*data).size() - size);
         for ( int i = 0; i < vec.size(); i++ ) {
-            vec[i].key = (i+size)*factor;
+            vec[i].key = i + size;
             vec[i].value = (archive->*data).at(i+size);
         }
         dataPtr->add(vec, true);
@@ -144,7 +143,7 @@ void WavegenProgressPlotter::replot()
     QCPGraph *g;
     for ( AbstractGraphProxy *proxy : proxies ) {
         proxy->archive =& arch;
-        proxy->populate(1);
+        proxy->populate();
         g = ui->plot->addGraph(proxy->xAxis, proxy->yAxis);
         g->setData(proxy->dataPtr);
         g->setPen(QPen(proxy->color));
