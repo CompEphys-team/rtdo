@@ -269,6 +269,11 @@
         </column>
         <column>
          <property name="text">
+          <string>sigma</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
           <string>value</string>
          </property>
         </column>

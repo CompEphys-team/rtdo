@@ -140,6 +140,7 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.min[#]", &q_settings, &Settings::gafs, &GAFitterSettings::min);
     addAP(gafAP, "S.GAFitter.max[#]", &q_settings, &Settings::gafs, &GAFitterSettings::max);
     addAP(gafAP, "S.GAFitter.fixedValue[#]", &q_settings, &Settings::gafs, &GAFitterSettings::fixedValue);
+    addAP(gafAP, "S.GAFitter.sigma[#]", &q_settings, &Settings::gafs, &GAFitterSettings::sigma);
     addAP(gafAP, "S.GAFitter.useLikelihood", &q_settings, &Settings::gafs, &GAFitterSettings::useLikelihood);
     addAP(gafAP, "S.GAFitter.useDE", &q_settings, &Settings::gafs, &GAFitterSettings::useDE);
     addAP(gafAP, "S.GAFitter.useClustering", &q_settings, &Settings::gafs, &GAFitterSettings::useClustering);

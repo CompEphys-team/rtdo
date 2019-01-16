@@ -443,7 +443,7 @@ struct GAFitterSettings {
      * 3: target value (from DAQ; i.e. simulator value; canned .params file value; or model preset for live recording)
      */
     std::vector<int> constraints;
-    std::vector<scalar> min, max, fixedValue;
+    std::vector<scalar> min, max, fixedValue, sigma;
 
     bool useDE = false;
     int mutationSelectivity = 2; // 0: Nonspecific mutation, 1: Graded mutation rates, 2: Target parameter only

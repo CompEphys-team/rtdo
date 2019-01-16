@@ -26,32 +26,37 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         labels << QString::fromStdString(model.adjustableParams.at(i).name);
 
-        QDoubleSpinBox *min = new QDoubleSpinBox(), *max = new QDoubleSpinBox(), *fixed = new QDoubleSpinBox();
+        QDoubleSpinBox *min = new QDoubleSpinBox(), *max = new QDoubleSpinBox(), *fixed = new QDoubleSpinBox(), *sigma = new QDoubleSpinBox();
         min->setDecimals(6);
         max->setDecimals(6);
         fixed->setDecimals(6);
+        sigma->setDecimals(6);
         min->setRange(-1e9, 1e9);
         max->setRange(-1e9, 1e9);
         fixed->setRange(-1e9, 1e9);
+        sigma->setRange(0, 1e9);
 
         QComboBox *cb = new QComboBox();
         connect(cb, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [=](int idx){
             min->setEnabled(idx==1);
             max->setEnabled(idx==1);
             fixed->setEnabled(idx==2);
+            sigma->setEnabled(idx == 1 && i < model.nNormalAdjustableParams);
             if ( idx == 4 ) { // Reset
                 min->setValue(model.adjustableParams[i].min);
                 max->setValue(model.adjustableParams[i].max);
                 fixed->setValue(model.adjustableParams[i].initial);
+                sigma->setValue(model.adjustableParams[i].sigma);
                 cb->setCurrentIndex(0);
             }
         });
         cb->addItems({"Original", "Range", "Fixed", "Target", "Reset"});
 
         ui->constraints->setCellWidget(i, 0, cb);
-        ui->constraints->setCellWidget(i, 1, fixed);
-        ui->constraints->setCellWidget(i, 2, min);
-        ui->constraints->setCellWidget(i, 3, max);
+        ui->constraints->setCellWidget(i, 1, sigma);
+        ui->constraints->setCellWidget(i, 2, fixed);
+        ui->constraints->setCellWidget(i, 3, min);
+        ui->constraints->setCellWidget(i, 4, max);
     }
     ui->constraints->setVerticalHeaderLabels(labels);
     ui->constraints->setColumnWidth(0, 75);
@@ -89,9 +94,10 @@ void GAFitterSettingsDialog::importData()
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(p.constraints[i]);
-        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->setValue(p.fixedValue[i]);
-        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->setValue(p.min[i]);
-        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(p.max[i]);
+        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->setValue(p.sigma[i]);
+        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->setValue(p.fixedValue[i]);
+        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(p.min[i]);
+        static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(p.max[i]);
     }
 }
 
@@ -120,9 +126,10 @@ void GAFitterSettingsDialog::exportData()
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         p.constraints.push_back(static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex());
-        p.fixedValue.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->value());
-        p.min.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->value());
-        p.max.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->value());
+        p.sigma.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->value());
+        p.fixedValue.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->value());
+        p.min.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->value());
+        p.max.push_back(static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->value());
     }
 
     p.useLikelihood = false;
