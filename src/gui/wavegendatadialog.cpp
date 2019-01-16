@@ -17,6 +17,9 @@ WavegenDataDialog::WavegenDataDialog(Session &s, int historicIndex, QWidget *par
         ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
     }
 
+    connect(ui->nTrajectories, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &WavegenDataDialog::updateNDetunes);
+    connect(ui->trajectoryLength, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &WavegenDataDialog::updateNDetunes);
+
     importData();
 }
 
@@ -140,4 +143,13 @@ void WavegenDataDialog::on_buttonBox_clicked(QAbstractButton *button)
         importData();
         close();
     }
+}
+
+void WavegenDataDialog::updateNDetunes()
+{
+    int nTotal = ui->nTrajectories->value() * (ui->trajectoryLength->value() - 1);
+    int nParams = session.project.model().nNormalAdjustableParams;
+    int nOptions = session.project.model().nOptions;
+    int nMinDetunes = nParams * (1 << nOptions) + nOptions - 1;
+    ui->nDetunes->setText(QString("%1/%2").arg(nTotal).arg(nMinDetunes));
 }

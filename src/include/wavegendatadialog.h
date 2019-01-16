@@ -26,6 +26,7 @@ signals:
 
 private slots:
     void on_buttonBox_clicked(QAbstractButton *button);
+    void updateNDetunes();
 
 private:
     Ui::WavegenDataDialog *ui;
