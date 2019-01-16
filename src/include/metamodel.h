@@ -64,7 +64,7 @@ protected:
     void readAdjustableParams(const tinyxml2::XMLElement *);
     void readCurrents(const tinyxml2::XMLElement *);
     void readVoltage(const tinyxml2::XMLElement *);
-    void readCapacitance(const tinyxml2::XMLElement *);
+    bool readCapacitance(const tinyxml2::XMLElement *);
 };
 
 // generateALL.cc's renamed main - see core/generateAllNoMain.cpp:

@@ -39,20 +39,29 @@ MetaModel::MetaModel(const Project &p, std::string file) :
     if ( _name.empty() )
         throw std::runtime_error("Invalid model file: model name not set.");
 
+    voltage = model->FirstChildElement("voltage");
+    capacitance = model->FirstChildElement("capacitance");
+    if ( voltage && capacitance )
+        stateVariables.emplace_back("V");
+
     readVariables(model);
     readParams(model);
     readAdjustableParams(model);
 
-    voltage = model->FirstChildElement("voltage");
-    capacitance = model->FirstChildElement("capacitance");
     if ( voltage && capacitance ) {
-        // Add space for V and C before taking pointers
-        stateVariables.reserve(stateVariables.size()+1);
-        adjustableParams.reserve(adjustableParams.size()+1);
-        _params.reserve(_params.size()+1);
+        bool adjustableCapacitance = readCapacitance(capacitance);
         readCurrents(model);
         readVoltage(voltage);
-        readCapacitance(capacitance);
+
+        if ( adjustableCapacitance ) {
+            for ( AdjustableParam &p : adjustableParams )
+                if ( p.name == "C" )
+                    C =& p;
+        } else {
+            for ( Variable &p : _params )
+                if ( p.name == "C" )
+                    C =& p;
+        }
     } else {
         bool hasV = false;
         for ( auto it = stateVariables.begin(); it != stateVariables.end(); it++ ) {
@@ -205,7 +214,6 @@ void MetaModel::readCurrents(const tinyxml2::XMLElement *model)
 /// </voltage>
 void MetaModel::readVoltage(const tinyxml2::XMLElement *voltage)
 {
-    stateVariables.insert(stateVariables.begin(), std::move(StateVariable("V")));
     V =& stateVariables.front();
     const tinyxml2::XMLElement *sub;
     if ( (sub = voltage->FirstChildElement("value")) )
@@ -241,7 +249,7 @@ void MetaModel::readVoltage(const tinyxml2::XMLElement *voltage)
 ///     <range min="20" max="500"/>     <!-- Permissible range, edges inclusive -->
 ///     <perturbation rate="0.2" type="*|+|multiplicative|additive (default)" /> <!-- see adjustableParam -->
 /// </capacitance>
-void MetaModel::readCapacitance(const tinyxml2::XMLElement *capacitance)
+bool MetaModel::readCapacitance(const tinyxml2::XMLElement *capacitance)
 {
     const tinyxml2::XMLElement *range, *pert, *value;
     range = capacitance->FirstChildElement("range");
@@ -264,12 +272,12 @@ void MetaModel::readCapacitance(const tinyxml2::XMLElement *capacitance)
         p.multiplicative = !ptype.compare("*") || !ptype.compare("multiplicative");
 
         adjustableParams.push_back(std::move(p));
-        C =& adjustableParams.back();
+        return true;
     } else {
         _params.emplace_back("C");
-        C =& _params.back();
         if ( value )
             C->initial = value->DoubleText(C->initial);
+        return false;
     }
 }
 
