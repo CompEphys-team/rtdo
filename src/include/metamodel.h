@@ -33,12 +33,17 @@ public:
         std::string name;
         std::string popen;
         scalar gUnit = 0.02;
-        Variable *gbar;
+        std::vector<Variable*> gbar;
         Variable *E;
+        std::string optGroup;
+        bool option;
     };
     std::vector<Current> currentDefs;
     StateVariable *V = nullptr;
     Variable *C = nullptr;
+
+    int nNormalAdjustableParams;
+    int nOptions = 0;
 
     static void (*modelDef)(NNmodel&);
 

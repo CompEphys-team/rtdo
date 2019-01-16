@@ -50,6 +50,7 @@ MetaModel::MetaModel(const Project &p, std::string file) :
 
     if ( voltage && capacitance ) {
         bool adjustableCapacitance = readCapacitance(capacitance);
+        nNormalAdjustableParams += adjustableCapacitance;
         readCurrents(model);
         readVoltage(voltage);
 
@@ -168,6 +169,7 @@ void MetaModel::readAdjustableParams(const tinyxml2::XMLElement *model)
         }
         adjustableParams.push_back(p);
     }
+    nNormalAdjustableParams = adjustableParams.size();
 }
 
 /// Currents:
@@ -176,10 +178,32 @@ void MetaModel::readAdjustableParams(const tinyxml2::XMLElement *model)
 ///     <gunit>20e-6</gunit>                            <!-- Active currents: Unit conductance (same units as gbar, typically muS) -->
 ///     <gbar>gA</gbar> <!-- Name of the maximum conductance, which must be a defined param (adjustable or fixed) elsewhere in the model -->
 ///     <E>EK</E>       <!-- Name of the equilibrium conductance, which must be a defined param (adjustable or fixed) elsewhere in the model -->
+///     <option group="groupname">1</option>  <!-- Optional; adds an "option_<groupname>" parameter that switches between currents. The value should be either 1 or 0. -->
 /// </current>
+/// Note, multiple <gbar> entries are added together to form the total maximum conductance.
 void MetaModel::readCurrents(const tinyxml2::XMLElement *model)
 {
     const tinyxml2::XMLElement *sub;
+
+    // Add option parameters
+    QStringList optGroups;
+    for ( const tinyxml2::XMLElement *el = model->FirstChildElement("current"); el; el = el->NextSiblingElement("current") ) {
+        if ( (sub = el->FirstChildElement("option")) ) {
+            QString group = sub->Attribute("group");
+            if ( !optGroups.contains(group) ) {
+                optGroups.push_back(group);
+                AdjustableParam opt(std::string("option_")+group.toStdString());
+                opt.min = -1;
+                opt.max = 1;
+                opt.initial = 1;
+                opt.sigma = opt.adjustedSigma = -1;
+                opt.multiplicative = true;
+                adjustableParams.push_back(opt);
+                ++nOptions;
+            }
+        }
+    }
+
     for ( const tinyxml2::XMLElement *el = model->FirstChildElement("current"); el; el = el->NextSiblingElement("current") ) {
         Current c;
         c.name = el->Attribute("name");
@@ -187,13 +211,13 @@ void MetaModel::readCurrents(const tinyxml2::XMLElement *model)
             c.popen = sub->GetText();
         if ( (sub = el->FirstChildElement("gunit")) )
             c.gUnit = sub->DoubleText(c.gUnit);
-        if ( (sub = el->FirstChildElement("gbar")) ) {
+        for ( sub = el->FirstChildElement("gbar"); sub; sub = sub->NextSiblingElement("gbar")) {
             for ( AdjustableParam &p : adjustableParams )
                 if ( p.name == sub->GetText() )
-                    c.gbar =& p;
+                    c.gbar.push_back(&p);
             for ( Variable &p : _params )
                 if ( p.name == sub->GetText() )
-                    c.gbar =& p;
+                    c.gbar.push_back(&p);
         }
         if ( (sub = el->FirstChildElement("E")) ) {
             for ( AdjustableParam &p : adjustableParams )
@@ -202,6 +226,10 @@ void MetaModel::readCurrents(const tinyxml2::XMLElement *model)
             for ( Variable &p : _params )
                 if ( p.name == sub->GetText() )
                     c.E =& p;
+        }
+        if ( (sub = el->FirstChildElement("option")) ) {
+            c.optGroup = sub->Attribute("group");
+            c.option = sub->IntText(1) == 1;
         }
         currentDefs.push_back(c);
     }
@@ -226,19 +254,36 @@ void MetaModel::readVoltage(const tinyxml2::XMLElement *voltage)
             swap(V->min, V->max);
     }
 
+    V->code = "(Isyn";
     for ( const Current &i : currentDefs ) {
+        QString gbar;
+        if ( i.gbar.size() == 1 )
+            gbar = QString("$(%1)").arg(QString::fromStdString(i.gbar.front()->name));
+        else {
+            gbar = "(";
+            for ( Variable *g : i.gbar )
+                gbar.append(QString("+$(%1)").arg(QString::fromStdString(g->name)));
+            gbar.append(")");
+        }
+
         Variable v(i.name);
-        v.code = QString("$(%1) * ($(V) - $(%2))")
-                .arg(QString::fromStdString(i.gbar->name))
+        v.code = QString("%1 * ($(V) - $(%2))")
+                .arg(gbar)
                 .arg(QString::fromStdString(i.E->name))
                 .toStdString();
         if ( !i.popen.empty() )
             v.code = std::string("(") + i.popen + ") * " + v.code;
         V->tmp.push_back(v);
 
-        if ( V->code.empty() )
-            V->code = "(Isyn";
-        V->code += std::string(" - ") + i.name;
+        if ( i.optGroup.empty() ) {
+            V->code += std::string(" - ") + i.name;
+        } else {
+            V->code += QString(" - (($(option_%1) %2 0) ? %3 : 0)")
+                    .arg(QString::fromStdString(i.optGroup))
+                    .arg(i.option ? ">=" : "<")
+                    .arg(QString::fromStdString(i.name))
+                    .toStdString();
+        }
     }
     V->code += ") / $(C)";
 }
@@ -521,11 +566,20 @@ std::string MetaModel::structDeclarations() const
     for ( const Current &c : currentDefs ) {
         if ( c.popen.empty() )
             continue;
+        QString gbar;
+        if ( c.gbar.size() == 1 )
+            gbar = QString("$(%1)").arg(QString::fromStdString(c.gbar.front()->name));
+        else {
+            gbar = "(";
+            for ( Variable *g : c.gbar )
+                gbar.append(QString("+$(%1)").arg(QString::fromStdString(g->name)));
+            gbar.append(")");
+        }
         std::stringstream cs;
         cs << "        {" << endl;
         cs << "            scalar p = " << c.popen << ";" << endl;
         cs << "            scalar dE = $(" << V->name << ") - $(" << c.E->name << ");" << endl;
-        cs << "            variance += $(" << c.gbar->name << ") * dE * dE * p * (1.0 - p) * "
+        cs << "            variance += " << gbar << " * dE * dE * p * (1.0 - p) * "
            << QString::number(c.gUnit, 'e', 10).toStdString() << ";" << endl;
         cs << "        }" << endl;
         ss << resolveCode(cs.str());
