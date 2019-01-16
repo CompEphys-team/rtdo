@@ -1,0 +1,106 @@
+<model name="Kv21c">
+	<voltage>
+		<value>-80</value>
+		<range min="-150" max="100" />
+	</voltage>
+	<capacitance>
+		<value>150</value>
+		<range min="50" max="250"/>
+		<perturbation type="*" rate="0.1"/>
+	</capacitance>
+	<current name="I_Kfast">
+		<popen>$(nK)*$(nK)*$(nK)*$(nK)*$(hK)</popen>
+		<gbar>gK_fast</gbar>
+		<gunit>10e-6</gunit>
+		<E>EK</E>
+		<option group="1">1</option>
+	</current>
+	<current name="I_Kslow">
+		<popen>$(sK)*$(sK)*$(sK)*$(sK)</popen>
+		<gbar>gK_slow</gbar>
+		<gunit>10e-6</gunit>
+		<E>EK</E>
+		<option group="1">1</option>
+	</current>
+	<current name="I_K">
+		<popen>$(nK)*$(nK)*$(nK)*$(nK)*$(hK)</popen>
+		<gbar>gK_fast</gbar>
+		<gbar>gK_slow</gbar>
+		<gunit>10e-6</gunit>
+		<E>EK</E>
+		<option group="1">0</option>
+	</current>
+	<current name="I_l">
+		<gbar>gl</gbar>
+		<E>El</E>
+	</current>
+
+	<variable name="nK" value="0.02">
+		<tmp name="_inf">1.0/(1.0 + exp(($(nK_mid)-$(V))/$(nK_slope)))</tmp>
+		<tmp name="tau_">$(taunK_min) + $(taunK_max)/(exp(($(taunK_off)+$(V))/$(taunK_slope1))+exp(($(taunK_off)+$(V))/$(taunK_slope2)))</tmp>
+		<dYdt>((_inf-$(nK))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="hK" value="0.99">
+		<tmp name="_inf">1.0/(1.0 + exp(($(hK_mid)-$(V))/$(hK_slope)))</tmp>
+		<tmp name="lexp">exp(($(V)-$(tauhK_mid))/$(tauhK_lslope))</tmp>
+		<tmp name="rexp">exp(($(V)-$(tauhK_mid))/$(tauhK_rslope))</tmp>
+		<tmp name="tau_">$(tauhK_lmin) + $(tauhK_rmin)/(1.0+lexp) + $(tauhK_max)/(lexp + rexp)</tmp>
+		<dYdt>((_inf-$(hK))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+
+	<variable name="sK" value="0.02">
+		<tmp name="_inf">1.0/(1.0 + exp(($(sK_mid)-$(V))/$(sK_slope)))</tmp>
+		<tmp name="tau_">$(tausK_min) + $(tausK_max)/(exp(($(tausK_off)+$(V))/$(tausK_slope1))+exp(($(tausK_off)+$(V))/$(tausK_slope2)))</tmp>
+		<dYdt>((_inf-$(sK))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+
+	<adjustableParam name="gK_fast" value="60">
+		<range min="1" max="200"/>
+		<perturbation type="*" rate="0.05"/>
+	</adjustableParam>
+	<adjustableParam name="gK_slow" value="20">
+		<range min="1" max="100"/>
+		<perturbation type="*" rate="0.05"/>
+	</adjustableParam>
+	<adjustableParam name="EK" value="-70">
+		<range min="-90" max="-40"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="gl" value="2">
+		<range min="0.1" max="30"/>
+		<perturbation type="*" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="El" value="-10">
+		<range min="-30" max="20"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+
+	<parameter name="nK_mid" value="-13.7" />
+	<parameter name="nK_slope" value="14.8" />
+	<parameter name="taunK_min" value="5" />
+	<parameter name="taunK_max" value="110" />
+	<parameter name="taunK_off" value="36" />
+	<parameter name="taunK_slope1" value="18" />
+	<parameter name="taunK_slope2" value="-17" />
+
+	<parameter name="hK_mid" value="5.8" />
+	<parameter name="hK_slope" value="-3.9" />
+	<parameter name="tauhK_lmin" value="200" />
+	<parameter name="tauhK_rmin" value="8e3" />
+	<parameter name="tauhK_max" value="5e4" />
+	<parameter name="tauhK_mid" value="-30" />
+	<parameter name="tauhK_lslope" value="-16" />
+	<parameter name="tauhK_rslope" value="15" />
+
+	<parameter name="sK_mid" value="-19.7" />
+	<parameter name="sK_slope" value="11.1" />
+	<parameter name="tausK_min" value="25" />
+	<parameter name="tausK_max" value="500" />
+	<parameter name="tausK_off" value="36" />
+	<parameter name="tausK_slope1" value="18" />
+	<parameter name="tausK_slope2" value="-17" />
+</model>
