@@ -507,11 +507,19 @@ void GAFitter::procreate()
             AdjustableParam &p = lib.adjustableParams[iParam];
             if ( settings.mutationSelectivity < 2 || iParam == targetParam ) {
                 // Mutate target param
-                p[p_err[i].idx] = p.multiplicative ?
-                            (p[p_err[source].idx] * session.RNG.variate<scalar, std::normal_distribution>(
-                                1, baseF[targetParam][iParam] * F * lib.adjustableParams[iParam].adjustedSigma)) :
-                            session.RNG.variate<scalar, std::normal_distribution>(
-                                p[p_err[source].idx], baseF[targetParam][iParam] * F * lib.adjustableParams[iParam].adjustedSigma);
+                if ( !p.multiplicative )
+                    p[p_err[i].idx] = session.RNG.variate<scalar, std::normal_distribution>(
+                                        p[p_err[source].idx], baseF[targetParam][iParam] * F * lib.adjustableParams[iParam].adjustedSigma);
+                else if ( iParam < lib.model.nNormalAdjustableParams ) {
+                    scalar factor = -1;
+                    while ( factor < 0 )
+                        factor = session.RNG.variate<scalar, std::normal_distribution>(
+                                  1, baseF[targetParam][iParam] * F * lib.adjustableParams[iParam].adjustedSigma);
+                    p[p_err[i].idx] = p[p_err[source].idx] * factor;
+                } else {
+                    p[p_err[i].idx] = p[p_err[source].idx] *
+                            ( session.RNG.variate<scalar, std::uniform_real_distribution>(0, settings.decaySigma ? 2*F/settings.sigmaInitial : 2) < baseF[targetParam][iParam] ? -1 : 1 );
+                }
                 if ( settings.constraints[iParam] == 0 ) {
                     if ( p[p_err[i].idx] < p.min )
                         p[p_err[i].idx] = p.min;
