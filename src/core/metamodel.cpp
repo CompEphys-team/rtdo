@@ -326,6 +326,57 @@ bool MetaModel::readCapacitance(const tinyxml2::XMLElement *capacitance)
     }
 }
 
+std::vector<int> MetaModel::get_detune_indices(int trajLen, int nTraj) const
+{
+    std::vector<int> ret;
+    ret.reserve(trajLen * nTraj);
+    int nextParam = 0;
+    int starter = -2;
+
+    if ( nOptions ) {
+        // Gray code bitflip sequence, https://oeis.org/A007814
+        std::vector<int> optFlips({0, 1});
+        for ( int i = 1; i < nOptions; i++ ) {
+            optFlips.insert(optFlips.end(), optFlips.begin(), optFlips.end());
+            ++optFlips.back();
+        }
+        optFlips.resize(optFlips.size()-1);
+
+        auto nextFlip = optFlips.begin();
+        bool flipping = false;
+        for ( int trajIdx = 0; trajIdx < nTraj; trajIdx++ ) {
+            ret.push_back(starter);
+            for ( int i = 1; i < trajLen; i++ ) {
+                ret.push_back(nextParam);
+                ++nextParam;
+                if ( flipping ) {
+                    flipping = false;
+                    nextParam = 0;
+                } else if ( nextParam == nNormalAdjustableParams ) {
+                    flipping = true;
+                    nextParam = nNormalAdjustableParams + *nextFlip;
+                    if ( ++nextFlip == optFlips.end() ) {
+                        nextFlip = optFlips.begin();
+                        starter = -1;
+                    }
+                }
+            }
+        }
+    } else {
+        for ( int trajIdx = 0; trajIdx < nTraj; trajIdx++ ) {
+            ret.push_back(starter);
+            for ( int i = 1; i < trajLen; i++ ) {
+                ret.push_back(nextParam);
+                if ( ++nextParam == nNormalAdjustableParams ) {
+                    nextParam = 0;
+                    starter = -1;
+                }
+            }
+        }
+    }
+    return ret;
+}
+
 neuronModel MetaModel::generate(NNmodel &m, std::vector<double> &fixedParamIni, std::vector<double> &variableIni) const
 {
     if ( !GeNNReady )

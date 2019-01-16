@@ -63,6 +63,9 @@ static unsigned int bubbles_size = 0;
 
 static __constant__ scalar deltabar[NPARAMS];
 
+static __constant__ unsigned char detuneParamIndices[NMODELS];
+static __constant__ unsigned short numDetunesByParam[NPARAMS];
+
 void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 {
     pointers.pushV = [](void *hostptr, void *devptr, size_t size){
@@ -159,6 +162,31 @@ __device__ inline Parameters warpReduceSum<Parameters>(Parameters val, int cutof
         val += addend;
     }
     return val;
+}
+
+void pushDeltabar(std::vector<double> dbar)
+{
+    scalar h_deltabar[NPARAMS];
+    for ( int i = 0; i < NPARAMS; i++ )
+        h_deltabar[i] = dbar[i];
+    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(deltabar, h_deltabar, NPARAMS*sizeof(scalar)));
+}
+
+std::vector<unsigned short> pushDetuneIndices(int trajLen, int nTraj, const MetaModel &model)
+{
+    std::vector<int> detuneIndices = model.get_detune_indices(trajLen, nTraj);
+    std::vector<unsigned char> h_detuneParamIndices(detuneIndices.size());
+    std::vector<unsigned short> nDetunes(NPARAMS);
+    for ( int i = 0; i < NPARAMS; i++ )
+        nDetunes[i] = 0;
+    for ( size_t i = 0; i < detuneIndices.size(); i++ ) {
+        if ( detuneIndices[i] >= 0 )
+            ++nDetunes[detuneIndices[i]];
+        h_detuneParamIndices[i] = detuneIndices[i]; // Note, the negative indices are never consumed, so unsigned is not an error.
+    }
+    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(detuneParamIndices, h_detuneParamIndices.data(), detuneIndices.size() * sizeof(unsigned char)));
+    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(numDetunesByParam, nDetunes.data(), NPARAMS * sizeof(unsigned short)));
+    return nDetunes;
 }
 
 
@@ -337,8 +365,6 @@ __global__ void build_section_primitives(const int trajLen,
     const int laneid = threadIdx.x & 31;
     const int stimIdx = (blockIdx.x * blockDim.x + threadIdx.x) / 32; // global stim idx; one stim per warp
     const int nTraces = trajLen*nTraj; // Total number of traces per stim, including starting point models
-    const int nUsefulTraces = (trajLen-1)*nTraj; // Number of mid-trajectory models per stim
-    const int paramIdx_after_end_of_final_traj = nUsefulTraces % NPARAMS; // First param idx with one contrib fewer than the preceding ones
     const int lane0_offset = stimIdx * nTraces;
     const int nLoads = (nTraces + 31) & 0xffffffe0;
     const iObservations obs = dd_obsUNI[stimIdx*nTraces];
@@ -366,15 +392,14 @@ __global__ void build_section_primitives(const int trajLen,
             if ( nextObs < iObservations::maxObs && t >= obs.start[nextObs] ) {
                 if ( t < obs.stop[nextObs] ) {
                     for ( int i = laneid; i < nLoads; i += warpSize ) { // Loop (warp-consistently) nLoads times
-                        const int paramIdx = (i - 1 - (i/trajLen)) % NPARAMS; // idx of the detuned parameter, skipping trajectory base points
                         scalar current_mylane = 0;
                         if ( i < nTraces )
                             current_mylane = dd_timeseries[t*NMODELS + lane0_offset + i];
                         scalar current_prevlane = __shfl_up_sync(0xffffffff, current_mylane, 1);
                         scalar diff = scalarfabs(current_prevlane - current_mylane);
                         if ( i < nTraces ) {
-                            if ( i % trajLen != 0 ) // Add diff to paramIdx's contribution (base points mute; atomic for NPARAMS<31)
-                                atomicAdd((scalar*)&sh_contrib[warpid][paramIdx][secIdx&31], diff);
+                            if ( i % trajLen != 0 ) // Add diff to detuned param's contribution (base points mute; atomic for NPARAMS<31)
+                                atomicAdd((scalar*)&sh_contrib[warpid][detuneParamIndices[i]][secIdx&31], diff);
                             current_mylane = scalarfabs(current_mylane);
                         }
                         current_mylane = warpReduceSum(current_mylane);
@@ -393,17 +418,14 @@ __global__ void build_section_primitives(const int trajLen,
         if ( ((++secIdx) & 31) == 0 || t >= duration ) {
             __syncwarp();
             const int partitionIdx = (secIdx-1) >> 5;
-            int nContrib = nUsefulTraces/NPARAMS + 1;
             if ( t < duration || laneid <= (secIdx&31) ) {
                 for ( int paramIdx = 0; paramIdx < NPARAMS; paramIdx++ ) {
-                    if ( paramIdx == paramIdx_after_end_of_final_traj )
-                        --nContrib;
                     out_sections[stimIdx * NPARAMS * nPartitions * PARTITION_SIZE
                             + paramIdx * nPartitions * PARTITION_SIZE
                             + partitionIdx * PARTITION_SIZE
                             + laneid]
                             = trueSecLen_static
-                              ? sh_contrib[warpid][paramIdx][laneid] / (trueSecLen_static * deltabar[paramIdx] * nContrib)
+                              ? sh_contrib[warpid][paramIdx][laneid] / (trueSecLen_static * deltabar[paramIdx] * numDetunesByParam[paramIdx])
                               : 0;
                     sh_contrib[warpid][paramIdx][laneid] = 0;
                 }
@@ -769,6 +791,7 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
                        scalar dotp_threshold,
                        int minClusterLen,
                        std::vector<double> deltabar_arg,
+                       const MetaModel &model,
                        bool pull_results)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
@@ -783,10 +806,8 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
     resizeArrayPair(clusterCurrent, d_clusterCurrent, clusterCurrent_size, nClusters);
     resizeArrayPair(clusterObs, d_clusterObs, clusterObs_size, nClusters);
 
-    scalar deltabar_array[NPARAMS];
-    for ( int i = 0; i < NPARAMS; i++ )
-        deltabar_array[i] = deltabar_arg[i];
-    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(deltabar, deltabar_array, NPARAMS*sizeof(scalar)));
+    pushDeltabar(deltabar_arg);
+    pushDetuneIndices(trajLen, nTraj, model);
 
     dim3 block(STIMS_PER_CLUSTER_BLOCK * 32);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
@@ -1045,6 +1066,7 @@ extern "C" void bubble(int trajLen, /* length of EE trajectory (power of 2, <=32
                        int duration,
                        int secLen,
                        std::vector<double> deltabar_arg,
+                       const MetaModel &model,
                        bool pull_results)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
@@ -1057,10 +1079,8 @@ extern "C" void bubble(int trajLen, /* length of EE trajectory (power of 2, <=32
     resizeArrayPair(clusterCurrent, d_clusterCurrent, clusterCurrent_size, nStims * NPARAMS);
     resizeArrayPair(bubbles, d_bubbles, bubbles_size, nStims * NPARAMS);
 
-    scalar deltabar_array[NPARAMS];
-    for ( int i = 0; i < NPARAMS; i++ )
-        deltabar_array[i] = deltabar_arg[i];
-    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(deltabar, deltabar_array, NPARAMS*sizeof(scalar)));
+    pushDeltabar(deltabar_arg);
+    pushDetuneIndices(trajLen, nTraj, model);
 
     dim3 block(STIMS_PER_CLUSTER_BLOCK * 32);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
@@ -1086,104 +1106,88 @@ extern "C" void bubble(int trajLen, /* length of EE trajectory (power of 2, <=32
 ///  >============================     Elementary Effects WG: Deltabar    ======================================================<
 /// ******************************************************************************************************************************
 
-static constexpr int STIMS_PER_DELTABAR_WARP = NPARAMS>16 ? 1 : NPARAMS>8 ? 2 : NPARAMS>4 ? 4 : NPARAMS>2 ? 8 : NPARAMS>1 ? 16 : 32;
-static constexpr int STIMS_PER_DELTABAR_BLOCK = 8 * STIMS_PER_DELTABAR_WARP;
-
-__global__ void find_deltabar_kernel(int trajLen, int nTraj, int nStims, int duration, scalar *global_clusters, int *global_clusterLen)
+__global__ void find_deltabar_kernel(const int trajLen,
+                                     const int nTraj,
+                                     const int nStims,
+                                     scalar *out_sumSquares,
+                                     int *out_nSamples)
 {
-    static constexpr int stimWidth = 32/STIMS_PER_DELTABAR_WARP;
-    const int nUsefulTraces = (trajLen-1)*nTraj;
-    int paramIdx, stimIdx;
-    if ( STIMS_PER_DELTABAR_WARP == 1 ) {
-        // One row, one stim
-        paramIdx = threadIdx.x;
-        stimIdx = threadIdx.y;
-    } else {
-        // Each row is one warp with multiple stims
-        paramIdx = threadIdx.x % stimWidth;
-        stimIdx = (threadIdx.y * STIMS_PER_DELTABAR_WARP) + (threadIdx.x/stimWidth);
-    }
-    const int global_stimIdx = STIMS_PER_DELTABAR_BLOCK*blockIdx.x + stimIdx;
-    const int id0 = global_stimIdx * trajLen * nTraj;
-    const int nContrib = (nUsefulTraces/NPARAMS) + (paramIdx < (nUsefulTraces%NPARAMS));
-    const iObservations obs = dd_obsUNI[id0];
+    const int warpid = threadIdx.x / 32; // acts as block-local stim idx
+    const int laneid = threadIdx.x & 31;
+    const int stimIdx = (blockIdx.x * blockDim.x + threadIdx.x) / 32; // global stim idx; one stim per warp
+    const int nTraces = trajLen*nTraj; // Total number of traces per stim, including starting point models
+    const int lane0_offset = stimIdx * nTraces;
+    const int nLoads = (nTraces + 31) & 0xffffffe0;
+    const iObservations obs = dd_obsUNI[stimIdx*nTraces];
     int nextObs = 0;
+
+    volatile __shared__ scalar sh_sumSquares[STIMS_PER_CLUSTER_BLOCK][NPARAMS];
+    for ( int i = threadIdx.x; i < STIMS_PER_CLUSTER_BLOCK*NPARAMS; i += blockDim.x )
+        *((scalar*)sh_sumSquares + i) = 0;
+    __syncthreads();
+
+    if ( stimIdx >= nStims )
+        return;
+
+    // Accumulate square residuals
     int nSamples = 0;
+    for ( int t = obs.start[0]; ; ++t ) {
+        if ( t == obs.stop[nextObs] ) {
+            if ( ++nextObs == iObservations::maxObs )
+                break;
+            t = obs.start[nextObs];
+            if ( t == 0 )
+                break;
+        }
 
-    __shared__ scalar sh_clusters[STIMS_PER_DELTABAR_BLOCK][NPARAMS];
-    __shared__ scalar sh_nSamples[STIMS_PER_DELTABAR_BLOCK];
-    const int tid = threadIdx.y*blockDim.x + threadIdx.x;
-
-    // Accumulate each stim's square deviations
-    scalar sumSquares = 0;
-    if ( paramIdx < NPARAMS ) {
-        if ( global_stimIdx < nStims ) {
-            for ( int t = 0; t < duration; t++ ) {
-                if ( nextObs < iObservations::maxObs && t >= obs.start[nextObs] ) {
-                    if ( t < obs.stop[nextObs] ) {
-                        scalar contrib = 0;
-                        for ( int i = paramIdx; i < nUsefulTraces; i += NPARAMS ) {
-                            contrib += scalarfabs(dd_timeseries[t*NMODELS + id0 + i + i/(trajLen-1) + 1]);
-                        }
-                        contrib /= nContrib;
-                        sumSquares += contrib*contrib;
-                        ++nSamples;
-                    } else {
-                        ++nextObs;
-                    }
-                }
+        __syncwarp();
+        for ( int i = laneid; i < nLoads; i += warpSize ) {
+            if ( (i < nTraces) && ((i % trajLen) != 0) ) {
+                scalar diff = dd_timeseries[t*NMODELS + lane0_offset + i];
+                atomicAdd((scalar*)&sh_sumSquares[warpid][detuneParamIndices[i]], diff*diff);
             }
         }
-        sh_clusters[stimIdx][paramIdx] = sumSquares;
-        if ( paramIdx == 0 )
-            sh_nSamples[stimIdx] = nSamples;
+        ++nSamples;
     }
 
-    // Reduce to a single 'cluster' in block
-    for ( int width = STIMS_PER_DELTABAR_BLOCK; width > 1; width /= 32 ) {
-        paramIdx = tid / width;
-        stimIdx = tid % width;
-        sumSquares = 0;
+    // Combine across block
+    __syncthreads();
+    for ( int paramIdx = warpid; paramIdx < NPARAMS; paramIdx += warpSize ) {
+        scalar sumSquares = 0;
+        if ( laneid < STIMS_PER_CLUSTER_BLOCK )
+            sumSquares = sh_sumSquares[laneid][paramIdx];
+        sumSquares = warpReduceSum(sumSquares, STIMS_PER_CLUSTER_BLOCK);
+        if ( laneid == 0 ) {
+            out_sumSquares[blockIdx.x*NPARAMS + paramIdx] = sumSquares;
+            sh_sumSquares[laneid][paramIdx] = nSamples; // Safe: [l][p] has already been read by this exact thread 4 lines above
+        }
+    }
+
+    __syncthreads();
+    if ( warpid == 0 ) {
         nSamples = 0;
-        __syncthreads();
-        if ( paramIdx < NPARAMS ) {
-            sumSquares = sh_clusters[stimIdx][paramIdx];
-            if ( paramIdx == 0 )
-                nSamples = sh_nSamples[stimIdx];
-        }
-
-        if ( width > 32 ) {
-            sumSquares = warpReduceSum(sumSquares);
-            if ( paramIdx == 0 )
-                nSamples = warpReduceSum(nSamples);
-            if ( stimIdx % 32 == 0 ) {
-                sh_clusters[stimIdx/32][paramIdx] = sumSquares;
-                if ( paramIdx == 0 )
-                    sh_nSamples[stimIdx/32] = nSamples;
-            }
-        } else {
-            sumSquares = warpReduceSum(sumSquares, width);
-            if ( paramIdx == 0 )
-                nSamples = warpReduceSum(nSamples, width);
-        }
-    }
-    if ( stimIdx == 0 && paramIdx < NPARAMS ) {
-        global_clusters[blockIdx.x*NPARAMS + paramIdx] = sumSquares;
-        if ( paramIdx == 0 )
-            global_clusterLen[blockIdx.x] = nSamples;
+        for ( int paramIdx = laneid; paramIdx < NPARAMS; paramIdx += warpSize )
+            nSamples = sh_sumSquares[0][paramIdx];
+        __syncwarp();
+        nSamples = warpReduceSum(nSamples);
+        if ( laneid == 0 )
+            out_nSamples[blockIdx.x] = nSamples;
     }
 }
 
-extern "C" std::vector<double> find_deltabar(int trajLen, int nTraj, int duration)
+extern "C" std::vector<double> find_deltabar(int trajLen, int nTraj, const MetaModel &model)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
-    dim3 block(((NPARAMS+31)/32)*32, STIMS_PER_DELTABAR_BLOCK/STIMS_PER_DELTABAR_WARP);
-    dim3 grid(((nStims+STIMS_PER_DELTABAR_BLOCK-1)/STIMS_PER_DELTABAR_BLOCK));
+
+    dim3 block(STIMS_PER_CLUSTER_BLOCK * 32);
+    dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
 
     resizeArrayPair(clusters, d_clusters, clusters_size, grid.x * NPARAMS);
     resizeArrayPair(clusterLen, d_clusterLen, clusterLen_size, grid.x);
 
-    find_deltabar_kernel<<<grid, block>>>(trajLen, nTraj, nStims, duration, d_clusters, d_clusterLen);
+    std::vector<unsigned short> nDetunes = pushDetuneIndices(trajLen, nTraj, model);
+
+    find_deltabar_kernel<<<grid, block>>>(trajLen, nTraj, nStims, d_clusters, d_clusterLen);
 
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, grid.x * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterLen, d_clusterLen, grid.x * sizeof(int), cudaMemcpyDeviceToHost));
@@ -1197,11 +1201,9 @@ extern "C" std::vector<double> find_deltabar(int trajLen, int nTraj, int duratio
         n += clusterLen[i];
     }
     for ( int p = 0; p < NPARAMS; p++ )
-        ret[p] = sqrt(ret[p] / n);
+        ret[p] = sqrt(ret[p] / (n * nDetunes[p]));
     return ret;
 }
-
-
 
 
 
@@ -1278,7 +1280,6 @@ __global__ void get_posthoc_deviations_kernel(const int trajLen,
     const int laneid = threadIdx.x & 31;
     const int stimIdx = (blockIdx.x * blockDim.x + threadIdx.x) / 32; // global stim idx; one stim per warp
     const int nTraces = trajLen*nTraj; // Total number of traces per stim, including starting point models
-    const int nUsefulTraces = (trajLen-1)*nTraj; // Number of mid-trajectory models per stim
     const int lane0_offset = stimIdx * nTraces;
     const int nLoads = (nTraces + 31) & 0xffffffe0;
     const iObservations obs = dd_obsUNI[stimIdx*nTraces];
@@ -1305,7 +1306,6 @@ __global__ void get_posthoc_deviations_kernel(const int trajLen,
 
         __syncwarp();
         for ( int i = laneid; i < nLoads; i += warpSize ) {
-            const int paramIdx = (i - 1 - (i/trajLen)) % NPARAMS;
             scalar current_mylane = 0;
             if ( i < nTraces )
                 current_mylane = dd_timeseries[t*NMODELS + lane0_offset + i];
@@ -1313,7 +1313,7 @@ __global__ void get_posthoc_deviations_kernel(const int trajLen,
             scalar diff = scalarfabs(current_prevlane - current_mylane);
             if ( i < nTraces ) {
                 if ( i % trajLen != 0 )
-                    atomicAdd((scalar*)&sh_contrib[warpid][paramIdx], diff);
+                    atomicAdd((scalar*)&sh_contrib[warpid][detuneParamIndices[i]], diff);
                 current_mylane = scalarfabs(current_mylane);
             }
             current += warpReduceSum(current_mylane);
@@ -1324,8 +1324,7 @@ __global__ void get_posthoc_deviations_kernel(const int trajLen,
     __syncwarp();
     scalar dotp = 0;
     for ( int paramIdx = laneid; paramIdx < NPARAMS; paramIdx += warpSize ) {
-        int nContrib = nUsefulTraces/NPARAMS + (paramIdx < (nUsefulTraces % NPARAMS));
-        scalar contrib = sh_contrib[warpid][paramIdx] / (nContrib * deltabar[paramIdx]);
+        scalar contrib = sh_contrib[warpid][paramIdx] / (numDetunesByParam[paramIdx] * deltabar[paramIdx]);
         dotp += contrib * contrib;
         sh_contrib[warpid][paramIdx] = contrib;
     }
@@ -1342,15 +1341,14 @@ __global__ void get_posthoc_deviations_kernel(const int trajLen,
 extern "C" void get_posthoc_deviations(int trajLen,
                                        int nTraj,
                                        unsigned int nStims,
-                                       std::vector<double> deltabar_arg)
+                                       std::vector<double> deltabar_arg,
+                                       const MetaModel &model)
 {
     resizeArrayPair(clusters, d_clusters, clusters_size, nStims * NPARAMS);
     resizeArrayPair(clusterCurrent, d_clusterCurrent, clusterCurrent_size, nStims);
 
-    scalar deltabar_array[NPARAMS];
-    for ( int i = 0; i < NPARAMS; i++ )
-        deltabar_array[i] = deltabar_arg[i];
-    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(deltabar, deltabar_array, NPARAMS*sizeof(scalar)));
+    pushDeltabar(deltabar_arg);
+    pushDetuneIndices(trajLen, nTraj, model);
 
     dim3 block(STIMS_PER_CLUSTER_BLOCK * 32);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));

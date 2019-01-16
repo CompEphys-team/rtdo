@@ -45,6 +45,17 @@ public:
     int nNormalAdjustableParams;
     int nOptions = 0;
 
+    /**
+     * @brief get_detune_indices returns the indices into adjustableParams to be detuned for a given set of EE trajectories.
+     * Trajectory starting points are indicated with a negative value, meaning no parameter needs to change. The value is -2
+     * for the first starting points, until a full EE trajectory is completed (i.e., until all parameters and option switches are used once,
+     * relevant e.g. for WavegenData::useBaseParameters), and -1 for later starting points.
+     * @param trajLen Length of an individual EE trajectory, including the starting point
+     * @param nTraj Number of trajectories
+     * @return A vector of trajLen*nTraj ints indicating the adjustableParam to detune, or negative values for trajectory starting points.
+     */
+    std::vector<int> get_detune_indices(int trajLen, int nTraj) const;
+
     static void (*modelDef)(NNmodel&);
 
     static size_t numLibs; //!< Count the number of open libraries

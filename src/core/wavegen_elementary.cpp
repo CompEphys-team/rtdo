@@ -3,18 +3,15 @@
 
 void Wavegen::prepare_EE_models()
 {
-    int nParams = ulib.adjustableParams.size(), nextParam = 0;
-    bool initial = true;
+    int nParams = ulib.adjustableParams.size();
     std::vector<scalar> values(nParams);
     size_t nModelsPerStim = searchd.nTrajectories * searchd.trajectoryLength;
+    std::vector<int> detuneIndices = ulib.model.get_detune_indices(searchd.trajectoryLength, searchd.nTrajectories);
+    auto detIdx = detuneIndices.begin();
     for ( size_t i = 0; i < ulib.NMODELS; i++ ) {
-        if ( i % searchd.trajectoryLength == 0 ) { // Pick a starting point
-            // For the benefit of rerandomiseParameters && useBaseParameters, provide each new stim with a trajectory from base model
-            if ( i % nModelsPerStim == 0 )
-                nextParam = 0;
-
-            if ( i < nModelsPerStim ) {
-                if ( initial && searchd.useBaseParameters )
+        if ( *detIdx < 0 ) { // Pick a starting point
+            if ( i < nModelsPerStim ) { // Generate novel values for first stim
+                if ( searchd.useBaseParameters && *detIdx == -2 )
                     for ( int j = 0; j < nParams; j++ )
                         values[j] = ulib.adjustableParams[j].initial;
                 else
@@ -23,12 +20,17 @@ void Wavegen::prepare_EE_models()
             } else // Copy from first stim
                 for ( int j = 0; j < nParams; j++ )
                     values[j] = ulib.adjustableParams[j][i % nModelsPerStim];
+
+            ++detIdx;
         } else {
             // Add a sigma-sized step to one parameter at a time
-            values[nextParam] += ulib.adjustableParams[nextParam].sigma;
-            nextParam = (nextParam+1) % nParams;
-            if ( nextParam == 0 )
-                initial = false;
+            AdjustableParam &p = ulib.adjustableParams[*detIdx];
+            if ( *detIdx >= ulib.model.nNormalAdjustableParams )
+                values[*detIdx] *= p.sigma;
+            else
+                values[*detIdx] += p.sigma;
+            if ( ++detIdx == detuneIndices.end() )
+                detIdx = detuneIndices.begin();
         }
 
         for ( size_t j = 0; j < values.size(); j++ )
@@ -87,7 +89,7 @@ std::vector<double> Wavegen::getDeltabar()
         ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
         ulib.run();
 
-        std::vector<double> dbar = ulib.find_deltabar(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration);
+        std::vector<double> dbar = ulib.find_deltabar(searchd.trajectoryLength, searchd.nTrajectories);
         for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
             deltabar[paramIdx] += dbar[paramIdx];
     }

@@ -104,22 +104,22 @@ public:
                         std::vector<double> &invariants);
 
         void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
-                        std::vector<double> deltabar, bool pull);
+                        std::vector<double> deltabar, const MetaModel &, bool pull);
         void (*pullClusters)(int nStims);
         int (*pullPrimitives)(int nStims, int duration, int secLen);
-        std::vector<double> (*find_deltabar)(int trajLen, int nTraj, int duration);
+        std::vector<double> (*find_deltabar)(int trajLen, int nTraj, const MetaModel &);
         scalar **clusters;
         scalar **clusterCurrent;
         scalar **clusterPrimitives;
         iObservations **clusterObs;
 
-        void (*bubble)(int trajLen, int nTraj, int duration, int secLen, std::vector<double> deltabar, bool pull_results);
+        void (*bubble)(int trajLen, int nTraj, int duration, int secLen, std::vector<double> deltabar, const MetaModel &, bool pull_results);
         void (*pullBubbles)(int nStims);
         Bubble **bubbles;
 
         void (*observe_no_steps)(int blankCycles);
         void (*genRandom)(unsigned int n, scalar mean, scalar sd, unsigned long long seed);
-        void (*get_posthoc_deviations)(int trajLen, int nTraj, unsigned int nStims, std::vector<double> deltabar);
+        void (*get_posthoc_deviations)(int trajLen, int nTraj, unsigned int nStims, std::vector<double> deltabar, const MetaModel &);
     };
 
     Project &project;
@@ -213,7 +213,7 @@ public:
                         int minClusterLen, /* Minimum duration for a cluster to be considered valid (in ticks) */
                         std::vector<double> deltabar, /* RMS current deviation, cf. find_deltabar() */
                         bool pull_results) /* True to copy results immediately; false to defer to pullClusters(), allowing time for CPU processing */ {
-        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, pull_results);
+        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, model, pull_results);
     }
     /// Copy cluster() results to clusters, clusterMasks and clusterCurrent.
     /// Note, nStims = NMODELS/(trajLen*nTraj)
@@ -230,7 +230,7 @@ public:
                        int secLen,
                        std::vector<double> deltabar,
                        bool pull_results) {
-        pointers.bubble(trajLen, nTraj, duration, secLen, deltabar, pull_results);
+        pointers.bubble(trajLen, nTraj, duration, secLen, deltabar, model, pull_results);
     }
     /// Copy bubble() results to bubbles, clusters, and clusterCurrent.
     inline void pullBubbles(int nStims) { pointers.pullBubbles(nStims); }
@@ -239,7 +239,7 @@ public:
     /// as required by cluster().
     /// Expects assignment TIMESERIES_COMPARE_PREVTHREAD with models sequentially detuned along and across their ee trajectories, as well as
     /// an appropriate individual obs in each stim's first trajectory starting point model
-    inline std::vector<double> find_deltabar(int trajLen, int nTraj, int duration) { return pointers.find_deltabar(trajLen, nTraj, duration); }
+    inline std::vector<double> find_deltabar(int trajLen, int nTraj) { return pointers.find_deltabar(trajLen, nTraj, model); }
 
     /// Utility call to add full-stim, step-blanked observation windows to the (model-individual) stims residing on the GPU
     inline void observe_no_steps(int blankCycles) { pointers.observe_no_steps(blankCycles); }
@@ -251,7 +251,7 @@ public:
     /// post-run() workhorse to get deviations and currents for predefined stims.
     /// Pulls results to clusters as [stimIdx][paramIdx], and to clusterCurrent as [stimIdx], both with stride nStims.
     inline void get_posthoc_deviations(int trajLen, int nTraj, unsigned int nStims, std::vector<double> deltabar) {
-        pointers.get_posthoc_deviations(trajLen, nTraj, nStims, deltabar);
+        pointers.get_posthoc_deviations(trajLen, nTraj, nStims, deltabar, model);
     }
 
 private:
