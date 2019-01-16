@@ -155,7 +155,6 @@ void MetaModel::readAdjustableParams(const tinyxml2::XMLElement *model)
         }
         if ( (sub = el->FirstChildElement("perturbation")) ) {
             sub->QueryDoubleAttribute("rate", &p.sigma);
-            p.adjustedSigma = p.sigma;
             std::string ptype = sub->Attribute("type");
             p.multiplicative = !ptype.compare("*") || !ptype.compare("multiplicative");
         }
@@ -196,7 +195,7 @@ void MetaModel::readCurrents(const tinyxml2::XMLElement *model)
                 opt.min = -1;
                 opt.max = 1;
                 opt.initial = 1;
-                opt.sigma = opt.adjustedSigma = -1;
+                opt.sigma = -1;
                 opt.multiplicative = true;
                 adjustableParams.push_back(opt);
                 ++nOptions;
@@ -312,7 +311,6 @@ bool MetaModel::readCapacitance(const tinyxml2::XMLElement *capacitance)
             swap(p.min, p.max);
 
         pert->QueryDoubleAttribute("rate", &p.sigma);
-        p.adjustedSigma = p.sigma;
         std::string ptype = pert->Attribute("type");
         p.multiplicative = !ptype.compare("*") || !ptype.compare("multiplicative");
 

@@ -340,13 +340,13 @@ std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimul
                     if ( lane > 0 && i == pid ) { // Detune target parameter
                         scalar newp;
                         if ( p.multiplicative ) {
-                            newp = p.initial * (1 + p.adjustedSigma);
+                            newp = p.initial * (1 + p.sigma);
                             if ( newp > p.max || newp < p.min )
-                                newp = p.initial * (1 - p.adjustedSigma);
+                                newp = p.initial * (1 - p.sigma);
                         } else {
-                            newp = p.initial + p.adjustedSigma;
+                            newp = p.initial + p.sigma;
                             if ( newp > p.max || newp < p.min )
-                                newp = p.initial - p.adjustedSigma;
+                                newp = p.initial - p.sigma;
                         }
                         p[tid] = newp;
 
