@@ -511,7 +511,7 @@ void GAFitter::procreate()
                 if ( !p.multiplicative )
                     p[p_err[i].idx] = session.RNG.variate<scalar, std::normal_distribution>(
                                         p[p_err[source].idx], baseF[targetParam][iParam] * F * sigma);
-                else if ( iParam < lib.model.nNormalAdjustableParams ) {
+                else if ( int(iParam) < lib.model.nNormalAdjustableParams ) {
                     scalar factor = -1;
                     while ( factor < 0 )
                         factor = session.RNG.variate<scalar, std::normal_distribution>(
