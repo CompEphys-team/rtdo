@@ -1150,26 +1150,28 @@ __global__ void find_deltabar_kernel(const int trajLen,
         ++nSamples;
     }
 
-    // Combine across block
+    // Combine sum squares across block
     __syncthreads();
     for ( int paramIdx = warpid; paramIdx < NPARAMS; paramIdx += warpSize ) {
         scalar sumSquares = 0;
         if ( laneid < STIMS_PER_CLUSTER_BLOCK )
             sumSquares = sh_sumSquares[laneid][paramIdx];
         sumSquares = warpReduceSum(sumSquares, STIMS_PER_CLUSTER_BLOCK);
-        if ( laneid == 0 ) {
+        if ( laneid == 0 )
             out_sumSquares[blockIdx.x*NPARAMS + paramIdx] = sumSquares;
-            sh_sumSquares[laneid][paramIdx] = nSamples; // Safe: [l][p] has already been read by this exact thread 4 lines above
-        }
     }
 
+    // Combine nSamples across block
+    __syncthreads();
+    if ( laneid == 0 )
+        ((scalar*)sh_sumSquares)[warpid] = nSamples;
     __syncthreads();
     if ( warpid == 0 ) {
         nSamples = 0;
-        for ( int paramIdx = laneid; paramIdx < NPARAMS; paramIdx += warpSize )
-            nSamples = sh_sumSquares[0][paramIdx];
+        if ( laneid < STIMS_PER_CLUSTER_BLOCK )
+            nSamples = ((scalar*)sh_sumSquares)[laneid];
         __syncwarp();
-        nSamples = warpReduceSum(nSamples);
+        nSamples = warpReduceSum(nSamples, STIMS_PER_CLUSTER_BLOCK);
         if ( laneid == 0 )
             out_nSamples[blockIdx.x] = nSamples;
     }
