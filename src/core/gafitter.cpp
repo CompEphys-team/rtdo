@@ -508,8 +508,8 @@ void GAFitter::procreate()
             if ( settings.mutationSelectivity < 2 || iParam == targetParam ) {
                 // Mutate target param
                 p[p_err[i].idx] = p.multiplicative ?
-                            (p[p_err[source].idx] * session.RNG.variate<scalar, std::lognormal_distribution>(
-                                0, baseF[targetParam][iParam] * F * lib.adjustableParams[iParam].adjustedSigma)) :
+                            (p[p_err[source].idx] * session.RNG.variate<scalar, std::normal_distribution>(
+                                1, baseF[targetParam][iParam] * F * lib.adjustableParams[iParam].adjustedSigma)) :
                             session.RNG.variate<scalar, std::normal_distribution>(
                                 p[p_err[source].idx], baseF[targetParam][iParam] * F * lib.adjustableParams[iParam].adjustedSigma);
                 if ( settings.constraints[iParam] == 0 ) {
