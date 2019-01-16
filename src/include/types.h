@@ -250,10 +250,6 @@ struct AdjustableParam : public Variable {
     AdjustableParam(std::string n, std::string c = "", std::string t = "scalar") : Variable(n,c,t) {}
     double sigma;
     bool multiplicative;
-    int wgPermutations;
-    double wgSD;
-    bool wgNormal;
-    double deltaBar = 1;
 };
 
 struct MutationData

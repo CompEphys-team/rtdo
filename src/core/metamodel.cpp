@@ -134,11 +134,6 @@ void MetaModel::readParams(const tinyxml2::XMLElement *model)
 ///     <range min="5" max="10" />              <!-- Permissible value range, edges inclusive -->
 ///     <perturbation rate="0.2" type="*|+|multiplicative|additive (default)" />
 ///                 <!-- Learning rate for this parameter (max change for +/additive, stddev for */multiplicative) -->
-///     <wavegen permutations="2 (default)" distribution="normal(default)|uniform" standarddev="1.0" />
-///                 <!-- Number of permutations during wavegen. Normal distribution is random around the default value,
-///                     uniform distribution is an even spread across the value range. The default standard deviation
-///                     is 5 times the perturbation rate.
-///                     The default value is always used and does not count towards the total. -->
 /// </adjustableParam>
 void MetaModel::readAdjustableParams(const tinyxml2::XMLElement *model)
 {
@@ -157,14 +152,6 @@ void MetaModel::readAdjustableParams(const tinyxml2::XMLElement *model)
             sub->QueryDoubleAttribute("rate", &p.sigma);
             std::string ptype = sub->Attribute("type");
             p.multiplicative = !ptype.compare("*") || !ptype.compare("multiplicative");
-        }
-        p.wgPermutations = 2;
-        p.wgNormal = true;
-        p.wgSD = 5*p.sigma;
-        if ( (sub = el->FirstChildElement("wavegen")) ) {
-            sub->QueryIntAttribute("permutations", &p.wgPermutations);
-            if ( (p.wgNormal = !sub->Attribute("distribution", "uniform")) )
-                sub->QueryDoubleAttribute("standarddev", &p.wgSD);
         }
         adjustableParams.push_back(p);
     }
