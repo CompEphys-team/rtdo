@@ -70,7 +70,7 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
     // Populate
     for ( size_t param = 0; param < lib.adjustableParams.size(); param++ ) {
         AdjustableParam &p = lib.adjustableParams[param];
-        if ( param >= lib.model.nNormalAdjustableParams ) // choice params
+        if ( int(param) >= lib.model.nNormalAdjustableParams ) // choice params
             for ( size_t i = 0; i < lib.NMODELS; i++ )
                 p[i] = session.RNG.pick({-0.5, 0.5});
         else if ( prof.uniform[param] )
