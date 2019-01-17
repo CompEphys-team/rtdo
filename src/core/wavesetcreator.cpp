@@ -15,11 +15,11 @@ const quint32 WavesetCreator::versionDeck = 100;
 
 const QString WavesetCreator::actionManual = QString("manual");
 const quint32 WavesetCreator::magicManual = 0xee4ea782;
-const quint32 WavesetCreator::versionManual = 100;
+const quint32 WavesetCreator::versionManual = 101;
 
 const QString WavesetCreator::actionManualDeck = QString("mdeck");
 const quint32 WavesetCreator::magicManualDeck = 0xc8e5a57c;
-const quint32 WavesetCreator::versionManualDeck = 100;
+const quint32 WavesetCreator::versionManualDeck = 101;
 
 WavesetCreator::WavesetCreator(Session &session) :
     SessionWorker(session)
@@ -85,8 +85,10 @@ bool WavesetCreator::execute(QString action, QString, Result *res, QFile &file)
         if ( !openSaveStream(file, os, magicManual, versionManual) )
             return false;
         os << quint32(m_manual.back().stims.size());
-        for ( const Stimulation &s : m_manual.back().stims )
+        for ( const iStimulation &s : m_manual.back().stims )
             os << s;
+        for ( const iObservations &obs : m_manual.back().observations )
+            os << obs;
 
         emit addedManual();
     } else if ( action == actionManualDeck ) {
@@ -101,8 +103,10 @@ bool WavesetCreator::execute(QString action, QString, Result *res, QFile &file)
         if ( !openSaveStream(file, os, magicManualDeck, versionManualDeck) )
             return false;
         os << quint32(m_manual.back().stims.size());
-        for ( const Stimulation &s : m_manual.back().stims )
+        for ( const iStimulation &s : m_manual.back().stims )
             os << s;
+        for ( const iObservations &obs : m_manual.back().observations )
+            os << obs;
 
         emit addedDeck();
         emit addedManual();
@@ -205,10 +209,25 @@ Result *WavesetCreator::load(const QString &action, const QString &, QFile &resu
 
         quint32 size;
         is >> size;
-        std::vector<Stimulation> stim(size);
-        for ( Stimulation &s : stim )
-            is >> s;
-        m_manual.push_back(ManualWaveset(std::move(stim), r));
+        std::vector<iStimulation> stims(size);
+        std::vector<iObservations> obs(size, {{}, {}});
+        if ( version < 101 ) {
+            std::vector<Stimulation> astims(size);
+            for ( Stimulation &s : astims )
+                is >> s;
+            double dt = session.runData(r.resultIndex).dt;
+            for ( quint32 i = 0; i < size; i++ ) {
+                stims[i] = iStimulation(astims[i], dt);
+                obs[i].start[0] = astims[i].tObsBegin/dt;
+                obs[i].stop[0] = astims[i].tObsEnd/dt;
+            }
+        } else {
+            for ( iStimulation &s : stims )
+                is >> s;
+            for ( iObservations &o : obs)
+                is >> o;
+        }
+        m_manual.emplace_back(std::move(stims), std::move(obs), r);
     } else if ( action == actionManualDeck ) {
         version = openLoadStream(results, is, magicManualDeck);
         if ( version < 100 || version > versionManualDeck )
@@ -216,10 +235,25 @@ Result *WavesetCreator::load(const QString &action, const QString &, QFile &resu
 
         quint32 size;
         is >> size;
-        std::vector<Stimulation> stim(size);
-        for ( Stimulation &s : stim )
-            is >> s;
-        m_manual.push_back(ManualWaveset(std::move(stim), r));
+        std::vector<iStimulation> stims(size);
+        std::vector<iObservations> obs(size, {{}, {}});
+        if ( version < 101 ) {
+            std::vector<Stimulation> astims(size);
+            for ( Stimulation &s : astims )
+                is >> s;
+            double dt = session.runData(r.resultIndex).dt;
+            for ( quint32 i = 0; i < size; i++ ) {
+                stims[i] = iStimulation(astims[i], dt);
+                obs[i].start[0] = astims[i].tObsBegin/dt;
+                obs[i].stop[0] = astims[i].tObsEnd/dt;
+            }
+        } else {
+            for ( iStimulation &s : stims )
+                is >> s;
+            for ( iObservations &o : obs)
+                is >> o;
+        }
+        m_manual.emplace_back(std::move(stims), std::move(obs), r);
 
         m_decks.emplace_back(session, r);
         size_t idx = m_manual.size()-1;

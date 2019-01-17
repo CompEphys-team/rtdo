@@ -84,15 +84,17 @@ std::vector<Stimulation> WaveSource::stimulations() const
             ret.push_back(Stimulation(*e.wave, session->runData(archive()->resultIndex).dt));
         break;
     }
-    case Subset :
-        ret = subset()->stimulations();
-        break;
+    case Subset:
     case Deck:
-        ret = deck()->stimulations();
-        break;
     case Manual:
-        ret = session->wavesets().manuals().at(idx).stims;
+    {
+        double dt = session->runData(resultIndex()).dt;
+        std::vector<iStimulation> istims = iStimulations(dt);
+        ret.reserve(istims.size());
+        for ( iStimulation const& I : istims )
+            ret.emplace_back(I, session->runData(resultIndex()).dt);
         break;
+    }
     }
 
     if ( !shrunk && waveno >= 0 )
@@ -138,12 +140,12 @@ std::vector<MAPElite> WaveSource::elites() const
     }
     case Manual:
     {
-        std::vector<Stimulation> stims = stimulations();
+        std::vector<iStimulation> stims = iStimulations(session->runData(resultIndex()).dt);
+        std::vector<iObservations> obs = observations(session->runData(resultIndex()).dt);
         ret.resize(stims.size());
         for ( size_t i = 0; i < ret.size(); i++ ) {
-            ret[i].wave.reset(new iStimulation(stims[i], session->runData(resultIndex()).dt));
-            ret[i].obs.start[0] = ret[i].wave->tObsBegin;
-            ret[i].obs.stop[0] = ret[i].wave->tObsEnd;
+            ret[i].wave.reset(new iStimulation(stims[i]));
+            ret[i].obs = obs[i];
         }
         break;
     }
@@ -186,12 +188,20 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
         }
         break;
     }
-    case Subset :
+    case Subset:
+        ret = subset()->stimulations(dt);
+        break;
     case Deck:
+        if ( session->runData(resultIndex()).dt == dt ) {
+            ret = deck()->stimulations();
+            break;
+        }
     case Manual:
-        std::vector<Stimulation> stims = stimulations();
-        ret.reserve(stims.size());
-        for ( Stimulation const& I : stims )
+        if ( session->runData(resultIndex()).dt == dt ) {
+            ret = session->wavesets().manuals().at(idx).stims;
+            break;
+        }
+        for ( Stimulation const& I : stimulations() )
             ret.push_back(iStimulation(I, dt));
         break;
     }
@@ -210,6 +220,7 @@ std::vector<iObservations> WaveSource::observations(double dt) const
 
     switch ( type ) {
     case Archive:
+    case Deck:
     case Manual:
         if ( session->runData(resultIndex()).dt != dt ) {
             needs_dt_adjustment = true;
@@ -223,13 +234,6 @@ std::vector<iObservations> WaveSource::observations(double dt) const
             dtFactor = session->runData(archive()->resultIndex).dt / dt;
         }
         break;
-    case Deck:
-        for ( const WaveSource &src : deck()->sources() )
-            ret.push_back(src.observations(dt)[0]);
-        if ( waveno >= 0 )
-            return {ret[waveno]};
-        else
-            return ret;
     }
 
     std::vector<MAPElite> el = elites();
