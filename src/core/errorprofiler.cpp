@@ -72,17 +72,16 @@ bool ErrorProfiler::execute(QString action, QString, Result *result, QFile &file
     }
 
     auto iter = ep.errors.begin();
-    int i = 0;
-    for ( Stimulation const& stim : ep.stimulations() ) {
+    for ( size_t i = 0; i < ep.stimulations().size(); i++ ) {
         if ( isAborted() ) {
             emit didAbort();
             return false;
         }
-        if ( stim.duration > 0 ) {
-            ep.generate(stim, *iter);
+        if ( ep.stimulations()[i].duration > 0 ) {
+            ep.generate(ep.stimulations()[i], ep.observations()[i], *iter);
         } // else, *iter is an empty vector, as befits an empty stimulation
         iter++;
-        emit progress(++i, ep.stimulations().size());
+        emit progress(i+1, ep.stimulations().size());
     }
 
     ep.process_stats();
@@ -100,11 +99,9 @@ bool ErrorProfiler::execute(QString action, QString, Result *result, QFile &file
 }
 
 
-void ErrorProfiler::stimulate(const Stimulation &stim)
+void ErrorProfiler::stimulate(const iStimulation &stim, const iObservations &obs)
 {
     const RunData &rd = session.runData();
-    iStimulation I(stim, rd.dt);
-    I.duration = I.tObsEnd;
 
     // Set up lib
     lib.setSingularRund();
@@ -116,26 +113,24 @@ void ErrorProfiler::stimulate(const Stimulation &stim)
     lib.assignment = lib.assignment_base
             | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET
             | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE;
-    lib.stim[0] = I;
-    lib.obs[0] = iObservations {{}, {}};
-    lib.obs[0].start[0] = I.tObsBegin;
-    lib.obs[0].stop[0] = I.tObsEnd;
+    lib.stim[0] = stim;
+    lib.obs[0] = obs;
 
     lib.setSingularTarget();
-    lib.resizeTarget(1, I.duration);
+    lib.resizeTarget(1, stim.duration);
     lib.targetOffset[0] = 0;
     lib.push();
 
     // Set up DAQ
     daq->VC = true;
     daq->reset();
-    daq->run(stim, rd.settleDuration);
+    daq->run(Stimulation(stim, rd.dt), rd.settleDuration);
 
     // Settle DAQ
     for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
         daq->next();
     // Run DAQ
-    for ( int iT = 0; iT < I.duration; iT++ ) {
+    for ( int iT = 0; iT < stim.duration; iT++ ) {
         daq->next();
         lib.target[iT] = daq->current;
     }

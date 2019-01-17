@@ -47,7 +47,7 @@ protected:
     Result *load(const QString &action, const QString &args, QFile &results, Result r);
 
     friend class ErrorProfile;
-    void stimulate(const Stimulation &stim);
+    void stimulate(const iStimulation &stim, const iObservations &obs);
 
 private:
     UniversalLibrary &lib;

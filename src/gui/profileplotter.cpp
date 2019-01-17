@@ -113,7 +113,7 @@ void ProfilePlotter::updateWaves()
     if ( profileNo < 0 )
         return;
 
-    const std::vector<Stimulation> &stims = session.profiler().profiles().at(profileNo).stimulations();
+    const std::vector<iStimulation> &stims = session.profiler().profiles().at(profileNo).stimulations();
     ui->waves->clearContents();
     includes.resize(stims.size());
     colors.resize(stims.size());

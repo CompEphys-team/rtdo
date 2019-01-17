@@ -35,7 +35,8 @@ void ErrorProfile::setPermutation(size_t param, ErrorProfile::Permutation perm)
 void ErrorProfile::setSource(WaveSource src)
 {
     assert(errors.empty() /* No changes to settings during or after profiling */);
-    m_stimulations = src.stimulations();
+    m_stimulations = src.iStimulations();
+    m_observations = src.observations();
     m_src = src;
 }
 
@@ -183,7 +184,7 @@ QString ErrorProfile::prettyName() const
 
 
 
-void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors)
+void ErrorProfile::generate(const iStimulation &stim, const iObservations &obs, std::vector<scalar> &errors)
 {
     size_t nSimulations = numSimulations(), nPermutations = numPermutations();
 
@@ -224,7 +225,7 @@ void ErrorProfile::generate(const Stimulation &stim, std::vector<scalar> &errors
         }
 
         // Stimulate
-        session.profiler().stimulate(stim);
+        session.profiler().stimulate(stim, obs);
         lib.pull(lib.summary);
 
         // Store errors
@@ -278,9 +279,15 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
 
     if ( ep.version < 103 ) {
         is >> stimulations_size;
-        ep.m_stimulations.resize(stimulations_size);
-        for ( Stimulation &s : ep.m_stimulations ) {
+        ep.m_stimulations.reserve(stimulations_size);
+        ep.m_observations.resize(stimulations_size, {{}, {}});
+        Stimulation s;
+        double dt = ep.session.runData(ep.resultIndex).dt;
+        for ( quint32 i = 0; i < stimulations_size; i++ ) {
             is >> s;
+            ep.m_stimulations.emplace_back(s, dt);
+            ep.m_observations[i].start[0] = s.tObsBegin/dt;
+            ep.m_observations[i].stop[0] = s.tObsEnd/dt;
         }
     }
 
@@ -314,7 +321,8 @@ QDataStream &operator>>(QDataStream &is, ErrorProfile &ep)
     }
 
     if ( ep.version >= 103 ) {
-        ep.m_stimulations = ep.m_src.stimulations();
+        ep.m_stimulations = ep.m_src.iStimulations();
+        ep.m_observations = ep.m_src.observations();
     }
 
     return is;

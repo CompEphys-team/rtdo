@@ -45,7 +45,8 @@ public:
 
     void setSource(WaveSource src); //!< Sets the stimulations from an existing source
     const inline WaveSource &source() const { return m_src; }
-    const inline std::vector<Stimulation> &stimulations() const { return m_stimulations; }
+    const inline std::vector<iStimulation> &stimulations() const { return m_stimulations; }
+    const inline std::vector<iObservations> &observations() const { return m_observations; }
 
     size_t numPermutations() const; //!< @brief numPermutations returns the total number of models run under current settings
     size_t numSimulations() const; //!< @brief numSimulations returns the number of simulation runs required to profile
@@ -115,13 +116,14 @@ public:
 private:
     UniversalLibrary &lib;
     std::vector<Permutation> m_permutations; //!< Input: Describes how each parameter is perturbed
-    std::vector<Stimulation> m_stimulations; //!< Derived input: The waveforms under consideration, provided via m_src
+    std::vector<iStimulation> m_stimulations; //!< Derived input: The waveforms under consideration, provided via m_src
+    std::vector<iObservations> m_observations;
     WaveSource m_src; //!< Input: waveform source
     std::list<std::vector<scalar>> errors; //!< Raw output
     std::vector<ProfileStats> m_stats;
 
     /// Profiling workhorse, called through ErrorProfiler::generate
-    void generate(const Stimulation &stim, std::vector<scalar> &errors);
+    void generate(const iStimulation &stim, const iObservations &obs, std::vector<scalar> &errors);
 
     /// Stats processing
     void process_stats();
