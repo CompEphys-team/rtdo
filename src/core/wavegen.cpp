@@ -151,7 +151,7 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
                     dims[i].resolution *= 2;
                 for ( MAPElite &e : current.elites )
                     for ( size_t i : variablePrecisionDims )
-                        e.bin[i] = dims.at(i).bin(e, session.runData().dt);
+                        e.bin[i] = dims.at(i).bin_elite(e, session.runData().dt);
                 current.elites.sort();
             }
         }
@@ -189,7 +189,7 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
 void Wavegen::rebinMeanCurrent(size_t meanCurrentDim, const std::vector<MAPEDimension> &dims)
 {
     for ( MAPElite &e : current.elites )
-        e.bin[meanCurrentDim] = dims.at(meanCurrentDim).bin(e, session.runData().dt);
+        e.bin[meanCurrentDim] = dims.at(meanCurrentDim).bin_elite(e, session.runData().dt);
     current.elites.sort();
     // Renormalise newly double-booked bins
     for ( auto it = current.elites.begin(); it != current.elites.end(); it++ ) {

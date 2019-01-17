@@ -12,7 +12,7 @@ scalar Wavegen::bubble_scoreAndInsert(const std::vector<iStimulation> &stims, co
     int nCandidates = 0;
     scalar maxCurrent = 0;
 
-    std::vector<size_t> stim_bins, bubble_bins;
+    std::vector<size_t> genotype_bins, bubble_bins;
     constexpr size_t paramIdx_bin = 0;
     for ( size_t i = 1; i < dims.size(); i++ ) {
         switch ( dims[i].func ) {
@@ -23,7 +23,7 @@ scalar Wavegen::bubble_scoreAndInsert(const std::vector<iStimulation> &stims, co
             break;
         case MAPEDimension::Func::VoltageDeviation:
         case MAPEDimension::Func::VoltageIntegral:
-            stim_bins.push_back(i);
+            genotype_bins.push_back(i);
         default: // ignore clusterIdx/numClusters (left at 0)
             break;
         }
@@ -33,8 +33,8 @@ scalar Wavegen::bubble_scoreAndInsert(const std::vector<iStimulation> &stims, co
         std::shared_ptr<iStimulation> stim = std::make_shared<iStimulation>(stims[stimIdx]);
 
         // Populate stim-wide bins
-        for ( size_t binIdx : stim_bins )
-            bins[binIdx] = dims[binIdx].bin(*stim, 1, dt);
+        for ( size_t binIdx : genotype_bins )
+            bins[binIdx] = dims[binIdx].bin_genotype(*stim, 1, dt);
 
         // Construct a MAPElite for each bubble (one per target parameter)
         for ( size_t targetParamIdx = 0; targetParamIdx < nParams; targetParamIdx++ ) {
@@ -60,7 +60,7 @@ scalar Wavegen::bubble_scoreAndInsert(const std::vector<iStimulation> &stims, co
 
             // Populate bubble-level bins
             for ( size_t binIdx : bubble_bins )
-                el.bin[binIdx] = dims[binIdx].bin(el, dt);
+                el.bin[binIdx] = dims[binIdx].bin_elite(el, dt);
             el.bin[paramIdx_bin] = targetParamIdx;
         }
     }

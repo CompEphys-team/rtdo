@@ -365,12 +365,9 @@ struct MAPEDimension
      * @param multiplier: Multiplier to the resolution (i.e., number of bins = multiplier * resolution)
      * @return The bin index this Stimulation belongs to.
      */
-    size_t bin(const iStimulation &I, size_t multiplier, double dt) const;
-    size_t bin(scalar value, size_t multiplier) const; //!< As above, but with a fully processed behavioural value
-    size_t bin(const iStimulation &I,
-               size_t paramIdx, size_t clusterIdx, size_t nClusters,
-               size_t multiplier, double dt) const; //!< As above, but for all functions
-    size_t bin(const MAPElite &el, double dt, size_t multiplier = 1) const; //!< Classifies for all variable-resolution functions (others return 0).
+    size_t bin_genotype(const iStimulation &I, size_t multiplier, double dt) const; //!< Bin along dimensions VoltageDevation and VoltageIntegral
+    size_t bin_processed(scalar value, size_t multiplier) const; //!< Bin a fully processed behavioural value, regardless of func
+    size_t bin_elite(const MAPElite &el, double dt, size_t multiplier = 1) const; //!< Bins all variable-resolution functions (others return 0).
     scalar bin_inverse(size_t bin, size_t multiplier) const; //!< Inverse function of bin(scalar, size_t), aliased to the lower boundary of the bin.
 
     void setDefaultMinMax(StimulationData d, size_t nParams);

@@ -190,7 +190,7 @@ bool MAPElite::compete(const MAPElite &rhs)
     return false;
 }
 
-size_t MAPEDimension::bin(const iStimulation &I, size_t multiplier, double dt) const
+size_t MAPEDimension::bin_genotype(const iStimulation &I, size_t multiplier, double dt) const
 {
     scalar intermediate = 0.0;
     scalar factor = dt;
@@ -238,10 +238,10 @@ size_t MAPEDimension::bin(const iStimulation &I, size_t multiplier, double dt) c
         break;
     }
 
-    return bin(intermediate, multiplier);
+    return bin_processed(intermediate, multiplier);
 }
 
-size_t MAPEDimension::bin(scalar value, size_t multiplier) const
+size_t MAPEDimension::bin_processed(scalar value, size_t multiplier) const
 {
     if ( isnan(value) || value < min )
         return 0;
@@ -251,27 +251,13 @@ size_t MAPEDimension::bin(scalar value, size_t multiplier) const
         return multiplier * resolution * (value - min)/(max - min);
 }
 
-size_t MAPEDimension::bin(const iStimulation &I, size_t paramIdx, size_t clusterIdx, size_t nClusters, size_t multiplier, double dt) const
-{
-    switch ( func ) {
-    case Func::EE_ClusterIndex:
-        return clusterIdx;
-    case Func::EE_NumClusters:
-        return nClusters;
-    case Func::EE_ParamIndex:
-        return paramIdx;
-    default:
-        return bin(I, multiplier, dt);
-    }
-}
-
-size_t MAPEDimension::bin(const MAPElite &el, double dt, size_t multiplier) const
+size_t MAPEDimension::bin_elite(const MAPElite &el, double dt, size_t multiplier) const
 {
     switch ( func ) {
     case Func::EE_MeanCurrent:
-        return bin(el.current, multiplier);
+        return bin_processed(el.current, multiplier);
     case Func::BestBubbleTime:
-        return bin(el.obs.start[0] * dt, multiplier);
+        return bin_processed(el.obs.start[0] * dt, multiplier);
     case Func::BestBubbleDuration:
     {
         unsigned int t = 0;
@@ -280,11 +266,11 @@ size_t MAPEDimension::bin(const MAPElite &el, double dt, size_t multiplier) cons
                 break;
             t += el.obs.stop[i] - el.obs.start[i];
         }
-        return bin(t * dt, multiplier);
+        return bin_processed(t * dt, multiplier);
     }
     case Func::VoltageDeviation:
     case Func::VoltageIntegral:
-        return bin(*el.wave, multiplier, dt);
+        return bin_genotype(*el.wave, multiplier, dt);
     default:
     case Func::EE_ClusterIndex:
     case Func::EE_NumClusters:

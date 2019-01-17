@@ -13,7 +13,7 @@ scalar Wavegen::cluster_scoreAndInsert(const std::vector<iStimulation> &stims, c
     int nCandidates = 0;
     scalar maxCurrent = 0;
 
-    std::vector<size_t> stim_bins, cluster_bins;
+    std::vector<size_t> genotype_bins, cluster_bins;
     constexpr size_t paramIdx_bin = 0;
     size_t clusterIdx_bin = 0, numClusters_bin = 0;
     for ( size_t i = 1; i < dims.size(); i++ ) {
@@ -25,7 +25,7 @@ scalar Wavegen::cluster_scoreAndInsert(const std::vector<iStimulation> &stims, c
             break;
         case MAPEDimension::Func::VoltageDeviation:
         case MAPEDimension::Func::VoltageIntegral:
-            stim_bins.push_back(i);
+            genotype_bins.push_back(i);
             break;
         case MAPEDimension::Func::EE_ClusterIndex:
             clusterIdx_bin = i;
@@ -61,8 +61,8 @@ scalar Wavegen::cluster_scoreAndInsert(const std::vector<iStimulation> &stims, c
         }
 
         // Populate stim-wide bins
-        for ( size_t binIdx : stim_bins )
-            bins[binIdx] = dims[binIdx].bin(*stim, 1, dt);
+        for ( size_t binIdx : genotype_bins )
+            bins[binIdx] = dims[binIdx].bin_genotype(*stim, 1, dt);
         if ( numClusters_bin )
             bins[numClusters_bin] = nValidClusters-1;
 
@@ -84,7 +84,7 @@ scalar Wavegen::cluster_scoreAndInsert(const std::vector<iStimulation> &stims, c
 
             // Populate cluster-level bins
             for ( size_t binIdx : cluster_bins )
-                el.bin[binIdx] = dims[binIdx].bin(el, dt);
+                el.bin[binIdx] = dims[binIdx].bin_elite(el, dt);
             if ( clusterIdx_bin )
                 el.bin[clusterIdx_bin] = clusterIdx;
 
