@@ -53,7 +53,7 @@
          <string> ms</string>
         </property>
         <property name="maximum">
-         <number>1000</number>
+         <number>100000</number>
         </property>
        </widget>
       </item>
