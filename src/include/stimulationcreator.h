@@ -15,7 +15,7 @@ class StimulationCreator : public QWidget
 
     struct Trace
     {
-        Stimulation stim;
+        iStimulation stim;
         QString label;
         std::vector<double> params;
         QVector<double> current, voltage;
@@ -40,6 +40,7 @@ protected slots:
     void setLimits();
     void setStimulation();
     void setNSteps(int n);
+    void setObservations();
     void updateStimulation();
     void redraw();
     void diagnose();
@@ -54,9 +55,12 @@ private slots:
 private:
     Ui::StimulationCreator *ui;
     Session &session;
-    std::vector<Stimulation> stims;
-    std::vector<Stimulation>::iterator stim;
-    Stimulation stimCopy;
+    std::vector<iStimulation> stims;
+    std::vector<iStimulation>::iterator stim;
+    std::vector<iObservations> observations;
+    std::vector<iObservations>::iterator obsIt;
+    iStimulation stimCopy;
+    iObservations obsCopy;
     bool loadingStims, updatingStim;
 
     std::vector<Trace> traces;

@@ -30,14 +30,30 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     ui->steps->setColumnWidth(0, 50);
 
     stimCopy.baseV = session.qStimulationData().baseV;
-    stimCopy.duration = session.qStimulationData().duration;
-    stimCopy.tObsBegin = 100;
-    stimCopy.tObsEnd = 105;
+    stimCopy.duration = session.qStimulationData().duration / session.qRunData().dt;
     stimCopy.clear();
+    obsCopy = {{}, {}};
 
     connect(&session.wavesets(), SIGNAL(addedSet()), this, SLOT(updateSources()));
     connect(ui->sources, SIGNAL(activated(int)), this, SLOT(copySource()));
     updateSources();
+
+    ui->observations->setRowCount(iObservations::maxObs);
+    for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
+        for ( int j = 0; j < 2; j++ ) {
+            QSpinBox *s = new QSpinBox;
+            ui->observations->setCellWidget(i, j, s);
+            connect(s, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &StimulationCreator::updateStimulation);
+        }
+    }
+
+    auto updateDt = [=](){
+        ui->steps->horizontalHeaderItem(1)->setText(QString("Time (*%1 ms)").arg(this->session.qRunData().dt));
+        ui->observations->horizontalHeaderItem(0)->setText(QString("start (*%1 ms)").arg(this->session.qRunData().dt));
+        ui->observations->horizontalHeaderItem(1)->setText(QString("stop (*%1 ms)").arg(this->session.qRunData().dt));
+    };
+    connect(&session, &Session::runDataChanged, updateDt);
+    updateDt();
 
     connect(&session, SIGNAL(actionLogged(QString,QString,QString,int)), this, SLOT(setLimits()));
     setLimits();
@@ -52,31 +68,31 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
 
     connect(ui->duration, SIGNAL(valueChanged(double)), this, SLOT(updateStimulation()));
     connect(ui->baseV, SIGNAL(valueChanged(double)), this, SLOT(updateStimulation()));
-    connect(ui->tObsBegin, SIGNAL(valueChanged(double)), this, SLOT(updateStimulation()));
-    connect(ui->tObsEnd, SIGNAL(valueChanged(double)), this, SLOT(updateStimulation()));
     connect(ui->steps, SIGNAL(cellChanged(int,int)), this, SLOT(updateStimulation()));
 
     connect(ui->randomise, &QPushButton::clicked, [=](){
         const StimulationData &stimd = this->session.qStimulationData();
         const RunData &rd = this->session.qRunData();
-        *stim = Stimulation(this->session.wavegen().getRandomStim(stimd, iStimData(stimd, rd.dt)), rd.dt);
+        *stim = this->session.wavegen().getRandomStim(stimd, iStimData(stimd, rd.dt));
         setStimulation();
     });
 
     connect(ui->saveSet, &QPushButton::clicked, [=](){
         WavesetCreator &creator = this->session.wavesets();
-        this->session.queue(creator.actorName(), creator.actionManual, "", new ManualWaveset(stims));
+        this->session.queue(creator.actorName(), creator.actionManual, "", new ManualWaveset(stims, observations));
     });
     connect(ui->saveDeck, &QPushButton::clicked, [=](){
         WavesetCreator &creator = this->session.wavesets();
-        this->session.queue(creator.actorName(), creator.actionManualDeck, "", new ManualWaveset(stims));
+        this->session.queue(creator.actorName(), creator.actionManualDeck, "", new ManualWaveset(stims, observations));
     });
 
     connect(ui->copy, &QPushButton::clicked, [=](){
         stimCopy = *stim;
+        obsCopy = *obsIt;
     });
     connect(ui->paste, &QPushButton::clicked, [=](){
         *stim = stimCopy;
+        *obsIt = obsCopy;
         setStimulation();
     });
 
@@ -230,9 +246,12 @@ void StimulationCreator::copySource()
         if ( !ok || sel.isEmpty() )
             return;
         i = sel.split(':').first().toInt();
-        stims = ses.wavesets().sources()[i].stimulations();
+        stims = ses.wavesets().sources()[i].iStimulations(session.qRunData().dt);
+        observations = ses.wavesets().sources()[i].observations(session.qRunData().dt);
     } else {
-        stims = ui->sources->currentData().value<WaveSource>().stimulations();
+        WaveSource src = ui->sources->currentData().value<WaveSource>();
+        stims = src.iStimulations(session.qRunData().dt);
+        observations = src.observations(session.qRunData().dt);
     }
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
@@ -253,6 +272,7 @@ void StimulationCreator::setNStims(int n)
     if ( loadingStims )
         return;
     stims.resize(n, stimCopy);
+    observations.resize(n, obsCopy);
     ui->stimulations->clearContents();
     ui->stimulations->setRowCount(stims.size());
     bool named = (n == (int)session.project.model().adjustableParams.size());
@@ -262,7 +282,7 @@ void StimulationCreator::setNStims(int n)
         c->setColor(QColorDialog::standardColor(row % 42));
         connect(c, SIGNAL(colorChanged(QColor)), this, SLOT(redraw()));
         ui->stimulations->setCellWidget(row, 0, c);
-        ui->stimulations->setItem(row, 1, new QTableWidgetItem(QString("%1 ms, %2 steps").arg(stims[row].duration).arg(stims[row].size())));
+        ui->stimulations->setItem(row, 1, new QTableWidgetItem(QString("%1 ms, %2 steps").arg(stims[row].duration*session.qRunData().dt).arg(stims[row].size())));
         labels << (named ? QString::fromStdString(session.project.model().adjustableParams.at(row).name) : QString::number(row));
     }
     ui->stimulations->setVerticalHeaderLabels(labels);
@@ -274,13 +294,16 @@ void StimulationCreator::setNStims(int n)
 void StimulationCreator::setLimits()
 {
     double minV = session.qStimulationData().minVoltage, maxV = session.qStimulationData().maxVoltage;
+    int duration = ui->duration->value() / session.qRunData().dt;
     ui->nSteps->setMaximum(Stimulation::maxSteps);
     ui->baseV->setRange(minV, maxV);
-    ui->tObsBegin->setMaximum(ui->duration->value());
-    ui->tObsEnd->setMaximum(ui->duration->value());
     for ( int i = 0; i < ui->steps->rowCount(); i++ ) {
-        qobject_cast<QDoubleSpinBox*>(ui->steps->cellWidget(i, 1))->setMaximum(ui->duration->value());
+        qobject_cast<QSpinBox*>(ui->steps->cellWidget(i, 1))->setMaximum(duration);
         qobject_cast<QDoubleSpinBox*>(ui->steps->cellWidget(i, 2))->setRange(minV, maxV);
+    }
+    for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
+        qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 0))->setMaximum(duration);
+        qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 1))->setMaximum(duration);
     }
     ui->plot->yAxis->setRange(minV, maxV);
 }
@@ -295,15 +318,15 @@ void StimulationCreator::setStimulation()
     if ( rows.size() == 1 ) {
         updatingStim = true;
         stim = stims.begin() + rows[0];
+        obsIt = observations.begin() + rows[0];
         ui->editor->setEnabled(true);
         ui->nSteps->setValue(stim->size());
-        ui->duration->setValue(stim->duration);
+        ui->duration->setValue(stim->duration*session.qRunData().dt);
         setLimits();
         ui->baseV->setValue(stim->baseV);
-        ui->tObsBegin->setValue(stim->tObsBegin);
-        ui->tObsEnd->setValue(stim->tObsEnd);
         updatingStim = false;
         setNSteps(stim->size());
+        setObservations();
 
         ui->tab_traces->setEnabled(true);
     } else {
@@ -333,11 +356,11 @@ void StimulationCreator::setNSteps(int n)
         ramp->setCheckState(stim->steps[i].ramp ? Qt::Checked : Qt::Unchecked);
         ui->steps->setItem(i, 0, ramp);
 
-        QDoubleSpinBox *time = new QDoubleSpinBox();
-        time->setRange(0, ui->duration->value());
+        QSpinBox *time = new QSpinBox();
+        time->setRange(0, ui->duration->value()/session.qRunData().dt);
         time->setValue(stim->steps[i].t);
         ui->steps->setCellWidget(i, 1, time);
-        connect(time, SIGNAL(valueChanged(double)), this, SLOT(updateStimulation()));
+        connect(time, SIGNAL(valueChanged(int)), this, SLOT(updateStimulation()));
 
         QDoubleSpinBox *voltage = new QDoubleSpinBox();
         voltage->setRange(session.qStimulationData().minVoltage, session.qStimulationData().maxVoltage);
@@ -355,21 +378,31 @@ void StimulationCreator::updateStimulation()
 {
     if ( updatingStim )
         return;
-    stim->duration = ui->duration->value();
+    stim->duration = ui->duration->value()/session.qRunData().dt;
     stim->baseV = ui->baseV->value();
-    stim->tObsBegin = ui->tObsBegin->value();
-    stim->tObsEnd = ui->tObsEnd->value();
     for ( int i = 0; i < ui->steps->rowCount(); i++ ) {
         stim->steps[i].ramp = ui->steps->item(i, 0)->checkState() == Qt::Checked;
-        stim->steps[i].t = qobject_cast<QDoubleSpinBox*>(ui->steps->cellWidget(i, 1))->value();
+        stim->steps[i].t = qobject_cast<QSpinBox*>(ui->steps->cellWidget(i, 1))->value();
         stim->steps[i].V = qobject_cast<QDoubleSpinBox*>(ui->steps->cellWidget(i, 2))->value();
     }
+    for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
+        obsIt->start[i] = qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 0))->value();
+        obsIt->stop[i] = qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 1))->value();
+    }
 
-    ui->stimulations->item(stim - stims.begin(), 1)->setText(QString("%1 ms, %2 steps").arg(stim->duration).arg(stim->size()));
+    ui->stimulations->item(stim - stims.begin(), 1)->setText(QString("%1 ms, %2 steps").arg(stim->duration*session.qRunData().dt).arg(stim->size()));
 
     redraw();
 
     pDelta.clear();
+}
+
+void StimulationCreator::setObservations()
+{
+    for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
+        qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 0))->setValue(obsIt->start[i]);
+        qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 1))->setValue(obsIt->stop[i]);
+    }
 }
 
 void StimulationCreator::redraw()
@@ -383,12 +416,13 @@ void StimulationCreator::redraw()
 
     double tMax = 0;
     for ( int row : rows ) {
-        StimulationGraph *g = new StimulationGraph(ui->plot->xAxis, ui->plot->yAxis, stims[row]);
+        StimulationGraph *g = new StimulationGraph(ui->plot->xAxis, ui->plot->yAxis, Stimulation(stims[row], session.qRunData().dt));
+        g->setObservations(observations[row], session.qRunData().dt);
         QColor col = qobject_cast<ColorButton*>(ui->stimulations->cellWidget(row, 0))->color;
         g->setPen(QPen(col));
         col.setAlphaF(0.2);
         g->setBrush(QBrush(col));
-        tMax = std::max(tMax, double(stims[row].duration));
+        tMax = std::max(tMax, double(stims[row].duration*session.qRunData().dt));
     }
     ui->plot->xAxis->setRange(0, tMax);
     ui->plot->replot();
@@ -420,17 +454,16 @@ void StimulationCreator::diagnose()
     if ( pDelta.empty() )
         pDelta = getDetunedDiffTraces(stims, *lib, rd);
 
-    iStimulation iStim(*stim, dt);
     int stimIdx = stim - stims.begin();
 
     redraw();
     makeHidable(ui->plot->graph());
 
-    QVector<double> keys(iStim.duration);
-    QVector<double> mean(iStim.duration, 0), sd(iStim.duration, 0);
-    std::vector<QVector<double>> values(nGraphs, QVector<double>(iStim.duration));
+    QVector<double> keys(stim->duration);
+    QVector<double> mean(stim->duration, 0), sd(stim->duration, 0);
+    std::vector<QVector<double>> values(nGraphs, QVector<double>(stim->duration));
 
-    for ( int t = 0; t < iStim.duration; t++ ) {
+    for ( int t = 0; t < stim->duration; t++ ) {
         // Time
         keys[t] = t * dt;
 
@@ -498,7 +531,6 @@ void StimulationCreator::clustering()
     const RunData &rd = session.qRunData();
     double dt = rd.dt;
     int nParams = session.project.model().adjustableParams.size();
-    iStimulation iStim(*stim, dt);
     int stimIdx = stim - stims.begin();
     std::vector<double> norm(nParams, 1);
 
@@ -508,7 +540,7 @@ void StimulationCreator::clustering()
     if ( pDelta.empty() )
         pDelta = getDetunedDiffTraces(stims, *lib, rd);
 
-    std::vector<std::vector<Section>> clusters = constructClusters(iStim, pDelta[stimIdx], lib->NMODELS, settings.blank/dt,
+    std::vector<std::vector<Section>> clusters = constructClusters(*stim, pDelta[stimIdx], lib->NMODELS, settings.blank/dt,
                                                                    norm, settings.secLen/dt, settings.dotp_threshold,
                                                                    settings.minLen/settings.secLen);
     std::vector<Section> bookkeeping;
@@ -531,13 +563,23 @@ void StimulationCreator::clustering()
 
     std::cout << "\n*** Observation window section:" << std::endl;
     // Shortcut to construct one section for the entire observation window:
-    std::vector<Section> tObs;
-    constructSections(pDelta[stimIdx], lib->NMODELS, iStim.tObsBegin, iStim.tObsEnd, norm, iStim.tObsEnd-iStim.tObsBegin+1, tObs);
-    printCluster(tObs, nParams, dt);
+    std::vector<Section> observedSecs;
+    for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
+        if ( obsIt->stop[i] == 0 )
+            break;
+        constructSections(pDelta[stimIdx], lib->NMODELS, obsIt->start[i], obsIt->stop[i], norm, obsIt->stop[i]-obsIt->start[i]+1, observedSecs);
+    }
+    printCluster(observedSecs, nParams, dt);
+    Section observedMaster {0, 0, std::vector<double>(nParams, 0)};
+    for ( const Section &sec : observedSecs ) {
+        observedMaster.end += sec.end-sec.start;
+        for ( int i = 0; i < nParams; i++ )
+            observedMaster.deviations[i] += sec.deviations[i];
+    }
 
-    std::vector<Section> primitives = constructSectionPrimitives(iStim, pDelta[stimIdx], lib->NMODELS, settings.blank/dt,
+    std::vector<Section> primitives = constructSectionPrimitives(*stim, pDelta[stimIdx], lib->NMODELS, settings.blank/dt,
                                                                  norm, settings.secLen/dt);
-    std::vector<Section> sympa = findSimilarCluster(primitives, nParams, settings.dotp_threshold, tObs[0]);
+    std::vector<Section> sympa = findSimilarCluster(primitives, nParams, settings.dotp_threshold, observedMaster);
     if ( !sympa.empty() ) {
         std::cout << "\n*** Sympathetic cluster:\n";
         printCluster(sympa, nParams, dt);
@@ -565,7 +607,6 @@ void StimulationCreator::on_paramTrace_clicked()
     QApplication::setOverrideCursor(Qt::WaitCursor);
     int nParams = session.project.model().adjustableParams.size();
     DAQ *daq = simulator;
-    Stimulation actualStim = *stim;
 
     Trace trace;
     trace.stim = *stim;
@@ -583,8 +624,10 @@ void StimulationCreator::on_paramTrace_clicked()
         } else {
             rec->getCannedDAQ()->assoc = fit.assoc;
         }
-        rec->getCannedDAQ()->setRecord(stims, fit.VCRecord);
-        actualStim = *stim;
+        std::vector<Stimulation> astims;
+        for ( const iStimulation &I : stims )
+            astims.emplace_back(I, session.qRunData().dt);
+        rec->getCannedDAQ()->setRecord(astims, fit.VCRecord);
         daq = rec;
     } else {
         for ( int i = 0; i < nParams; i++ ) {
@@ -613,7 +656,7 @@ void StimulationCreator::on_paramTrace_clicked()
         trace.label = QString("Fit %1, %2").arg(QString::number(src), epStr);
     }
 
-    daq->run(actualStim, session.runData().settleDuration);
+    daq->run(Stimulation(*stim, session.qRunData().dt), session.runData().settleDuration);
     for ( size_t iT = 0, iTEnd = session.runData().settleDuration/session.runData().dt; iT < iTEnd; iT++ )
         daq->next();
     trace.current.reserve(daq->samplesRemaining);
