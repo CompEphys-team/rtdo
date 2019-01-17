@@ -88,8 +88,7 @@ std::vector<Stimulation> WaveSource::stimulations() const
     case Deck:
     case Manual:
     {
-        double dt = session->runData(resultIndex()).dt;
-        std::vector<iStimulation> istims = iStimulations(dt);
+        std::vector<iStimulation> istims = iStimulations();
         ret.reserve(istims.size());
         for ( iStimulation const& I : istims )
             ret.emplace_back(I, session->runData(resultIndex()).dt);
@@ -140,8 +139,8 @@ std::vector<MAPElite> WaveSource::elites() const
     }
     case Manual:
     {
-        std::vector<iStimulation> stims = iStimulations(session->runData(resultIndex()).dt);
-        std::vector<iObservations> obs = observations(session->runData(resultIndex()).dt);
+        std::vector<iStimulation> stims = iStimulations();
+        std::vector<iObservations> obs = observations();
         ret.resize(stims.size());
         for ( size_t i = 0; i < ret.size(); i++ ) {
             ret[i].wave.reset(new iStimulation(stims[i]));
@@ -165,7 +164,7 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
     case Archive :
     {
         ret.reserve(archive()->elites.size());
-        if ( session->runData(resultIndex()).dt == dt ) {
+        if ( dt == 0 || session->runData(resultIndex()).dt == dt ) {
             for ( MAPElite const& e : archive()->elites )
                 ret.push_back(*e.wave);
         } else {
@@ -179,7 +178,7 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
         std::vector<MAPElite> el = elites();
         shrunk = true;
         ret.reserve(el.size());
-        if ( session->runData(archive()->resultIndex).dt == dt ) {
+        if ( dt == 0 || session->runData(archive()->resultIndex).dt == dt ) {
             for ( const MAPElite &e : el )
                 ret.push_back(*e.wave);
         } else {
@@ -192,12 +191,12 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
         ret = subset()->stimulations(dt);
         break;
     case Deck:
-        if ( session->runData(resultIndex()).dt == dt ) {
+        if ( dt == 0 || session->runData(resultIndex()).dt == dt ) {
             ret = deck()->stimulations();
             break;
         }
     case Manual:
-        if ( session->runData(resultIndex()).dt == dt ) {
+        if ( dt == 0 || session->runData(resultIndex()).dt == dt ) {
             ret = session->wavesets().manuals().at(idx).stims;
             break;
         }
@@ -222,14 +221,14 @@ std::vector<iObservations> WaveSource::observations(double dt) const
     case Archive:
     case Deck:
     case Manual:
-        if ( session->runData(resultIndex()).dt != dt ) {
+        if ( dt > 0 && session->runData(resultIndex()).dt != dt ) {
             needs_dt_adjustment = true;
             dtFactor = session->runData(resultIndex()).dt / dt;
         }
         break;
     case Selection:
     case Subset:
-        if ( session->runData(archive()->resultIndex).dt != dt ) {
+        if ( dt > 0 && session->runData(archive()->resultIndex).dt != dt ) {
             needs_dt_adjustment = true;
             dtFactor = session->runData(archive()->resultIndex).dt / dt;
         }
