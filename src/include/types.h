@@ -79,8 +79,6 @@ std::ostream &operator<<(std::ostream&, const Stimulation::Step&);
 struct iStimulation
 {
     int duration;
-    int tObsBegin;
-    int tObsEnd;
     scalar baseV;
 
     struct Step
@@ -327,12 +325,6 @@ struct MAPElite
     scalar current = 0;
 
     MAPElite() : fitness(0), obs {{},{}} {}
-    MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness)
-        : bin(bin), wave(wave), fitness(fitness), obs {{},{}}
-    {
-        obs.start[0] = wave->tObsBegin;
-        obs.stop[0] = wave->tObsEnd;
-    }
     MAPElite(std::vector<size_t> bin, std::shared_ptr<iStimulation> wave, scalar fitness, std::vector<scalar> deviations, iObservations obs)
         : bin(bin), wave(wave), fitness(fitness), deviations(deviations), obs(obs) {}
 

@@ -63,8 +63,6 @@ iStimulation Wavegen::getRandomStim(const StimulationData &stimd, const iStimDat
     int failedPos, failedAgain = 0;
     I.baseV = stimd.baseV;
     I.duration = istimd.iDuration;
-    I.tObsBegin = session.RNG.uniform(0, istimd.iDuration);
-    I.tObsEnd = session.RNG.uniform(I.tObsBegin, istimd.iDuration);
     int n = session.RNG.uniform(stimd.minSteps, stimd.maxSteps);
 tryagain:
     failedPos = 0;

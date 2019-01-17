@@ -89,7 +89,7 @@ QDataStream &operator>>(QDataStream &is, Stimulation &stim)
 
 QDataStream &operator<<(QDataStream &os, const iStimulation &stim)
 {
-    os << stim.baseV << qint32(stim.duration) << qint32(stim.tObsBegin) << qint32(stim.tObsEnd);
+    os << stim.baseV << qint32(-stim.duration);
     os << quint32(stim.size());
     for ( const iStimulation::Step &s : stim )
         os << s.ramp << qint32(s.t) << s.V;
@@ -101,10 +101,12 @@ QDataStream &operator>>(QDataStream &is, iStimulation &stim)
     // Note: this is floating-point safe under the assumption that is.floatingPointPrecision matches the writer's setting.
     quint32 steps;
     qint32 dur, begin, end;
-    is >> stim.baseV >> dur >> begin >> end;
+    is >> stim.baseV >> dur;
+    if ( dur < 0 ) // Hackiest backcompat ever.
+        dur = -dur;
+    else
+        is >> begin >> end;
     stim.duration = dur;
-    stim.tObsBegin = begin;
-    stim.tObsEnd = end;
     is >> steps;
     stim.clear();
     for ( quint32 i = 0; i < steps; i++ ) {

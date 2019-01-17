@@ -42,8 +42,8 @@ bool Stimulation::operator==(const Stimulation &other) const
 
 Stimulation::Stimulation(const iStimulation &I, double dt) :
     duration(I.duration * dt),
-    tObsBegin(I.tObsBegin * dt),
-    tObsEnd(I.tObsEnd * dt),
+    tObsBegin(0),
+    tObsEnd(0),
     baseV(I.baseV),
     numSteps(I.numSteps)
 {
@@ -81,8 +81,6 @@ bool iStimulation::operator==(const iStimulation &other) const
 {
     bool equal =
            duration  == other.duration
-        && tObsBegin == other.tObsBegin
-        && tObsEnd   == other.tObsEnd
         && baseV     == other.baseV
         && numSteps  == other.numSteps;
     for ( size_t i = 0; equal && i < size(); i++ )
@@ -92,8 +90,6 @@ bool iStimulation::operator==(const iStimulation &other) const
 
 iStimulation::iStimulation(const Stimulation &I, double dt) :
     duration(lrint(I.duration / dt)),
-    tObsBegin(lrint(I.tObsBegin / dt)),
-    tObsEnd(lrint(I.tObsEnd / dt)),
     baseV(I.baseV),
     numSteps(I.numSteps)
 {
@@ -199,22 +195,13 @@ size_t MAPEDimension::bin(const iStimulation &I, size_t multiplier, double dt) c
     scalar intermediate = 0.0;
     scalar factor = dt;
     switch ( func ) {
-    case MAPEDimension::Func::BestBubbleDuration:
-        intermediate = (I.tObsEnd - I.tObsBegin) * dt;
-        break;
-    case MAPEDimension::Func::BestBubbleTime:
-        intermediate = I.tObsBegin * dt;
-        break;
     case MAPEDimension::Func::VoltageDeviation:
         // Piggy-back on integral, divide it by its length to get mean abs deviation
-        if ( I.tObsEnd > 0 )
-            factor = 1./I.tObsEnd;
-        else
-            factor = 1./I.duration;
+        factor = 1./I.duration;
     case MAPEDimension::Func::VoltageIntegral:
     {
         scalar prevV = I.baseV;
-        int prevT = 0, tEnd = I.tObsEnd>0 ? I.tObsEnd : I.duration;
+        int prevT = 0, tEnd = I.duration;
         intermediate = 0.;
         // Calculate I's voltage integral against I.baseV, from t=0 to t=S.best.tEnd (the fitness-relevant bubble's end).
         // Since the stimulation is piecewise linear, decompose it step by step and cumulate the pieces
