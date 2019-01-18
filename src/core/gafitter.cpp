@@ -619,7 +619,6 @@ double GAFitter::stimulate(unsigned int extra_assignments)
     lib.push();
 
     // Set up + settle DAQ
-    daq->VC = true;
     daq->reset();
     daq->run(aI, rd.settleDuration);
     for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )

@@ -17,8 +17,9 @@ void Calibrator::zeroV1(DAQData p)
     session.setDAQData(p);
 
     // Initialise
-    DAQFilter daq(session, session.qSettings());
-    daq.VC = true;
+    Settings settings = session.qSettings();
+    settings.rund.VC = true;
+    DAQFilter daq(session, settings);
     Stimulation stim;
     stim.duration = 1000;
     stim.baseV = session.daqData().vclampChan.offset; // Zero output
@@ -52,8 +53,9 @@ void Calibrator::zeroV2(DAQData p)
     session.setDAQData(p);
 
     // Initialise
-    DAQFilter daq(session, session.qSettings());
-    daq.VC = false;
+    Settings settings = session.qSettings();
+    settings.rund.VC = false;
+    DAQFilter daq(session, settings);
     Stimulation stim;
     stim.duration = 1000;
     stim.baseV = 0; // Zero Iout to (only manually defined) offset
@@ -85,8 +87,9 @@ void Calibrator::zeroIin(DAQData p)
     session.setDAQData(p);
 
     // Initialise
-    DAQFilter daq(session, session.qSettings());
-    daq.VC = false;
+    Settings settings = session.qSettings();
+    settings.rund.VC = false;
+    DAQFilter daq(session, settings);
     Stimulation stim;
     stim.duration = 1000;
     stim.baseV = 0; // Zero Iout to (only manually defined) offset
@@ -118,8 +121,9 @@ void Calibrator::zeroVout(DAQData p)
     session.setDAQData(p);
 
     // Initialise
-    DAQFilter daq(session, session.qSettings());
-    daq.VC = true;
+    Settings settings = session.qSettings();
+    settings.rund.VC = true;
+    DAQFilter daq(session, settings);
     Stimulation stim;
     stim.duration = 1000;
     stim.baseV = 0; // Offset-free true zero
@@ -150,8 +154,9 @@ void Calibrator::findAccessResistance()
 {
     emit findingAccessResistance(false);
 
-    DAQFilter daq(session, session.qSettings());
-    daq.VC = false;
+    Settings settings = session.qSettings();
+    settings.rund.VC = false;
+    DAQFilter daq(session, settings);
     Stimulation stim;
     stim.duration = 2000;
     stim.baseV = 0;

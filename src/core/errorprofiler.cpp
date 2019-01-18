@@ -122,7 +122,6 @@ void ErrorProfiler::stimulate(const iStimulation &stim, const iObservations &obs
     lib.push();
 
     // Set up DAQ
-    daq->VC = true;
     daq->reset();
     daq->run(Stimulation(stim, rd.dt), rd.settleDuration);
 

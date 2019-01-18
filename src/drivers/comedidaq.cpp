@@ -231,8 +231,8 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
         V = p.voltageChn;
         V2 = p.V2Chan;
         I = p.currentChn;
-        O = VC ? p.vclampChan : p.cclampChan;
-        conO =& (VC ? conVC : conCC);
+        O = rund.VC ? p.vclampChan : p.cclampChan;
+        conO =& (rund.VC ? conVC : conCC);
 
         // Set AO to baseV immediately
         V0 = conO->toSamp(currentStim.baseV);

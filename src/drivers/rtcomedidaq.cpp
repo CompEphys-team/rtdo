@@ -122,8 +122,8 @@ void *ComediDAQ::launch()
         V = p.voltageChn;
         V2 = p.V2Chan;
         I = p.currentChn;
-        O = VC ? p.vclampChan : p.cclampChan;
-        conO =& (VC ? conVC : conCC);
+        O = rund.VC ? p.vclampChan : p.cclampChan;
+        conO =& (rund.VC ? conVC : conCC);
         if ( (!V.active && !V2.active && !I.active) || !O.active ) {
             // Empty loop:
             set.signal();

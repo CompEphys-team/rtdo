@@ -42,11 +42,11 @@ void DAQCache::run(Stimulation s, double settleDuration)
     extendStimulation(s, settleDuration);
     currentStim = s;
     for ( iterC = cache.begin(); iterC != cache.end(); ++iterC ) {
-        if ( iterC->stim == currentStim && iterC->VC == VC )
+        if ( iterC->stim == currentStim && iterC->VC == rund.VC )
             break;
     }
     if ( iterC == cache.end() ) {
-        cache.emplace_back(currentStim, VC, p.cache.numTraces, currentStim.duration/samplingDt() + 1 + (p.filter.active ? p.filter.width : 0));
+        cache.emplace_back(currentStim, rund.VC, p.cache.numTraces, currentStim.duration/samplingDt() + 1 + (p.filter.active ? p.filter.width : 0));
         iterC = --cache.end();
         iterI = iterC->sampI[0].begin();
         iterV = iterC->sampV[0].begin();
@@ -81,7 +81,6 @@ void DAQCache::run(Stimulation s, double settleDuration)
         iterI = iterC->sampI[iterC->trace].begin();
         iterV = iterC->sampV[iterC->trace].begin();
         iterV2 = iterC->sampV2[iterC->trace].begin();
-        daq->VC = VC;
         daq->run(s);
         samplesRemaining = daq->samplesRemaining;
         outputResolution = iterC->outputResolution = daq->outputResolution;

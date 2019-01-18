@@ -290,6 +290,7 @@ struct RunData
     double Imax = 0; // Current ceiling (+-), nA
     IntegrationMethod integrator = IntegrationMethod::RungeKutta4;
     double dt = 0.25;
+    bool VC = true;
     bool noisy = false;
     bool noisyChannels = false;
     double noiseStd = 0;

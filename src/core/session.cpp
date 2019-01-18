@@ -85,6 +85,7 @@ void Session::addAPs()
     addAP(runAP, "S.Run.settleDuration", &q_settings, &Settings::rund, &RunData::settleDuration);
     addAP(runAP, "S.Run.integrator", &q_settings, &Settings::rund, &RunData::integrator);
     addAP(runAP, "S.Run.dt", &q_settings, &Settings::rund, &RunData::dt);
+    addAP(runAP, "S.Run.VC", &q_settings, &Settings::rund, &RunData::VC);
     addAP(runAP, "S.Run.Imax", &q_settings, &Settings::rund, &RunData::Imax);
     addAP(runAP, "S.Run.noisy", &q_settings, &Settings::rund, &RunData::noisy);
     addAP(runAP, "S.Run.noisyChannels", &q_settings, &Settings::rund, &RunData::noisyChannels);

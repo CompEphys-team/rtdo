@@ -39,9 +39,6 @@ public:
     Project &project;
     const DAQData &p;
 
-    /// Voltage clamp flag. Affects the choice of output channel (VC command or current output)
-    bool VC;
-
     const RunData &rund;
     randutils::mt19937_rng &RNG;
 
