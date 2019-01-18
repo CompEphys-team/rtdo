@@ -308,7 +308,7 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
             if ( $(assignment) & ASSIGNMENT_NOISY_OBSERVATION ) {
                 scalar *offset_rand = dd_random + nSamples * 2*$(simCycles) * NMODELS + id;
                 scalar A = $(noiseAmplitude);
-                if ( $(assignment) & ASSIGNMENT_NOISY_CHANNELS )
+                if ( ($(assignment) & ASSIGNMENT_NOISY_CHANNELS) == ASSIGNMENT_NOISY_CHANNELS )
                     A = sqrt(A*A + state.state__variance(params));
                 for ( int mt = 0; mt < $(simCycles); mt++ ) {
                     noiseI[1] = noiseI[0] * $(noiseExp) + offset_rand[(2*mt+1) * NMODELS] * A;
