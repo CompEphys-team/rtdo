@@ -7,14 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>420</width>
-    <height>384</height>
+    <height>411</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>RunData</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="4" column="2">
+   <item row="5" column="2">
     <widget class="QDoubleSpinBox" name="accessResistance">
      <property name="suffix">
       <string> MOhm</string>
@@ -34,7 +34,7 @@
      </property>
     </widget>
    </item>
-   <item row="6" column="2">
+   <item row="7" column="2">
     <widget class="QDoubleSpinBox" name="settleDuration">
      <property name="suffix">
       <string> ms</string>
@@ -44,7 +44,7 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="2">
+   <item row="4" column="2">
     <widget class="QSpinBox" name="clampGain">
      <property name="maximum">
       <number>1000000</number>
@@ -59,14 +59,7 @@
      </property>
     </widget>
    </item>
-   <item row="9" column="1" colspan="2">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="1">
+   <item row="5" column="1">
     <widget class="QPushButton" name="measureResistance">
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ensure current-passing electrode is in saline and stable, and bridge balance is disabled.&lt;/p&gt;&lt;p&gt;Important note: Headstage resistance must be added to the measured value manually!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -76,17 +69,17 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="0">
+   <item row="5" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
       <string>Access resistance</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="2">
+   <item row="4" column="0" colspan="2">
     <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>Voltage clamp gain</string>
+      <string>Voltage/pattern clamp gain</string>
      </property>
     </widget>
    </item>
@@ -109,17 +102,10 @@
      </item>
     </widget>
    </item>
-   <item row="6" column="0" colspan="2">
+   <item row="7" column="0" colspan="2">
     <widget class="QLabel" name="label_4">
      <property name="text">
       <string>Settling duration</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>Integration method</string>
      </property>
     </widget>
    </item>
@@ -149,7 +135,7 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="2">
+   <item row="6" column="2">
     <widget class="QDoubleSpinBox" name="Imax">
      <property name="prefix">
       <string>+/- </string>
@@ -165,14 +151,14 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="0" colspan="2">
+   <item row="6" column="0" colspan="2">
     <widget class="QLabel" name="label_7">
      <property name="text">
       <string>VC current recording limit</string>
      </property>
     </widget>
    </item>
-   <item row="7" column="0" colspan="3">
+   <item row="8" column="0" colspan="3">
     <widget class="QGroupBox" name="noisy">
      <property name="title">
       <string>Inject noise current (SamplingProfiler)</string>
@@ -226,6 +212,27 @@
        </widget>
       </item>
      </layout>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="QLabel" name="label_5">
+     <property name="text">
+      <string>Integration method</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="3">
+    <widget class="QCheckBox" name="VC">
+     <property name="text">
+      <string>Voltage clamp</string>
+     </property>
+    </widget>
+   </item>
+   <item row="10" column="0" colspan="3">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
     </widget>
    </item>
   </layout>

@@ -41,6 +41,7 @@ void RunDataDialog::importData()
 {
     RunData p = historicIndex < 0 ? session.qRunData() : session.runData(historicIndex);
     ui->dt->setValue(p.dt);
+    ui->VC->setChecked(p.VC);
     ui->simCycles->setValue(p.simCycles);
     ui->clampGain->setValue(p.clampGain);
     ui->accessResistance->setValue(p.accessResistance);
@@ -61,6 +62,7 @@ void RunDataDialog::exportData()
 {
     RunData p;
     p.dt = ui->dt->value();
+    p.VC = ui->VC->isChecked();
     p.simCycles = ui->simCycles->value();
     p.clampGain = ui->clampGain->value();
     p.accessResistance = ui->accessResistance->value();
