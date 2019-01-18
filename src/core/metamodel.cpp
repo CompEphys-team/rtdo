@@ -411,21 +411,6 @@ std::string MetaModel::name() const
     return _name;
 }
 
-string MetaModel::name(ModuleType type) const
-{
-    switch ( type ) {
-    case ModuleType::Wavegen:
-        return _name + "_wavegen";
-        break;
-    case ModuleType::Profiler:
-        return _name + "_profiler";
-    case ModuleType::Universal:
-        return _name + "_universal";
-    default:
-        return _name + "_no_such_type";
-    }
-}
-
 std::string MetaModel::resolveCode(const std::string &code) const
 {
     QString qcode = QString::fromStdString(code);

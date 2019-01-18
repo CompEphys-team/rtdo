@@ -23,7 +23,6 @@ public:
     std::string daqCode(int ordinal) const;
 
     std::string name() const; //!< Model name, no suffix
-    std::string name(ModuleType) const; //!< Model name with type suffix
 
     std::vector<StateVariable> stateVariables;
     std::vector<AdjustableParam> adjustableParams;

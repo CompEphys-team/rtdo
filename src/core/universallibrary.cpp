@@ -93,7 +93,7 @@ void *UniversalLibrary::compile_and_load()
     model.save_selectively = false;
 
     // Compile
-    std::string dir = directory + "/" + model.name(ModuleType::Universal) + "_CODE";
+    std::string dir = directory + "/" + model.name() + "_CODE";
     std::ofstream makefile(dir + "/Makefile", std::ios_base::app);
     makefile << endl;
     makefile << "runner.so: runner.o" << endl;
@@ -109,7 +109,7 @@ void *UniversalLibrary::compile_and_load()
 
 void *UniversalLibrary::load()
 {
-    std::string libfile = project.dir().toStdString() + "/" + model.name(ModuleType::Universal) + "_CODE/runner.so";
+    std::string libfile = project.dir().toStdString() + "/" + model.name() + "_CODE/runner.so";
     dlerror();
     void *libp;
     if ( ! (libp = dlopen(libfile.c_str(), RTLD_NOW)) )
@@ -170,7 +170,7 @@ void UniversalLibrary::GeNN_modelDefinition(NNmodel &nn)
 
     int numModels = nModels.size();
     nModels.push_back(n);
-    nn.setName(model.name(ModuleType::Universal));
+    nn.setName(model.name());
     nn.addNeuronPopulation(SUFFIX, NMODELS, numModels, fixedParamIni, variableIni);
 
     nn.finalize();
@@ -179,7 +179,7 @@ void UniversalLibrary::GeNN_modelDefinition(NNmodel &nn)
 std::string UniversalLibrary::simCode()
 {
     std::stringstream ss;
-    ss << endl << "#ifndef _" << model.name(ModuleType::Universal) << "_neuronFnct_cc" << endl;
+    ss << endl << "#ifndef _" << model.name() << "_neuronFnct_cc" << endl;
 
     ss << R"EOF(
 scalar mdt = $(dt) / $(simCycles);

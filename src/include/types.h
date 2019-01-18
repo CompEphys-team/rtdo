@@ -195,14 +195,6 @@ enum class IntegrationMethod { ForwardEuler = 0, RungeKutta4 = 1, RungeKuttaFehl
 std::ostream& operator<<(std::ostream& os, const IntegrationMethod &m);
 std::istream& operator>>(std::istream& is, IntegrationMethod &m);
 
-enum class ModuleType { Wavegen = 1, Profiler = 2, Universal = 3 };
-struct ModelData {
-    double dt = 0.25;
-    IntegrationMethod method = IntegrationMethod::RungeKutta4;
-    QuotedString filepath;
-    QuotedString dirpath;
-};
-
 struct TypedVariableBase
 {
     TypedVariableBase() {}
