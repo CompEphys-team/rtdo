@@ -168,7 +168,7 @@
    <item row="5" column="0" colspan="2">
     <widget class="QLabel" name="label_7">
      <property name="text">
-      <string>Clamp current limit</string>
+      <string>VC current recording limit</string>
      </property>
     </widget>
    </item>
