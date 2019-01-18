@@ -164,6 +164,20 @@ void Session::addAPs()
         {MAPEDimension::Func::EE_MeanCurrent,       0, 10000,                       64},
     };
     q_settings.searchd.precisionIncreaseEpochs = { 100 };
+    q_settings.daqd.simd.paramValues.resize(nParams);
+    q_settings.gafs.constraints.resize(nParams, 0);
+    q_settings.gafs.min.resize(nParams);
+    q_settings.gafs.max.resize(nParams);
+    q_settings.gafs.fixedValue.resize(nParams);
+    q_settings.gafs.sigma.resize(nParams);
+    for ( size_t i = 0; i < nParams; i++ ) {
+        const AdjustableParam &p = project.model().adjustableParams[i];
+        q_settings.daqd.simd.paramValues[i] = p.initial;
+        q_settings.gafs.fixedValue[i] = p.initial;
+        q_settings.gafs.min[i] = p.min;
+        q_settings.gafs.max[i] = p.max;
+        q_settings.gafs.sigma[i] = p.sigma;
+    }
 
     sanitiseSettings(q_settings);
 }

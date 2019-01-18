@@ -149,9 +149,9 @@ std::istream& operator>>(std::istream& is, FilterMethod &m);
 struct FilterData
 {
     bool active = false;
-    FilterMethod method;
+    FilterMethod method = FilterMethod::MovingAverage;
     int samplesPerDt = 10;
-    int width;
+    int width = 10;
 };
 
 struct SimulatorData
@@ -166,7 +166,7 @@ struct SimulatorData
 
 struct DAQData
 {
-    int simulate; // -1: Recorded data; 0: live DAQ; >0: simulated model #(n-1)
+    int simulate = 0; // -1: Recorded data; 0: live DAQ; >0: simulated model #(n-1)
     int devNo = 0;
     inline std::string devname() const { std::stringstream ss; ss << "/dev/comedi" << devNo; return ss.str(); }
     int throttle = 0;
@@ -277,8 +277,8 @@ struct iStimData
         iMinStep(lrint(stimd.minStepLength / dt)),
         iDuration(lrint(stimd.duration / dt))
     {}
-    int iMinStep;
-    int iDuration;
+    int iMinStep = 0;
+    int iDuration = 0;
 };
 
 struct RunData
@@ -424,7 +424,7 @@ struct GAFitterSettings {
     bool useDE = false;
     int mutationSelectivity = 2; // 0: Nonspecific mutation, 1: Graded mutation rates, 2: Target parameter only
 
-    std::string obsSource;
+    std::string obsSource = "";
 
     // Retired values
     bool useLikelihood = false; // Retired 6 Nov 2018
