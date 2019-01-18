@@ -211,6 +211,9 @@ if ( !($(assignment)&ASSIGNMENT_SUMMARY_PERSIST) )
 scalar noiseI[3];
 if ( $(assignment) & ASSIGNMENT_NOISY_OBSERVATION )
     noiseI[0] = dd_random[id];
+if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP )
+    clamp.clamp = ( ($(assignment)&ASSIGNMENT_PATTERNCLAMP) == ASSIGNMENT_PATTERNCLAMP )
+                ? (ClampParameters::VClamp | ClampParameters::IClamp) : ClampParameters::IClamp;
 
 while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
         && iT < $(stim).duration
@@ -242,11 +245,27 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
 
     // Process results while integrating stepwise with $(dt)
     while ( iT < $(obs).stop[nextObs] ) {
-        getiCommandSegment($(stim), iT, $(stim).duration - iT, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
+        if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP )
+            getiCommandSegment($(stim), iT, $(stim).duration - iT, $(dt), clamp.IClamp0, clamp.dIClamp, tStep);
+        else
+            getiCommandSegment($(stim), iT, $(stim).duration - iT, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
         tStep = min(tStep, $(obs).stop[nextObs] - iT);
         while ( tStep ) {
             // Process results
-            scalar value = clip(clamp.getCurrent(t, state.V), $(Imax)), diff;
+            scalar diff, value;
+            if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP ) {
+                if ( ($(assignment) & ASSIGNMENT_PATTERNCLAMP) == ASSIGNMENT_PATTERNCLAMP ) {
+                    scalar V = dd_target[$(targetOffset) + $(targetStride)*iT];
+                    scalar dV = dd_target[$(targetOffset) + $(targetStride)*(iT+1)] - V;
+                    clamp.dVClamp = dV / $(dt);
+                    clamp.VClamp0 = V - iT * dV;
+                    value = ($(assignment) & ASSIGNMENT_PC_REPORT_PIN) ? clamp.getVClampCurrent(t, state.V) : state.V;
+                } else {
+                    value = state.V;
+                }
+            } else {
+                value = clip(clamp.getCurrent(t, state.V), $(Imax));
+            }
 
             // Report time series
             if ( $(assignment) & ASSIGNMENT_REPORT_TIMESERIES ) {

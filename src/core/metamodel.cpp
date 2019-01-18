@@ -779,6 +779,7 @@ public:
 
         clamp.clampGain = rund.clampGain;
         clamp.accessResistance = rund.accessResistance;
+        clamp.clamp = VC ? ClampParameters::VClamp : ClampParameters::IClamp;
 
         outputResolution = p.simd.outputResolution;
         outputResT0 = settle > 0 ? -settle : 0;
@@ -810,6 +811,7 @@ public:
             if ( currentCacheEntry == cache.end() ) {
                 clamp.VClamp0 = s.baseV;
                 clamp.dVClamp = 0;
+                clamp.IClamp0 = clamp.dIClamp = 0;
                 RKF45(0, settle, meta_hP, settle, meta_hP, state, params, clamp);
                 currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(settlingStim, VC, settle, 0));
                 currentCacheEntry->state = state;
@@ -855,7 +857,7 @@ public:
         if ( generating ) {
             scalar t = tStart + iT*sDt, tStep, tStepCum = 0;
             bool chop_sDt = getCommandSegment(currentStim, t, sDt, outputResolution, outputResT0,
-                                              clamp.VClamp0, clamp.dVClamp, tStep);
+                                              VC ? clamp.VClamp0 : clamp.IClamp0, VC ? clamp.dVClamp : clamp.dIClamp, tStep);
 
             voltage = state.V;
             current = clip(clamp.getCurrent(t, state.V), rund.Imax);
@@ -866,7 +868,7 @@ public:
                     t = tStart + iT*sDt + mt*mdt;
                     if ( chop_sDt ) { // Divide fixed step if command changes within it
                         bool chop_mdt = getCommandSegment(currentStim, t, mdt, outputResolution, outputResT0,
-                                                          clamp.VClamp0, clamp.dVClamp, tStep);
+                                                          VC ? clamp.VClamp0 : clamp.IClamp0, VC ? clamp.dVClamp : clamp.dIClamp, tStep);
                         tStepCum = 0;
                         while ( chop_mdt ) {
                             // Keep noise constant across evaluations for a given time point
@@ -877,7 +879,7 @@ public:
                             tStepCum += tStep;
                             t = tStart + iT*sDt + mt*mdt + tStepCum;
                             chop_mdt = getCommandSegment(currentStim, t, mdt - tStepCum, outputResolution, outputResT0,
-                                                         clamp.VClamp0, clamp.dVClamp, tStep);
+                                                         VC ? clamp.VClamp0 : clamp.IClamp0, VC ? clamp.dVClamp : clamp.dIClamp, tStep);
                         }
                     } else {
                         tStep = mdt;
@@ -894,7 +896,7 @@ public:
                     tStepCum += tStep;
                     t = tStart + iT*sDt + tStepCum;
                     chop_sDt = getCommandSegment(currentStim, t, sDt - tStepCum, outputResolution, outputResT0,
-                                                 clamp.VClamp0, clamp.dVClamp, tStep);
+                                                 VC ? clamp.VClamp0 : clamp.IClamp0, VC ? clamp.dVClamp : clamp.dIClamp, tStep);
                     RKF45(t, t + tStep, sDt/rund.simCycles, sDt, meta_hP, state, params, clamp);
                 }
             }

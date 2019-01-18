@@ -456,10 +456,24 @@ struct ClampParameters
     scalar clampGain, accessResistance;
     scalar VClamp0; // = VClamp linearly extrapolated to t=0
     scalar dVClamp; // = VClamp gradient, mV/ms
+    scalar IClamp0 = 0, dIClamp = 0;
+
+    enum { VClamp = 0x1, IClamp = 0x2 };
+    unsigned char clamp = VClamp;
 
     CUDA_CALLABLE_MEMBER inline scalar getCurrent(scalar t, scalar V) const
     {
-        return (clampGain * (VClamp0 + t*dVClamp - V) - V) / accessResistance;
+        return getVClampCurrent(t, V) + getIClampCurrent(t);
+    }
+
+    CUDA_CALLABLE_MEMBER inline scalar getVClampCurrent(scalar t, scalar V) const
+    {
+        return (clamp & VClamp) ? (clampGain * (VClamp0 + t*dVClamp - V) - V) / accessResistance : 0;
+    }
+
+    CUDA_CALLABLE_MEMBER inline scalar getIClampCurrent(scalar t) const
+    {
+        return (clamp & IClamp) ? IClamp0 + t*dIClamp : 0;
     }
 };
 
