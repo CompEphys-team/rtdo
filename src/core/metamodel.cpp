@@ -824,6 +824,8 @@ public:
 
             skipSamples = settle/sDt;
             samplesRemaining += skipSamples;
+        } else {
+            skipSamples = 0;
         }
 
         if ( useRealism && p.simd.noise ) {
@@ -847,8 +849,7 @@ public:
 
     void next()
     {
-        --samplesRemaining;
-        if ( skipSamples-- > 0 )
+        if ( --samplesRemaining < 0 || skipSamples-- > 0 )
             return;
 
         if ( generating ) {
