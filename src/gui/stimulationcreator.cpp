@@ -116,6 +116,7 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     ui->plot->xAxis->setLabel("Time [ms]");
     ui->plot->yAxis->setLabel("Voltage [mV]");
     ui->plot->yAxis2->setLabel("Current [nA]");
+    ui->plot->yAxis2->setVisible(true);
 
     // *** Traces ***
     int n = session.project.model().adjustableParams.size();
@@ -305,7 +306,7 @@ void StimulationCreator::setLimits()
         qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 0))->setMaximum(duration);
         qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 1))->setMaximum(duration);
     }
-    ui->plot->yAxis->setRange(minV, maxV);
+    (session.qRunData().VC ? ui->plot->yAxis : ui->plot->yAxis2)->setRange(minV, maxV);
 }
 
 void StimulationCreator::setStimulation()
@@ -415,8 +416,9 @@ void StimulationCreator::redraw()
             rows.push_back(i);
 
     double tMax = 0;
+    QCPAxis *yAxis = session.qRunData().VC ? ui->plot->yAxis : ui->plot->yAxis2;
     for ( int row : rows ) {
-        StimulationGraph *g = new StimulationGraph(ui->plot->xAxis, ui->plot->yAxis, Stimulation(stims[row], session.qRunData().dt));
+        StimulationGraph *g = new StimulationGraph(ui->plot->xAxis, yAxis, Stimulation(stims[row], session.qRunData().dt));
         g->setObservations(observations[row], session.qRunData().dt);
         QColor col = qobject_cast<ColorButton*>(ui->stimulations->cellWidget(row, 0))->color;
         g->setPen(QPen(col));
@@ -518,7 +520,6 @@ void StimulationCreator::diagnose()
         makeHidable(g);
     }
 
-    ui->plot->yAxis2->setVisible(true);
     ui->plot->legend->setVisible(true);
     ui->plot->yAxis2->rescale();
 

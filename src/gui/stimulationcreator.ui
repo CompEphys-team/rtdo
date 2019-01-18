@@ -178,7 +178,7 @@
          <property name="currentIndex">
           <number>0</number>
          </property>
-         <widget class="QWidget" name="editorPage1" native="true">
+         <widget class="QWidget" name="editorPage1">
           <attribute name="title">
            <string>Stimulation</string>
           </attribute>
@@ -193,7 +193,7 @@
            <item row="1" column="2">
             <widget class="QDoubleSpinBox" name="baseV">
              <property name="suffix">
-              <string> mV</string>
+              <string> [mV|nA]</string>
              </property>
             </widget>
            </item>
@@ -220,7 +220,7 @@
              </column>
              <column>
               <property name="text">
-               <string>Voltage</string>
+               <string>Voltage|Current</string>
               </property>
              </column>
             </widget>

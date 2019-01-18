@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>549</width>
+    <width>577</width>
     <height>415</height>
    </rect>
   </property>
@@ -23,20 +23,20 @@
       <item row="0" column="0">
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>Base voltage</string>
+         <string>Base value</string>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
        <widget class="QDoubleSpinBox" name="baseV">
         <property name="suffix">
-         <string> mV</string>
+         <string> [mV|nA]</string>
         </property>
         <property name="minimum">
-         <double>-200.000000000000000</double>
+         <double>-99999.000000000000000</double>
         </property>
         <property name="maximum">
-         <double>200.000000000000000</double>
+         <double>99999.000000000000000</double>
         </property>
        </widget>
       </item>
@@ -80,40 +80,40 @@
       <item row="4" column="0">
        <widget class="QLabel" name="label_5">
         <property name="text">
-         <string>Min voltage</string>
+         <string>Min value</string>
         </property>
        </widget>
       </item>
       <item row="4" column="1">
        <widget class="QDoubleSpinBox" name="minV">
         <property name="suffix">
-         <string> mV</string>
+         <string> [mV|nA]</string>
         </property>
         <property name="minimum">
-         <double>-200.000000000000000</double>
+         <double>-99999.000000000000000</double>
         </property>
         <property name="maximum">
-         <double>200.000000000000000</double>
+         <double>99999.000000000000000</double>
         </property>
        </widget>
       </item>
       <item row="5" column="0">
        <widget class="QLabel" name="label_6">
         <property name="text">
-         <string>Max voltage</string>
+         <string>Max value</string>
         </property>
        </widget>
       </item>
       <item row="5" column="1">
        <widget class="QDoubleSpinBox" name="maxV">
         <property name="suffix">
-         <string> mV</string>
+         <string> [mV|nA]</string>
         </property>
         <property name="minimum">
-         <double>-200.000000000000000</double>
+         <double>-99999.000000000000000</double>
         </property>
         <property name="maximum">
-         <double>200.000000000000000</double>
+         <double>99999.000000000000000</double>
         </property>
        </widget>
       </item>
@@ -194,7 +194,7 @@
       <item row="4" column="0">
        <widget class="QLabel" name="label_9">
         <property name="text">
-         <string>Step voltage</string>
+         <string>Step voltage/current</string>
         </property>
        </widget>
       </item>
@@ -221,7 +221,10 @@
          <string>± </string>
         </property>
         <property name="suffix">
-         <string> mV</string>
+         <string> [mV|nA]</string>
+        </property>
+        <property name="maximum">
+         <double>9999.989999999999782</double>
         </property>
        </widget>
       </item>
