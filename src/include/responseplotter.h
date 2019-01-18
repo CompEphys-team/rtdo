@@ -20,6 +20,7 @@ public:
     ~ResponsePlotter();
 
     RTMaybe::Queue<DataPoint> qI, qV, qV2, qO;
+    const bool *VC = nullptr;
 
     //! Pass a DAQ to read I and V from directly, rather than using the DataPoint queues. The output trace is left blank.
     //! Time is deduced from DAQ::samplingDt(), with t=0 for the first sample after a call to clear().

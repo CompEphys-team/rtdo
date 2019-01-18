@@ -10,6 +10,7 @@ Scope::Scope(Session &session, QWidget *parent) :
 {
     ui->setupUi(this);
     connect(ui->clear, &QPushButton::clicked, ui->plot, &ResponsePlotter::clear);
+    ui->plot->VC =& session.qRunData().VC;
 }
 
 Scope::~Scope()

@@ -109,7 +109,7 @@ void ResponsePlotter::clear()
 {
     ui->plot->clearGraphs();
 
-    QCPGraph *g = ui->plot->addGraph();
+    QCPGraph *g = ui->plot->addGraph(0, (VC && !*VC) ? ui->plot->yAxis2 : 0);
     g->setPen(QPen(ui->col_Vcmd->color));
     g->setVisible(ui->Vcmd->isChecked());
 

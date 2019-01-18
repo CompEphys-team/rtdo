@@ -50,7 +50,7 @@
    <item row="0" column="1">
     <widget class="QCheckBox" name="Vcmd">
      <property name="text">
-      <string>Voltage command</string>
+      <string>Command</string>
      </property>
      <property name="checked">
       <bool>true</bool>
@@ -60,7 +60,7 @@
    <item row="0" column="3">
     <widget class="QCheckBox" name="Vresponse">
      <property name="text">
-      <string>Voltage response</string>
+      <string>Voltage 1</string>
      </property>
      <property name="checked">
       <bool>true</bool>
