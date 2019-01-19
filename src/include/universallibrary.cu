@@ -1152,7 +1152,7 @@ __global__ void find_deltabar_kernel(const int trajLen,
 
     // Combine sum squares across block
     __syncthreads();
-    for ( int paramIdx = warpid; paramIdx < NPARAMS; paramIdx += warpSize ) {
+    for ( int paramIdx = warpid; paramIdx < NPARAMS; paramIdx += STIMS_PER_CLUSTER_BLOCK ) {
         scalar sumSquares = 0;
         if ( laneid < STIMS_PER_CLUSTER_BLOCK )
             sumSquares = sh_sumSquares[laneid][paramIdx];
