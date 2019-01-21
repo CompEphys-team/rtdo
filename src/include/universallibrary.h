@@ -61,10 +61,11 @@
 #define ASSIGNMENT_NOISY_OBSERVATION            static_cast<unsigned int>(0x1 << 17) /* Add white or O-U noise during observed periods */
 #define ASSIGNMENT_NOISY_CHANNELS               static_cast<unsigned int>(0x3 << 17) /* Add gating noise during observed periods; implies NOISY_OBSERVATION */
 
-// Bits 19-21: Current clamp
+// Bits 19-22: Current and pattern clamp
 #define ASSIGNMENT_CURRENTCLAMP                 static_cast<unsigned int>(0x1 << 19) /* Run in pure current clamp; reports voltage instead of current */
-#define ASSIGNMENT_PATTERNCLAMP                 static_cast<unsigned int>(0x3 << 19) /* Run in pattern clamp against lib.target; implies current clamp */
-#define ASSIGNMENT_PC_REPORT_PIN                static_cast<unsigned int>(0x1 << 21) /* Report pattern clamp pin current, rather than voltage; requires pattern clamp */
+#define ASSIGNMENT_PATTERNCLAMP                 static_cast<unsigned int>(0x1 << 20) /* Run in pattern clamp against the specified target; reports voltage or pin current */
+#define ASSIGNMENT_PC_REPORT_PIN                static_cast<unsigned int>(0x1 << 21) /* Report pattern clamp pin current, rather than voltage */
+#define ASSIGNMENT_PC_PIN_TO_LANE0              static_cast<unsigned int>(0x1 << 22) /* Pin to lane 0 voltage, rather than lib.target; lane 0 not pinned */
 
 class UniversalLibrary
 {

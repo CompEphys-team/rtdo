@@ -211,9 +211,16 @@ if ( !($(assignment)&ASSIGNMENT_SUMMARY_PERSIST) )
 scalar noiseI[3];
 if ( $(assignment) & ASSIGNMENT_NOISY_OBSERVATION )
     noiseI[0] = dd_random[id];
+
+scalar V = state.V;
 if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP )
-    clamp.clamp = ( ($(assignment)&ASSIGNMENT_PATTERNCLAMP) == ASSIGNMENT_PATTERNCLAMP )
-                ? (ClampParameters::VClamp | ClampParameters::IClamp) : ClampParameters::IClamp;
+    clamp.clamp = ClampParameters::IClamp;
+else if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
+    if ( (threadIdx.x & 31) == 0 && ($(assignment) & ASSIGNMENT_PC_PIN_TO_LANE0) )
+        clamp.clamp = ClampParameters::IClamp;
+    else
+        clamp.clamp = ClampParameters::VClamp | ClampParameters::IClamp;
+}
 
 while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
         && iT < $(stim).duration
@@ -245,7 +252,7 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
 
     // Process results while integrating stepwise with $(dt)
     while ( iT < $(obs).stop[nextObs] ) {
-        if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP )
+        if ( $(assignment) & (ASSIGNMENT_CURRENTCLAMP | ASSIGNMENT_PATTERNCLAMP) )
             getiCommandSegment($(stim), iT, $(stim).duration - iT, $(dt), clamp.IClamp0, clamp.dIClamp, tStep);
         else
             getiCommandSegment($(stim), iT, $(stim).duration - iT, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
@@ -254,15 +261,19 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
             // Process results
             scalar diff, value;
             if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP ) {
-                if ( ($(assignment) & ASSIGNMENT_PATTERNCLAMP) == ASSIGNMENT_PATTERNCLAMP ) {
-                    scalar V = dd_target[$(targetOffset) + $(targetStride)*iT];
-                    scalar dV = dd_target[$(targetOffset) + $(targetStride)*(iT+1)] - V;
-                    clamp.dVClamp = dV / $(dt);
-                    clamp.VClamp0 = V - iT * dV;
-                    value = ($(assignment) & ASSIGNMENT_PC_REPORT_PIN) ? clamp.getVClampCurrent(t, state.V) : state.V;
+                value = state.V;
+            } else if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
+                scalar dV;
+                if ( $(assignment) & ASSIGNMENT_PC_PIN_TO_LANE0 ) {
+                    dV = V - __shfl_sync(0xffffffff, state.V, 0);
+                    V = __shfl_sync(0xffffffff, state.V, 0);
                 } else {
-                    value = state.V;
+                    V = dd_target[$(targetOffset) + $(targetStride)*iT];
+                    dV = dd_target[$(targetOffset) + $(targetStride)*(iT+1)] - V;
                 }
+                clamp.dVClamp = dV / $(dt);
+                clamp.VClamp0 = V - iT * dV;
+                value = ($(assignment) & ASSIGNMENT_PC_REPORT_PIN) ? clamp.getVClampCurrent(t, state.V) : state.V;
             } else {
                 value = clip(clamp.getCurrent(t, state.V), $(Imax));
             }
