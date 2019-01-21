@@ -779,7 +779,7 @@ public:
 
         clamp.clampGain = rund.clampGain;
         clamp.accessResistance = rund.accessResistance;
-        clamp.clamp = rund.VC ? ClampParameters::VClamp : ClampParameters::IClamp;
+        clamp.clamp = rund.VC ? ClampParameters::ClampType::Voltage : ClampParameters::ClampType::Current;
 
         outputResolution = p.simd.outputResolution;
         outputResT0 = settle > 0 ? -settle : 0;

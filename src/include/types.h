@@ -459,22 +459,32 @@ struct ClampParameters
     scalar dVClamp; // = VClamp gradient, mV/ms
     scalar IClamp0 = 0, dIClamp = 0;
 
-    enum { VClamp = 0x1, IClamp = 0x2 };
-    unsigned char clamp = VClamp;
+    enum class ClampType { Voltage, Current, Pattern };
+    ClampType clamp = ClampType::Voltage;
 
     CUDA_CALLABLE_MEMBER inline scalar getCurrent(scalar t, scalar V) const
     {
-        return getVClampCurrent(t, V) + getIClampCurrent(t);
+        switch ( clamp ) {
+        case ClampType::Voltage: return getVClampCurrent(t, V);
+        case ClampType::Current: return getIClampCurrent(t);
+        case ClampType::Pattern: return getPinCurrent(t, V) + getIClampCurrent(t);
+        }
+        return 0;
     }
 
     CUDA_CALLABLE_MEMBER inline scalar getVClampCurrent(scalar t, scalar V) const
     {
-        return (clamp & VClamp) ? (clampGain * (VClamp0 + t*dVClamp - V) - V) / accessResistance : 0;
+        return (getPinCurrent(t, V) - V) / accessResistance;
     }
 
     CUDA_CALLABLE_MEMBER inline scalar getIClampCurrent(scalar t) const
     {
-        return (clamp & IClamp) ? IClamp0 + t*dIClamp : 0;
+        return IClamp0 + t*dIClamp;
+    }
+
+    CUDA_CALLABLE_MEMBER inline scalar getPinCurrent(scalar t, scalar V) const
+    {
+        return clampGain * (VClamp0 + t*dVClamp - V);
     }
 };
 

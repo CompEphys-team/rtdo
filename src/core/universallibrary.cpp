@@ -214,12 +214,12 @@ if ( $(assignment) & ASSIGNMENT_NOISY_OBSERVATION )
 
 scalar V = state.V;
 if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP )
-    clamp.clamp = ClampParameters::IClamp;
+    clamp.clamp = ClampParameters::ClampType::Current;
 else if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
     if ( (threadIdx.x & 31) == 0 && ($(assignment) & ASSIGNMENT_PC_PIN_TO_LANE0) )
-        clamp.clamp = ClampParameters::IClamp;
+        clamp.clamp = ClampParameters::ClampType::Current;
     else
-        clamp.clamp = ClampParameters::VClamp | ClampParameters::IClamp;
+        clamp.clamp = ClampParameters::ClampType::Pattern;
 }
 
 while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
@@ -273,7 +273,7 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                 }
                 clamp.dVClamp = dV / $(dt);
                 clamp.VClamp0 = V - iT * dV;
-                value = ($(assignment) & ASSIGNMENT_PC_REPORT_PIN) ? clamp.getVClampCurrent(t, state.V) : state.V;
+                value = ($(assignment) & ASSIGNMENT_PC_REPORT_PIN) ? clamp.getPinCurrent(t, state.V) : state.V;
             } else {
                 value = clip(clamp.getCurrent(t, state.V), $(Imax));
             }
