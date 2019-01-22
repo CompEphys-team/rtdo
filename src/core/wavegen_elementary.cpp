@@ -98,7 +98,12 @@ std::vector<double> Wavegen::getDeltabar()
         for ( iStimulation &stim : stims )
             stim = session.wavegen().getRandomStim(stimd, istimd);
         pushStimsAndObserve(stims, nModelsPerStim, searchd.cluster.blank / session.runData().dt);
-        ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
+        ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES;
+        if ( session.runData().VC )
+            ulib.assignment |= ASSIGNMENT_TIMESERIES_COMPARE_PREVTHREAD;
+        else
+            ulib.assignment |= ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN |
+                    ((unsigned int)(searchd.trajectoryLength - 1) << ASSIGNMENT_PC_PIN__SHIFT);
         ulib.run();
 
         std::vector<double> dbar = ulib.find_deltabar(searchd.trajectoryLength, searchd.nTrajectories);

@@ -249,8 +249,9 @@ public:
 
     /// post-run() calculation of RMS current deviation from each detuned parameter. Reports the RMSD per tick, per single detuning,
     /// as required by cluster().
-    /// Expects assignment TIMESERIES_COMPARE_PREVTHREAD with models sequentially detuned along and across their ee trajectories, as well as
+    /// VC: Expects assignment TIMESERIES_COMPARE_PREVTHREAD with models sequentially detuned along and across their ee trajectories, as well as
     /// an appropriate individual obs in each stim's first trajectory starting point model
+    /// CC: Use TIMESERIES_COMPARE_NONE with one-at-a-time detuning
     inline std::vector<double> find_deltabar(int trajLen, int nTraj) { return pointers.find_deltabar(trajLen, nTraj, model); }
 
     /// Utility call to add full-stim, step-blanked observation windows to the (model-individual) stims residing on the GPU
