@@ -36,6 +36,8 @@ Session::Session(Project &p, const QString &sessiondir) :
 
     m_log.setLogFile(dir.filePath("session.log"));
     load(); // Load state from m_log
+
+    project.session = this;
 }
 
 Session::~Session()

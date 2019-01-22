@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 #include "project.h"
 #include "stringUtils.h"
+#include "session.h"
 
 void (*MetaModel::modelDef)(NNmodel&);
 
@@ -318,7 +319,7 @@ std::vector<int> MetaModel::get_detune_indices(int trajLen, int nTraj) const
     int nextParam = 0;
     int starter = -2;
 
-    if ( nOptions ) {
+    if ( nOptions && (!project.session || project.session->runData().VC) ) {
         // Gray code bitflip sequence, https://oeis.org/A007814
         std::vector<int> optFlips({0, 1});
         for ( int i = 1; i < nOptions; i++ ) {
@@ -352,7 +353,7 @@ std::vector<int> MetaModel::get_detune_indices(int trajLen, int nTraj) const
             ret.push_back(starter);
             for ( int i = 1; i < trajLen; i++ ) {
                 ret.push_back(nextParam);
-                if ( ++nextParam == nNormalAdjustableParams ) {
+                if ( ++nextParam == int(adjustableParams.size()) ) {
                     nextParam = 0;
                     starter = -1;
                 }

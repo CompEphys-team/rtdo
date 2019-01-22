@@ -1,32 +1,41 @@
 #include "wavegen.h"
 #include "session.h"
 
-void Wavegen::prepare_EE_models()
+void Wavegen::prepare_models()
 {
     int nParams = ulib.adjustableParams.size();
-    std::vector<scalar> values(nParams);
+    std::vector<scalar> values(nParams), baseValues;
+    unsigned int optionBits = 0;
     size_t nModelsPerStim = searchd.nTrajectories * searchd.trajectoryLength;
     std::vector<int> detuneIndices = ulib.model.get_detune_indices(searchd.trajectoryLength, searchd.nTrajectories);
     auto detIdx = detuneIndices.begin();
     for ( size_t i = 0; i < ulib.NMODELS; i++ ) {
         if ( *detIdx < 0 ) { // Pick a starting point
             if ( i < nModelsPerStim ) { // Generate novel values for first stim
-                if ( searchd.useBaseParameters && *detIdx == -2 )
+                if ( searchd.useBaseParameters && *detIdx == -2 ) {
                     for ( int j = 0; j < nParams; j++ )
                         values[j] = ulib.adjustableParams[j].initial;
-                else
+                } else if ( session.runData().VC ) {
                     for ( int j = 0; j < nParams; j++ )
                         values[j] = session.RNG.uniform(ulib.adjustableParams[j].min, ulib.adjustableParams[j].max);
+                } else {
+                    ++optionBits;
+                    for ( int j = 0; j < ulib.model.nNormalAdjustableParams; j++ )
+                        values[j] = session.RNG.uniform(ulib.adjustableParams[j].min, ulib.adjustableParams[j].max);
+                    for ( int j = 0, jj = ulib.model.nNormalAdjustableParams; j < ulib.model.nOptions; j++, jj++ )
+                        values[jj] = ulib.adjustableParams[jj].initial * (((optionBits>>j) & 0x1) * -1);
+                }
             } else // Copy from first stim
                 for ( int j = 0; j < nParams; j++ )
                     values[j] = ulib.adjustableParams[j][i % nModelsPerStim];
 
             ++detIdx;
+            baseValues = values;
         } else {
             // Add a sigma-sized step to one parameter at a time
             AdjustableParam &p = ulib.adjustableParams[*detIdx];
             if ( *detIdx >= ulib.model.nNormalAdjustableParams )
-                values[*detIdx] *= p.sigma;
+                values[*detIdx] *= -1;
             else
                 values[*detIdx] += p.sigma;
             if ( ++detIdx == detuneIndices.end() )
@@ -35,10 +44,13 @@ void Wavegen::prepare_EE_models()
 
         for ( size_t j = 0; j < values.size(); j++ )
             ulib.adjustableParams[j][i] = values[j];
+
+        if ( !session.runData().VC )
+            values = baseValues;
     }
 }
 
-void Wavegen::settle_EE_models()
+void Wavegen::settle_models()
 {
     const RunData &rd = session.runData();
 

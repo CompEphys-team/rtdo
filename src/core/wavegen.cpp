@@ -72,8 +72,8 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     }
 
     ulib.resizeOutput(istimd.iDuration);
-    prepare_EE_models();
-    settle_EE_models();
+    prepare_models();
+    settle_models();
 
     // Use the settling period to generate the first two sets of stims
     std::vector<iStimulation> waves_ep1(nStimsPerEpoch), waves_ep2(nStimsPerEpoch);
@@ -348,8 +348,8 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
     std::vector<std::vector<MAPElite>> ret(nParams, std::vector<MAPElite>(stims.size()));
 
     ulib.resizeOutput(istimd.iDuration);
-    prepare_EE_models();
-    settle_EE_models();
+    prepare_models();
+    settle_models();
     std::vector<double> deltabar = getDeltabar();
 
     std::vector<std::vector<iStimulation>> stimChunks;
@@ -439,8 +439,8 @@ std::vector<MAPElite> Wavegen::evaluatePremade(const std::vector<iStimulation> &
     std::vector<MAPElite> ret(stims.size());
 
     ulib.resizeOutput(istimd.iDuration);
-    prepare_EE_models();
-    settle_EE_models();
+    prepare_models();
+    settle_models();
     std::vector<double> deltabar = getDeltabar();
 
     ulib.setSingularStim(false);

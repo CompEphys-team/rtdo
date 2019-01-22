@@ -54,6 +54,8 @@ public:
     /// Populate an AP vector with DAQData APs (convenience/DRY function for Session)
     static void addDaqAPs(std::vector<std::unique_ptr<AP>> &ap, DAQData *p);
 
+    Session *session;
+
 protected:
     void addAPs();
 
