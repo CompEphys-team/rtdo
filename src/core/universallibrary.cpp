@@ -216,7 +216,7 @@ scalar V = state.V;
 if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP )
     clamp.clamp = ClampParameters::ClampType::Current;
 else if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
-    if ( (threadIdx.x & 31) == 0 && ($(assignment) & ASSIGNMENT_PC_PIN_TO_LANE0) )
+    if ( ($(assignment) & ASSIGNMENT_PC_PIN_2) && (threadIdx.x & 31 & ($(assignment) >> ASSIGNMENT_PC_PIN__SHIFT)) == 0 )
         clamp.clamp = ClampParameters::ClampType::Current;
     else
         clamp.clamp = ClampParameters::ClampType::Pattern;
@@ -264,9 +264,10 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                 value = state.V;
             } else if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
                 scalar dV;
-                if ( $(assignment) & ASSIGNMENT_PC_PIN_TO_LANE0 ) {
-                    dV = V - __shfl_sync(0xffffffff, state.V, 0);
-                    V = __shfl_sync(0xffffffff, state.V, 0);
+                if ( $(assignment) & ASSIGNMENT_PC_PIN_2 ) {
+                    unsigned short target = threadIdx.x & 31 & ~($(assignment) >> ASSIGNMENT_PC_PIN__SHIFT);
+                    dV = V - __shfl_sync(0xffffffff, state.V, target);
+                    V = __shfl_sync(0xffffffff, state.V, target);
                 } else {
                     V = dd_target[$(targetOffset) + $(targetStride)*iT];
                     dV = dd_target[$(targetOffset) + $(targetStride)*(iT+1)] - V;
