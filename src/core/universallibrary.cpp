@@ -185,13 +185,6 @@ std::string UniversalLibrary::simCode()
 scalar mdt = $(dt) / $(simCycles);
 scalar hP = 0.;
 
-// Settle
-if ( $(iSettleDuration) > 0 ) {
-    clamp.dVClamp = 0.0;
-    clamp.VClamp0 = $(stim).baseV;
-    integrate($(iSettleDuration), $(integrator), $(simCycles), -$(iSettleDuration)*$(dt), $(dt), mdt, hP, state, params, clamp);
-}
-
 int iT = 0;
 int tStep = 0;
 int nSamples = 0;
@@ -211,6 +204,36 @@ else if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
         clamp.clamp = ClampParameters::ClampType::Current;
     else
         clamp.clamp = ClampParameters::ClampType::Pattern;
+}
+
+// Settle
+if ( $(iSettleDuration) > 0 ) {
+    if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
+        clamp.dIClamp = 0.0;
+        clamp.IClamp0 = $(stim).baseV;
+        for ( iT = -$(iSettleDuration); iT < 0; iT++ ) {
+            scalar dV;
+            if ( $(assignment) & ASSIGNMENT_PC_PIN_2 ) {
+                unsigned short target = threadIdx.x & 31 & ~($(assignment) >> ASSIGNMENT_PC_PIN__SHIFT);
+                dV = V - __shfl_sync(0xffffffff, state.V, target);
+                V = __shfl_sync(0xffffffff, state.V, target);
+            } else {
+                V = dd_target[$(targetOffset) + $(targetStride)*(iT+$(iSettleDuration))];
+                dV = dd_target[$(targetOffset) + $(targetStride)*(iT+1+$(iSettleDuration))] - V;
+            }
+            clamp.dVClamp = dV / $(dt);
+            clamp.VClamp0 = V - iT * dV;
+            integrate(1, $(integrator), $(simCycles), iT * $(dt), $(dt), mdt, hP, state, params, clamp);
+        }
+    } else if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP ) {
+        clamp.dIClamp = 0.0;
+        clamp.IClamp0 = $(stim).baseV;
+        integrate($(iSettleDuration), $(integrator), $(simCycles), -$(iSettleDuration)*$(dt), $(dt), mdt, hP, state, params, clamp);
+    } else {
+        clamp.dVClamp = 0.0;
+        clamp.VClamp0 = $(stim).baseV;
+        integrate($(iSettleDuration), $(integrator), $(simCycles), -$(iSettleDuration)*$(dt), $(dt), mdt, hP, state, params, clamp);
+    }
 }
 
 while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
