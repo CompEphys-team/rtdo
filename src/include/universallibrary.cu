@@ -1248,17 +1248,19 @@ __global__ void observe_no_steps_kernel(int blankCycles)
     iObservations obs = {};
     int tStart = 0;
     int nextObs = 0;
-    for ( const auto step : stim ) {
-        if ( step.t > stim.duration )
-            break;
-        if ( !step.ramp ) {
-            if ( tStart < step.t ) {
-                obs.start[nextObs] = tStart;
-                obs.stop[nextObs] = step.t;
-                if ( ++nextObs == iObservations::maxObs )
-                    break;
+    if ( blankCycles > 0 ) {
+        for ( const auto step : stim ) {
+            if ( step.t > stim.duration )
+                break;
+            if ( !step.ramp ) {
+                if ( tStart < step.t ) {
+                    obs.start[nextObs] = tStart;
+                    obs.stop[nextObs] = step.t;
+                    if ( ++nextObs == iObservations::maxObs )
+                        break;
+                }
+                tStart = step.t + blankCycles;
             }
-            tStart = step.t + blankCycles;
         }
     }
     if ( nextObs < iObservations::maxObs ) {
