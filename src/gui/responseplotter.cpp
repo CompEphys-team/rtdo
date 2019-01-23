@@ -142,7 +142,7 @@ void ResponsePlotter::replot()
 
     if ( daq ) {
         double dt = daq->samplingDt();
-        while ( daq->samplesRemaining > 0 ) {
+        do {
             point.t = iT*dt;
             daq->next();
             try {
@@ -158,7 +158,7 @@ void ResponsePlotter::replot()
                 ui->plot->graph(3)->addData(point.t, daq->current);
             }
             ++iT;
-        }
+        } while ( daq->samplesRemaining );
     } else {
         for ( int i = 0; i < 4; i++ ) {
             while ( q[i]->pop_if(point) ) {
