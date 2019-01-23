@@ -99,6 +99,8 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
 
     unsigned int assignment = lib.assignment_base
             | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPACT | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
+    if ( !rd.VC )
+        assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN | ASSIGNMENT_PC_PIN_32;
 
     if ( rd.noisy ) {
         assignment |= (rd.noisyChannels ? ASSIGNMENT_NOISY_CHANNELS : ASSIGNMENT_NOISY_OBSERVATION);
@@ -148,7 +150,7 @@ bool SamplingProfiler::execute(QString action, QString, Result *res, QFile &file
         lib.profile(elites[i].obs.duration(), prof.target, elites[i].deviations,
                     prof.rho_weighted[i], prof.rho_unweighted[i], prof.rho_target_only[i],
                     prof.grad_weighted[i], prof.grad_unweighted[i], prof.grad_target_only[i],
-                    invariants);
+                    invariants, rd.VC);
         emit progress(i, elites.size());
     }
 
