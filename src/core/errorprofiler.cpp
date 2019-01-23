@@ -113,6 +113,8 @@ void ErrorProfiler::stimulate(const iStimulation &stim, const iObservations &obs
     lib.assignment = lib.assignment_base
             | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET
             | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE;
+    if ( !rd.VC )
+        lib.assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN;
     lib.stim[0] = stim;
     lib.obs[0] = obs;
 
@@ -126,12 +128,26 @@ void ErrorProfiler::stimulate(const iStimulation &stim, const iObservations &obs
     daq->run(Stimulation(stim, rd.dt), rd.settleDuration);
 
     // Settle DAQ
-    for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
-        daq->next();
+    if ( rd.VC ) {
+        for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
+            daq->next();
+    } else if ( rd.settleDuration > 0 ) {
+        for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ ) {
+            daq->next();
+            lib.target[iT] = daq->voltage;
+        }
+        lib.assignment |= ASSIGNMENT_SETTLE_ONLY;
+        lib.pushTarget();
+        lib.run();
+        lib.assignment &= ~ASSIGNMENT_SETTLE_ONLY;
+        lib.iSettleDuration[0] = 0;
+        lib.push(lib.iSettleDuration);
+    }
+
     // Run DAQ
     for ( int iT = 0; iT < stim.duration; iT++ ) {
         daq->next();
-        lib.target[iT] = daq->current;
+        lib.target[iT] = rd.VC ? daq->current : daq->voltage;
     }
 
     // Run lib against target
