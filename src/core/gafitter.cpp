@@ -616,21 +616,39 @@ double GAFitter::stimulate(unsigned int extra_assignments)
 
     lib.assignment = lib.assignment_base | extra_assignments
             | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED;
+    if ( !rd.VC )
+        lib.assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN;
     lib.push();
 
     // Set up + settle DAQ
     daq->reset();
     daq->run(aI, rd.settleDuration);
-    for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
-        daq->next();
+    if ( rd.VC ) {
+        for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
+            daq->next();
+    } else if ( rd.settleDuration > 0 ) {
+        for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ ) {
+            daq->next();
+            lib.target[iT] = daq->voltage;
+        }
+        lib.assignment |= ASSIGNMENT_SETTLE_ONLY;
+        lib.pushTarget();
+        lib.run();
+    }
 
     // Step DAQ through full stimulation
     for ( int iT = 0; iT < I.duration; iT++ ) {
         daq->next();
         pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iT*rd.dt));
-        lib.target[iT] = daq->current;
+        lib.target[iT] = rd.VC ? daq->current : daq->voltage;
     }
     daq->reset();
+
+    if ( !rd.VC && rd.settleDuration > 0 ) {
+        lib.assignment &= ~ASSIGNMENT_SETTLE_ONLY;
+        lib.iSettleDuration[0] = 0;
+        lib.push(lib.iSettleDuration);
+    }
 
     // Run lib against target
     lib.pushTarget();
