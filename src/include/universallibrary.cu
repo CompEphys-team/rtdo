@@ -195,8 +195,18 @@ std::vector<unsigned short> pushDetuneIndices(int trajLen, int nTraj, const Meta
 ///  >============================     Profiler kernel & host function      ====================================================<
 /// ******************************************************************************************************************************
 
-// Compute the current deviation of both tuned and untuned models against each tuned model
-// Models are interleaved (even id = tuned, odd id = detuned) in SamplingProfiler
+/**
+ * @brief collect_dist_and_err collects the current error along with several measures of parameter-space distance between models.
+ * @param nSamples size of the timeseries
+ * @param params device pointers to the parameter value arrays, ordered by paramIdx
+ * @param targetParam target parameter index for the target-only distance measure
+ * @param weight tensor for the weighted parameter space distance measure
+ * @param error Output: sum of squared current errors
+ * @param distance_unweighted Output: unweighted euclidean parameter-space distance
+ * @param distance_target_only Output: Parameter-space distance along the targetParam axis only
+ * @param distance_weighted Output: Weighted euclidean parameter-space distance ||(params_reference-params_probe) .* weight||
+ * @param get_invariants Shortcut; causes @p distance_target_only and @p distance_unweighted to be multiplied with the respective value in @p error
+ */
 __global__ void collect_dist_and_err(int nSamples, scalar **params, int targetParam, Parameters weight,
                                      scalar *error, /* RMS current error between tuned probe and reference */
                                      scalar *distance_unweighted, /* euclidean param-space distance between tuned probe and reference */
