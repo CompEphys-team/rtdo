@@ -117,7 +117,7 @@ public:
 
         void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
                         std::vector<double> deltabar, const MetaModel &, bool VC, bool pull);
-        void (*pullClusters)(int nStims);
+        void (*pullClusters)(int nStims, bool includeCurrent);
         int (*pullPrimitives)(int nStims, int duration, int secLen);
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, const MetaModel &);
         scalar **clusters;
@@ -126,7 +126,7 @@ public:
         iObservations **clusterObs;
 
         void (*bubble)(int trajLen, int nTraj, int duration, int secLen, std::vector<double> deltabar, const MetaModel &, bool VC, bool pull_results);
-        void (*pullBubbles)(int nStims);
+        void (*pullBubbles)(int nStims, bool includeCurrent);
         Bubble **bubbles;
 
         void (*observe_no_steps)(int blankCycles);
@@ -230,7 +230,7 @@ public:
     }
     /// Copy cluster() results to clusters, clusterMasks and clusterCurrent.
     /// Note, nStims = NMODELS/(trajLen*nTraj)
-    inline void pullClusters(int nStims) { pointers.pullClusters(nStims); }
+    inline void pullClusters(int nStims, bool includeCurrent) { pointers.pullClusters(nStims, includeCurrent); }
     /// Copy cluster() intermediates (section primitives) to clusterPrimitives, and return the section stride
     inline int pullPrimitives(int nStims, int duration, int secLen) { return pointers.pullPrimitives(nStims, duration, secLen); }
 
@@ -247,7 +247,7 @@ public:
         pointers.bubble(trajLen, nTraj, duration, secLen, deltabar, model, VC, pull_results);
     }
     /// Copy bubble() results to bubbles, clusters, and clusterCurrent.
-    inline void pullBubbles(int nStims) { pointers.pullBubbles(nStims); }
+    inline void pullBubbles(int nStims, bool includeCurrent) { pointers.pullBubbles(nStims, includeCurrent); }
 
     /// post-run() calculation of RMS current deviation from each detuned parameter. Reports the RMSD per tick, per single detuning,
     /// as required by cluster().

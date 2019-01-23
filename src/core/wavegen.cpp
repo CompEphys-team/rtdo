@@ -94,12 +94,12 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     if ( action == cluster_action ) {
         evaluate = [&](){ ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
                                        sectionLength, searchd.cluster.dotp_threshold, minClusterLen, deltabar, VC, false); };
-        pull = [&](){ ulib.pullClusters(nStimsPerEpoch); };
+        pull = [&](){ ulib.pullClusters(nStimsPerEpoch, VC); };
         score_and_insert = [&](std::vector<iStimulation> &waves){ return cluster_scoreAndInsert(waves, nStimsPerEpoch, dims); };
     } else if ( action == bubble_action ) {
         evaluate = [&](){ ulib.bubble(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
                                       sectionLength, deltabar, VC, false); };
-        pull = [&](){ ulib.pullBubbles(nStimsPerEpoch); };
+        pull = [&](){ ulib.pullBubbles(nStimsPerEpoch, VC); };
         score_and_insert = [&](std::vector<iStimulation> &waves){ return bubble_scoreAndInsert(waves, nStimsPerEpoch, dims); };
     }
 
@@ -376,7 +376,7 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
         if ( action == cluster_action ) {
             ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
                          sectionLength, searchd.cluster.dotp_threshold, minClusterLen, deltabar, VC, false);
-            ulib.pullClusters(nStimsPerEpoch);
+            ulib.pullClusters(nStimsPerEpoch, VC);
             for ( size_t stimIdx = 0; stimIdx < chunk.size(); stimIdx++ ) {
                 std::vector<size_t> bestClusterIdx(nParams, 0);
                 std::vector<scalar> bestClusterFitness(nParams, 0);
@@ -414,7 +414,7 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
         } else if ( action == bubble_action ) {
             ulib.bubble(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
                         sectionLength, deltabar, VC, false);
-            ulib.pullBubbles(nStimsPerEpoch);
+            ulib.pullBubbles(nStimsPerEpoch, VC);
             for ( size_t stimIdx = 0; stimIdx < chunk.size(); stimIdx++ ) {
                 iStimulation *wave = new iStimulation(chunk[stimIdx]);
                 for ( size_t targetParam = 0; targetParam < nParams; targetParam++ ) {

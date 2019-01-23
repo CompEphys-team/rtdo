@@ -785,10 +785,11 @@ __global__ void exactClustering(const int nPartitions,
     }
 }
 
-extern "C" void pullClusters(int nStims)
+extern "C" void pullClusters(int nStims, bool includeCurrent)
 {
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nStims * MAXCLUSTERS * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
-    CHECK_CUDA_ERRORS(cudaMemcpy(clusterCurrent, d_clusterCurrent, nStims * MAXCLUSTERS * sizeof(scalar), cudaMemcpyDeviceToHost));
+    if ( includeCurrent )
+        CHECK_CUDA_ERRORS(cudaMemcpy(clusterCurrent, d_clusterCurrent, nStims * MAXCLUSTERS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusterObs, d_clusterObs, nStims * MAXCLUSTERS * sizeof(iObservations), cudaMemcpyDeviceToHost));
 }
 
@@ -839,7 +840,7 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
 
 
     if ( pull_results )
-        pullClusters(nStims);
+        pullClusters(nStims, VC);
 }
 
 
@@ -1077,10 +1078,11 @@ __global__ void buildBubbles(const int nPartitions,
     }
 }
 
-extern "C" void pullBubbles(int nStims)
+extern "C" void pullBubbles(int nStims, bool includeCurrent)
 {
     CHECK_CUDA_ERRORS(cudaMemcpy(bubbles, d_bubbles, nStims * NPARAMS * sizeof(Bubble), cudaMemcpyDeviceToHost));
-    CHECK_CUDA_ERRORS(cudaMemcpy(clusterCurrent, d_clusterCurrent, nStims * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
+    if ( includeCurrent )
+        CHECK_CUDA_ERRORS(cudaMemcpy(clusterCurrent, d_clusterCurrent, nStims * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nStims * NPARAMS * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
 }
 
@@ -1119,7 +1121,7 @@ extern "C" void bubble(int trajLen, /* length of EE trajectory (power of 2, <=32
     buildBubbles<<<grid, block, shmem_size>>>(nPartitions, secLen, VC, d_sections, d_currents, d_clusters, d_clusterCurrent, d_bubbles);
 
     if ( pull_results )
-        pullBubbles(nStims);
+        pullBubbles(nStims, VC);
 }
 
 
