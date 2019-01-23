@@ -106,6 +106,9 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     // Queue the first set of stims
     pushStimsAndObserve(*returnedWaves, nModelsPerStim, blankCycles);
     ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
+    if ( !VC )
+        ulib.assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN |
+                ((unsigned int)(searchd.trajectoryLength - 1) << ASSIGNMENT_PC_PIN__SHIFT);
     ulib.run();
     evaluate();
 
@@ -366,6 +369,9 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
     for ( const std::vector<iStimulation> &chunk : stimChunks ) {
         pushStimsAndObserve(chunk, nModelsPerStim, blankCycles);
         ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
+        if ( !VC )
+            ulib.assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN |
+                    ((unsigned int)(searchd.trajectoryLength - 1) << ASSIGNMENT_PC_PIN__SHIFT);
         ulib.run();
         if ( action == cluster_action ) {
             ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
@@ -447,6 +453,9 @@ std::vector<MAPElite> Wavegen::evaluatePremade(const std::vector<iStimulation> &
 
     ulib.setSingularStim(false);
     ulib.assignment = ulib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
+    if ( !session.runData().VC )
+        ulib.assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN |
+                ((unsigned int)(searchd.trajectoryLength - 1) << ASSIGNMENT_PC_PIN__SHIFT);
 
     for ( size_t nProcessedStims = 0; nProcessedStims < stims.size(); nProcessedStims += nStimsPerEpoch ) {
         size_t nStims = std::min(stims.size() - nProcessedStims, nStimsPerEpoch);

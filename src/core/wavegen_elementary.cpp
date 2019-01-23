@@ -65,9 +65,21 @@ void Wavegen::settle_models()
     ulib.setSingularStim();
     ulib.stim[0].baseV = session.stimulationData().baseV;
 
-    ulib.assignment = ulib.assignment_base | ASSIGNMENT_SETTLE_ONLY | ASSIGNMENT_MAINTAIN_STATE;
-    ulib.push();
-    ulib.run();
+    if ( session.runData().VC ) {
+        ulib.assignment = ulib.assignment_base | ASSIGNMENT_SETTLE_ONLY | ASSIGNMENT_MAINTAIN_STATE;
+        ulib.push();
+        ulib.run();
+    } else {
+        ulib.stim[0].clear();
+        ulib.stim[0].duration = ulib.iSettleDuration[0];
+        ulib.obs[0].start[0] = 0;
+        ulib.obs[0].stop[0] = ulib.iSettleDuration[0];
+        ulib.iSettleDuration[0] = 0;
+        ulib.assignment = ulib.assignment_base | ASSIGNMENT_MAINTAIN_STATE | ASSIGNMENT_PATTERNCLAMP
+                | ((unsigned int)(searchd.trajectoryLength - 1) << ASSIGNMENT_PC_PIN__SHIFT);
+        ulib.push();
+        ulib.run();
+    }
 }
 
 void Wavegen::pushStimsAndObserve(const std::vector<iStimulation> &stims, int nModelsPerStim, int blankCycles)
