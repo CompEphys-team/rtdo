@@ -228,26 +228,58 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
 
     // Integrate unobserved
     while ( iT < $(obs).start[nextObs] ) {
-        getiCommandSegment($(stim), iT, $(stim).duration - iT, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
+        if ( $(assignment) & (ASSIGNMENT_CURRENTCLAMP | ASSIGNMENT_PATTERNCLAMP) )
+            getiCommandSegment($(stim), iT, $(stim).duration - iT, $(dt), clamp.IClamp0, clamp.dIClamp, tStep);
+        else
+            getiCommandSegment($(stim), iT, $(stim).duration - iT, $(dt), clamp.VClamp0, clamp.dVClamp, tStep);
         tStep = min(tStep, $(obs).start[nextObs] - iT);
-        if ( $(integrator) == IntegrationMethod::RungeKutta4 ) {
-            for ( int mt = 0, mtEnd = tStep * $(simCycles); mt < mtEnd; mt++ )
-                RK4(t + mt*mdt, mdt, state, params, clamp);
-        } else if ( $(integrator) == IntegrationMethod::ForwardEuler ) {
-            for ( int mt = 0, mtEnd = tStep * $(simCycles); mt < mtEnd; mt++ )
-                Euler(t + mt*mdt, mdt, state, params, clamp);
-        } else /*if ( $(integrator) == IntegrationMethod::RungeKuttaFehlberg45 )*/ {
-            RKF45(t, t + tStep*$(dt), mdt, tStep*$(dt), hP, state, params, clamp);
+
+        if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
+            while ( tStep ) {
+                scalar dV;
+                if ( $(assignment) & ASSIGNMENT_PC_PIN_2 ) {
+                    unsigned short target = threadIdx.x & 31 & ~($(assignment) >> ASSIGNMENT_PC_PIN__SHIFT);
+                    dV = V - __shfl_sync(0xffffffff, state.V, target);
+                    V = __shfl_sync(0xffffffff, state.V, target);
+                } else {
+                    V = dd_target[$(targetOffset) + $(targetStride)*iT];
+                    dV = dd_target[$(targetOffset) + $(targetStride)*(iT+1)] - V;
+                }
+                clamp.dVClamp = dV / $(dt);
+                clamp.VClamp0 = V - iT * dV;
+
+                if ( $(integrator) == IntegrationMethod::RungeKutta4 ) {
+                    for ( int mt = 0; mt < $(simCycles); mt++ )
+                        RK4(t + mt*mdt, mdt, state, params, clamp);
+                } else if ( $(integrator) == IntegrationMethod::ForwardEuler ) {
+                    for ( int mt = 0; mt < $(simCycles); mt++ )
+                        Euler(t + mt*mdt, mdt, state, params, clamp);
+                } else /*if ( $(integrator) == IntegrationMethod::RungeKuttaFehlberg45 )*/ {
+                    RKF45(t, t + $(dt), mdt, $(dt), hP, state, params, clamp);
+                }
+                --tStep;
+                ++iT;
+                t = iT * $(dt);
+            }
+        } else {
+            if ( $(integrator) == IntegrationMethod::RungeKutta4 ) {
+                for ( int mt = 0, mtEnd = tStep * $(simCycles); mt < mtEnd; mt++ )
+                    RK4(t + mt*mdt, mdt, state, params, clamp);
+            } else if ( $(integrator) == IntegrationMethod::ForwardEuler ) {
+                for ( int mt = 0, mtEnd = tStep * $(simCycles); mt < mtEnd; mt++ )
+                    Euler(t + mt*mdt, mdt, state, params, clamp);
+            } else /*if ( $(integrator) == IntegrationMethod::RungeKuttaFehlberg45 )*/ {
+                RKF45(t, t + tStep*$(dt), mdt, tStep*$(dt), hP, state, params, clamp);
+            }
+            iT += tStep;
+            t = iT * $(dt);
         }
 
         if ( ($(assignment) & ASSIGNMENT_REPORT_TIMESERIES)
           && !($(assignment) & ASSIGNMENT_TIMESERIES_COMPACT)
           && ($(assignment) & ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES) )
-            for ( int i = 0; i < tStep; i++ )
+            for ( int i = -tStep; i < 0; i++ )
                 dd_timeseries[id + NMODELS*(iT+i)] = 0.;
-
-        iT += tStep;
-        t = iT * $(dt);
     }
 
     // Process results while integrating stepwise with $(dt)
