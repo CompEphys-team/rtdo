@@ -187,18 +187,9 @@ scalar hP = 0.;
 
 // Settle
 if ( $(iSettleDuration) > 0 ) {
-    t = -$(iSettleDuration)*$(dt);
     clamp.dVClamp = 0.0;
     clamp.VClamp0 = $(stim).baseV;
-    if ( $(integrator) == IntegrationMethod::RungeKutta4 ) {
-        for ( int mt = 0, mtEnd = $(iSettleDuration) * $(simCycles); mt < mtEnd; mt++ )
-            RK4(t + mt*mdt, mdt, state, params, clamp);
-    } else if ( $(integrator) == IntegrationMethod::ForwardEuler ) {
-        for ( int mt = 0, mtEnd = $(iSettleDuration) * $(simCycles); mt < mtEnd; mt++ )
-            Euler(t + mt*mdt, mdt, state, params, clamp);
-    } else /*if ( $(integrator) == IntegrationMethod::RungeKuttaFehlberg45 )*/ {
-        RKF45(t, 0., mdt, $(iSettleDuration)*$(dt), hP, state, params, clamp);
-    }
+    integrate($(iSettleDuration), $(integrator), $(simCycles), -$(iSettleDuration)*$(dt), $(dt), mdt, hP, state, params, clamp);
 }
 
 int iT = 0;
@@ -248,32 +239,15 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                 clamp.dVClamp = dV / $(dt);
                 clamp.VClamp0 = V - iT * dV;
 
-                if ( $(integrator) == IntegrationMethod::RungeKutta4 ) {
-                    for ( int mt = 0; mt < $(simCycles); mt++ )
-                        RK4(t + mt*mdt, mdt, state, params, clamp);
-                } else if ( $(integrator) == IntegrationMethod::ForwardEuler ) {
-                    for ( int mt = 0; mt < $(simCycles); mt++ )
-                        Euler(t + mt*mdt, mdt, state, params, clamp);
-                } else /*if ( $(integrator) == IntegrationMethod::RungeKuttaFehlberg45 )*/ {
-                    RKF45(t, t + $(dt), mdt, $(dt), hP, state, params, clamp);
-                }
+                integrate(1, $(integrator), $(simCycles), iT * $(dt), $(dt), mdt, hP, state, params, clamp);
                 --tStep;
                 ++iT;
-                t = iT * $(dt);
             }
         } else {
-            if ( $(integrator) == IntegrationMethod::RungeKutta4 ) {
-                for ( int mt = 0, mtEnd = tStep * $(simCycles); mt < mtEnd; mt++ )
-                    RK4(t + mt*mdt, mdt, state, params, clamp);
-            } else if ( $(integrator) == IntegrationMethod::ForwardEuler ) {
-                for ( int mt = 0, mtEnd = tStep * $(simCycles); mt < mtEnd; mt++ )
-                    Euler(t + mt*mdt, mdt, state, params, clamp);
-            } else /*if ( $(integrator) == IntegrationMethod::RungeKuttaFehlberg45 )*/ {
-                RKF45(t, t + tStep*$(dt), mdt, tStep*$(dt), hP, state, params, clamp);
-            }
+            integrate(tStep, $(integrator), $(simCycles), t, $(dt), mdt, hP, state, params, clamp);
             iT += tStep;
-            t = iT * $(dt);
         }
+        t = iT * $(dt);
 
         if ( ($(assignment) & ASSIGNMENT_REPORT_TIMESERIES)
           && !($(assignment) & ASSIGNMENT_TIMESERIES_COMPACT)
@@ -379,14 +353,8 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                     RK4(t + mt*mdt, mdt, state, params, clamp, noiseI);
                     noiseI[0] = noiseI[2];
                 }
-            } else if ( $(integrator) == IntegrationMethod::RungeKutta4 ) {
-                for ( int mt = 0; mt < $(simCycles); mt++ )
-                    RK4(t + mt*mdt, mdt, state, params, clamp);
-            } else if ( $(integrator) == IntegrationMethod::ForwardEuler ) {
-                for ( int mt = 0; mt < $(simCycles); mt++ )
-                    Euler(t + mt*mdt, mdt, state, params, clamp);
-            } else /*if ( $(integrator) == IntegrationMethod::RungeKuttaFehlberg45 )*/ {
-                RKF45(t, t + $(dt), mdt, $(dt), hP, state, params, clamp);
+            } else {
+                integrate(1, $(integrator), $(simCycles), t, $(dt), mdt, hP, state, params, clamp);
             }
             ++nSamples;
             --tStep;

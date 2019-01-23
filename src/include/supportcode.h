@@ -136,4 +136,17 @@ __host__ __device__ inline void Euler(scalar t, scalar h,
     state = state + state.state__f(t, params, clamp) * h;
 }
 
+template <class StateT, class ParamsT>
+__host__ __device__ inline void integrate (int nSteps, IntegrationMethod itor, int simCycles, scalar t, scalar dt, scalar mdt, scalar &hP, StateT &state, const ParamsT &params, const ClampParameters &clamp) {
+    if ( itor == IntegrationMethod::RungeKutta4 ) {
+        for ( int mt = 0, mtEnd = nSteps * simCycles; mt < mtEnd; mt++ )
+            RK4(t + mt*mdt, mdt, state, params, clamp);
+    } else if ( itor == IntegrationMethod::ForwardEuler ) {
+        for ( int mt = 0, mtEnd = nSteps * simCycles; mt < mtEnd; mt++ )
+            Euler(t + mt*mdt, mdt, state, params, clamp);
+    } else /*if ( itor == IntegrationMethod::RungeKuttaFehlberg45 )*/ {
+        RKF45(t, t + nSteps*dt, mdt, nSteps*dt, hP, state, params, clamp);
+    }
+}
+
 #endif // SUPPORTCODE_H
