@@ -1299,6 +1299,7 @@ extern "C" void genRandom(unsigned int n, scalar mean, scalar sd, unsigned long 
 __global__ void get_posthoc_deviations_kernel(const int trajLen,
                                               const int nTraj,
                                               const int nStims,
+                                              const bool VC,
                                               scalar *out_clusters,
                                               scalar *out_current)
 {
@@ -1335,14 +1336,18 @@ __global__ void get_posthoc_deviations_kernel(const int trajLen,
             scalar current_mylane = 0;
             if ( i < nTraces )
                 current_mylane = dd_timeseries[t*NMODELS + lane0_offset + i];
-            scalar current_prevlane = __shfl_up_sync(0xffffffff, current_mylane, 1);
-            scalar diff = scalarfabs(current_prevlane - current_mylane);
-            if ( i < nTraces ) {
-                if ( i % trajLen != 0 )
-                    atomicAdd((scalar*)&sh_contrib[warpid][detuneParamIndices[i]], diff);
-                current_mylane = scalarfabs(current_mylane);
+            if ( VC ) {
+                scalar current_prevlane = __shfl_up_sync(0xffffffff, current_mylane, 1);
+                scalar diff = scalarfabs(current_prevlane - current_mylane);
+                if ( i < nTraces ) {
+                    if ( i % trajLen != 0 )
+                        atomicAdd((scalar*)&sh_contrib[warpid][detuneParamIndices[i]], diff);
+                    current_mylane = scalarfabs(current_mylane);
+                }
+                current += warpReduceSum(current_mylane);
+            } else if ( i < nTraces && i % trajLen != 0 ) {
+                atomicAdd((scalar*)&sh_contrib[warpid][detuneParamIndices[i]], scalarfabs(current_mylane));
             }
-            current += warpReduceSum(current_mylane);
         }
     }
 
@@ -1360,7 +1365,7 @@ __global__ void get_posthoc_deviations_kernel(const int trajLen,
     for ( int paramIdx = laneid; paramIdx < NPARAMS; paramIdx += warpSize )
         out_clusters[stimIdx*NPARAMS + paramIdx] = sh_contrib[warpid][paramIdx] / dotp;
 
-    if ( laneid == 0 )
+    if ( VC && laneid == 0 )
         out_current[stimIdx] = current / (obs.duration() * nTraces);
 }
 
@@ -1368,7 +1373,8 @@ extern "C" void get_posthoc_deviations(int trajLen,
                                        int nTraj,
                                        unsigned int nStims,
                                        std::vector<double> deltabar_arg,
-                                       const MetaModel &model)
+                                       const MetaModel &model,
+                                       bool VC)
 {
     resizeArrayPair(clusters, d_clusters, clusters_size, nStims * NPARAMS);
     resizeArrayPair(clusterCurrent, d_clusterCurrent, clusterCurrent_size, nStims);
@@ -1378,10 +1384,11 @@ extern "C" void get_posthoc_deviations(int trajLen,
 
     dim3 block(STIMS_PER_CLUSTER_BLOCK * 32);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
-    get_posthoc_deviations_kernel<<<grid, block>>>(trajLen, nTraj, nStims, d_clusters, d_clusterCurrent);
+    get_posthoc_deviations_kernel<<<grid, block>>>(trajLen, nTraj, nStims, VC, d_clusters, d_clusterCurrent);
 
     CHECK_CUDA_ERRORS(cudaMemcpy(clusters, d_clusters, nStims * NPARAMS * sizeof(scalar), cudaMemcpyDeviceToHost));
-    CHECK_CUDA_ERRORS(cudaMemcpy(clusterCurrent, d_clusterCurrent, nStims * sizeof(scalar), cudaMemcpyDeviceToHost));
+    if ( VC )
+        CHECK_CUDA_ERRORS(cudaMemcpy(clusterCurrent, d_clusterCurrent, nStims * sizeof(scalar), cudaMemcpyDeviceToHost));
 }
 
 #endif

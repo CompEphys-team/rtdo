@@ -468,7 +468,7 @@ std::vector<MAPElite> Wavegen::evaluatePremade(const std::vector<iStimulation> &
                 ulib.stim[i].duration = 0;
         ulib.push(ulib.stim);
         ulib.run();
-        ulib.get_posthoc_deviations(searchd.trajectoryLength, searchd.nTrajectories, nStims, deltabar);
+        ulib.get_posthoc_deviations(searchd.trajectoryLength, searchd.nTrajectories, nStims, deltabar, session.runData().VC);
 
         for ( size_t stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
             ret[nProcessedStims + stimIdx].current = ulib.clusterCurrent[stimIdx];
