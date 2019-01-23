@@ -116,7 +116,7 @@ public:
                         std::vector<double> &invariants);
 
         void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
-                        std::vector<double> deltabar, const MetaModel &, bool pull);
+                        std::vector<double> deltabar, const MetaModel &, bool VC, bool pull);
         void (*pullClusters)(int nStims);
         int (*pullPrimitives)(int nStims, int duration, int secLen);
         std::vector<double> (*find_deltabar)(int trajLen, int nTraj, const MetaModel &);
@@ -125,7 +125,7 @@ public:
         scalar **clusterPrimitives;
         iObservations **clusterObs;
 
-        void (*bubble)(int trajLen, int nTraj, int duration, int secLen, std::vector<double> deltabar, const MetaModel &, bool pull_results);
+        void (*bubble)(int trajLen, int nTraj, int duration, int secLen, std::vector<double> deltabar, const MetaModel &, bool VC, bool pull_results);
         void (*pullBubbles)(int nStims);
         Bubble **bubbles;
 
@@ -224,8 +224,9 @@ public:
                         scalar dotp_threshold, /* Minimum scalar product for two sections to be considered to belong to the same cluster */
                         int minClusterLen, /* Minimum duration for a cluster to be considered valid (in ticks) */
                         std::vector<double> deltabar, /* RMS current deviation, cf. find_deltabar() */
+                        bool VC, /* Voltage clamp / pattern clamp switch */
                         bool pull_results) /* True to copy results immediately; false to defer to pullClusters(), allowing time for CPU processing */ {
-        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, model, pull_results);
+        pointers.cluster(trajLen, nTraj, duration, secLen, dotp_threshold, minClusterLen, deltabar, model, VC, pull_results);
     }
     /// Copy cluster() results to clusters, clusterMasks and clusterCurrent.
     /// Note, nStims = NMODELS/(trajLen*nTraj)
@@ -241,8 +242,9 @@ public:
                        int duration,
                        int secLen,
                        std::vector<double> deltabar,
+                       bool VC,
                        bool pull_results) {
-        pointers.bubble(trajLen, nTraj, duration, secLen, deltabar, model, pull_results);
+        pointers.bubble(trajLen, nTraj, duration, secLen, deltabar, model, VC, pull_results);
     }
     /// Copy bubble() results to bubbles, clusters, and clusterCurrent.
     inline void pullBubbles(int nStims) { pointers.pullBubbles(nStims); }

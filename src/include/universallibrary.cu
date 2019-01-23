@@ -349,6 +349,7 @@ static constexpr int STIMS_PER_CLUSTER_BLOCK =
  *          representing up to secLen ticks. Sections are chunked into partitions of PARTITION_SIZE=32 sections each.
  *          Deviation vectors represent the mean deviation per tick, normalised to deltabar, caused by a single detuning.
  *          Note, this kernel expects the EE traces to be generated using TIMESERIES_COMPARE_NONE
+ * @param VC Voltage clamp flag; if false, out_current is not touched, and the timeseries is assumed to be the pattern clamp pin current.
  * @param out_sections is the output, laid out as [stimIdx][paramIdx][partitionIdx][secIdx (local to partition)].
  * @param out_current is the mean current within each section, laid out as [stimIdx][partitionIdx][secIdx].
  */
@@ -358,6 +359,7 @@ __global__ void build_section_primitives(const int trajLen,
                                          const int duration,
                                          const int secLen,
                                          const int nPartitions,
+                                         const bool VC,
                                          scalar *out_sections,
                                          scalar *out_current)
 {
@@ -395,16 +397,21 @@ __global__ void build_section_primitives(const int trajLen,
                         scalar current_mylane = 0;
                         if ( i < nTraces )
                             current_mylane = dd_timeseries[t*NMODELS + lane0_offset + i];
-                        scalar current_prevlane = __shfl_up_sync(0xffffffff, current_mylane, 1);
-                        scalar diff = scalarfabs(current_prevlane - current_mylane);
-                        if ( i < nTraces ) {
-                            if ( i % trajLen != 0 ) // Add diff to detuned param's contribution (base points mute; atomic for NPARAMS<31)
-                                atomicAdd((scalar*)&sh_contrib[warpid][detuneParamIndices[i]][secIdx&31], diff);
-                            current_mylane = scalarfabs(current_mylane);
+                        if ( VC ) {
+                            scalar current_prevlane = __shfl_up_sync(0xffffffff, current_mylane, 1);
+                            scalar diff = scalarfabs(current_prevlane - current_mylane);
+                            if ( i < nTraces ) {
+                                if ( i % trajLen != 0 ) // Add diff to detuned param's contribution (base points mute; atomic for NPARAMS<31)
+                                    atomicAdd((scalar*)&sh_contrib[warpid][detuneParamIndices[i]][secIdx&31], diff);
+                                current_mylane = scalarfabs(current_mylane);
+                            }
+                            current_mylane = warpReduceSum(current_mylane);
+                            if ( laneid == 0 )
+                                sh_current[warpid][secIdx&31] += current_mylane;
+                        } else {
+                            if ( i < nTraces && i % trajLen != 0 )
+                                atomicAdd((scalar*)&sh_contrib[warpid][detuneParamIndices[i]][secIdx&31], scalarfabs(current_mylane));
                         }
-                        current_mylane = warpReduceSum(current_mylane);
-                        if ( laneid == 0 )
-                            sh_current[warpid][secIdx&31] += current_mylane;
                     }
                     ++trueSecLen;
                 } else {
@@ -431,11 +438,13 @@ __global__ void build_section_primitives(const int trajLen,
                 }
             }
 
-            out_current[stimIdx * nPartitions * PARTITION_SIZE
-                    + partitionIdx * PARTITION_SIZE
-                    + laneid]
-                    = sh_current[warpid][laneid] / (trueSecLen_static * nTraces);
-            sh_current[warpid][laneid] = 0;
+            if ( VC ) {
+                out_current[stimIdx * nPartitions * PARTITION_SIZE
+                        + partitionIdx * PARTITION_SIZE
+                        + laneid]
+                        = sh_current[warpid][laneid] / (trueSecLen_static * nTraces);
+                sh_current[warpid][laneid] = 0;
+            }
         }
     }
 }
@@ -542,6 +551,7 @@ __global__ void exactClustering(const int nPartitions,
                                 const scalar dotp_threshold,
                                 const int secLen,
                                 const int minClusterLen,
+                                const bool VC,
                                 scalar *in_contrib, /* [stimIdx][paramIdx][secIdx] */
                                 scalar *in_current, /* [stimIdx][secIdx] */
                                 scalar *out_clusters, /* [stimIdx][clusterIdx][paramIdx] */
@@ -729,18 +739,22 @@ __global__ void exactClustering(const int nPartitions,
                 while ( stopIdx < nStops && shmem[clusterIdx*maxStops + 1 + stopIdx] <= secIdx )
                     ++stopIdx;
                 if ( stopIdx & 1 ) {
-                    current += in_current[blockIdx.x * nSecs + secIdx];
+                    if ( VC ) {
+                        current += in_current[blockIdx.x * nSecs + secIdx];
+                        ++nAdditions;
+                    }
                     tmp.load(in_contrib + blockIdx.x * NPARAMS * nSecs + secIdx, nSecs);
                     contrib += tmp;
-                    ++nAdditions;
                 }
             }
             __syncwarp();
 
             // Reduce into lane 0
             for ( unsigned int i = 1; i < warpSize; i *= 2 ) {
-                current += __shfl_down_sync(0xffffffff, current, i);
-                nAdditions += __shfl_down_sync(0xffffffff, nAdditions, i);
+                if ( VC ) {
+                    current += __shfl_down_sync(0xffffffff, current, i);
+                    nAdditions += __shfl_down_sync(0xffffffff, nAdditions, i);
+                }
                 tmp.shfl(contrib, laneid + i);
                 contrib += tmp;
             }
@@ -757,8 +771,10 @@ __global__ void exactClustering(const int nPartitions,
                 contrib /= std::sqrt(contrib.dotp(contrib));
                 contrib.store(out_clusters + blockIdx.x * MAXCLUSTERS * NPARAMS + clusterIdx * NPARAMS);
 
-                current /= nAdditions;
-                out_clusterCurrent[blockIdx.x * MAXCLUSTERS + clusterIdx] = current;
+                if ( VC ) {
+                    current /= nAdditions;
+                    out_clusterCurrent[blockIdx.x * MAXCLUSTERS + clusterIdx] = current;
+                }
             }
         }
 
@@ -792,6 +808,7 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
                        int minClusterLen,
                        std::vector<double> deltabar_arg,
                        const MetaModel &model,
+                       bool VC,
                        bool pull_results)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
@@ -811,11 +828,11 @@ extern "C" void cluster(int trajLen, /* length of EE trajectory (power of 2, <=3
 
     dim3 block(STIMS_PER_CLUSTER_BLOCK * 32);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
-    build_section_primitives<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, nPartitions, d_sections, d_currents);
+    build_section_primitives<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, nPartitions, VC, d_sections, d_currents);
 
     size_t shmem_size = std::max(32*nPartitions, 8192);
     size_t nWarps = 16;
-    exactClustering<<<nStims, 32*nWarps, shmem_size*sizeof(int)>>>(nPartitions, dotp_threshold, secLen, minClusterLen,
+    exactClustering<<<nStims, 32*nWarps, shmem_size*sizeof(int)>>>(nPartitions, dotp_threshold, secLen, minClusterLen, VC,
                                                                    d_sections, d_currents,
                                                                    d_clusters, d_clusterCurrent, d_clusterObs,
                                                                    d_clusterMasks, shmem_size);
@@ -904,6 +921,7 @@ __device__ void warpMergeBubbles(Bubble &start, Bubble &mid, Bubble &end, int cy
 
 __global__ void buildBubbles(const int nPartitions,
                              const int secLen,
+                             const bool VC,
                              scalar *in_contrib, /* [stimIdx][paramIdx][secIdx] */
                              scalar *in_current, /* [stimIdx][secIdx] */
                              scalar *out_deviations, /* [stimIdx][targetParamIdx][paramIdx] */
@@ -1025,17 +1043,20 @@ __global__ void buildBubbles(const int nPartitions,
         scalar current;
         if ( secIdx < lastSec ) {
             dev.load(in_contrib + stimIdx * NPARAMS * nSecs + secIdx, nSecs);
-            current = in_current[stimIdx * nSecs + secIdx];
+            if ( VC )
+                current = in_current[stimIdx * nSecs + secIdx];
         } else {
             dev.zero();
             current = 0;
         }
 
-        current = warpReduceSum(current);
+        if ( VC )
+            current = warpReduceSum(current);
         dev = warpReduceSum(dev);
 
         if ( laneid == 0 ) {
-            sh_current[warpid] += current;
+            if ( VC )
+                sh_current[warpid] += current;
             sh_deviation[warpid] += dev;
         }
     }
@@ -1043,11 +1064,13 @@ __global__ void buildBubbles(const int nPartitions,
     __syncthreads();
 
     if ( warpid == 0 ) {
-        scalar current = sh_current[laneid];
-        current = warpReduceSum(current);
+        scalar current;
+        if ( VC )
+            current = warpReduceSum(sh_current[laneid]);
         dev = warpReduceSum(sh_deviation[laneid]);
         if ( laneid == 0 ) {
-            out_bubbleCurrents[stimIdx * NPARAMS + targetParamIdx] = current/start.cycles;
+            if ( VC )
+                out_bubbleCurrents[stimIdx * NPARAMS + targetParamIdx] = current/start.cycles;
             dev /= std::sqrt(dev.dotp(dev));
             dev.store(out_deviations + stimIdx * NPARAMS * NPARAMS + targetParamIdx * NPARAMS);
         }
@@ -1067,6 +1090,7 @@ extern "C" void bubble(int trajLen, /* length of EE trajectory (power of 2, <=32
                        int secLen,
                        std::vector<double> deltabar_arg,
                        const MetaModel &model,
+                       bool VC,
                        bool pull_results)
 {
     unsigned int nStims = NMODELS / (trajLen*nTraj);
@@ -1084,7 +1108,7 @@ extern "C" void bubble(int trajLen, /* length of EE trajectory (power of 2, <=32
 
     dim3 block(STIMS_PER_CLUSTER_BLOCK * 32);
     dim3 grid(((nStims+STIMS_PER_CLUSTER_BLOCK-1)/STIMS_PER_CLUSTER_BLOCK));
-    build_section_primitives<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, nPartitions, d_sections, d_currents);
+    build_section_primitives<<<grid, block>>>(trajLen, nTraj, nStims, duration, secLen, nPartitions, VC, d_sections, d_currents);
 
     size_t nWarps = 16;
     size_t shmem_for_bubbles = 3 * nPartitions * sizeof(Bubble);
@@ -1092,7 +1116,7 @@ extern "C" void bubble(int trajLen, /* length of EE trajectory (power of 2, <=32
     size_t shmem_size = std::max(shmem_for_bubbles, shmem_for_stats);
     block = dim3(nWarps * 32);
     grid = dim3(nStims, NPARAMS);
-    buildBubbles<<<grid, block, shmem_size>>>(nPartitions, secLen, d_sections, d_currents, d_clusters, d_clusterCurrent, d_bubbles);
+    buildBubbles<<<grid, block, shmem_size>>>(nPartitions, secLen, VC, d_sections, d_currents, d_clusters, d_clusterCurrent, d_bubbles);
 
     if ( pull_results )
         pullBubbles(nStims);

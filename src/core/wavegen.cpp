@@ -54,6 +54,7 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     const int blankCycles = searchd.cluster.blank / session.runData().dt;
     const int sectionLength = searchd.cluster.secLen / session.runData().dt;
     const int minClusterLen = searchd.cluster.minLen / session.runData().dt;
+    bool VC = session.runData().VC;
 
     double run_maxCurrent = 0, sum_maxCurrents = 0;
 
@@ -92,12 +93,12 @@ bool Wavegen::execute(QString action, QString, Result *result, QFile &file)
     std::function<scalar(std::vector<iStimulation>&)> score_and_insert;
     if ( action == cluster_action ) {
         evaluate = [&](){ ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                                       sectionLength, searchd.cluster.dotp_threshold, minClusterLen, deltabar, false); };
+                                       sectionLength, searchd.cluster.dotp_threshold, minClusterLen, deltabar, VC, false); };
         pull = [&](){ ulib.pullClusters(nStimsPerEpoch); };
         score_and_insert = [&](std::vector<iStimulation> &waves){ return cluster_scoreAndInsert(waves, nStimsPerEpoch, dims); };
     } else if ( action == bubble_action ) {
         evaluate = [&](){ ulib.bubble(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                                      sectionLength, deltabar, false); };
+                                      sectionLength, deltabar, VC, false); };
         pull = [&](){ ulib.pullBubbles(nStimsPerEpoch); };
         score_and_insert = [&](std::vector<iStimulation> &waves){ return bubble_scoreAndInsert(waves, nStimsPerEpoch, dims); };
     }
@@ -344,6 +345,7 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
     const int sectionLength = searchd.cluster.secLen / session.runData().dt;
     const int minClusterLen = searchd.cluster.minLen / session.runData().dt;
     const size_t nParams = ulib.adjustableParams.size();
+    bool VC = session.runData().VC;
 
     std::vector<std::vector<MAPElite>> ret(nParams, std::vector<MAPElite>(stims.size()));
 
@@ -367,7 +369,7 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
         ulib.run();
         if ( action == cluster_action ) {
             ulib.cluster(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                         sectionLength, searchd.cluster.dotp_threshold, minClusterLen, deltabar, false);
+                         sectionLength, searchd.cluster.dotp_threshold, minClusterLen, deltabar, VC, false);
             ulib.pullClusters(nStimsPerEpoch);
             for ( size_t stimIdx = 0; stimIdx < chunk.size(); stimIdx++ ) {
                 std::vector<size_t> bestClusterIdx(nParams, 0);
@@ -405,7 +407,7 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
             }
         } else if ( action == bubble_action ) {
             ulib.bubble(searchd.trajectoryLength, searchd.nTrajectories, istimd.iDuration,
-                        sectionLength, deltabar, false);
+                        sectionLength, deltabar, VC, false);
             ulib.pullBubbles(nStimsPerEpoch);
             for ( size_t stimIdx = 0; stimIdx < chunk.size(); stimIdx++ ) {
                 iStimulation *wave = new iStimulation(chunk[stimIdx]);
