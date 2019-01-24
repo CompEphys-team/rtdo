@@ -256,6 +256,8 @@ int WavegenSelection::dominatesIntolerant(const MAPElite *lhs, const MAPElite *r
     int dom = dir;
     int strictDir = dir;
     for ( size_t i = 0; i < ranges.size(); i++ ) {
+        if ( ranges[i].collapse )
+            continue;
         if ( lhs->bin[i] > rhs->bin[i] )
             dir = paretoMaximise[i] ? 1 : -1;
         else if ( lhs->bin[i] < rhs->bin[i] )
@@ -286,6 +288,8 @@ int WavegenSelection::dominatesTolerant(const MAPElite *lhs, const MAPElite *rhs
     int dom = dir;
     int strictDir = dir;
     for ( size_t i = 0; i < ranges.size(); i++ ) {
+        if ( ranges[i].collapse )
+            continue;
         if ( lhs->bin[i] > rhs->bin[i] ) {
             dir = paretoMaximise[i] ? 1 : -1;
             tolerate &= lhs->bin[i] <= rhs->bin[i] + paretoTolerance[i]*(paretoMaximise[i] ? 1 : -1);
@@ -308,8 +312,8 @@ int WavegenSelection::dominatesTolerant(const MAPElite *lhs, const MAPElite *rhs
 void WavegenSelection::select_pareto()
 {
     bool tolerant = paretoFitnessTol > 0;
-    for ( size_t tol : paretoTolerance )
-        tolerant &= tol>0;
+    for ( size_t i = 0; i < ranges.size(); i++ )
+        tolerant &= ranges[i].collapse || (paretoTolerance[i] > 0);
     auto dominates = tolerant ? &WavegenSelection::dominatesTolerant : &WavegenSelection::dominatesIntolerant;
 
     std::vector<const MAPElite*> front;
