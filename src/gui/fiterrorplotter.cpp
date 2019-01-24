@@ -211,7 +211,7 @@ void FitErrorPlotter::on_register_path_textChanged(const QString &arg1)
 bool FitErrorPlotter::loadRecording(RegisterEntry &reg, bool readData)
 {
     // Already loaded: return
-    if ( !reg.data.empty() )
+    if ( !reg.data.empty() && reg.rund.VC == session->qRunData().VC )
         return true;
 
     // Read recording
@@ -242,7 +242,7 @@ bool FitErrorPlotter::loadRecording(RegisterEntry &reg, bool readData)
             }
             while ( iSample < reg.pprotocol->iObs[stimIdx].stop[nextObs] ) {
                 recording.next();
-                reg.data[stimIdx][iSample] = recording.current;
+                reg.data[stimIdx][iSample] = reg.rund.VC ? recording.current : recording.voltage;
                 ++iSample;
             }
             ++nextObs;
@@ -329,9 +329,15 @@ void FitErrorPlotter::on_run_clicked()
 
     lib->simCycles = session->qRunData().simCycles;
     lib->integrator = session->qRunData().integrator;
-    lib->assignment =
-            ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE
-            | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES;
+    if ( session->qRunData().VC )
+        lib->assignment = lib->assignment_base
+                | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE
+                | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES;
+    else
+        lib->assignment = lib->assignment_base
+                | ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN
+                | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_NONE | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE
+                | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES;
 
     int parameterSourceSelection = get_parameter_selection();
 
@@ -509,7 +515,7 @@ void FitErrorPlotter::plot_traces(Protocol &prot)
             stim.resize(prot.istims[stimIdx].duration);
             for ( int i = 0; i < stim.size(); i++ )
                 stim[i] = getCommandVoltage(prot.stims[stimIdx], i*prot.dt);
-            g = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
+            g = ui->plot->addGraph(ui->plot->xAxis, reg.rund.VC ? ui->plot->yAxis2 : ui->plot->yAxis);
             g->setData(keys, stim);
             g->setPen(QPen(Qt::blue));
         }
@@ -518,7 +524,7 @@ void FitErrorPlotter::plot_traces(Protocol &prot)
     if ( ui->trace_rec->isChecked() ) {
         for ( int stimIdx : stim_indices ) {
             sizeKeys(stimIdx);
-            g = ui->plot->addGraph();
+            g = ui->plot->addGraph(ui->plot->xAxis, reg.rund.VC ? ui->plot->yAxis : ui->plot->yAxis2);
             g->setData(keys, reg.data[stimIdx], true);
             g->setPen(QPen(Qt::green));
         }
