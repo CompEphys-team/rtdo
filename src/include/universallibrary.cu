@@ -113,6 +113,31 @@ extern "C" void libExit(UniversalLibrary::Pointers &pointers)
     freeMem();
     pointers.pushV = pointers.pullV = nullptr;
     CURAND_CALL(curandDestroyGenerator(cuRNG));
+
+    CHECK_CUDA_ERRORS(cudaFree(d_target));
+    CHECK_CUDA_ERRORS(cudaFree(d_timeseries));
+    CHECK_CUDA_ERRORS(cudaFree(d_prof_error));
+    CHECK_CUDA_ERRORS(cudaFree(d_prof_dist_uw));
+    CHECK_CUDA_ERRORS(cudaFree(d_prof_dist_to));
+    CHECK_CUDA_ERRORS(cudaFree(d_prof_dist_w));
+    CHECK_CUDA_ERRORS(cudaFree(d_random));
+    CHECK_CUDA_ERRORS(cudaFree(d_clusters));
+    CHECK_CUDA_ERRORS(cudaFree(d_clusterLen));
+    CHECK_CUDA_ERRORS(cudaFree(d_clusterMasks));
+    CHECK_CUDA_ERRORS(cudaFree(d_clusterCurrent));
+    CHECK_CUDA_ERRORS(cudaFree(d_sections));
+    CHECK_CUDA_ERRORS(cudaFree(d_currents));
+    CHECK_CUDA_ERRORS(cudaFree(d_clusterObs));
+    CHECK_CUDA_ERRORS(cudaFree(d_bubbles));
+
+    CHECK_CUDA_ERRORS(cudaFreeHost(target));
+    CHECK_CUDA_ERRORS(cudaFreeHost(timeseries));
+    CHECK_CUDA_ERRORS(cudaFreeHost(clusters));
+    CHECK_CUDA_ERRORS(cudaFreeHost(clusterLen));
+    CHECK_CUDA_ERRORS(cudaFreeHost(clusterCurrent));
+    CHECK_CUDA_ERRORS(cudaFreeHost(sections));
+    CHECK_CUDA_ERRORS(cudaFreeHost(clusterObs));
+    CHECK_CUDA_ERRORS(cudaFreeHost(bubbles));
 }
 
 extern "C" void resetDevice()
