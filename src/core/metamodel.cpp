@@ -319,7 +319,7 @@ std::vector<int> MetaModel::get_detune_indices(int trajLen, int nTraj) const
     int nextParam = 0;
     int starter = -2;
 
-    if ( nOptions && (!project.session || project.session->runData().VC) ) {
+    if ( nOptions ) {
         // Gray code bitflip sequence, https://oeis.org/A007814
         std::vector<int> optFlips({0, 1});
         for ( int i = 1; i < nOptions; i++ ) {

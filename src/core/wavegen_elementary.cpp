@@ -5,7 +5,6 @@ void Wavegen::prepare_models()
 {
     int nParams = ulib.adjustableParams.size();
     std::vector<scalar> values(nParams), baseValues;
-    unsigned int optionBits = 0;
     size_t nModelsPerStim = searchd.nTrajectories * searchd.trajectoryLength;
     std::vector<int> detuneIndices = ulib.model.get_detune_indices(searchd.trajectoryLength, searchd.nTrajectories);
     auto detIdx = detuneIndices.begin();
@@ -15,15 +14,9 @@ void Wavegen::prepare_models()
                 if ( searchd.useBaseParameters && *detIdx == -2 ) {
                     for ( int j = 0; j < nParams; j++ )
                         values[j] = ulib.adjustableParams[j].initial;
-                } else if ( session.runData().VC ) {
+                } else {
                     for ( int j = 0; j < nParams; j++ )
                         values[j] = session.RNG.uniform(ulib.adjustableParams[j].min, ulib.adjustableParams[j].max);
-                } else {
-                    ++optionBits;
-                    for ( int j = 0; j < ulib.model.nNormalAdjustableParams; j++ )
-                        values[j] = session.RNG.uniform(ulib.adjustableParams[j].min, ulib.adjustableParams[j].max);
-                    for ( int j = 0, jj = ulib.model.nNormalAdjustableParams; j < ulib.model.nOptions; j++, jj++ )
-                        values[jj] = ulib.adjustableParams[jj].initial * (((optionBits>>j) & 0x1) * -1);
                 }
             } else // Copy from first stim
                 for ( int j = 0; j < nParams; j++ )
@@ -34,10 +27,13 @@ void Wavegen::prepare_models()
         } else {
             // Add a sigma-sized step to one parameter at a time
             AdjustableParam &p = ulib.adjustableParams[*detIdx];
-            if ( *detIdx >= ulib.model.nNormalAdjustableParams )
+            if ( *detIdx >= ulib.model.nNormalAdjustableParams ) {
                 values[*detIdx] *= -1;
-            else
+                if ( !session.runData().VC )
+                    baseValues[*detIdx] = values[*detIdx]; // Persistent option flip for OAT "trajectories"
+            } else {
                 values[*detIdx] += p.sigma;
+            }
             if ( ++detIdx == detuneIndices.end() )
                 detIdx = detuneIndices.begin();
         }
