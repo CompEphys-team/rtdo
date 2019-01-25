@@ -45,14 +45,37 @@ void generateCode(std::string path, const MetaModel &metamodel)
 // Additionally, synapse functionality and related synchronisations are removed, as RTDO does not require them.
 void genNeuronKernel(NNmodel &model, string &path)
 {
-    /// Hacking into definitions.h to add types.h inclusion
+    /// Hacking into definitions.h to add types.h inclusion and launch parameters
     std::string def_name_old = path + "/" + model.name + "_CODE/definitions.h";
     std::string def_name_new = def_name_old + ".new";
     ifstream definitions_old(def_name_old);
-    ofstream definitions_new(def_name_new);
-    definitions_new << "#include \"types.h\"\n\n";
-    definitions_new << definitions_old.rdbuf();
-    definitions_new.close();
+    ofstream def(def_name_new);
+    def << "#include \"types.h\"\n";
+    def << "#ifndef DEFINITIONS_H_LAUNCHPARAMS\n"
+                    << "#define DEFINITIONS_H_LAUNCHPARAMS\n";
+    {
+        // Copied from generateRunner.cc:2293ff
+        unsigned int neuronGridSz = model.padSumNeuronN[model.neuronGrpN - 1];
+        neuronGridSz = ceil((float) neuronGridSz / neuronBlkSz);
+        def << "dim3 nThreads_calcNeurons(" << neuronBlkSz << ", 1);" << ENDL;
+        if (int(neuronGridSz) < deviceProp[theDevice].maxGridSize[1]) {
+           def << "dim3 nGrid_calcNeurons(" << neuronGridSz << ", 1);" << ENDL;
+        } else {
+            int sqGridSize = ceil((float) sqrt((float) neuronGridSz));
+            def << "dim3 nGrid(" << sqGridSize << ","<< sqGridSize <<");" << ENDL;
+        }
+
+        // forward declare calcNeurons (from below)
+        def << "extern \"C\" __global__ void calcNeurons(";
+        for (int i= 0, l= model.neuronKernelParameters.size(); i < l; i++) {
+            def << model.neuronKernelParameterTypes[i] << " " << model.neuronKernelParameters[i] << ", ";
+        }
+        def << model.ftype << " t);" << ENDL;
+
+    }
+    def << "#endif\n";
+    def << definitions_old.rdbuf();
+    def.close();
     definitions_old.close();
     std::remove(def_name_old.c_str());
     std::rename(def_name_new.c_str(), def_name_old.c_str());

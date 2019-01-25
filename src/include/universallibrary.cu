@@ -66,13 +66,31 @@ static __constant__ scalar deltabar[NPARAMS];
 static __constant__ unsigned char detuneParamIndices[NMODELS];
 static __constant__ unsigned short numDetunesByParam[NPARAMS];
 
+static std::vector<cudaStream_t> lib_streams(1, 0);
+inline cudaStream_t getLibStream(unsigned int streamId)
+{
+    unsigned int oldSz = lib_streams.size();
+    if ( streamId >= oldSz ) {
+        lib_streams.resize(streamId+1);
+        for ( unsigned int i = oldSz; i < streamId+1; i++ )
+            cudaStreamCreate(&lib_streams[i]);
+    }
+    return lib_streams[streamId];
+}
+
 void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 {
-    pointers.pushV = [](void *hostptr, void *devptr, size_t size){
-        CHECK_CUDA_ERRORS(cudaMemcpy(devptr, hostptr, size, cudaMemcpyHostToDevice))
+    pointers.pushV = [](void *hostptr, void *devptr, size_t size, int streamId){
+        if ( streamId < 0 )
+            CHECK_CUDA_ERRORS(cudaMemcpy(devptr, hostptr, size, cudaMemcpyHostToDevice))
+        else
+            CHECK_CUDA_ERRORS(cudaMemcpyAsync(devptr, hostptr, size, cudaMemcpyHostToDevice, getLibStream(streamId)))
     };
-    pointers.pullV = [](void *hostptr, void *devptr, size_t size){
-        CHECK_CUDA_ERRORS(cudaMemcpy(hostptr, devptr, size, cudaMemcpyDeviceToHost));
+    pointers.pullV = [](void *hostptr, void *devptr, size_t size, int streamId){
+        if ( streamId < 0 )
+            CHECK_CUDA_ERRORS(cudaMemcpy(hostptr, devptr, size, cudaMemcpyDeviceToHost))
+        else
+            CHECK_CUDA_ERRORS(cudaMemcpyAsync(hostptr, devptr, size, cudaMemcpyDeviceToHost, getLibStream(streamId)))
     };
 
     pointers.target =& target;
@@ -110,6 +128,9 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 
 extern "C" void libExit(UniversalLibrary::Pointers &pointers)
 {
+    for ( cudaStream_t stream : lib_streams )
+        CHECK_CUDA_ERRORS(cudaStreamDestroy(stream));
+
     freeMem();
     pointers.pushV = pointers.pullV = nullptr;
     CURAND_CALL(curandDestroyGenerator(cuRNG));
@@ -152,9 +173,12 @@ extern "C" void resizeTarget(size_t newSize)
     latest_target_size = newSize;
 }
 
-extern "C" void pushTarget()
+extern "C" void pushTarget(int streamId)
 {
-    CHECK_CUDA_ERRORS(cudaMemcpy(d_target, target, latest_target_size * sizeof(scalar), cudaMemcpyHostToDevice))
+    if ( streamId < 0 )
+        CHECK_CUDA_ERRORS(cudaMemcpy(d_target, target, latest_target_size * sizeof(scalar), cudaMemcpyHostToDevice))
+    else
+        CHECK_CUDA_ERRORS(cudaMemcpyAsync(d_target, target, latest_target_size * sizeof(scalar), cudaMemcpyHostToDevice, getLibStream(streamId)))
 }
 
 extern "C" void resizeOutput(size_t newSize)
@@ -164,9 +188,20 @@ extern "C" void resizeOutput(size_t newSize)
     latest_timeseries_size = newSize;
 }
 
-extern "C" void pullOutput()
+extern "C" void pullOutput(int streamId)
 {
-    CHECK_CUDA_ERRORS(cudaMemcpy(timeseries, d_timeseries, latest_timeseries_size * sizeof(scalar), cudaMemcpyDeviceToHost))
+    if ( streamId < 0 )
+        CHECK_CUDA_ERRORS(cudaMemcpy(timeseries, d_timeseries, latest_timeseries_size * sizeof(scalar), cudaMemcpyDeviceToHost))
+    else
+        CHECK_CUDA_ERRORS(cudaMemcpyAsync(timeseries, d_timeseries, latest_timeseries_size * sizeof(scalar), cudaMemcpyDeviceToHost, getLibStream(streamId)))
+}
+
+extern "C" void libSync(unsigned int streamId)
+{
+    if ( streamId )
+        CHECK_CUDA_ERRORS(cudaStreamSynchronize(getLibStream(streamId)))
+    else
+        CHECK_CUDA_ERRORS(cudaDeviceSynchronize())
 }
 
 

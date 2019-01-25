@@ -95,19 +95,21 @@ public:
         scalar *noiseExp;
         scalar *noiseAmplitude;
 
-        std::function<void(void*, void*, size_t)> pushV;
-        std::function<void(void*, void*, size_t)> pullV;
-        void (*run)(void);
+        std::function<void(void*, void*, size_t, int)> pushV;
+        std::function<void(void*, void*, size_t, int)> pullV;
+        void (*run)(unsigned int);
         void (*reset)(void);
+        void (*sync)(unsigned int);
+
         DAQ *(*createSim)(int simNo, Session&, const Settings&, bool);
         void (*destroySim)(DAQ *);
 
         void (*resizeTarget)(size_t);
-        void(*pushTarget)(void);
+        void(*pushTarget)(int);
         scalar **target;
 
         void (*resizeOutput)(size_t);
-        void(*pullOutput)(void);
+        void(*pullOutput)(int);
         scalar **output;
 
         void (*profile)(int nSamples, const std::vector<AdjustableParam> &params, size_t targetParam, std::vector<scalar> weight,
@@ -175,27 +177,30 @@ public:
     void push();
     void pull();
     template <typename T>
-    inline void push(TypedVariable<T> &var) {
+    inline void push(TypedVariable<T> &var, int streamId = -1) { //!< Synchronous, unless streamId >= 0
         pointers.pushV(var.v,
                        var.singular ? var.singular_v : var.d_v,
-                       sizeof(T) * (var.singular ? 1 : NMODELS) );
+                       sizeof(T) * (var.singular ? 1 : NMODELS),
+                       streamId);
     }
     template <typename T>
-    inline void pull(TypedVariable<T> &var) {
+    inline void pull(TypedVariable<T> &var, int streamId = -1) { //!< Synchronous, unless streamId >= 0
         pointers.pullV(var.v,
                        var.singular ? var.singular_v : var.d_v,
-                       sizeof(T) * (var.singular ? 1 : NMODELS) );
+                       sizeof(T) * (var.singular ? 1 : NMODELS),
+                       streamId);
     }
-    inline void run() { pointers.run(); }
+    inline void run(unsigned int streamId = 0) { pointers.run(streamId); }
     inline void reset() { pointers.reset(); }
+    inline void sync(unsigned int streamId = 0) { pointers.sync(streamId); }
 
     /// Allocates space for nTraces traces of length nSamples and sets targetStride = nTraces
     void resizeTarget(size_t nTraces, size_t nSamples);
-    inline void pushTarget() { pointers.pushTarget(); }
+    inline void pushTarget(int streamId = -1) { pointers.pushTarget(streamId); } //!< Synchronous, unless streamId >= 0
 
     /// Allocates space for NMODELS traces of length nSamples
     void resizeOutput(size_t nSamples);
-    inline void pullOutput() { pointers.pullOutput(); }
+    inline void pullOutput(int streamId = -1) { pointers.pullOutput(streamId); } //!< Synchronous, unless streamId >= 0
 
     void setRundata(size_t modelIndex, const RunData &rund);
 

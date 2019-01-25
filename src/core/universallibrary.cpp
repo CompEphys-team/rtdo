@@ -416,6 +416,12 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "#include \"universallibrary.cu\"" << endl;
     ss << endl;
 
+    ss << "void runStreamed(unsigned int streamId) {" << endl
+       << "    calcNeurons <<< nGrid_calcNeurons, nThreads_calcNeurons, 0, getLibStream(streamId) >>> (";
+    for ( const Variable &p : globals )
+        ss << p.name << SUFFIX << ", ";
+    ss << "t);\n"
+       << "}" << endl;
 
     ss << "extern \"C\" UniversalLibrary::Pointers populate(UniversalLibrary &lib) {" << endl;
     ss << "    UniversalLibrary::Pointers pointers;" << endl;
@@ -457,8 +463,9 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    lib.summary.d_v = d_summary" << SUFFIX << ";" << endl;
 
     ss << endl;
-    ss << "    pointers.run =& stepTimeGPU;" << endl;
+    ss << "    pointers.run =& runStreamed;" << endl;
     ss << "    pointers.reset =& initialize;" << endl;
+    ss << "    pointers.sync =& libSync;" << endl;
     ss << "    pointers.createSim =& createSim;" << endl;
     ss << "    pointers.destroySim =& destroySim;" << endl;
     ss << "    pointers.resizeTarget =& resizeTarget;" << endl;
