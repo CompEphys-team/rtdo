@@ -173,12 +173,14 @@ extern "C" void resizeTarget(size_t newSize)
     latest_target_size = newSize;
 }
 
-extern "C" void pushTarget(int streamId)
+extern "C" void pushTarget(int streamId, size_t nSamples, size_t offset)
 {
+    if ( nSamples == 0 )
+        nSamples = latest_target_size;
     if ( streamId < 0 )
-        CHECK_CUDA_ERRORS(cudaMemcpy(d_target, target, latest_target_size * sizeof(scalar), cudaMemcpyHostToDevice))
+        CHECK_CUDA_ERRORS(cudaMemcpy(d_target+offset, target+offset, nSamples * sizeof(scalar), cudaMemcpyHostToDevice))
     else
-        CHECK_CUDA_ERRORS(cudaMemcpyAsync(d_target, target, latest_target_size * sizeof(scalar), cudaMemcpyHostToDevice, getLibStream(streamId)))
+        CHECK_CUDA_ERRORS(cudaMemcpyAsync(d_target+offset, target+offset, nSamples * sizeof(scalar), cudaMemcpyHostToDevice, getLibStream(streamId)))
 }
 
 extern "C" void resizeOutput(size_t newSize)

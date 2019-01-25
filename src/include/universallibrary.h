@@ -105,7 +105,7 @@ public:
         void (*destroySim)(DAQ *);
 
         void (*resizeTarget)(size_t);
-        void(*pushTarget)(int);
+        void(*pushTarget)(int, size_t, size_t);
         scalar **target;
 
         void (*resizeOutput)(size_t);
@@ -196,7 +196,7 @@ public:
 
     /// Allocates space for nTraces traces of length nSamples and sets targetStride = nTraces
     void resizeTarget(size_t nTraces, size_t nSamples);
-    inline void pushTarget(int streamId = -1) { pointers.pushTarget(streamId); } //!< Synchronous, unless streamId >= 0
+    inline void pushTarget(int streamId = -1, size_t nSamples = 0, size_t offset = 0) { pointers.pushTarget(streamId, nSamples, offset); } //!< Synchronous, unless streamId >= 0
 
     /// Allocates space for NMODELS traces of length nSamples
     void resizeOutput(size_t nSamples);
