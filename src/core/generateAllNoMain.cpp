@@ -70,7 +70,7 @@ void genNeuronKernel(NNmodel &model, string &path)
         for (int i= 0, l= model.neuronKernelParameters.size(); i < l; i++) {
             def << model.neuronKernelParameterTypes[i] << " " << model.neuronKernelParameters[i] << ", ";
         }
-        def << model.ftype << " t);" << ENDL;
+        def << "int iT);" << ENDL;
 
     }
     def << "#endif\n";
@@ -112,7 +112,7 @@ void genNeuronKernel(NNmodel &model, string &path)
     for (int i= 0, l= model.neuronKernelParameters.size(); i < l; i++) {
         os << model.neuronKernelParameterTypes[i] << " " << model.neuronKernelParameters[i] << ", ";
     }
-    os << model.ftype << " t)" << ENDL;
+    os << "int iT)" << ENDL;
     os << OB(5);
 
     // kernel code

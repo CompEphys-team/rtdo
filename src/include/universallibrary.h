@@ -97,7 +97,7 @@ public:
 
         std::function<void(void*, void*, size_t, int)> pushV;
         std::function<void(void*, void*, size_t, int)> pullV;
-        void (*run)(unsigned int);
+        void (*run)(int, unsigned int);
         void (*reset)(void);
         void (*sync)(unsigned int);
 
@@ -190,7 +190,7 @@ public:
                        sizeof(T) * (var.singular ? 1 : NMODELS),
                        streamId);
     }
-    inline void run(unsigned int streamId = 0) { pointers.run(streamId); }
+    inline void run(int iT = 0, unsigned int streamId = 0) { pointers.run(iT, streamId); }
     inline void reset() { pointers.reset(); }
     inline void sync(unsigned int streamId = 0) { pointers.sync(streamId); }
 

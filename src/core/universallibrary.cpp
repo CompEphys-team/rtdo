@@ -185,11 +185,10 @@ std::string UniversalLibrary::simCode()
 scalar mdt = $(dt) / $(simCycles);
 scalar hP = 0.;
 
-int iT = 0;
 int tStep = 0;
 int nSamples = 0;
 int nextObs = 0;
-t = 0.;
+scalar t = iT * $(dt);
 if ( !($(assignment)&ASSIGNMENT_SUMMARY_PERSIST) )
     $(summary) = 0;
 scalar noiseI[3];
@@ -207,7 +206,7 @@ else if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
 }
 
 // Settle
-if ( $(iSettleDuration) > 0 ) {
+if ( iT == 0 && $(iSettleDuration) > 0 ) {
     if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
         clamp.dIClamp = 0.0;
         clamp.IClamp0 = $(stim).baseV;
@@ -234,6 +233,9 @@ if ( $(iSettleDuration) > 0 ) {
         clamp.VClamp0 = $(stim).baseV;
         integrate($(iSettleDuration), $(integrator), $(simCycles), -$(iSettleDuration)*$(dt), $(dt), mdt, hP, state, params, clamp);
     }
+} else if ( iT > 0 ) {
+    while ( nextObs < iObservations::maxObs && iT > $(obs).stop[nextObs] )
+        ++nextObs;
 }
 
 while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
@@ -416,11 +418,11 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "#include \"universallibrary.cu\"" << endl;
     ss << endl;
 
-    ss << "void runStreamed(unsigned int streamId) {" << endl
+    ss << "void runStreamed(int iT, unsigned int streamId) {" << endl
        << "    calcNeurons <<< nGrid_calcNeurons, nThreads_calcNeurons, 0, getLibStream(streamId) >>> (";
     for ( const Variable &p : globals )
         ss << p.name << SUFFIX << ", ";
-    ss << "t);\n"
+    ss << "iT);\n"
        << "}" << endl;
 
     ss << "extern \"C\" UniversalLibrary::Pointers populate(UniversalLibrary &lib) {" << endl;
