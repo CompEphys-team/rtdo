@@ -61,7 +61,7 @@ void Wavegen::settle_models()
     ulib.setSingularStim();
     ulib.stim[0].baseV = session.stimulationData().baseV;
 
-    ulib.assignment = ulib.assignment_base | ASSIGNMENT_SETTLE_ONLY | ASSIGNMENT_MAINTAIN_STATE;
+    ulib.assignment = ulib.assignment_base | ASSIGNMENT_SETTLE_ONLY;
     if ( !session.runData().VC )
         ulib.assignment |= ASSIGNMENT_PATTERNCLAMP
                 | ((unsigned int)(searchd.trajectoryLength - 1) << ASSIGNMENT_PC_PIN__SHIFT);

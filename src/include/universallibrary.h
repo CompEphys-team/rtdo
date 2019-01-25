@@ -35,8 +35,8 @@
 // Bit 8: Maintain state at end of stimulation
 #define ASSIGNMENT_MAINTAIN_STATE               static_cast<unsigned int>(0x1 << 8) /* Maintain model state after stimulation */
 
-// Bit 9: Skip all further processing after settling (Note: This resets `summary` to 0 regardless of MAINTAIN_STATE or other instructions)
-#define ASSIGNMENT_SETTLE_ONLY                  static_cast<unsigned int>(0x1 << 9) /* Ignore stimulation, settle for iSettleDuration only */
+// Bit 9: Skip all further processing after settling (Note: This resets `summary` to 0 unless SUMMARY_PERSIST is set)
+#define ASSIGNMENT_SETTLE_ONLY                  static_cast<unsigned int>(0x3 << 8) /* Ignore stimulation, settle for iSettleDuration only; implies MAINTAIN_STATE */
 
 // Bit 10: Zero all timeseries samples that would not otherwise be touched in sparse mode
 #define ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES    static_cast<unsigned int>(0x1 << 10) /* Sparse mode: set unobserved samples to 0 */
