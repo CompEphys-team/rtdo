@@ -226,7 +226,7 @@ void ErrorProfile::generate(const iStimulation &stim, const iObservations &obs, 
 
         // Stimulate
         session.profiler().stimulate(stim, obs);
-        lib.pull(lib.summary);
+        lib.pullSummary();
 
         // Store errors
         for ( size_t iM = 0; iM < batchSize; iM++ ) {

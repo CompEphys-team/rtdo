@@ -16,6 +16,10 @@ static scalar *timeseries = nullptr, *d_timeseries = nullptr;
 static __constant__ scalar *dd_timeseries = nullptr;
 static unsigned int timeseries_size = 0, latest_timeseries_size = 0;
 
+static scalar *summary = nullptr, *d_summary = nullptr;
+static __constant__ scalar *dd_summary = nullptr;
+static unsigned int summary_size = 0, latest_summary_size = 0;
+
 static __constant__ iStimulation singular_stim;
 static __constant__ iObservations singular_obs;
 
@@ -95,6 +99,7 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 
     pointers.target =& target;
     pointers.output =& timeseries;
+    pointers.summary =& summary;
 
     pointers.clusters =& clusters;
     pointers.clusterCurrent =& clusterCurrent;
@@ -137,6 +142,7 @@ extern "C" void libExit(UniversalLibrary::Pointers &pointers)
 
     CHECK_CUDA_ERRORS(cudaFree(d_target));
     CHECK_CUDA_ERRORS(cudaFree(d_timeseries));
+    CHECK_CUDA_ERRORS(cudaFree(d_summary));
     CHECK_CUDA_ERRORS(cudaFree(d_prof_error));
     CHECK_CUDA_ERRORS(cudaFree(d_prof_dist_uw));
     CHECK_CUDA_ERRORS(cudaFree(d_prof_dist_to));
@@ -153,6 +159,7 @@ extern "C" void libExit(UniversalLibrary::Pointers &pointers)
 
     CHECK_CUDA_ERRORS(cudaFreeHost(target));
     CHECK_CUDA_ERRORS(cudaFreeHost(timeseries));
+    CHECK_CUDA_ERRORS(cudaFreeHost(summary));
     CHECK_CUDA_ERRORS(cudaFreeHost(clusters));
     CHECK_CUDA_ERRORS(cudaFreeHost(clusterLen));
     CHECK_CUDA_ERRORS(cudaFreeHost(clusterCurrent));
@@ -196,6 +203,23 @@ extern "C" void pullOutput(int streamId)
         CHECK_CUDA_ERRORS(cudaMemcpy(timeseries, d_timeseries, latest_timeseries_size * sizeof(scalar), cudaMemcpyDeviceToHost))
     else
         CHECK_CUDA_ERRORS(cudaMemcpyAsync(timeseries, d_timeseries, latest_timeseries_size * sizeof(scalar), cudaMemcpyDeviceToHost, getLibStream(streamId)))
+}
+
+extern "C" void resizeSummary(size_t newSize)
+{
+    resizeArrayPair(summary, d_summary, summary_size, newSize);
+    CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(dd_summary, &d_summary, sizeof(scalar*)));
+    latest_summary_size = newSize;
+}
+
+extern "C" void pullSummary(int streamId, size_t nSamples, size_t offset)
+{
+    if ( nSamples == 0 )
+        nSamples = latest_summary_size;
+    if ( streamId < 0 )
+        CHECK_CUDA_ERRORS(cudaMemcpy(d_summary+offset, summary+offset, nSamples * sizeof(scalar), cudaMemcpyHostToDevice))
+    else
+        CHECK_CUDA_ERRORS(cudaMemcpyAsync(d_summary+offset, summary+offset, nSamples * sizeof(scalar), cudaMemcpyHostToDevice, getLibStream(streamId)))
 }
 
 extern "C" void libSync(unsigned int streamId)
@@ -341,14 +365,13 @@ __global__ void collect_dist_PC(scalar **params, int targetParam, Parameters wei
     }
 }
 
-template <typename T>
-void profile_helper(T *err, int nData, int nRelevant,
+void profile_helper(scalar *err, int nData, int nRelevant,
                     double &rho_weighted, double &rho_unweighted, double &rho_target_only,
                     double &grad_weighted, double &grad_unweighted, double &grad_target_only,
                     bool get_invariants, bool invariant_dists_preprocessed, std::vector<double> &invariants)
 {
     thrust::device_ptr<scalar> dist_w = thrust::device_pointer_cast(d_prof_dist_w);
-    thrust::device_ptr<T> error = thrust::device_pointer_cast(err);
+    thrust::device_ptr<scalar> error = thrust::device_pointer_cast(err);
     double sum_sq_dist = thrust::inner_product(dist_w, dist_w + nData, dist_w, scalar(0));  // sum(dist^2)
     double sum_sq_err = thrust::inner_product(error, error + nData, error, scalar(0));      // sum(err^2)
     double sum_dist_err = thrust::inner_product(dist_w, dist_w + nData, error, scalar(0));  // sum(dist*err)
@@ -408,7 +431,7 @@ extern "C" void profile(int nSamples, const std::vector<AdjustableParam> &params
                         double &rho_weighted, double &rho_unweighted, double &rho_target_only,
                         double &grad_weighted, double &grad_unweighted, double &grad_target_only,
                         std::vector<double> &invariants,
-                        bool VC, double *d_summary)
+                        bool VC)
 {
     scalar *d_params[NPARAMS];
     Parameters weightP;

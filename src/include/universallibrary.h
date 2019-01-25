@@ -35,8 +35,8 @@
 // Bit 8: Maintain state at end of stimulation
 #define ASSIGNMENT_MAINTAIN_STATE               static_cast<unsigned int>(0x1 << 8) /* Maintain model state after stimulation */
 
-// Bit 9: Skip all further processing after settling (Note: This resets `summary` to 0 unless SUMMARY_PERSIST is set)
-#define ASSIGNMENT_SETTLE_ONLY                  static_cast<unsigned int>(0x3 << 8) /* Ignore stimulation, settle for iSettleDuration only; implies MAINTAIN_STATE */
+// Bit 9: Don't integrate past settling
+#define ASSIGNMENT_SETTLE_ONLY                  static_cast<unsigned int>(0x3 << 8) /* Ignore stimulation, settle for iSettleDuration only; implies MAINTAIN_STATE and (effectively) SUMMARY_PERSIST */
 
 // Bit 10: Zero all timeseries samples that would not otherwise be touched in sparse mode
 #define ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES    static_cast<unsigned int>(0x1 << 10) /* Sparse mode: set unobserved samples to 0 */
@@ -50,7 +50,7 @@
 #define ASSIGNMENT_TIMESERIES_COMPARE_MASK              static_cast<unsigned int>(0x3 << 11) /* (mask) */
 
 // Bit 13: Whether to maintain summary value across calls, rather than resetting to 0
-#define ASSIGNMENT_SUMMARY_PERSIST              static_cast<unsigned int>(0x1 << 13) /* Retain summary value across calls */
+#define ASSIGNMENT_SUMMARY_PERSIST              static_cast<unsigned int>(0x1 << 13) /* Maintain and accumulate summary value across calls. Do not use with SUMMARY_AVERAGE */
 
 // Bits 14-16: Singular stim/rund/target
 #define ASSIGNMENT_SINGULAR_STIM                 static_cast<unsigned int>(0x1 << 14) /* Load stim/obs from singular __constant__ var */
@@ -94,6 +94,7 @@ public:
         int *targetStride;
         scalar *noiseExp;
         scalar *noiseAmplitude;
+        int *summaryOffset;
 
         std::function<void(void*, void*, size_t, int)> pushV;
         std::function<void(void*, void*, size_t, int)> pullV;
@@ -112,11 +113,15 @@ public:
         void(*pullOutput)(int);
         scalar **output;
 
+        void (*resizeSummary)(size_t);
+        void(*pullSummary)(int, size_t, size_t);
+        scalar **summary;
+
         void (*profile)(int nSamples, const std::vector<AdjustableParam> &params, size_t targetParam, std::vector<scalar> weight,
                         double &rho_weighted, double &rho_unweighted, double &rho_target_only,
                         double &grad_weighted, double &grad_unweighted, double &grad_target_only,
                         std::vector<double> &invariants,
-                        bool VC, double *d_summary);
+                        bool VC);
 
         void (*cluster)(int trajLen, int nTraj, int duration, int secLen, scalar dotp_threshold, int minClusterLen,
                         std::vector<double> deltabar, const MetaModel &, bool VC, bool pull);
@@ -172,8 +177,6 @@ public:
         assignment_base = on ? (assignment_base | ASSIGNMENT_SINGULAR_TARGET) : (assignment_base & ~ASSIGNMENT_SINGULAR_TARGET);
     }
 
-    TypedVariable<double> summary;
-
     void push();
     void pull();
     template <typename T>
@@ -202,6 +205,10 @@ public:
     void resizeOutput(size_t nSamples);
     inline void pullOutput(int streamId = -1) { pointers.pullOutput(streamId); } //!< Synchronous, unless streamId >= 0
 
+    /// Allocates space for n summaries per model (initial size is 1). Use summaryOffset (0,1,2, not 0,NMODELS,2*NMODELS) to separate summary outputs eg across streams
+    inline void resizeSummary(size_t n) { pointers.resizeSummary(n * NMODELS); }
+    inline void pullSummary(int streamId = -1, size_t offset = 0) { pointers.pullSummary(streamId, NMODELS, offset*NMODELS); } //!< Synchronous, unless streamId >= 0
+
     void setRundata(size_t modelIndex, const RunData &rund);
 
     /// post-run() workhorse for SamplingProfiler
@@ -217,7 +224,7 @@ public:
         pointers.profile(nSamples, adjustableParams, targetParam, weight,
                          rho_weighted, rho_unweighted, rho_target_only,
                          grad_weighted, grad_unweighted, grad_target_only,
-                         invariants, VC, summary.d_v);
+                         invariants, VC);
     }
 
     /// post-run() workhorse for cluster-based wavegen
@@ -306,9 +313,11 @@ public:
     int &targetStride;
     scalar &noiseExp;
     scalar &noiseAmplitude;
+    int &summaryOffset;
 
     scalar *&target;
     scalar *&output;
+    scalar *&summary;
 
     scalar *&clusters; //!< Layout: [stimIdx][clusterIdx][paramIdx] (after clustering) or [stimIdx][targetParamIdx][paramIdx] (after bubbling)
     scalar *&clusterCurrent; //!< Layout: [stimIdx][clusterIdx] (after clustering) or [stimIdx][targetParamIdx] (after bubbling)

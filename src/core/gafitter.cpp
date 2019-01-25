@@ -227,7 +227,7 @@ double GAFitter::fit()
         simtime += stimulate();
 
         // Advance
-        lib.pull(lib.summary);
+        lib.pullSummary();
         if ( settings.useDE )
             procreateDE();
         else
@@ -576,7 +576,7 @@ double GAFitter::finalise()
     }
 
     // Pull & sort by total cumulative error across all stims
-    lib.pull(lib.summary);
+    lib.pullSummary();
     for ( size_t i = 0; i < lib.NMODELS; i++ ) {
         f_err[i].idx = i;
         f_err[i].err = lib.summary[i];
@@ -618,6 +618,7 @@ double GAFitter::stimulate(unsigned int extra_assignments)
             | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED;
     if ( !rd.VC )
         lib.assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN;
+    lib.summaryOffset = 0;
     lib.push();
 
     // Set up + settle DAQ
@@ -702,8 +703,6 @@ void GAFitter::procreateDE()
             bestIdx = i;
             bestErr = err;
         }
-
-        lib.summary[i] = lib.summary[iOffspring] = 0;
     }
 
     // Populate output

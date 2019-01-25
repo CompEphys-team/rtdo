@@ -115,6 +115,7 @@ void ErrorProfiler::stimulate(const iStimulation &stim, const iObservations &obs
             | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE;
     if ( !rd.VC )
         lib.assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN;
+    lib.summaryOffset = 0;
     lib.stim[0] = stim;
     lib.obs[0] = obs;
 

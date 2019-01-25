@@ -338,6 +338,7 @@ void FitErrorPlotter::on_run_clicked()
                 | ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN
                 | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_NONE | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE
                 | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES;
+    lib->summaryOffset = 0;
 
     int parameterSourceSelection = get_parameter_selection();
 
@@ -419,7 +420,7 @@ void FitErrorPlotter::push_run_pull(std::vector<ResultKey> keys, size_t keySz)
     lib->pushTarget();
     lib->push();
     lib->run();
-    lib->pull(lib->summary);
+    lib->pullSummary();
     lib->pullOutput();
 
     for ( size_t k = 0; k < keySz; k++ ) {

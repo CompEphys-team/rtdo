@@ -28,7 +28,6 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     Imax("Imax"),
     dt("dt"),
     targetOffset("targetOffset", "size_t"),
-    summary("summary", "double"),
 
     lib(light ? nullptr : compile ? compile_and_load() : load()),
     populate(light ? nullptr : (decltype(populate))dlsym(lib, "populate")),
@@ -41,9 +40,11 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     targetStride(light ? dummyInt : *pointers.targetStride),
     noiseExp(light ? dummyScalar : *pointers.noiseExp),
     noiseAmplitude(light ? dummyScalar : *pointers.noiseAmplitude),
+    summaryOffset(light ? dummyInt : *pointers.summaryOffset),
 
     target(light ? dummyScalarPtr : *pointers.target),
     output(light ? dummyScalarPtr : *pointers.output),
+    summary(light ? dummyScalarPtr : *pointers.summary),
 
     clusters(light ? dummyScalarPtr : *pointers.clusters),
     clusterCurrent(light ? dummyScalarPtr : *pointers.clusterCurrent),
@@ -80,7 +81,7 @@ void *UniversalLibrary::compile_and_load()
     model.isUniversalLib = true;
     model.save_state_condition = "$(assignment) & ASSIGNMENT_MAINTAIN_STATE";
     model.save_selectively = true;
-    model.save_selection = {"summary"};
+    model.save_selection = {};
     model.singular_stim_vars = {&stim, &obs};
     model.singular_clamp_vars = {&clampGain, &accessResistance};
     model.singular_rund_vars = {&iSettleDuration, &Imax, &dt};
@@ -130,7 +131,8 @@ void UniversalLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("assignment", "", "unsigned int"),
         Variable("targetStride", "", "int"),
         Variable("noiseExp"),
-        Variable("noiseAmplitude")
+        Variable("noiseAmplitude"),
+        Variable("summaryOffset", "", "int")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -161,9 +163,6 @@ void UniversalLibrary::GeNN_modelDefinition(NNmodel &nn)
     n.varNames.push_back(targetOffset.name);
         n.varTypes.push_back(targetOffset.type);
         variableIni.push_back(0.);
-    n.varNames.push_back(summary.name);
-        n.varTypes.push_back(summary.type);
-        variableIni.push_back(0.);
 
     n.simCode = simCode();
     n.supportCode = supportCode(globals);
@@ -189,8 +188,8 @@ int tStep = 0;
 int nSamples = 0;
 int nextObs = 0;
 scalar t = iT * $(dt);
-if ( !($(assignment)&ASSIGNMENT_SUMMARY_PERSIST) )
-    $(summary) = 0;
+double summary = 0;
+
 scalar noiseI[3];
 if ( $(assignment) & ASSIGNMENT_NOISY_OBSERVATION )
     noiseI[0] = dd_random[id];
@@ -363,7 +362,7 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                     break;
                 }
 
-                $(summary) += ($(assignment) & ASSIGNMENT_SUMMARY_SQUARED) ? (double(diff)*diff) : fabs(diff);
+                summary += ($(assignment) & ASSIGNMENT_SUMMARY_SQUARED) ? (double(diff)*diff) : fabs(diff);
             }
 
             // Integrate forward by one $(dt)
@@ -390,8 +389,13 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
     ++nextObs;
 }
 
-if ( ($(assignment)&ASSIGNMENT_REPORT_SUMMARY) && ($(assignment)&ASSIGNMENT_SUMMARY_AVERAGE) )
-    $(summary) /= nSamples;
+if ( $(assignment) & ASSIGNMENT_REPORT_SUMMARY && !($(assignment) & ASSIGNMENT_SETTLE_ONLY) ) {
+    if ( $(assignment) & ASSIGNMENT_SUMMARY_AVERAGE )
+        summary /= nSamples;
+    if ( $(assignment) & ASSIGNMENT_SUMMARY_PERSIST )
+        summary += dd_summary[$(summaryOffset)*NMODELS + id];
+    dd_summary[$(summaryOffset)*NMODELS + id] = summary;
+}
 
 #endif
 )EOF";
@@ -428,6 +432,8 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "extern \"C\" UniversalLibrary::Pointers populate(UniversalLibrary &lib) {" << endl;
     ss << "    UniversalLibrary::Pointers pointers;" << endl;
     ss << "    libInit(lib, pointers);" << endl;
+    ss << "    resizeSummary(NMODELS);" << endl;
+
     int i = 0;
     for ( const StateVariable &v : stateVariables ) {
         ss << "    lib.stateVariables[" << i << "].v = " << v.name << SUFFIX << ";" << endl;
@@ -461,8 +467,6 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    lib.dt.d_v = d_dt" << SUFFIX << ";" << endl;
     ss << "    lib.targetOffset.v = targetOffset" << SUFFIX << ";" << endl;
     ss << "    lib.targetOffset.d_v = d_targetOffset" << SUFFIX << ";" << endl;
-    ss << "    lib.summary.v = summary" << SUFFIX << ";" << endl;
-    ss << "    lib.summary.d_v = d_summary" << SUFFIX << ";" << endl;
 
     ss << endl;
     ss << "    pointers.run =& runStreamed;" << endl;
@@ -474,6 +478,8 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.pushTarget =& pushTarget;" << endl;
     ss << "    pointers.resizeOutput =& resizeOutput;" << endl;
     ss << "    pointers.pullOutput =& pullOutput;" << endl;
+    ss << "    pointers.resizeSummary =& resizeSummary;" << endl;
+    ss << "    pointers.pullSummary =& pullSummary;" << endl;
     ss << "    pointers.profile =& profile;" << endl;
     ss << "    pointers.cluster =& cluster;" << endl;
     ss << "    pointers.pullClusters =& pullClusters;" << endl;
@@ -527,7 +533,6 @@ void UniversalLibrary::push()
     push(Imax);
     push(dt);
     push(targetOffset);
-    push(summary);
 }
 
 void UniversalLibrary::pull()
@@ -544,5 +549,4 @@ void UniversalLibrary::pull()
     pull(Imax);
     pull(dt);
     pull(targetOffset);
-    pull(summary);
 }
