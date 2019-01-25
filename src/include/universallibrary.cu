@@ -128,8 +128,8 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 
 extern "C" void libExit(UniversalLibrary::Pointers &pointers)
 {
-    for ( cudaStream_t stream : lib_streams )
-        CHECK_CUDA_ERRORS(cudaStreamDestroy(stream));
+    for ( size_t i = 1; i < lib_streams.size(); i++ )
+        CHECK_CUDA_ERRORS(cudaStreamDestroy(lib_streams[i]));
 
     freeMem();
     pointers.pushV = pointers.pullV = nullptr;
