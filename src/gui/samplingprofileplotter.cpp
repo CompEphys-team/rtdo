@@ -97,6 +97,11 @@ void SamplingProfilePlotter::setProfile(int idx)
             ui->y->addItem(str);
             ui->paretoDims->setVerticalHeaderItem(nFixedColumns + j - 2, new QTableWidgetItem(str));
         }
+    } else {
+        ui->table->setColumnCount(nFixedColumns);
+        ui->paretoDims->setRowCount(nFixedColumns - 2);
+        paretoGroups.resize(nFixedColumns - 2, nullptr);
+        scoreChecks.resize(nFixedColumns - 2, nullptr);
     }
     ui->x->setCurrentIndex(x);
     ui->y->setCurrentIndex(y);
