@@ -1,5 +1,6 @@
 #include "samplingprofileplotter.h"
 #include "ui_samplingprofileplotter.h"
+#include "deckwidget.h"
 
 SamplingProfilePlotter::SamplingProfilePlotter(Session &s, QWidget *parent) :
     QWidget(parent),
@@ -299,7 +300,7 @@ void SamplingProfilePlotter::updateTable()
         dim = prof.src.archive()->searchd(session).mapeDimensions;
 
     // Update maxima
-    maxima.resize(nFixedColumns + dim.size() - 2);
+    maxima.assign(nFixedColumns + dim.size() - 2, -__DBL_MAX__);
     for ( const DataPoint &p : points ) {
         if ( p.hidden )
             continue;
@@ -317,7 +318,7 @@ void SamplingProfilePlotter::updateTable()
             continue;
         for ( size_t j = 0; j < dim.size() + nFixedColumns; j++ ) {
             QTableWidgetItem *item = new QTableWidgetItem();
-            item->setFlags(Qt::ItemIsEnabled);
+            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
             item->setData(Qt::DisplayRole, value(points[i].idx, j, prof, elites, dim));
             ui->table->setItem(row, j, item);
         }
@@ -410,4 +411,34 @@ void SamplingProfilePlotter::on_pareto_clicked()
     }
 
     replot(Selection::Data);
+}
+
+void SamplingProfilePlotter::on_addDeckGo_clicked()
+{
+    if ( ui->table->selectedItems().empty() )
+        return;
+    int stimIdx = ui->table->selectedItems().first()->data(Qt::DisplayRole).toInt();
+
+    if ( ui->profile->currentIndex() < 0 )
+        return;
+    const SamplingProfiler::Profile &prof = session.samplingProfiler().profiles().at(ui->profile->currentIndex());
+
+    DeckWidget *dw;
+    if ( ui->addDeckCombo->currentIndex() < 1 ) {
+        dw = new DeckWidget(session, this);
+        dw->clear();
+        int idx = ui->tabWidget->count() - 3;
+        QString label = QString("[%1]").arg(idx + session.wavesets().decks().size());
+        ui->tabWidget->addTab(dw, label);
+        ui->addDeckCombo->addItem(label);
+        ui->addDeckCombo->setCurrentIndex(idx + 1);
+    } else {
+        dw = dynamic_cast<DeckWidget*>(ui->tabWidget->widget(ui->addDeckCombo->currentIndex() + 2));
+        if ( !dw )
+            return;
+    }
+
+    dw->select(prof.target, prof.src, stimIdx);
+
+    ui->tabWidget->setCurrentWidget(dw);
 }

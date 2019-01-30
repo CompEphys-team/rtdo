@@ -39,6 +39,8 @@ private slots:
 
     void on_pareto_clicked();
 
+    void on_addDeckGo_clicked();
+
 private:
     Ui::SamplingProfilePlotter *ui;
     Session &session;
