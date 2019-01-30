@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QButtonGroup>
+#include <QCheckBox>
 #include "session.h"
 
 namespace Ui {
@@ -42,7 +43,7 @@ private:
     Ui::SamplingProfilePlotter *ui;
     Session &session;
 
-    static constexpr int nFixedColumns = 8;
+    static constexpr int nFixedColumns = 9;
 
     bool updating;
 
@@ -53,8 +54,10 @@ private:
         bool hidden;
     };
     std::vector<DataPoint> points;
+    std::vector<double> maxima;
 
     std::vector<QButtonGroup *> paretoGroups;
+    std::vector<QCheckBox *> scoreChecks;
 };
 
 #endif // SAMPLINGPROFILEPLOTTER_H

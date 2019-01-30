@@ -87,14 +87,15 @@ void SamplingProfilePlotter::setProfile(int idx)
     if ( prof.src.archive() ) {
         dim = prof.src.archive()->searchd(session).mapeDimensions;
         ui->table->setColumnCount(nFixedColumns + dim.size());
-        ui->paretoDims->setRowCount(nFixedColumns + dim.size() - 1);
-        paretoGroups.resize(nFixedColumns + dim.size() - 1, nullptr);
+        ui->paretoDims->setRowCount(nFixedColumns + dim.size() - 2); // paretoDims does not include Stimulation (#0) or score (#8)
+        paretoGroups.resize(nFixedColumns + dim.size() - 2, nullptr);
+        scoreChecks.resize(nFixedColumns + dim.size() - 2, nullptr);
         for ( size_t j = 0; j < dim.size(); j++ ) {
             QString str = QString::fromStdString(toString(dim[j].func));
             ui->table->setHorizontalHeaderItem(nFixedColumns + j, new QTableWidgetItem(str));
             ui->x->addItem(str);
             ui->y->addItem(str);
-            ui->paretoDims->setVerticalHeaderItem(nFixedColumns + j - 1, new QTableWidgetItem(str));
+            ui->paretoDims->setVerticalHeaderItem(nFixedColumns + j - 2, new QTableWidgetItem(str));
         }
     }
     ui->x->setCurrentIndex(x);
@@ -106,9 +107,6 @@ void SamplingProfilePlotter::setProfile(int idx)
     for ( size_t i = 0; i < points.size(); i++ )
         points[i].idx = i;
 
-    // Update table
-    updateTable();
-
     // Update pareto dimensions
     for ( size_t row = 0; row < paretoGroups.size(); row++ ) {
         if ( !paretoGroups[row] ) {
@@ -119,8 +117,15 @@ void SamplingProfilePlotter::setProfile(int idx)
                 ui->paretoDims->setCellWidget(row, col, btn);
                 paretoGroups[row]->addButton(btn, col);
             }
+            QCheckBox *cb = new QCheckBox();
+            ui->paretoDims->setCellWidget(row, 3, cb);
+            scoreChecks[row] = cb;
+            connect(cb, &QCheckBox::stateChanged, this, &SamplingProfilePlotter::updateTable);
         }
     }
+
+    // Update table
+    updateTable();
 
     updating = false;
     replot(Selection::None);
@@ -148,6 +153,15 @@ double SamplingProfilePlotter::value(int i,
         return prof.grad_target_only[i];
     else if ( dimension == 7 )
         return elites.at(i).fitness;
+    else if ( dimension == 8 ) {
+        double score = 1;
+        for ( size_t j = 2; j < dim.size() + nFixedColumns; j++ ) {
+            int jj = (j < nFixedColumns) ? j-1 : j;
+            if ( scoreChecks[j-2]->isChecked() )
+                score *= value(i, jj, prof, elites, dim) / maxima[j-2];
+        }
+        return score;
+    }
     else
         return dim.at(dimension-nFixedColumns).bin_inverse(
                 elites.at(i).bin[dimension-nFixedColumns],
@@ -278,6 +292,17 @@ void SamplingProfilePlotter::updateTable()
     std::vector<MAPEDimension> dim;
     if ( prof.src.archive() )
         dim = prof.src.archive()->searchd(session).mapeDimensions;
+
+    // Update maxima
+    maxima.resize(nFixedColumns + dim.size() - 2);
+    for ( const DataPoint &p : points ) {
+        if ( p.hidden )
+            continue;
+        for ( size_t j = 2; j < dim.size() + nFixedColumns; j++ ) {
+            int jj = (j < nFixedColumns) ? j-1 : j;
+            maxima[j-2] = std::max(maxima[j-2], value(p.idx, jj, prof, elites, dim));
+        }
+    }
 
     // Update table contents
     ui->table->setSortingEnabled(false);

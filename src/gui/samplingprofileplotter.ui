@@ -72,6 +72,11 @@
            <string>Fitness</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string>Score</string>
+          </property>
+         </item>
         </widget>
        </item>
        <item row="0" column="4">
@@ -133,6 +138,11 @@
          <item>
           <property name="text">
            <string>Fitness</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Score</string>
           </property>
          </item>
         </widget>
@@ -252,6 +262,11 @@
            <string>Fitness</string>
           </property>
          </column>
+         <column>
+          <property name="text">
+           <string>Score</string>
+          </property>
+         </column>
         </widget>
        </item>
       </layout>
@@ -266,6 +281,9 @@
          <property name="selectionMode">
           <enum>QAbstractItemView::NoSelection</enum>
          </property>
+         <attribute name="horizontalHeaderStretchLastSection">
+          <bool>true</bool>
+         </attribute>
          <row>
           <property name="text">
            <string>𝛒 weighted</string>
@@ -314,6 +332,11 @@
          <column>
           <property name="text">
            <string>Not included</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Include in score</string>
           </property>
          </column>
         </widget>
