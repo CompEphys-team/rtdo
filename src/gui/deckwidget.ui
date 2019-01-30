@@ -20,7 +20,7 @@
    <item row="0" column="1">
     <widget class="QPushButton" name="create">
      <property name="text">
-      <string>Create new</string>
+      <string>Save to new deck</string>
      </property>
     </widget>
    </item>

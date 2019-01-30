@@ -18,6 +18,10 @@ public:
     explicit DeckWidget(Session &session, QWidget *parent = 0);
     ~DeckWidget();
 
+public slots:
+    void select(int paramIdx, WaveSource src, int stimIdx);
+    void clear();
+
 private slots:
     void create();
     void showExisting();

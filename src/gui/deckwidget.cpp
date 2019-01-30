@@ -44,6 +44,30 @@ DeckWidget::~DeckWidget()
     delete ui;
 }
 
+void DeckWidget::select(int paramIdx, WaveSource src, int stimIdx)
+{
+    int srcIdx = 0;
+    std::vector<WaveSource> sets = session.wavesets().sources();
+    for ( size_t i = 0; i < sets.size(); i++ ) {
+        if ( sets[i] == src ) {
+            srcIdx = i;
+            break;
+        }
+    }
+
+    sources[paramIdx]->setCurrentIndex(srcIdx);
+    indices[paramIdx]->setValue(stimIdx);
+}
+
+void DeckWidget::clear()
+{
+    for ( size_t i = 0; i < sources.size(); i++ )
+        sources[i]->setCurrentIndex(-1);
+    for ( size_t i = 0; i < indices.size(); i++ )
+        indices[i]->clear();
+    ui->decks->setCurrentIndex(-1);
+}
+
 void DeckWidget::create()
 {
     std::vector<WaveSource> src(sources.size());
