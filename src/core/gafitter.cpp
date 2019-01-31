@@ -4,7 +4,7 @@
 
 const QString GAFitter::action = QString("fit");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 107;
+const quint32 GAFitter::version = 108;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -117,6 +117,17 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     std::cout << "ms simulated: " << simtime << std::endl;
     std::cout << "Ratio: " << (simtime/wallclockms) << std::endl;
 
+    // Resumability
+    output.resume.population.assign(lib.adjustableParams.size(), std::vector<scalar>(lib.NMODELS));
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+        for ( size_t j = 0; j < lib.NMODELS; j++ )
+            output.resume.population[i][j] = lib.adjustableParams[i][j];
+    output.resume.bias = bias;
+    output.resume.DEMethodUsed = DEMethodUsed;
+    output.resume.DEMethodSuccess = DEMethodSuccess;
+    output.resume.DEMethodFailed = DEMethodFailed;
+    output.resume.DEpX = DEpX;
+
     // Finish
     output.epochs = epoch;
     m_results.push_back(output);
@@ -156,6 +167,20 @@ void GAFitter::save(QFile &file)
         os << out.baseF;
         os << qint32(out.assoc.Iidx) << qint32(out.assoc.Vidx) << qint32(out.assoc.V2idx);
         os << out.assoc.Iscale << out.assoc.Vscale << out.assoc.V2scale;
+
+        for ( const auto &vec : out.resume.population )
+            for ( const scalar &v : vec )
+                os << v;
+        for ( const double &b : out.resume.bias )
+            os << b;
+        for ( const int &n : out.resume.DEMethodUsed )
+            os << n;
+        for ( const int &n : out.resume.DEMethodSuccess )
+            os << n;
+        for ( const int &n : out.resume.DEMethodFailed )
+            os << n;
+        for ( const double &p : out.resume.DEpX )
+            os << p;
     }
 }
 
@@ -243,6 +268,30 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
         out.assoc.Vidx = V;
         out.assoc.V2idx = V2;
         is >> out.assoc.Iscale >> out.assoc.Vscale >> out.assoc.V2scale;
+    }
+
+    if ( ver >= 108 ) {
+        size_t nParams = lib.adjustableParams.size();
+        out.resume.population.assign(nParams, std::vector<scalar>(lib.NMODELS));
+        out.resume.bias.resize(nParams);
+        out.resume.DEMethodUsed.resize(nParams);
+        out.resume.DEMethodSuccess.resize(nParams);
+        out.resume.DEMethodFailed.resize(nParams);
+        out.resume.DEpX.resize(nParams);
+
+        for ( auto &vec : out.resume.population )
+            for ( scalar &v : vec )
+                is >> v;
+        for ( double &b : out.resume.bias )
+            is >> b;
+        for ( int &n : out.resume.DEMethodUsed )
+            is >> n;
+        for ( int &n : out.resume.DEMethodSuccess )
+            is >> n;
+        for ( int &n : out.resume.DEMethodFailed )
+            is >> n;
+        for ( double &p : out.resume.DEpX )
+            is >> p;
     }
 
     return p_out;

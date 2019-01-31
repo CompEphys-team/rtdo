@@ -44,6 +44,14 @@ public:
         QVector<iStimulation> stims; //!< Stimulations used by parameter
         QVector<iObservations> obs; //!< Observations by stim
         QVector<QVector<double>> baseF; //!< Mutation rate by stim
+
+        // Resumability
+        struct {
+            std::vector<std::vector<scalar>> population;
+            std::vector<double> bias;
+            std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
+            std::vector<double> DEpX;
+        } resume;
     };
 
     inline const std::vector<Output> &results() const { return m_results; }
