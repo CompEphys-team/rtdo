@@ -83,7 +83,10 @@ SOURCES += \
     src/core/universallibrary.cpp \
     src/core/wavegen_elementary.cpp \
     src/gui/scope.cpp \
-    src/core/wavegen_cluster.cpp
+    src/core/wavegen_cluster.cpp \
+    src/core/gafitter_procreate.cpp \
+    src/core/gafitter_fit.cpp \
+    src/core/gafitter_state.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
