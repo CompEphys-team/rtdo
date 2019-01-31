@@ -24,15 +24,11 @@ DeckWidget::DeckWidget(Session &session, QWidget *parent) :
         QSpinBox *index = new QSpinBox();
         ui->sources->setCellWidget(i, 0, index);
         indices[i] = index;
+        index->setRange(0, 1e9);
 
         QComboBox *source = new QComboBox();
         ui->sources->setCellWidget(i, 1, source);
         sources[i] = source;
-
-        connect(source, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [=](int i){
-            if ( i >= 0 )
-                index->setRange(0, source->currentData().value<WaveSource>().stimulations().size()-1);
-        });
     }
     ui->sources->setVerticalHeaderLabels(labels);
 
@@ -71,14 +67,16 @@ void DeckWidget::clear()
 void DeckWidget::create()
 {
     std::vector<WaveSource> src(sources.size());
+    std::vector<WaveSource> sets = session.wavesets().sources();
     for ( size_t i = 0; i < sources.size(); i++ ) {
         if ( sources[i]->currentIndex() < 0 )
             return;
+        if ( indices[i]->value() >= (int)sets[sources[i]->currentIndex()].stimulations().size() )
+            return;
     }
     for ( size_t i = 0; i < sources.size(); i++ ) {
-        WaveSource candidate = sources[i]->currentData().value<WaveSource>();
-        candidate.waveno = indices[i]->value();
-        src[i] = std::move(candidate);
+        src[i] = sets[sources[i]->currentIndex()];
+        src[i].waveno = indices[i]->value();
     }
     WavesetCreator &creator = session.wavesets();
     session.queue(creator.actorName(), creator.actionDeck, "", new WaveDeck(session, src));
@@ -108,19 +106,13 @@ void DeckWidget::updateDecks()
 void DeckWidget::updateSets()
 {
     std::vector<WaveSource> sets = session.wavesets().sources();
-    std::vector<QString> labels(sets.size());
-    std::vector<QVariant> variants(sets.size());
-    for ( size_t i = 0; i < sets.size(); i++ ) {
-        labels[i] = sets[i].prettyName();
-        variants[i] = QVariant::fromValue(sets[i]);
-    }
-
-    for ( size_t i = 0; i < sources.size(); i++ ) {
-        int currentIndex = sources[i]->currentIndex();
-        sources[i]->clear();
-        for ( size_t j = 0; j < sets.size(); j++ ) {
-            sources[i]->addItem(labels.at(j), variants.at(j));
-        }
-        sources[i]->setCurrentIndex(currentIndex);
+    QStringList labels;
+    for ( WaveSource &src : sets )
+        labels << src.prettyName();
+    for ( QComboBox *cb : sources ) {
+        int currentIndex = cb->currentIndex();
+        cb->clear();
+        cb->insertItems(0, labels);
+        cb->setCurrentIndex(currentIndex);
     }
 }
