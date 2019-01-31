@@ -23,21 +23,26 @@ public:
 
     struct Output : public Result
     {
-        Output(WaveSource stimSource, QString VCRecord, CannedDAQ::ChannelAssociation assoc);
-        Output(const GAFitter &fitter, Result r = Result());
+        Output() = default;
+        Output(const Output &) = default;
+        Output(Output&&) = default;
+        Output &operator=(const Output&) = default;
+        Output &operator=(Output&&) = default;
+
+        Output(Session &s, WaveSource stimSource, QString VCRecord, Result r = Result());
 
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]
         std::vector<scalar> error; //!< Best performing model's error in each epoch
         std::vector<quint32> targetParam; //!< Index of the primary target parameter at each epoch
         std::vector<scalar> targets; //!< Simulator's parameters
-        quint32 epochs;
+        quint32 epochs = 0;
         WaveSource stimSource;
         double variance = 0;
 
         QString VCRecord;
         CannedDAQ::ChannelAssociation assoc;
 
-        bool final;
+        bool final = false;
         std::vector<scalar> finalParams; //!< Final best-performing model across all stimulations
         std::vector<scalar> finalError; //!< Error of the final model on each stimulation
 

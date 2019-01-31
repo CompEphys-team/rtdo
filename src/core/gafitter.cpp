@@ -13,8 +13,7 @@ GAFitter::GAFitter(Session &session) :
     qV(nullptr),
     qI(nullptr),
     qO(nullptr),
-    bias(lib.adjustableParams.size(), 0),
-    output(*this)
+    bias(lib.adjustableParams.size(), 0)
 {
 }
 
@@ -22,40 +21,31 @@ GAFitter::~GAFitter()
 {
 }
 
-GAFitter::Output::Output(WaveSource stimSource, QString VCRecord, CannedDAQ::ChannelAssociation assoc) :
-    stimSource(stimSource),
-    VCRecord(VCRecord),
-    assoc(assoc)
-{}
-
-GAFitter::Output::Output(const GAFitter &f, Result r) :
+GAFitter::Output::Output(Session &s, WaveSource stimSource, QString VCRecord, Result r) :
     Result(r),
-    params(f.settings.maxEpochs, std::vector<scalar>(f.lib.adjustableParams.size())),
-    error(f.settings.maxEpochs),
-    targetParam(f.settings.maxEpochs),
-    targets(f.lib.adjustableParams.size()),
-    epochs(0),
+    params(s.qGaFitterSettings().maxEpochs, std::vector<scalar>(s.project.model().adjustableParams.size())),
+    error(s.qGaFitterSettings().maxEpochs),
+    targetParam(s.qGaFitterSettings().maxEpochs),
+    targets(s.project.model().adjustableParams.size()),
+    stimSource(stimSource),
     variance(0),
-    final(false),
-    finalParams(f.lib.adjustableParams.size()),
-    finalError(f.lib.adjustableParams.size())
+    VCRecord(VCRecord),
+    assoc(s.cdaq_assoc),
+    finalParams(s.project.model().adjustableParams.size()),
+    finalError(s.project.model().adjustableParams.size())
 {
-    stimSource.session =& f.session;
-    for ( size_t i = 0; i < targets.size(); i++ ) // Initialise for back compat
-        targets[i] = f.lib.adjustableParams.at(i).initial;
+    stimSource.session =& s;
 }
 
 void GAFitter::run(WaveSource src, QString VCRecord, bool readRecConfig)
 {
-    if ( action != this->action )
-        throw std::runtime_error(std::string("Unknown action: ") + action.toStdString());
     if ( readRecConfig && session.qDaqData().simulate == -1 ) {
         QString cfg = VCRecord;
         cfg.replace(".atf", ".cfg");
         if ( QFileInfo(cfg).exists() )
             session.loadConfig(cfg);
     }
-    session.queue(actorName(), action, src.prettyName(), new Output(src, VCRecord, session.cdaq_assoc));
+    session.queue(actorName(), action, src.prettyName(), new Output(session, src, VCRecord));
 }
 
 bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
@@ -69,14 +59,10 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
         aborted = false;
     }
 
-    output = Output(*this, *res);
-    output.stimSource = static_cast<Output*>(res)->stimSource;
-    output.VCRecord = static_cast<Output*>(res)->VCRecord;
-    output.assoc = static_cast<Output*>(res)->assoc;
-    bool dryrun = res->dryrun;
+    output = std::move(*static_cast<Output*>(res));
     delete res;
 
-    if ( dryrun ) {
+    if ( output.dryrun ) {
         save(file);
         return true;
     }
@@ -97,11 +83,13 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
         output.variance = daq->getCannedDAQ()->variance;
         std::cout << "Baseline current noise s.d.: " << std::sqrt(output.variance) << " nA" << std::endl;
     }
-    if ( session.daqData().simulate != 0 ) {
-        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+
+    if ( session.daqData().simulate == 0 )
+        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+            output.targets[i] = lib.adjustableParams[i].initial;
+    else
+        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
             output.targets[i] = daq->getAdjustableParam(i);
-        }
-    }
 
     setup();
 
@@ -130,7 +118,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     // Finish
     output.epochs = epoch;
-    m_results.push_back(output);
+    m_results.push_back(std::move(output));
     emit done();
 
     // Save
@@ -201,9 +189,9 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
 
     Output *p_out;
     if ( r.dryrun ) {
-        p_out = new Output(*this, r);
+        p_out = new Output(session, WaveSource(), QString(), r);
     } else {
-        m_results.emplace_back(*this, r);
+        m_results.emplace_back(session, WaveSource(), QString(), r);
         p_out =& m_results.back();
     }
     Output &out = *p_out;
