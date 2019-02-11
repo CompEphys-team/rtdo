@@ -279,4 +279,11 @@ SOURCES += \
 }
 
 DISTFILES += \
-    src/include/universallibrary.cu
+    src/cuda/universallibrary.cu \
+    src/cuda/lib_definitions.h \
+    src/cuda/bubble.cu \
+    src/cuda/cluster.cu \
+    src/cuda/deltabar.cu \
+    src/cuda/deviations.cu \
+    src/cuda/profile.cu \
+    src/cuda/util.cu

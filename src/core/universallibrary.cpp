@@ -419,7 +419,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "#define NMODELS " << NMODELS << endl;
     ss << "#define NPARAMS " << adjustableParams.size() << endl;
     ss << "#define MAXCLUSTERS " << maxClusters << endl;
-    ss << "#include \"universallibrary.cu\"" << endl;
+    ss << "#include \"../cuda/universallibrary.cu\"" << endl;
     ss << endl;
 
     ss << "void runStreamed(int iT, unsigned int streamId) {" << endl
