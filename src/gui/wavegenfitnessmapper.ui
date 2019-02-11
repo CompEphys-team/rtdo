@@ -204,6 +204,16 @@
      </property>
     </widget>
    </item>
+   <item row="4" column="3">
+    <widget class="QPushButton" name="readMaxFitness">
+     <property name="text">
+      <string>Set tol to max fscale *</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="4">
+    <widget class="QDoubleSpinBox" name="tolFitnessFraction"/>
+   </item>
   </layout>
  </widget>
  <customwidgets>

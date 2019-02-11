@@ -304,3 +304,8 @@ void WavegenFitnessMapper::on_pdf_clicked()
         file.append(".pdf");
     ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), ui->combo->currentText());
 }
+
+void WavegenFitnessMapper::on_readMaxFitness_clicked()
+{
+    ui->fitnessTolerance->setValue(colorMap->dataRange().upper * ui->tolFitnessFraction->value());
+}
