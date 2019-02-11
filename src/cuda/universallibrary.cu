@@ -157,9 +157,9 @@ extern "C" void pullSummary(int streamId, size_t nSamples, size_t offset)
     if ( nSamples == 0 )
         nSamples = latest_summary_size;
     if ( streamId < 0 )
-        CHECK_CUDA_ERRORS(cudaMemcpy(d_summary+offset, summary+offset, nSamples * sizeof(scalar), cudaMemcpyHostToDevice))
+        CHECK_CUDA_ERRORS(cudaMemcpy(summary+offset, d_summary+offset, nSamples * sizeof(scalar), cudaMemcpyHostToDevice))
     else
-        CHECK_CUDA_ERRORS(cudaMemcpyAsync(d_summary+offset, summary+offset, nSamples * sizeof(scalar), cudaMemcpyHostToDevice, getLibStream(streamId)))
+        CHECK_CUDA_ERRORS(cudaMemcpyAsync(summary+offset, d_summary+offset, nSamples * sizeof(scalar), cudaMemcpyHostToDevice, getLibStream(streamId)))
 }
 
 extern "C" void libSync(unsigned int streamId)
