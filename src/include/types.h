@@ -425,7 +425,7 @@ struct GAFitterSettings {
     bool useDE = false;
     int mutationSelectivity = 2; // 0: Nonspecific mutation, 1: Graded mutation rates, 2: Target parameter only
 
-    std::string obsSource = "";
+    std::string obsSource = "-";
 
     // Retired values
     bool useLikelihood = false; // Retired 6 Nov 2018

@@ -121,7 +121,7 @@ void GAFitterSettingsDialog::exportData()
     case 1: p.obsSource = Wavegen::cluster_action.toStdString(); break;
     case 2: p.obsSource = Wavegen::bubble_action.toStdString(); break;
     case 0:
-    default: p.obsSource = std::string(); break;
+    default: p.obsSource = "-"; break;
     }
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
