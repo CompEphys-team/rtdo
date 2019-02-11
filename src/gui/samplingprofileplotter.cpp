@@ -47,6 +47,8 @@ SamplingProfilePlotter::SamplingProfilePlotter(Session &s, QWidget *parent) :
         ui->plot->replot();
     });
 
+    connect(ui->rho_normalisation, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &SamplingProfilePlotter::updateTable);
+
     updateProfiles();
 }
 
@@ -164,7 +166,7 @@ double SamplingProfilePlotter::value(int i,
         for ( size_t j = 2; j < dim.size() + nFixedColumns; j++ ) {
             int jj = (j < nFixedColumns) ? j-1 : j;
             if ( scoreChecks[j-2]->isChecked() )
-                score *= value(i, jj, prof, elites, dim) / maxima[j-2];
+                score *= (value(i, jj, prof, elites, dim) - minima[j-2]) / (maxima[j-2] - minima[j-2]);
         }
         return score;
     }
@@ -301,6 +303,9 @@ void SamplingProfilePlotter::updateTable()
 
     // Update maxima
     maxima.assign(nFixedColumns + dim.size() - 2, -__DBL_MAX__);
+    minima.assign(nFixedColumns + dim.size() - 2, 0);
+    for ( size_t i = 0; i < 3; i++ )
+        minima[i] = 1;
     for ( const DataPoint &p : points ) {
         if ( p.hidden )
             continue;
@@ -308,7 +313,20 @@ void SamplingProfilePlotter::updateTable()
             int jj = (j < nFixedColumns) ? j-1 : j;
             maxima[j-2] = std::max(maxima[j-2], value(p.idx, jj, prof, elites, dim));
         }
+
+        // find true rho minima
+        for ( size_t j = 2; j < 5; j++ ) {
+            minima[j-2] = std::min(minima[j-2], value(p.idx, j-1, prof, elites, dim));
+        }
     }
+
+    // Set rho minima to user selection; index==1 => [min(rho), max(rho)] is already set by the above
+    if ( ui->rho_normalisation->currentIndex() == 0 ) // [-1, max(rho)]
+        for ( size_t i = 0; i < 3; i++ )
+            minima[i] = -1;
+    else if ( ui->rho_normalisation->currentIndex() == 2 ) // [min(min(rho), 0), max(rho)]
+        for ( size_t i = 0; i < 3; i++ )
+            minima[i] = std::min(minima[i], 0.);
 
     // Update table contents
     ui->table->setSortingEnabled(false);

@@ -17,7 +17,7 @@
    <item row="1" column="0" colspan="2">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -303,6 +303,32 @@
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="0">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>𝛒 normalisation interval for scoring:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="rho_normalisation">
+         <item>
+          <property name="text">
+           <string>[-1, max(𝛒)]</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>[min(𝛒), max(𝛒)]</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>[min(𝛒 ∪ {0}), max(𝛒)]</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
         <widget class="QTableWidget" name="paretoDims">
          <property name="selectionMode">
           <enum>QAbstractItemView::NoSelection</enum>

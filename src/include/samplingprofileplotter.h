@@ -56,7 +56,7 @@ private:
         bool hidden;
     };
     std::vector<DataPoint> points;
-    std::vector<double> maxima;
+    std::vector<double> minima, maxima;
 
     std::vector<QButtonGroup *> paretoGroups;
     std::vector<QCheckBox *> scoreChecks;
