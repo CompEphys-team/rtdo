@@ -49,6 +49,21 @@ SamplingProfilePlotter::SamplingProfilePlotter(Session &s, QWidget *parent) :
 
     connect(ui->rho_normalisation, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &SamplingProfilePlotter::updateTable);
 
+    connect(ui->table, &QTableWidget::itemSelectionChanged, this, [=](){
+        for ( DataPoint &p : points )
+            p.selected = false;
+        for ( QModelIndex &r : ui->table->selectionModel()->selectedRows() ) {
+            size_t idx = ui->table->item(r.row(), 0)->text().toInt();
+            for ( DataPoint &p : points ) {
+                if ( p.idx == idx ) {
+                    p.selected = true;
+                    break;
+                }
+            }
+        }
+        replot(Selection::Data);
+    });
+
     updateProfiles();
 }
 
