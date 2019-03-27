@@ -34,7 +34,7 @@ GAFitter::Output::Output(Session &s, WaveSource stimSource, QString VCRecord, Re
     finalParams(s.project.model().adjustableParams.size()),
     finalError(s.project.model().adjustableParams.size())
 {
-    stimSource.session =& s;
+    this->stimSource.session =& s;
 }
 
 void GAFitter::run(WaveSource src, QString VCRecord, bool readRecConfig)
