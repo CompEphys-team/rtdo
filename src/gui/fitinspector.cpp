@@ -280,7 +280,7 @@ void FitInspector::updateFits()
     for ( size_t i = ui->fits->rowCount(); i < session.gaFitter().results().size(); i++ ) {
         const GAFitter::Output &fit = session.gaFitter().results().at(i);
         ui->fits->insertRow(i);
-        ui->fits->setVerticalHeaderItem(i, new QTableWidgetItem(QString::number(i)));
+        ui->fits->setVerticalHeaderItem(i, new QTableWidgetItem(QString("%1 (%2)").arg(i).arg(fit.resultIndex, 4, 10, QChar('0'))));
         ColorButton *c = new ColorButton();
         c->setColor(ui->sepcols->isChecked() ? QColorDialog::standardColor(i%20) : Qt::blue);
         ui->fits->setCellWidget(i, 0, c);
