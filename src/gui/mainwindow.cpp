@@ -382,3 +382,12 @@ void MainWindow::on_desiccate_clicked()
     session->desiccate(desic, loc);
     std::cout << "To run the desiccated tasks, copy the task files from " << loc << " to the session directory and run `rtdo " << desic << "`." << std::endl;
 }
+
+void MainWindow::on_load_clicked()
+{
+    QString desic = QFileDialog::getOpenFileName(this, "Select task log file");
+    if ( desic.isEmpty() )
+        return;
+
+    session->exec_desiccated(desic, false);
+}

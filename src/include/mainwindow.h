@@ -79,6 +79,8 @@ private slots:
 
     void on_desiccate_clicked();
 
+    void on_load_clicked();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

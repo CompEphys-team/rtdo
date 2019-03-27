@@ -319,24 +319,30 @@ void Session::desiccate(const QString &file, const QString &directory)
     emit doDispatch();
 }
 
-void Session::exec_desiccated(const QString &file)
+void Session::exec_desiccated(const QString &file, bool nogui)
 {
     SessionLog plannedLog;
     plannedLog.setLogFile(file);
+    QDir dir_orig = dir;
+    dir.setPath(file);
+    dir.cdUp();
     std::vector<SessionLog::Entry> plannedActions = load(true, &plannedLog, m_log.rowCount());
+    dir = dir_orig;
     for ( SessionLog::Entry &e : plannedActions ) {
         e.res->dryrun = false;
         m_log.queue(e);
     }
 
-    int nTotal = plannedActions.size();
-    connect(this, &Session::actionLogged, this, [=](QString, QString, QString, int idx){
-        static int nDone = 0;
-        std::cout << "Action " << ++nDone << '/' << nTotal << " complete: " << m_log.data(m_log.index(idx, 0), Qt::UserRole).toString() << std::endl;
-    });
+    if ( nogui ) {
+        int nTotal = plannedActions.size();
+        connect(this, &Session::actionLogged, this, [=](QString, QString, QString, int idx){
+            static int nDone = 0;
+            std::cout << "Action " << ++nDone << '/' << nTotal << " complete: " << m_log.data(m_log.index(idx, 0), Qt::UserRole).toString() << std::endl;
+        });
 
-    dispatcher.running = true;
-    emit doDispatch();
+        dispatcher.running = true;
+        emit doDispatch();
+    }
 }
 
 void Session::queue(QString actor, QString action, QString args, Result *res)

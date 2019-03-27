@@ -60,7 +60,7 @@ public:
     void abort();
 
     void desiccate(const QString &file, const QString &directory);
-    void exec_desiccated(const QString &file);
+    void exec_desiccated(const QString &file, bool nogui = true);
 
     /**
      * @brief queue adds an action to the queue, starting asynchronous execution immediately (unless paused).

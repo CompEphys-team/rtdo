@@ -62,6 +62,7 @@ protected:
 
     std::ofstream m_file;
     std::ofstream m_sicfile;
+    int nDesiccatedActions;
 };
 
 #endif // SESSIONLOG_H
