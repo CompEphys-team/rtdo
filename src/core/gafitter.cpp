@@ -48,6 +48,22 @@ void GAFitter::run(WaveSource src, QString VCRecord, bool readRecConfig)
     session.queue(actorName(), action, src.prettyName(), new Output(session, src, VCRecord));
 }
 
+void GAFitter::resume(size_t resultIdx, WaveSource src, QString VCRecord, bool readRecConfig)
+{
+    if ( resultIdx >= results().size() )
+        return;
+    if ( readRecConfig && session.qDaqData().simulate == -1 ) {
+        QString cfg = VCRecord;
+        cfg.replace(".atf", ".cfg");
+        if ( QFileInfo(cfg).exists() )
+            session.loadConfig(cfg);
+    }
+    Output *out = new Output(m_results[resultIdx]);
+    out->stimSource = src;
+    out->VCRecord = VCRecord;
+    session.queue(actorName(), action, src.prettyName(), out);
+}
+
 bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 {
     if ( action != this->action )

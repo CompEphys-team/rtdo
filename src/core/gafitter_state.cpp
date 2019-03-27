@@ -5,12 +5,21 @@ void GAFitter::setup()
 {
     int nParams = lib.adjustableParams.size();
 
-    DEMethodUsed.assign(lib.NMODELS/2, 0);
-    DEMethodSuccess.assign(4, 0);
-    DEMethodFailed.assign(4, 0);
-    DEpX.assign(lib.NMODELS/2, 0);
+    if ( output.resume.population.empty() ) {
+        DEMethodUsed.assign(lib.NMODELS/2, 0);
+        DEMethodSuccess.assign(4, 0);
+        DEMethodFailed.assign(4, 0);
+        DEpX.assign(lib.NMODELS/2, 0);
 
-    bias.assign(nParams, 0);
+        bias.assign(nParams, 0);
+    } else {
+        DEMethodUsed = output.resume.DEMethodUsed;
+        DEMethodSuccess = output.resume.DEMethodSuccess;
+        DEMethodFailed = output.resume.DEMethodFailed;
+        DEpX = output.resume.DEpX;
+
+        bias = output.resume.bias;
+    }
 
     epoch = targetParam = 0;
     targetParam = findNextStim();
@@ -89,24 +98,30 @@ void GAFitter::setup()
 
 void GAFitter::populate()
 {
-    for ( size_t j = 0; j < lib.adjustableParams.size(); j++ ) {
-        if ( settings.constraints[j] == 2 || settings.constraints[j] == 3 ) { // Fixed value
-            scalar value = settings.constraints[j] == 2 ? settings.fixedValue[j] : output.targets[j];
-            for ( size_t i = 0; i < lib.NMODELS; i++ )
-                lib.adjustableParams[j][i] = value;
-        } else {
-            scalar min, max;
-            if ( settings.constraints[j] == 0 ) {
-                min = lib.adjustableParams[j].min;
-                max = lib.adjustableParams[j].max;
+    if ( output.resume.population.empty() ) {
+        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+            if ( settings.constraints[i] == 2 || settings.constraints[i] == 3 ) { // Fixed value
+                scalar value = settings.constraints[i] == 2 ? settings.fixedValue[i] : output.targets[i];
+                for ( size_t j = 0; j < lib.NMODELS; j++ )
+                    lib.adjustableParams[i][j] = value;
             } else {
-                min = settings.min[j];
-                max = settings.max[j];
-            }
-            for ( size_t i = 0; i < lib.NMODELS; i++ ) {
-                lib.adjustableParams[j][i] = session.RNG.uniform<scalar>(min, max);
+                scalar min, max;
+                if ( settings.constraints[i] == 0 ) {
+                    min = lib.adjustableParams[i].min;
+                    max = lib.adjustableParams[i].max;
+                } else {
+                    min = settings.min[i];
+                    max = settings.max[i];
+                }
+                for ( size_t j = 0; j < lib.NMODELS; j++ ) {
+                    lib.adjustableParams[i][j] = session.RNG.uniform<scalar>(min, max);
+                }
             }
         }
+    } else {
+        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+            for ( size_t j = 0; j < lib.NMODELS; j++ )
+                lib.adjustableParams[i][j] = output.resume.population[i][j];
     }
     lib.push();
 }
