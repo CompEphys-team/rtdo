@@ -235,10 +235,14 @@ std::vector<iObservations> WaveSource::observations(double dt) const
         break;
     }
 
-    std::vector<MAPElite> el = elites();
-    ret.reserve(el.size());
-    for ( MAPElite const& e : el )
-        ret.push_back(e.obs);
+    if ( type == Manual ) {
+        ret = session->wavesets().manuals().at(idx).observations;
+    } else {
+        std::vector<MAPElite> el = elites();
+        ret.reserve(el.size());
+        for ( MAPElite const& e : el )
+            ret.push_back(e.obs);
+    }
 
     if ( needs_dt_adjustment ) {
         for ( iObservations &obs : ret ) {
