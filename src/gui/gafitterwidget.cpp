@@ -30,6 +30,10 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     });
     ui->records->setEnabled(this->session.qDaqData().simulate < 0);
 
+    connect(ui->resume, &QCheckBox::toggled, ui->resumeSrc, &QComboBox::setEnabled);
+    for ( size_t i = 0; i < session.gaFitter().results().size(); i++ )
+        ui->resumeSrc->addItem(QString("Fit %1 (%2)").arg(i).arg(session.gaFitter().results().at(i).resultIndex, 4, 10, QChar('0')));
+
     connect(&session, &Session::GAFitterSettingsChanged, this, &GAFitterWidget::updateDecks);
     updateDecks();
 
@@ -65,6 +69,9 @@ void GAFitterWidget::done()
     ui->label_queued->setText(QString("%1 queued").arg(nQueued));
     if ( nQueued > 0 )
         ui->params_plotter->clear();
+    ui->resumeSrc->addItem(QString("Fit %1 (%2)").arg(session.gaFitter().results().size()-1).arg(session.gaFitter().results().back().resultIndex, 4, 10, QChar('0')));
+    if ( ui->resumeSrc->currentIndex() == ui->resumeSrc->count() - 2 )
+        ui->resumeSrc->setCurrentIndex(ui->resumeSrc->count() - 1);
 }
 
 void GAFitterWidget::on_start_clicked()
