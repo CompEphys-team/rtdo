@@ -326,8 +326,8 @@ void StimulationCreator::setStimulation()
         setLimits();
         ui->baseV->setValue(stim->baseV);
         updatingStim = false;
-        setNSteps(stim->size());
         setObservations();
+        setNSteps(stim->size());
 
         ui->tab_traces->setEnabled(true);
     } else {
@@ -400,10 +400,13 @@ void StimulationCreator::updateStimulation()
 
 void StimulationCreator::setObservations()
 {
+    bool updatingStimBk = updatingStim;
+    updatingStim = true;
     for ( size_t i = 0; i < iObservations::maxObs; i++ ) {
         qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 0))->setValue(obsIt->start[i]);
         qobject_cast<QSpinBox*>(ui->observations->cellWidget(i, 1))->setValue(obsIt->stop[i]);
     }
+    updatingStim = updatingStimBk;
 }
 
 void StimulationCreator::redraw()
