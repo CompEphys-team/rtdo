@@ -100,6 +100,7 @@ lsampl_t ComediConverter::toSamp(double phys) const
     if ( phys > range->max || phys < range->min ) {
         std::cerr << "Warning: Value out of range: " << phys << " not in ["
                   << range->min << ", " << range->max << "]" << std::endl;
+        phys = std::max(range->min, std::min(range->max, phys));
     }
     if ( has_cal )
         return comedi_from_physical(phys, polynomial);
