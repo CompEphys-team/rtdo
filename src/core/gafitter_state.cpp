@@ -69,7 +69,7 @@ void GAFitter::setup()
             ++paramIdx;
         }
 
-        if ( !needPosthocEval.empty() ) {
+        if ( settings.mutationSelectivity == 1 && !needPosthocEval.empty() ) {
             std::vector<MAPElite> posthoc = session.wavegen().evaluatePremade(stims, obs);
             for ( int paramIdx : needPosthocEval )
                 for ( int i = 0; i < nParams; i++ )
