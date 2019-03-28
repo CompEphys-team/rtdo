@@ -87,7 +87,7 @@ void GAFitter::procreate()
             if ( settings.constraints[iParam] >= 2 )
                 continue;
             AdjustableParam &p = lib.adjustableParams[iParam];
-            if ( iParam == targetParam ) {
+            if ( settings.mutationSelectivity < 2 || iParam == targetParam ) {
                 if ( settings.constraints[iParam] == 0 )
                     p[p_err[i].idx] = session.RNG.uniform(p.min, p.max);
                 else
