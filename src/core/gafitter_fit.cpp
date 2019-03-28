@@ -32,7 +32,7 @@ quint32 GAFitter::findNextStim()
         for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
             if ( settings.constraints[i] < 2 ) {
                 ++nStims;
-                if ( i < targetParam )
+                if ( i < targetStim )
                     ++previousStimIdx;
             }
         }
@@ -103,10 +103,10 @@ double GAFitter::finalise()
     stims = output.stimSource.iStimulations(dt);
 
     // Evaluate existing population on all stims
-    for ( targetParam = 0; targetParam < stims.size() && !isAborted(); targetParam++ ) {
-        obs[targetParam] = iObserveNoSteps(stims[targetParam], session.wavegenData().cluster.blank/dt);
-        t += obs[targetParam].duration();
-        simt += stimulate(targetParam>0 ? ASSIGNMENT_SUMMARY_PERSIST : 0);
+    for ( targetStim = 0; targetStim < stims.size() && !isAborted(); targetStim++ ) {
+        obs[targetStim] = iObserveNoSteps(stims[targetStim], session.wavegenData().cluster.blank/dt);
+        t += obs[targetStim].duration();
+        simt += stimulate(targetStim>0 ? ASSIGNMENT_SUMMARY_PERSIST : 0);
     }
 
     // Pull & sort by total cumulative error across all stims
@@ -131,8 +131,8 @@ double GAFitter::finalise()
 double GAFitter::stimulate(unsigned int extra_assignments)
 {
     const RunData &rd = session.runData();
-    const Stimulation &aI = astims[targetParam];
-    iStimulation I = stims[targetParam];
+    const Stimulation &aI = astims[targetStim];
+    iStimulation I = stims[targetStim];
 
     // Set up library
     lib.setSingularRund();
@@ -142,7 +142,7 @@ double GAFitter::stimulate(unsigned int extra_assignments)
 
     lib.setSingularStim();
     lib.stim[0] = I;
-    lib.obs[0] = obs[targetParam];
+    lib.obs[0] = obs[targetStim];
 
     lib.setSingularTarget();
     lib.resizeTarget(1, I.duration);

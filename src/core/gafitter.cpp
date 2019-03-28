@@ -12,8 +12,7 @@ GAFitter::GAFitter(Session &session) :
     settings(session.gaFitterSettings()),
     qV(nullptr),
     qI(nullptr),
-    qO(nullptr),
-    bias(lib.adjustableParams.size(), 0)
+    qO(nullptr)
 {
 }
 
@@ -25,7 +24,7 @@ GAFitter::Output::Output(Session &s, WaveSource stimSource, QString VCRecord, Re
     Result(r),
     params(s.qGaFitterSettings().maxEpochs, std::vector<scalar>(s.project.model().adjustableParams.size())),
     error(s.qGaFitterSettings().maxEpochs),
-    targetParam(s.qGaFitterSettings().maxEpochs),
+    targetStim(s.qGaFitterSettings().maxEpochs),
     targets(s.project.model().adjustableParams.size()),
     stimSource(stimSource),
     variance(0),
@@ -77,6 +76,11 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     output = std::move(*static_cast<Output*>(res));
     delete res;
+
+    if ( output.stimSource.type != WaveSource::Deck && settings.mutationSelectivity == 2 ) {
+        std::cerr << "Error: Non-deck sources must not use target-only mutation selectivity." << std::endl;
+        return false;
+    }
 
     if ( output.dryrun ) {
         save(file);
@@ -153,7 +157,7 @@ void GAFitter::save(QFile &file)
         const Output &out = m_results.back();
         os << out.stimSource << out.epochs;
         for ( quint32 i = 0; i < out.epochs; i++ ) {
-            os << out.targetParam[i] << out.error[i];
+            os << out.targetStim[i] << out.error[i];
             for ( const scalar &p : out.params[i] )
                 os << p;
         }
@@ -213,11 +217,11 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
     Output &out = *p_out;
 
     is >> out.stimSource >> out.epochs;
-    out.targetParam.resize(out.epochs);
+    out.targetStim.resize(out.epochs);
     out.params.resize(out.epochs);
     out.error.resize(out.epochs);
     for ( quint32 i = 0; i < out.epochs; i++ ) {
-        is >> out.targetParam[i] >> out.error[i];
+        is >> out.targetStim[i] >> out.error[i];
         for ( scalar &p : out.params[i] )
             is >> p;
     }
@@ -277,7 +281,7 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
     if ( ver >= 108 ) {
         size_t nParams = lib.adjustableParams.size();
         out.resume.population.assign(nParams, std::vector<scalar>(lib.NMODELS));
-        out.resume.bias.resize(nParams);
+        out.resume.bias.resize(out.stims.size());
         out.resume.DEMethodUsed.resize(nParams);
         out.resume.DEMethodSuccess.resize(nParams);
         out.resume.DEMethodFailed.resize(nParams);

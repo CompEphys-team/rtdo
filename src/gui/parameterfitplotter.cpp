@@ -354,9 +354,18 @@ void ParameterFitPlotter::plotIndividual()
             QVector<double> values(fit.epochs), errors, errKey;
             errors.reserve(fit.epochs);
             errKey.reserve(fit.epochs);
-            for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ ) {
+            for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ )
                 values[epoch] = fit.params[epoch][i];
-                if ( fit.targetParam[epoch] == i ) {
+
+            if ( fit.stimSource.type == WaveSource::Deck ) {
+                for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ ) {
+                    if ( fit.targetStim[epoch] == i ) {
+                        errors.push_back(fit.error[epoch]);
+                        errKey.push_back(epoch);
+                    }
+                }
+            } else if ( i == 0 ) {
+                for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ ) {
                     errors.push_back(fit.error[epoch]);
                     errKey.push_back(epoch);
                 }
@@ -433,7 +442,10 @@ void ParameterFitPlotter::progress(quint32 epoch)
     for ( size_t i = 0; i < axRects.size(); i++ ) {
         axRects[i]->axis(QCPAxis::atLeft, 0)->graphs().first()->addData(epoch, fit.params[epoch][i]);
     }
-    axRects[fit.targetParam[epoch]]->axis(QCPAxis::atRight)->graphs().first()->addData(epoch, fit.error[epoch]);
+    int targetPlot = fit.targetStim[epoch];
+    if ( fit.stimSource.type != WaveSource::Deck )
+        targetPlot = 0;
+    axRects[targetPlot]->axis(QCPAxis::atRight)->graphs().first()->addData(epoch, fit.error[epoch]);
 
     double xUpper = axRects[0]->axis(QCPAxis::atBottom)->range().upper;
     if ( double(epoch-1) <= xUpper && double(epoch) > xUpper) {
@@ -571,9 +583,13 @@ void ParameterFitPlotter::plotSummary()
                     }, fMean, fSem, fMedian, fMax);
             }
             getSummary(group.fits, [=](const GAFitter::Output &fit, int ep) -> double {
-                for ( ; ep >= 0; ep-- )
-                    if ( fit.targetParam[ep] == i )
-                        return fit.error[ep];
+                if ( fit.stimSource.type == WaveSource::Deck ) {
+                    for ( ; ep >= 0; ep-- )
+                        if ( fit.targetStim[ep] == i )
+                            return fit.error[ep];
+                } else if ( i == 0 ) {
+                    return fit.error[ep];
+                }
                 return 0;
             }, errMean, errSEM, errMedian, errMax, filter);
             if ( hasFinal )

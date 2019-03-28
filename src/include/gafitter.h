@@ -33,7 +33,7 @@ public:
 
         std::vector<std::vector<scalar>> params; //!< Best-performing model's parameters, indexed by [epoch][param]
         std::vector<scalar> error; //!< Best performing model's error in each epoch
-        std::vector<quint32> targetParam; //!< Index of the primary target parameter at each epoch
+        std::vector<quint32> targetStim; //!< Index of the stimulation used at each epoch (==target param for decks)
         std::vector<scalar> targets; //!< Simulator's parameters
         quint32 epochs = 0;
         WaveSource stimSource;
@@ -83,7 +83,7 @@ protected:
 
     bool doFinish;
 
-    quint32 targetParam;
+    quint32 targetStim;
     quint32 epoch;
     std::vector<double> bias;
 
