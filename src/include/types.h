@@ -427,6 +427,8 @@ struct GAFitterSettings {
 
     std::string obsSource = "-";
 
+    double chunkDuration = 0; // Live DAQ: target data chunk size in ms
+
     // Retired values
     bool useLikelihood = false; // Retired 6 Nov 2018
     bool useClustering = false; // Retired 9 Jan 2019

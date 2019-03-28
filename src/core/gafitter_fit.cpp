@@ -157,9 +157,27 @@ double GAFitter::stimulate(unsigned int extra_assignments)
     lib.summaryOffset = 0;
     lib.push();
 
-    // Set up + settle DAQ
+    // Initiate DAQ stimulation
     daq->reset();
     daq->run(aI, rd.settleDuration);
+
+    // Stimulate lib
+    if ( session.daqData().simulate == 0 && settings.chunkDuration > 0 )
+        stimulateChunked();
+    else
+        stimulateMonolithic();
+
+    qT += I.duration * rd.dt;
+
+    return I.duration * rd.dt + rd.settleDuration;
+}
+
+void GAFitter::stimulateMonolithic()
+{
+    const RunData &rd = session.runData();
+    const Stimulation &aI = astims[targetStim];
+    iStimulation I = stims[targetStim];
+
     if ( rd.VC ) {
         for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
             daq->next();
@@ -192,8 +210,81 @@ double GAFitter::stimulate(unsigned int extra_assignments)
     // Run lib against target
     lib.pushTarget();
     lib.run();
+}
 
-    qT += I.duration * rd.dt;
+void GAFitter::stimulateChunked()
+{
+    const RunData &rd = session.runData();
+    const Stimulation &aI = astims[targetStim];
+    iStimulation I = stims[targetStim];
 
-    return I.duration * rd.dt + rd.settleDuration;
+    int chunkSize = settings.chunkDuration / rd.dt;
+    int nextChunk = chunkSize, offset = 0;
+    int totalDuration = I.duration, settleDuration = rd.settleDuration/rd.dt;
+    if ( settleDuration > 0 && !rd.VC )
+        totalDuration += settleDuration;
+
+    lib.resetEvents(totalDuration / chunkSize + 2);
+
+    // Settle lib - in PC, this requires target data
+    if ( rd.VC ) {
+        for ( int iT = 0, iTEnd = settleDuration; iT < iTEnd; iT++ )
+            daq->next();
+    } else if ( rd.settleDuration > 0 ) {
+        lib.resizeTarget(1, I.duration + settleDuration);
+        lib.assignment |= ASSIGNMENT_SETTLE_ONLY;
+
+        totalDuration += settleDuration;
+
+        while ( offset < settleDuration ) {
+            if ( offset + nextChunk > settleDuration )
+                nextChunk = settleDuration - offset;
+
+            for ( int iT = 0; iT < nextChunk; iT++ ) {
+                daq->next();
+                lib.target[iT + offset] = daq->voltage;
+            }
+
+            lib.targetOffset[0] = offset;
+            lib.iSettleDuration[0] = nextChunk;
+            lib.push(lib.targetOffset, 1);
+            lib.push(lib.iSettleDuration, 1);
+            lib.pushTarget(2, nextChunk, offset);
+            lib.waitEvent(lib.recordEvent(2), 1);
+            lib.run(0, 1);
+
+            offset += nextChunk;
+        }
+
+        lib.assignment |= ~ASSIGNMENT_SETTLE_ONLY;
+        lib.iSettleDuration[0] = 0;
+        lib.push(lib.iSettleDuration, 1);
+    }
+
+    // Apply stimulation to lib, simultaneously stepping DAQ through
+    nextChunk = chunkSize;
+    int stimOffset = 0;
+    while ( offset < totalDuration ) {
+        if ( offset + nextChunk > totalDuration )
+            nextChunk = totalDuration - offset;
+
+        for ( int iT = 0; iT < nextChunk; iT++ ) {
+            daq->next();
+            pushToQ(qT + (iT + stimOffset)*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, (iT + stimOffset)*rd.dt));
+            lib.target[iT + offset] = rd.VC ? daq->current : daq->voltage;
+        }
+
+        lib.targetOffset[0] = offset;
+        lib.push(lib.targetOffset, 1);
+        lib.pushTarget(2, nextChunk, offset);
+        lib.waitEvent(1, lib.recordEvent(2));
+        lib.run(0, 1);
+
+        offset += nextChunk;
+        stimOffset += nextChunk;
+
+        lib.assignment |= ASSIGNMENT_SUMMARY_PERSIST;
+    }
+
+    daq->reset();
 }

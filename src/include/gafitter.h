@@ -92,7 +92,11 @@ protected:
 
     double getVariance(Stimulation stim);
     void populate();
+
     double stimulate(unsigned int extra_assignments = 0);
+    void stimulateMonolithic();
+    void stimulateChunked();
+
     void procreate();
     double finalise();
     quint32 findNextStim();
