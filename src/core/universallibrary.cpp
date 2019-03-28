@@ -472,6 +472,9 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.run =& runStreamed;" << endl;
     ss << "    pointers.reset =& initialize;" << endl;
     ss << "    pointers.sync =& libSync;" << endl;
+    ss << "    pointers.resetEvents =& libResetEvents;" << endl;
+    ss << "    pointers.recordEvent =& libRecordEvent;" << endl;
+    ss << "    pointers.waitEvent =& libWaitEvent;" << endl;
     ss << "    pointers.createSim =& createSim;" << endl;
     ss << "    pointers.destroySim =& destroySim;" << endl;
     ss << "    pointers.resizeTarget =& resizeTarget;" << endl;

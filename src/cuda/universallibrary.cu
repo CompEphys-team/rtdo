@@ -22,6 +22,19 @@ inline cudaStream_t getLibStream(unsigned int streamId)
     return lib_streams[streamId];
 }
 
+static std::vector<cudaEvent_t> lib_events;
+static unsigned int nextEvent = 0;
+inline cudaEvent_t getLibEvent(unsigned int eventHandle)
+{
+    unsigned int oldSz = lib_events.size();
+    if ( eventHandle >= oldSz ) {
+        lib_events.resize(eventHandle+1);
+        for ( unsigned int i = oldSz; i < eventHandle+1; i++ )
+            cudaEventCreate(&lib_events[i]);
+    }
+    return lib_events[eventHandle];
+}
+
 void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 {
     pointers.pushV = [](void *hostptr, void *devptr, size_t size, int streamId){
@@ -168,6 +181,23 @@ extern "C" void libSync(unsigned int streamId)
         CHECK_CUDA_ERRORS(cudaStreamSynchronize(getLibStream(streamId)))
     else
         CHECK_CUDA_ERRORS(cudaDeviceSynchronize())
+}
+
+extern "C" void libResetEvents(unsigned int nExpected)
+{
+    nextEvent = 0;
+    getLibEvent(nExpected);
+}
+
+extern "C" unsigned int libRecordEvent(unsigned int streamId)
+{
+    cudaEventRecord(getLibEvent(nextEvent), getLibStream(streamId));
+    return nextEvent++;
+}
+
+extern "C" void libWaitEvent(unsigned int eventHandle, unsigned int streamId)
+{
+    cudaStreamWaitEvent(getLibStream(streamId), getLibEvent(eventHandle), 0);
 }
 
 #endif

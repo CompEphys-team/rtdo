@@ -100,7 +100,11 @@ public:
         std::function<void(void*, void*, size_t, int)> pullV;
         void (*run)(int, unsigned int);
         void (*reset)(void);
+
         void (*sync)(unsigned int);
+        void (*resetEvents)(unsigned int);
+        unsigned int (*recordEvent)(unsigned int);
+        void (*waitEvent)(unsigned int, unsigned int);
 
         DAQ *(*createSim)(int simNo, Session&, const Settings&, bool);
         void (*destroySim)(DAQ *);
@@ -195,7 +199,11 @@ public:
     }
     inline void run(int iT = 0, unsigned int streamId = 0) { pointers.run(iT, streamId); }
     inline void reset() { pointers.reset(); }
+
     inline void sync(unsigned int streamId = 0) { pointers.sync(streamId); }
+    inline void resetEvents(unsigned int nExpected = 0) { pointers.resetEvents(nExpected); } //!< Resets the consecutive events counter and prepares nExpected events for immediate use.
+    inline unsigned int recordEvent(unsigned int streamId = 0) { return pointers.recordEvent(streamId); } //!< Records a new event on the given stream and returns its handle.
+    inline void waitEvent(unsigned int eventHandle, unsigned int streamId = 0) { pointers.waitEvent(eventHandle, streamId); }
 
     /// Allocates space for nTraces traces of length nSamples and sets targetStride = nTraces
     void resizeTarget(size_t nTraces, size_t nSamples);
