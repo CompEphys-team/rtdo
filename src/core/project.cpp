@@ -66,7 +66,7 @@ void Project::addDaqAPs(std::vector<std::unique_ptr<AP> > &arg, DAQData *p)
 
     QString labels[] = {"DAQ.V", "DAQ.V2", "DAQ.I", "DAQ.Vcmd", "DAQ.Icmd"};
     ChnData DAQData::*chans[] = {&DAQData::voltageChn, &DAQData::V2Chan, &DAQData::currentChn, &DAQData::vclampChan, &DAQData::cclampChan};
-    for ( int i = 0; i < 3; i++ ) {
+    for ( int i = 0; i < 5; i++ ) {
         addAP(arg, labels[i] + ".active", p, chans[i], &ChnData::active);
         addAP(arg, labels[i] + ".idx", p, chans[i], &ChnData::idx);
         addAP(arg, labels[i] + ".range", p, chans[i], &ChnData::range);
