@@ -91,6 +91,7 @@ void GAFitterSettingsDialog::importData()
         ui->obsSource->setCurrentIndex(2);
     else
         ui->obsSource->setCurrentIndex(0);
+    ui->chunkDuration->setValue(p.chunkDuration);
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(p.constraints[i]);
@@ -123,6 +124,7 @@ void GAFitterSettingsDialog::exportData()
     case 0:
     default: p.obsSource = "-"; break;
     }
+    p.chunkDuration = ui->chunkDuration->value();
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         p.constraints.push_back(static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex());
