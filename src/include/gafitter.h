@@ -90,7 +90,6 @@ protected:
     void setup();
     double fit();
 
-    double getVariance(Stimulation stim);
     void populate();
 
     double stimulate(unsigned int extra_assignments = 0);
