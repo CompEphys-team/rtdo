@@ -164,6 +164,7 @@ double GAFitter::stimulate(unsigned int extra_assignments)
         for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
             daq->next();
     } else if ( rd.settleDuration > 0 ) {
+        lib.resizeTarget(1, rd.settleDuration/rd.dt);
         for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ ) {
             daq->next();
             lib.target[iT] = daq->voltage;
@@ -171,6 +172,7 @@ double GAFitter::stimulate(unsigned int extra_assignments)
         lib.assignment |= ASSIGNMENT_SETTLE_ONLY;
         lib.pushTarget();
         lib.run();
+        lib.resizeTarget(1, I.duration);
     }
 
     // Step DAQ through full stimulation
