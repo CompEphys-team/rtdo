@@ -113,11 +113,6 @@ protected:
     const static QString action;
     const static quint32 magic, version;
 
-
-
-// *************** cluster / DE stuff ************************ //
-    std::vector<std::vector<std::vector<Section>>> constructClustersByStim(std::vector<Stimulation> astims);
-
     void procreateDE();
     std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
     std::vector<double> DEpX;
