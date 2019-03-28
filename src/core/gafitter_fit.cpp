@@ -28,11 +28,13 @@ quint32 GAFitter::findNextStim()
     // Exclude stims with fixed parameter value (constraints==2)
     // translate stimIdx to point to a contiguous array of the actually used stimulations
     quint32 nStims = 0, previousStimIdx = 0;
-    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-        if ( settings.constraints[i] < 2 ) {
-            ++nStims;
-            if ( i < targetParam )
-                ++previousStimIdx;
+    if ( settings.mutationSelectivity == 2 ) { // Only do this for target-only mutation - graded and nonspecific use all stims, always
+        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+            if ( settings.constraints[i] < 2 ) {
+                ++nStims;
+                if ( i < targetParam )
+                    ++previousStimIdx;
+            }
         }
     }
 
@@ -82,9 +84,10 @@ quint32 GAFitter::findNextStim()
         nextStimIdx = (previousStimIdx + 1) % nStims;
 
     // Translate nextStimIdx back to index into full stim array
-    for ( size_t i = 0; i <= nextStimIdx; i++ )
-        if ( settings.constraints[i] >= 2 )
-            ++nextStimIdx;
+    if ( settings.mutationSelectivity == 2 )
+        for ( size_t i = 0; i <= nextStimIdx; i++ )
+            if ( settings.constraints[i] >= 2 )
+                ++nextStimIdx;
 
     return nextStimIdx;
 }
