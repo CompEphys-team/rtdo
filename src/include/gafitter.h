@@ -87,7 +87,7 @@ protected:
     quint32 epoch;
     std::vector<double> bias;
 
-    void setup();
+    void setup(bool ad_hoc_stims = false);
     double fit();
 
     void populate();

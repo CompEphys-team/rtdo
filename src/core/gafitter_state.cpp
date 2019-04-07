@@ -1,7 +1,7 @@
 #include "gafitter.h"
 #include "session.h"
 
-void GAFitter::setup()
+void GAFitter::setup(bool ad_hoc_stims)
 {
     int nParams = lib.adjustableParams.size();
     int nStims = astims.size();
@@ -28,7 +28,11 @@ void GAFitter::setup()
     baseF.resize(nStims, std::vector<double>(nParams, 0));
 
     QString obsSource = QString::fromStdString(settings.obsSource);
-    if ( obsSource == Wavegen::cluster_action || obsSource == Wavegen::bubble_action ) {
+    if ( ad_hoc_stims ) {
+        iObservations obsAll = {{}, {}};
+        obsAll.stop[0] = iStimData(session.stimulationData(), session.runData().dt).iDuration;
+        obs.assign(nStims, obsAll);
+    } else if ( obsSource == Wavegen::cluster_action || obsSource == Wavegen::bubble_action ) {
         auto elites = session.wavegen().findObservations(output.stimSource.iStimulations(session.runData().dt), obsSource);
         std::vector<Stimulation> astims_ordered(nStims);
         for ( int stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
