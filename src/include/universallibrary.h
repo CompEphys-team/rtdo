@@ -98,6 +98,7 @@ public:
         scalar *noiseExp;
         scalar *noiseAmplitude;
         int *summaryOffset;
+        int *cl_blocksize;
 
         std::function<void(void*, void*, size_t, int)> pushV;
         std::function<void(void*, void*, size_t, int)> pullV;
@@ -325,6 +326,7 @@ public:
     scalar &noiseExp;
     scalar &noiseAmplitude;
     int &summaryOffset;
+    int &cl_blocksize;
 
     scalar *&target;
     scalar *&output;

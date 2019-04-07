@@ -41,6 +41,7 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     noiseExp(light ? dummyScalar : *pointers.noiseExp),
     noiseAmplitude(light ? dummyScalar : *pointers.noiseAmplitude),
     summaryOffset(light ? dummyInt : *pointers.summaryOffset),
+    cl_blocksize(light ? dummyInt : *pointers.cl_blocksize),
 
     target(light ? dummyScalarPtr : *pointers.target),
     output(light ? dummyScalarPtr : *pointers.output),
@@ -132,7 +133,8 @@ void UniversalLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("targetStride", "", "int"),
         Variable("noiseExp"),
         Variable("noiseAmplitude"),
-        Variable("summaryOffset", "", "int")
+        Variable("summaryOffset", "", "int"),
+        Variable("cl_blocksize", "", "int")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -181,6 +183,8 @@ std::string UniversalLibrary::simCode()
     ss << endl << "#ifndef _" << model.name() << "_neuronFnct_cc" << endl;
 
     ss << R"EOF(
+// Ensure inclusion of unreferenced: $(cl_blocksize)
+
 scalar mdt = $(dt) / $(simCycles);
 scalar hP = 0.;
 
@@ -459,6 +463,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     for ( const Variable &p : globals ) {
         ss << "    pointers." << p.name << " =& " << p.name << SUFFIX << ";" << endl;
     }
+    ss << "    *pointers.cl_blocksize = NMODELS;" << endl;
 
     ss << "    lib.stim.v = stim" << SUFFIX << ";" << endl;
     ss << "    lib.stim.d_v = d_stim" << SUFFIX << ";" << endl;
