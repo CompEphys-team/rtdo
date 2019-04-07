@@ -73,6 +73,9 @@
 #define ASSIGNMENT_PC_PIN_4     static_cast<unsigned int>(0x3  << ASSIGNMENT_PC_PIN__SHIFT) /* Pin 3 following threads to local lane 0 voltage, rather than lib.target; lane 0 not pinned */
 #define ASSIGNMENT_PC_PIN_2     static_cast<unsigned int>(0x1  << ASSIGNMENT_PC_PIN__SHIFT) /* Pin odd threads to their next lower even thread's voltage, rather than lib.target; even threads not pinned */
 
+// Bit 27: Report first spike time to summary for closed-loop
+#define ASSIGNMENT_REPORT_FIRST_SPIKE           static_cast<unsigned int>(0x1 << 27) /* Report first time state.V > 10, then bail */
+
 class UniversalLibrary
 {
 public:
