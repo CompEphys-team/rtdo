@@ -210,3 +210,8 @@ void GAFitterWidget::on_VCCreate_clicked()
     for ( const Stimulation &I : stims )
         meta << I << std::endl;
 }
+
+void GAFitterWidget::on_cl_run_clicked()
+{
+    session.gaFitter().cl_run();
+}
