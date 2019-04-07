@@ -430,6 +430,9 @@ struct GAFitterSettings {
 
     double chunkDuration = 0; // Live DAQ: target data chunk size in ms
 
+    int cl_nStims = 64; // Closed loop: Number of stims to test against each other
+    int cl_nSelect = 2; // Closed loop: Number of stims to select from each probe batch
+
     // Retired values
     bool useLikelihood = false; // Retired 6 Nov 2018
     bool useClustering = false; // Retired 9 Jan 2019

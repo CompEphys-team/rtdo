@@ -149,6 +149,8 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.mutationSelectivity", &q_settings, &Settings::gafs, &GAFitterSettings::mutationSelectivity);
     addAP(gafAP, "S.GAFitter.obsSource", &q_settings, &Settings::gafs, &GAFitterSettings::obsSource);
     addAP(gafAP, "S.GAFitter.chunkDuration", &q_settings, &Settings::gafs, &GAFitterSettings::chunkDuration);
+    addAP(gafAP, "S.GAFitter.cl_nStims", &q_settings, &Settings::gafs, &GAFitterSettings::cl_nStims);
+    addAP(gafAP, "S.GAFitter.cl_nSelect", &q_settings, &Settings::gafs, &GAFitterSettings::cl_nSelect);
 
     addAP(cdaqAP, "rec.Iidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Iidx);
     addAP(cdaqAP, "rec.Vidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Vidx);
