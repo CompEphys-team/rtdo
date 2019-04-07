@@ -145,10 +145,13 @@ __device__ unsigned int compare_within_partition(const Parameters myContrib,
 }
 
 /**
- * @brief compare_within_partition compares all sections in a partition to each other, recording a similarity for each
- * @param myContrib is a section's deviation vector
+ * @brief compare_between_partitions compares each section in one partition to all sections of another partition, setting mask bits in both
+ * @param reference is the reference partition's deviation vector, warp-aligned (section i in thread i)
+ * @param target is the target partition's deviation vector, warp-aligned
+ * @param ref_norm is the reference vector's precomputed norm
  * @param dotp_threshold
- * @return a bitmask flagging each above-threshold similar section
+ * @param target_mask is a reference to the target partition's mask and will be populated with the appropriate set bits
+ * @return the reference partition's bitmask flagging each above-threshold similar section in target
  */
 __device__ unsigned int compare_between_partitions(const Parameters reference,
                                                    Parameters target,
