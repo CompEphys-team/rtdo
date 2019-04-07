@@ -86,7 +86,8 @@ SOURCES += \
     src/core/wavegen_cluster.cpp \
     src/core/gafitter_procreate.cpp \
     src/core/gafitter_fit.cpp \
-    src/core/gafitter_state.cpp
+    src/core/gafitter_state.cpp \
+    src/core/gafitter_closedloop.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \

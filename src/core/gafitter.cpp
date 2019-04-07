@@ -3,6 +3,7 @@
 #include "daqfilter.h"
 
 const QString GAFitter::action = QString("fit");
+const QString GAFitter::cl_action = QString("closedloop");
 const quint32 GAFitter::magic = 0xadb8d269;
 const quint32 GAFitter::version = 108;
 
@@ -65,6 +66,9 @@ void GAFitter::resume(size_t resultIdx, WaveSource src, QString VCRecord, bool r
 
 bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 {
+    if ( action == cl_action )
+        return cl_exec(res, file);
+
     if ( action != this->action )
         return false;
 

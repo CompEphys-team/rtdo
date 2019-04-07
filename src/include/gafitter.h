@@ -65,10 +65,14 @@ public:
     inline QString actorName() const { return "GAFitter"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
 
+    bool cl_exec(Result *res, QFile &file);
+
 public slots:
     void run(WaveSource src, QString VCRecord = "", bool readRecConfig = false);
     void resume(size_t resultIdx, WaveSource src, QString VCRecord = "", bool readRecConfig = false);
     void finish();
+
+    void cl_run();
 
 signals:
     void starting();
@@ -89,6 +93,11 @@ protected:
 
     void setup(bool ad_hoc_stims = false);
     double fit();
+
+    void cl_fit(QFile &file);
+    void cl_settle();
+    std::vector<iStimulation> cl_findStims();
+    void cl_stimulate(bool summaryPersist);
 
     void populate();
 
@@ -113,7 +122,7 @@ protected:
     std::vector<Output> m_results;
     Output output;
 
-    const static QString action;
+    const static QString action, cl_action;
     const static quint32 magic, version;
 
     void procreateDE();
