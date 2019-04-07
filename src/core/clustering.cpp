@@ -373,7 +373,7 @@ std::vector<std::vector<scalar*>> getDetunedDiffTraces(const std::vector<iStimul
         lib.obs[tid] = obs;
     }
 
-    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_LANE0;
+    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_LANE0 | ASSIGNMENT_TIMESERIES_ABS;
 
     lib.push();
     lib.run();

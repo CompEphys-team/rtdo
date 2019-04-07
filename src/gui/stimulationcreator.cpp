@@ -505,6 +505,7 @@ void StimulationCreator::diagnose()
     g->setName("Mean deviation");
     g->setData(keys, mean, true);
     g->setPen(QPen(Qt::gray));
+    g->setBrush(QBrush(Qt::lightGray));
     makeHidable(g);
 
     g = ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
