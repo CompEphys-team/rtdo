@@ -52,6 +52,8 @@ void StimulationDataDialog::importData()
     ui->mutaNumber->setValue(p.muta.lNumber);
     ui->mutaSwap->setValue(p.muta.lSwap);
     ui->mutaType->setValue(p.muta.lType);
+
+    ui->endWithRamp->setChecked(p.endWithRamp);
 }
 
 void StimulationDataDialog::exportData()
@@ -75,6 +77,8 @@ void StimulationDataDialog::exportData()
     p.muta.lNumber = ui->mutaNumber->value();
     p.muta.lSwap = ui->mutaSwap->value();
     p.muta.lType = ui->mutaType->value();
+
+    p.endWithRamp = ui->endWithRamp->isChecked();
 
     WavegenData wd = session.qWavegenData();
     bool wdChanged = false;

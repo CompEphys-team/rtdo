@@ -126,6 +126,7 @@ void Session::addAPs()
     addAP(stimAP, "S.Stimulation.muta.sdLevel", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::sdLevel);
     addAP(stimAP, "S.Stimulation.muta.sdTime", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::sdTime);
     addAP(stimAP, "S.Stimulation.muta.std", &q_settings, &Settings::stimd, &StimulationData::muta, &MutationData::std);
+    addAP(stimAP, "S.Stimulation.endWithRamp", &q_settings, &Settings::stimd, &StimulationData::endWithRamp);
 
     addAP(gafAP, "S.GAFitter.maxEpochs", &q_settings, &Settings::gafs, &GAFitterSettings::maxEpochs);
     addAP(gafAP, "S.GAFitter.randomOrder", &q_settings, &Settings::gafs, &GAFitterSettings::randomOrder);

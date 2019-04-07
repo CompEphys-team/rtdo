@@ -98,6 +98,10 @@ tryagain:
             failedPos = 0;
         }
     }
+
+    if ( stimd.endWithRamp && I.size() < Stimulation::maxSteps )
+        I.insert(I.end()-1, iStimulation::Step{istimd.iDuration, session.RNG.uniform(stimd.minVoltage, stimd.maxVoltage), true});
+
     assert(validStim(I, istimd, stimd));
     return I;
 }

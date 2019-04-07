@@ -269,6 +269,7 @@ struct StimulationData
     scalar maxVoltage = 50;
     scalar baseV = -60;
     MutationData muta;
+    bool endWithRamp = false;
 };
 struct iStimData
 {
