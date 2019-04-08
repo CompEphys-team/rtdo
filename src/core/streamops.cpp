@@ -102,7 +102,7 @@ QDataStream &operator>>(QDataStream &is, iStimulation &stim)
     quint32 steps;
     qint32 dur, begin, end;
     is >> stim.baseV >> dur;
-    if ( dur < 0 ) // Hackiest backcompat ever.
+    if ( dur <= 0 ) // Hackiest backcompat ever.
         dur = -dur;
     else
         is >> begin >> end;
