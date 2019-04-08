@@ -250,6 +250,8 @@ void GAFitter::cl_stimulate(bool summaryPersist)
     if ( summaryPersist )
         lib.assignment |= ASSIGNMENT_SUMMARY_PERSIST;
 
+    lib.target[0] = aI.duration;
+
     // Initiate DAQ stimulation
     daq->reset();
     daq->run(aI, rd.settleDuration);
