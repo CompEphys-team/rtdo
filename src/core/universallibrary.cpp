@@ -369,7 +369,7 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                 summary += ($(assignment) & ASSIGNMENT_SUMMARY_SQUARED) ? (double(diff)*diff) : fabs(diff);
             }
 
-            if ( $(assignment) & ASSIGNMENT_REPORT_FIRST_SPIKE && value > -10.0 && summary == 0 ) {
+            if ( ($(assignment) & ASSIGNMENT_REPORT_FIRST_SPIKE) && value > -10.0 && summary == 0 ) {
                 summary = t - dd_target[0];
                 if ( $(assignment) & ASSIGNMENT_SUMMARY_SQUARED )
                     summary *= summary;
