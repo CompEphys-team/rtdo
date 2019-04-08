@@ -57,6 +57,8 @@ public:
             std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
             std::vector<double> DEpX;
         } resume;
+
+        bool closedLoop = false;
     };
 
     inline const std::vector<Output> &results() const { return m_results; }

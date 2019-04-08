@@ -5,7 +5,7 @@
 const QString GAFitter::action = QString("fit");
 const QString GAFitter::cl_action = QString("closedloop");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 108;
+const quint32 GAFitter::version = 109;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -193,6 +193,8 @@ void GAFitter::save(QFile &file)
             os << n;
         for ( const double &p : out.resume.DEpX )
             os << p;
+
+        os << out.closedLoop;
     }
 }
 
@@ -204,7 +206,7 @@ void GAFitter::finish()
 
 Result *GAFitter::load(const QString &act, const QString &, QFile &results, Result r)
 {
-    if ( act != action )
+    if ( act != action && act != cl_action )
         throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
     QDataStream is;
     quint32 ver = openLoadStream(results, is, magic);
@@ -305,6 +307,9 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
         for ( double &p : out.resume.DEpX )
             is >> p;
     }
+
+    if ( ver >= 109 )
+        is >> out.closedLoop;
 
     return p_out;
 }

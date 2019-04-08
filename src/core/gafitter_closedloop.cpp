@@ -33,18 +33,44 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
 
     output = std::move(*static_cast<Output*>(res));
     delete res;
+    output.closedLoop = true;
 
     emit starting();
 
-    astims = output.stimSource.stimulations();
+    astims = output.stimSource.stimulations(); // Required for setup only
 
     daq = new DAQFilter(session, session.getSettings());
+
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+        output.targets[i] = lib.adjustableParams[i].initial;
 
     setup(true);
 
     populate();
 
     cl_fit(file);
+
+    // Resumability
+    output.resume.population.assign(lib.adjustableParams.size(), std::vector<scalar>(lib.NMODELS));
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+        for ( size_t j = 0; j < lib.NMODELS; j++ )
+            output.resume.population[i][j] = lib.adjustableParams[i][j];
+    output.resume.bias = bias;
+    output.resume.DEMethodUsed = DEMethodUsed;
+    output.resume.DEMethodSuccess = DEMethodSuccess;
+    output.resume.DEMethodFailed = DEMethodFailed;
+    output.resume.DEpX = DEpX;
+
+    // Finish
+    output.epochs = epoch;
+    m_results.push_back(std::move(output));
+    emit done();
+
+    // Save
+    save(file);
+
+    delete daq;
+    daq = nullptr;
 
     return true;
 }
