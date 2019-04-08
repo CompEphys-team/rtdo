@@ -220,5 +220,8 @@ void GAFitterWidget::on_VCCreate_clicked()
 
 void GAFitterWidget::on_cl_run_clicked()
 {
-    session.gaFitter().cl_run();
+    if ( ui->resume->isChecked() )
+        session.gaFitter().cl_resume(ui->resumeSrc->currentIndex());
+    else
+        session.gaFitter().cl_run();
 }

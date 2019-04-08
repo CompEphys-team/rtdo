@@ -75,6 +75,7 @@ public slots:
     void finish();
 
     void cl_run();
+    void cl_resume(size_t fitIdx);
 
 signals:
     void starting();

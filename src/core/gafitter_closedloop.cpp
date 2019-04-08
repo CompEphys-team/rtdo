@@ -18,6 +18,14 @@ void GAFitter::cl_run()
     session.queue(actorName(), cl_action, QString(), new Output(session, src, QString("")));
 }
 
+void GAFitter::cl_resume(size_t fitIdx)
+{
+    if ( fitIdx >= results().size() )
+        return;
+    Output *out = new Output(m_results[fitIdx]);
+    session.queue(actorName(), cl_action, QString("Resume %1").arg(m_results[fitIdx].resultIndex, 4, 10, QChar('0')), out);
+}
+
 bool GAFitter::cl_exec(Result *res, QFile &file)
 {
     if ( settings.mutationSelectivity != 0 ) {
