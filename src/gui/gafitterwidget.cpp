@@ -85,7 +85,14 @@ void GAFitterWidget::on_start_clicked()
     }
     WaveSource src = session.wavesets().sources().at(currentSource);
 
-    if ( session.qDaqData().simulate == -1 ) {
+    if ( ui->resume->isChecked() ) {
+        QStringList recs = ui->VCRecord->toPlainText().split('\n', QString::SkipEmptyParts);
+        QString VCRecord = recs.isEmpty() ? QString() : recs.first();
+        for ( int i = 0; i < ui->repeats->value(); i++ ) {
+            session.gaFitter().resume(ui->resumeSrc->currentIndex(), src, VCRecord, ui->VCReadCfg->isChecked());
+            ++nQueued;
+        }
+    } else if ( session.qDaqData().simulate == -1 ) {
         for ( const QString &record : ui->VCRecord->toPlainText().split('\n', QString::SkipEmptyParts) ) {
             for ( int i = 0; i < ui->repeats->value(); i++ ) {
                 session.gaFitter().run(src, record.trimmed(), ui->VCReadCfg->isChecked());
