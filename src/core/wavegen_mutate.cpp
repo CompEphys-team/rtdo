@@ -6,7 +6,7 @@ inline bool validStim(iStimulation I, const iStimData &istimd, const Stimulation
 {
     bool valid = ((int)I.size() >= stimd.minSteps) && ((int)I.size() <= stimd.maxSteps);
     for ( auto it = I.begin(); it != I.end(); it++ ) {
-        valid &= (it->t >= istimd.iMinStep) && (it->t <= istimd.iDuration - istimd.iMinStep);
+        valid &= (it->t >= istimd.iMinStep) && it->t <= istimd.iDuration;
         if ( it != I.begin() ) {
             valid &= (it->t - (it-1)->t >= istimd.iMinStep);
         }
