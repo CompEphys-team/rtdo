@@ -46,6 +46,8 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
 
     emit starting();
 
+    qT = 0;
+
     astims = output.stimSource.stimulations(); // Required for setup only
 
     daq = new DAQFilter(session, session.getSettings());
