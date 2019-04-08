@@ -62,7 +62,7 @@ public:
     };
 
     inline const std::vector<Output> &results() const { return m_results; }
-    Output currentResults() const { return output; }
+    Output currentResults() const { QMutexLocker locker(&mutex); if ( running) return output; else return m_results.back(); }
 
     inline QString actorName() const { return "GAFitter"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
@@ -89,6 +89,7 @@ protected:
     DAQFilter *daq;
 
     bool doFinish;
+    bool running = false;
 
     quint32 targetStim;
     quint32 epoch;

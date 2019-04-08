@@ -33,15 +33,16 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
         return false;
     }
 
+    output = std::move(*static_cast<Output*>(res));
+    delete res;
+    output.closedLoop = true;
+
     {
         QMutexLocker locker(&mutex);
         doFinish = false;
         aborted = false;
+        running = true;
     }
-
-    output = std::move(*static_cast<Output*>(res));
-    delete res;
-    output.closedLoop = true;
 
     emit starting();
 
@@ -71,7 +72,11 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
 
     // Finish
     output.epochs = epoch;
-    m_results.push_back(std::move(output));
+    {
+        QMutexLocker locker(&mutex);
+        m_results.push_back(std::move(output));
+        running = false;
+    }
     emit done();
 
     // Save

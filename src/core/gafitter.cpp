@@ -72,12 +72,6 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     if ( action != this->action )
         return false;
 
-    {
-        QMutexLocker locker(&mutex);
-        doFinish = false;
-        aborted = false;
-    }
-
     output = std::move(*static_cast<Output*>(res));
     delete res;
 
@@ -89,6 +83,13 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     if ( output.dryrun ) {
         save(file);
         return true;
+    }
+
+    {
+        QMutexLocker locker(&mutex);
+        doFinish = false;
+        aborted = false;
+        running = true;
     }
 
     emit starting();
@@ -142,7 +143,11 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     // Finish
     output.epochs = epoch;
-    m_results.push_back(std::move(output));
+    {
+        QMutexLocker locker(&mutex);
+        m_results.push_back(std::move(output));
+        running = false;
+    }
     emit done();
 
     // Save

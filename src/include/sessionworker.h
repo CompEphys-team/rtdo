@@ -25,7 +25,7 @@ protected:
     virtual Result *load(const QString &action, const QString &args, QFile &results, Result r) = 0;
 
     bool aborted = false;
-    QMutex mutex;
+    mutable QMutex mutex;
 
     inline bool isAborted() { QMutexLocker locker(&mutex); return aborted; }
     inline void clearAbort() { QMutexLocker locker(&mutex); aborted = false; }
