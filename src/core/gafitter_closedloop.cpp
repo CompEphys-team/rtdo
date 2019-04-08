@@ -1,6 +1,7 @@
 #include "gafitter.h"
 #include "session.h"
 #include "supportcode.h"
+#include <QTextStream>
 
 void GAFitter::cl_run()
 {
@@ -50,8 +51,6 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
 
 void GAFitter::cl_fit(QFile &file)
 {
-    std::vector<iStimulation> selectedStims;
-
     // Set up complete observation once (saves doing it over and over in cl_findStims())
     lib.setSingularStim(false);
     for ( int i = 0; i < settings.cl_nStims; i++ )
@@ -62,7 +61,7 @@ void GAFitter::cl_fit(QFile &file)
         cl_settle();
 
         // Find some stimulations
-        selectedStims = cl_findStims();
+        std::vector<iStimulation> selectedStims = cl_findStims(file);
 
         int i = 0;
         for ( iStimulation &pick : selectedStims ) {
@@ -74,6 +73,22 @@ void GAFitter::cl_fit(QFile &file)
 
         // Advance
         lib.pullSummary();
+
+        {
+            QString epoch_file = QString("%1.%2.models").arg(file.fileName()).arg(epoch);
+            std::ofstream os(epoch_file.toStdString());
+            os << "idx\terr";
+            for ( const AdjustableParam &p : lib.adjustableParams )
+                os << '\t' << p.name;
+            os << '\n';
+            for ( size_t i = 0; i < lib.NMODELS; i++ ) {
+                os << i << '\t' << lib.summary[i];
+                for ( const AdjustableParam &p : lib.adjustableParams )
+                    os << '\t' << p[i];
+                os << '\n';
+            }
+        }
+
         if ( settings.useDE )
             procreateDE();
         else
@@ -110,9 +125,12 @@ void GAFitter::cl_settle()
     lib.run();
 }
 
-std::vector<iStimulation> GAFitter::cl_findStims()
+std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
 {
     lib.cl_blocksize = lib.NMODELS / settings.cl_nStims;
+
+    QString epoch_file = QString("%1.%2.stims").arg(base.fileName()).arg(epoch);
+    std::ofstream os(epoch_file.toStdString());
 
     const RunData &rd = session.runData();
     iStimData istimd(session.stimulationData(), rd.dt);
@@ -151,13 +169,17 @@ std::vector<iStimulation> GAFitter::cl_findStims()
         }
         variance[stimIdx].err /= lib.cl_blocksize;
         variance[stimIdx].idx = stimIdx;
+
+        os << stimIdx << '\t' << mean << '\t' << variance[stimIdx].err << '\n' << lib.stim[stimIdx] << '\n' << '\n';
     }
 
     // Pick the nSelect highest variance stimulations to return. Note, ascending sort
     std::sort(variance.begin(), variance.end(), &errTupelSort);
     std::vector<iStimulation> ret(settings.cl_nSelect);
     for ( int i = 0; i < settings.cl_nSelect; i++ ) {
-        ret[i] = lib.stim[variance[settings.cl_nStims - i - 1].idx];
+        int stimIdx = variance[settings.cl_nStims - i - 1].idx;
+        ret[i] = lib.stim[stimIdx];
+        os << "Picked stim # " << stimIdx << '\n';
     }
 
     lib.cl_blocksize = lib.NMODELS;
