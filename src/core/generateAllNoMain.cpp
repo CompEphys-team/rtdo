@@ -181,13 +181,13 @@ void genNeuronKernel(NNmodel &model, string &path)
             std::string ass = std::string("assignment") + model.neuronName[i];
             for ( const TypedVariableBase *var : pModel->singular_stim_vars )
                 os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_STIM) ? singular_" << var->name << " : dd_"
-                   << var->name << model.neuronName[i] << "[" << localID << " % cl_blocksizeUNI];" << ENDL;
+                   << var->name << model.neuronName[i] << "[" << localID << " / cl_blocksizeUNI];" << ENDL;
             for ( const TypedVariableBase *var : pModel->singular_rund_vars )
                 os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_RUND) ? singular_" << var->name << " : dd_"
                    << var->name << model.neuronName[i] << "[" << localID << " % cl_blocksizeUNI];" << ENDL;
             for ( const TypedVariableBase *var : pModel->singular_target_vars )
                 os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_TARGET) ? singular_" << var->name << " : dd_"
-                   << var->name << model.neuronName[i] << "[" << localID << " % cl_blocksizeUNI];" << ENDL;
+                   << var->name << model.neuronName[i] << "[" << localID << " / cl_blocksizeUNI];" << ENDL;
         }
         os << ENDL;
 /// ************************** RTDO edit ends **************************************************
