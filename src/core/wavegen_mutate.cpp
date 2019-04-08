@@ -100,7 +100,7 @@ tryagain:
     }
 
     if ( stimd.endWithRamp ) {
-        if ( I.size() < Stimulation::maxSteps )
+        if ( I.size() < stimd.maxSteps )
             I.insert(I.end(), iStimulation::Step{istimd.iDuration, session.RNG.uniform(stimd.minVoltage, stimd.maxVoltage), true});
         else {
             (I.end()-1)->t = istimd.iDuration;
