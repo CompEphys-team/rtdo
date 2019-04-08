@@ -215,6 +215,7 @@ struct TypedVariable : TypedVariableBase
     bool singular = false;
 
     inline T &operator[](std::size_t i) { return v[i]; }
+    inline T operator[](std::size_t i) const { return v[i]; }
     inline T &operator*() { return v[0]; }
 };
 
