@@ -96,6 +96,7 @@ void GAFitter::cl_fit(QFile &file)
     lib.setSingularStim(false);
     for ( int i = 0; i < settings.cl_nStims; i++ )
         lib.obs[i] = obs[0];
+    lib.push(lib.obs);
     stims[0].baseV = session.stimulationData().baseV;
 
     for ( epoch = 0; !finished(); epoch++ ) {
