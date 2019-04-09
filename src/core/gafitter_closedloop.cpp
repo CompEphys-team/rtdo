@@ -256,7 +256,7 @@ void GAFitter::cl_stimulate(bool summaryPersist)
     if ( summaryPersist )
         lib.assignment |= ASSIGNMENT_SUMMARY_PERSIST;
 
-    lib.target[0] = aI.duration;
+    lib.target[0] = -1;
 
     // Initiate DAQ stimulation
     daq->reset();
@@ -271,16 +271,21 @@ void GAFitter::cl_stimulate(bool summaryPersist)
         daq->next();
         pushToQ(qT + rd.settleDuration + iT*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iT*rd.dt));
 //        lib.target[iT] = rd.VC ? daq->current : daq->voltage;
-        if ( daq->voltage > -10. ) {
+        if ( daq->voltage > -10. && lib.target[0] < 0 ) {
+            // Run lib to first spike
             lib.target[0] = iT*rd.dt;
-            break;
+            lib.pushTarget(-1, 1);
+            lib.run();
         }
     }
     daq->reset();
 
-    // Stimulate lib - no settling, this is done externally
-    lib.pushTarget(-1, 1);
-    lib.run();
+    // No spike detected, assume first spike is at I.duration
+    if ( lib.target[0] < 0 ) {
+        lib.target[0] = aI.duration;
+        lib.pushTarget(-1, 1);
+        lib.run();
+    }
 
     qT += rd.settleDuration + I.duration * rd.dt;
 }
