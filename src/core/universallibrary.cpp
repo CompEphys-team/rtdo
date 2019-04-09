@@ -374,7 +374,6 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                 if ( $(assignment) & ASSIGNMENT_SUMMARY_SQUARED )
                     summary *= summary;
                 iT = $(obs).stop[nextObs];
-                nextObs = iObservations::maxObs;
                 break;
             }
 
