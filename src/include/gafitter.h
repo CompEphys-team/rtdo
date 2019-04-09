@@ -101,7 +101,7 @@ protected:
     void cl_fit(QFile &file);
     void cl_settle();
     std::vector<iStimulation> cl_findStims(QFile&);
-    void cl_stimulate(bool summaryPersist);
+    void cl_stimulate(QFile &file, int stimIdx);
 
     void populate();
 

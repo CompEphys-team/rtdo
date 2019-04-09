@@ -113,7 +113,7 @@ void GAFitter::cl_fit(QFile &file)
             stims[0] = pick;
             astims[0] = Stimulation(pick, session.runData().dt);
 
-            cl_stimulate(i++);
+            cl_stimulate(file, i++);
 
             if ( finished() )
                 break;
@@ -234,26 +234,24 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
     return ret;
 }
 
-void GAFitter::cl_stimulate(bool summaryPersist)
+void GAFitter::cl_stimulate(QFile &file, int stimIdx)
 {
     const RunData &rd = session.runData();
     const Stimulation &aI = astims[targetStim];
     iStimulation I = stims[targetStim];
+
+    QString epoch_file = QString("%1.%2.stim_%3.trace").arg(file.fileName()).arg(epoch).arg(stimIdx);
+    std::ofstream os(epoch_file.toStdString());
 
     // Set up library
     lib.setSingularStim();
     lib.stim[0] = I;
     lib.push(lib.stim);
 
-//    lib.assignment = lib.assignment_base
-//            | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED;
-//    if ( !rd.VC )
-//        lib.assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN;
-
     lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_FIRST_SPIKE | ASSIGNMENT_SUMMARY_SQUARED;
     if ( !rd.VC )
         lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
-    if ( summaryPersist )
+    if ( stimIdx > 0 )
         lib.assignment |= ASSIGNMENT_SUMMARY_PERSIST;
 
     lib.target[0] = -1;
@@ -266,10 +264,13 @@ void GAFitter::cl_stimulate(bool summaryPersist)
     for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ ) {
         daq->next();
         pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, I.baseV);
+        os << iT*rd.dt << '\t' << I.baseV << '\t' << daq->voltage << '\n';
     }
     for ( int iT = 0; iT < I.duration; iT++ ) {
         daq->next();
-        pushToQ(qT + rd.settleDuration + iT*rd.dt, daq->voltage, daq->current, getCommandVoltage(aI, iT*rd.dt));
+        scalar t = rd.settleDuration + iT*rd.dt;
+        scalar command = getCommandVoltage(aI, iT*rd.dt);
+        pushToQ(qT + t, daq->voltage, daq->current, command);
 //        lib.target[iT] = rd.VC ? daq->current : daq->voltage;
         if ( daq->voltage > -10. && lib.target[0] < 0 ) {
             // Run lib to first spike
@@ -277,6 +278,7 @@ void GAFitter::cl_stimulate(bool summaryPersist)
             lib.pushTarget(-1, 1);
             lib.run();
         }
+        os << t << '\t' << command << '\t' << daq->voltage << '\n';
     }
     daq->reset();
 
