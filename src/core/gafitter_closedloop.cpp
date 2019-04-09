@@ -177,17 +177,17 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
     const RunData &rd = session.runData();
     iStimData istimd(session.stimulationData(), rd.dt);
 
-    // Set up library
-    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_FIRST_SPIKE;
-    if ( !rd.VC )
-        lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
-
     // Put in some random stims
     lib.setSingularStim(false);
     for ( int i = 0; i < settings.cl_nStims; i++ ) {
         lib.stim[i] = session.wavegen().getRandomStim(session.stimulationData(), istimd);
     }
     lib.push(lib.stim);
+
+    // Set up library
+    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_FIRST_SPIKE;
+    if ( !rd.VC )
+        lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
 
     // Target spike time is 0:
     lib.target[0] = 0;
