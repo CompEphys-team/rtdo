@@ -218,6 +218,16 @@ void MetaModel::readCurrents(const tinyxml2::XMLElement *model)
             c.optGroup = sub->Attribute("group");
             c.option = sub->IntText(1) == 1;
         }
+
+        if ( c.E == nullptr ) {
+            std::cerr << "Model error: Current " << c.name << " does not provide a valid equilibrium potential." << std::endl;
+            exit(1);
+        }
+        if ( c.gbar.empty() ) {
+            std::cerr << "Model error: Current " << c.name << " does not provide a valid gbar." << std::endl;
+            exit(1);
+        }
+
         currentDefs.push_back(c);
     }
 }

@@ -33,7 +33,7 @@ public:
         std::string popen;
         scalar gUnit = 0.02;
         std::vector<Variable*> gbar;
-        Variable *E;
+        Variable *E = nullptr;
         std::string optGroup;
         bool option;
     };
