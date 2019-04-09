@@ -202,21 +202,20 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
     lib.run();
     lib.pullSummary();
 
-    errTupel foo;
-    foo.err = 0;
-    std::vector<errTupel> variance(settings.cl_nStims, foo);
+    std::vector<errTupel> variance(settings.cl_nStims);
     for ( int stimIdx = 0; stimIdx < settings.cl_nStims; stimIdx++ ) {
         double mean = 0;
         for ( int i = 0; i < lib.cl_blocksize; i++ )
             mean += lib.summary[stimIdx*lib.cl_blocksize + i];
         mean /= lib.cl_blocksize;
 
+        variance[stimIdx].idx = stimIdx;
+        variance[stimIdx].err = 0;
         for ( int i = 0; i < lib.cl_blocksize; i++ ) {
             double delta = mean - lib.summary[stimIdx*lib.cl_blocksize + i];
             variance[stimIdx].err += delta*delta;
         }
         variance[stimIdx].err /= lib.cl_blocksize;
-        variance[stimIdx].idx = stimIdx;
 
         os << stimIdx << '\t' << mean << '\t' << variance[stimIdx].err << '\n' << lib.stim[stimIdx] << '\n' << '\n';
     }
