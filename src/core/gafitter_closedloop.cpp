@@ -102,6 +102,9 @@ void GAFitter::cl_fit(QFile &file)
     for ( epoch = 0; !finished(); epoch++ ) {
         cl_settle();
 
+        if ( finished() )
+            break;
+
         // Find some stimulations
         std::vector<iStimulation> selectedStims = cl_findStims(file);
 
@@ -111,6 +114,9 @@ void GAFitter::cl_fit(QFile &file)
             astims[0] = Stimulation(pick, session.runData().dt);
 
             cl_stimulate(i++);
+
+            if ( finished() )
+                break;
         }
 
         // Advance
