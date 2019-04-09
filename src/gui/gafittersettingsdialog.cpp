@@ -24,7 +24,8 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
     ui->constraints->setRowCount(model.adjustableParams.size());
     QStringList labels;
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
-        labels << QString::fromStdString(model.adjustableParams.at(i).name);
+        const AdjustableParam &p = model.adjustableParams.at(i);
+        labels << QString("%1 %2").arg(QString(p.multiplicative ? '*' : '+'), QString::fromStdString(p.name));
 
         QDoubleSpinBox *min = new QDoubleSpinBox(), *max = new QDoubleSpinBox(), *fixed = new QDoubleSpinBox(), *sigma = new QDoubleSpinBox();
         min->setDecimals(6);
@@ -43,10 +44,10 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
             fixed->setEnabled(idx==2);
             sigma->setEnabled(idx == 1 && i < model.nNormalAdjustableParams);
             if ( idx == 4 ) { // Reset
-                min->setValue(model.adjustableParams[i].min);
-                max->setValue(model.adjustableParams[i].max);
-                fixed->setValue(model.adjustableParams[i].initial);
-                sigma->setValue(model.adjustableParams[i].sigma);
+                min->setValue(p.min);
+                max->setValue(p.max);
+                fixed->setValue(p.initial);
+                sigma->setValue(p.sigma);
                 cb->setCurrentIndex(0);
             }
         });
@@ -60,6 +61,45 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
     }
     ui->constraints->setVerticalHeaderLabels(labels);
     ui->constraints->setColumnWidth(0, 75);
+
+    connect(ui->sigma_add_set, &QPushButton::clicked, [=](){
+        for ( int i = 0; i < ui->constraints->rowCount(); i++ )
+            if ( !session.project.model().adjustableParams[i].multiplicative )
+                qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->setValue(ui->sigma_add->value());
+    });
+    connect(ui->sigma_mul_set, &QPushButton::clicked, [=](){
+        for ( int i = 0; i < ui->constraints->rowCount(); i++ )
+            if ( session.project.model().adjustableParams[i].multiplicative )
+                qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->setValue(ui->sigma_mul->value());
+    });
+    connect(ui->range_add_set, &QPushButton::clicked, [=](){
+        for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
+            if ( !session.project.model().adjustableParams[i].multiplicative ) {
+                double baseVal = qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->value();
+                qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(baseVal - ui->range_add->value());
+                qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(baseVal + ui->range_add->value());
+            }
+        }
+    });
+    connect(ui->range_mul_set, &QPushButton::clicked, [=](){
+        for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
+            if ( session.project.model().adjustableParams[i].multiplicative ) {
+                double baseVal = qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->value();
+                double delta = ui->range_mul->value();
+                if ( delta >= 1 ) {
+                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(baseVal / delta);
+                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(baseVal * delta);
+                } else {
+                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(baseVal - baseVal * delta);
+                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(baseVal + baseVal * delta);
+                }
+            }
+        }
+    });
+    connect(ui->constraints_set, &QPushButton::clicked, [=](){
+        for ( int i = 0; i < ui->constraints->rowCount(); i++ )
+            qobject_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(ui->constraints_all->currentIndex());
+    });
 
     importData();
 }
