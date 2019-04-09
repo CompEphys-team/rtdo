@@ -408,6 +408,9 @@ void ComediDAQ::acquisitionLoop(void *vdev, int aidev, int aodev)
         if ( retry )
             continue;
 
+        // Reset output
+        comedi_data_write(dev, aodev, O.idx, O.range, O.aref, V0);
+
         finish.signal();
     }
 }
