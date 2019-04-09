@@ -810,9 +810,8 @@ public:
                 if ( currentCacheEntry->_stim == settlingStim && currentCacheEntry->_VC == rund.VC )
                     break;
             if ( currentCacheEntry == cache.end() ) {
-                clamp.VClamp0 = s.baseV;
-                clamp.dVClamp = 0;
-                clamp.IClamp0 = clamp.dIClamp = 0;
+                clamp.VClamp0 = clamp.IClamp0 = s.baseV;
+                clamp.dVClamp = clamp.dIClamp = 0;
                 RKF45(0, settle, meta_hP, settle, meta_hP, state, params, clamp);
                 currentCacheEntry = cache.insert(currentCacheEntry, CacheStruct(settlingStim, rund.VC, settle, 0));
                 currentCacheEntry->state = state;
