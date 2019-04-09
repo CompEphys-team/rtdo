@@ -401,6 +401,12 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
     ++nextObs;
 }
 
+if ( ($(assignment) & ASSIGNMENT_REPORT_FIRST_SPIKE) && summary == 0 && t == iT*$(dt) ) { // Note: Test for no spike requires break in spike detection, otherwise t is updated correctly
+    summary = iT*$(dt) - dd_target[0];
+    if ( $(assignment) & ASSIGNMENT_SUMMARY_SQUARED )
+        summary *= summary;
+}
+
 if ( $(assignment) & (ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_REPORT_FIRST_SPIKE) && !($(assignment) & ASSIGNMENT_SETTLE_ONLY) ) {
     if ( $(assignment) & ASSIGNMENT_SUMMARY_AVERAGE )
         summary /= nSamples;
