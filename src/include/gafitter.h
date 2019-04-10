@@ -74,8 +74,8 @@ public slots:
     void resume(size_t fitIdx, WaveSource src, QString VCRecord = "", bool readRecConfig = false);
     void finish();
 
-    void cl_run();
-    void cl_resume(size_t fitIdx);
+    void cl_run(WaveSource src);
+    void cl_resume(size_t fitIdx, WaveSource src);
 
 signals:
     void starting();

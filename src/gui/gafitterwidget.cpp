@@ -223,8 +223,14 @@ void GAFitterWidget::on_VCCreate_clicked()
 
 void GAFitterWidget::on_cl_run_clicked()
 {
-    if ( ui->resume->isChecked() )
-        session.gaFitter().cl_resume(ui->resumeSrc->currentIndex());
+    WaveSource src;
+    if ( ui->decks->currentIndex() < 0 )
+        src = ui->decks->itemData(0).value<WaveSource>();
     else
-        session.gaFitter().cl_run();
+        src = ui->decks->currentData().value<WaveSource>();
+
+    if ( ui->resume->isChecked() )
+        session.gaFitter().cl_resume(ui->resumeSrc->currentIndex(), src);
+    else
+        session.gaFitter().cl_run(src);
 }

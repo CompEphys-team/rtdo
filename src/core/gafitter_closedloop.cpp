@@ -3,26 +3,17 @@
 #include "supportcode.h"
 #include <QTextStream>
 
-void GAFitter::cl_run()
+void GAFitter::cl_run(WaveSource src)
 {
-    WaveSource src;
-    std::vector<WaveSource> allSources = session.wavesets().sources();
-    if ( allSources.size() ) {
-        src = allSources[0];
-        src.waveno = 0;
-    } else {
-        WavesetCreator &creator = session.wavesets();
-        session.queue(creator.actorName(), creator.actionManual, "ClosedLoop dummy", new ManualWaveset({iStimulation()}, {iObservations()}));
-        src = WaveSource(session, WaveSource::Manual, 0, 0);
-    }
     session.queue(actorName(), cl_action, QString(), new Output(session, src, QString("")));
 }
 
-void GAFitter::cl_resume(size_t fitIdx)
+void GAFitter::cl_resume(size_t fitIdx, WaveSource src)
 {
     if ( fitIdx >= results().size() )
         return;
     Output *out = new Output(m_results[fitIdx]);
+    out->stimSource = src;
     session.queue(actorName(), cl_action, QString("Resume %1").arg(m_results[fitIdx].resultIndex, 4, 10, QChar('0')), out);
 }
 
@@ -48,7 +39,7 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
 
     qT = 0;
 
-    astims = output.stimSource.stimulations(); // Required for setup only
+    astims.assign(1, {}); // Required for setup only
 
     daq = new DAQFilter(session, session.getSettings());
 
