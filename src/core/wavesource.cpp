@@ -273,8 +273,8 @@ QString WaveSource::prettyName() const
 {
     QString ret;
     switch ( type ) {
-    default:        ret = QString("Unknown source type"); break;
-    case Empty:     ret = QString("No preset stims"); break;
+    default:        return QString("Unknown source type");
+    case Empty:     return QString("No preset stims");
     case Archive:   ret = QString("Archive %2 [%3]: %1").arg(archive()->prettyName()); break;
     case Selection: ret = QString("Selection %2 [%3]: %1").arg(selection()->prettyName()); break;
     case Subset:
