@@ -356,9 +356,7 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                         diff = value;
                     break;
                 case ASSIGNMENT_SUMMARY_COMPARE_PREVTHREAD:
-                    diff = __shfl_up_sync(0xffffffff, value, 1) - value;
-                    if ( (threadIdx.x & 31) == 0 )
-                        diff = value;
+                    diff = __shfl_sync(0xffffffff, value, (threadIdx.x&31)-1) - value;
                     break;
                 case ASSIGNMENT_SUMMARY_COMPARE_NONE:
                 default:
