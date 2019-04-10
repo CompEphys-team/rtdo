@@ -97,7 +97,9 @@ void GAFitter::cl_fit(QFile &file)
     for ( int i = 0; i < settings.cl_nStims; i++ )
         lib.obs[i] = obs[0];
     lib.push(lib.obs);
-    stims[0].baseV = session.stimulationData().baseV;
+
+    lib.SDF_size = settings.SDF_size;
+    lib.SDF_decay = settings.SDF_decay;
 
     for ( epoch = 0; !finished(); epoch++ ) {
         cl_settle();
@@ -191,13 +193,9 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
     lib.push(lib.stim);
 
     // Set up library
-    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_FIRST_SPIKE;
+    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_PREVTHREAD | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_ERRFN;
     if ( !rd.VC )
         lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
-
-    // Target spike time is 0:
-    lib.target[0] = 0;
-    lib.pushTarget(-1, 1);
 
     lib.run();
     lib.pullSummary();
@@ -248,13 +246,11 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     lib.stim[0] = I;
     lib.push(lib.stim);
 
-    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_FIRST_SPIKE | ASSIGNMENT_SUMMARY_SQUARED;
+    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_ERRFN;
     if ( !rd.VC )
         lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
     if ( stimIdx > 0 )
         lib.assignment |= ASSIGNMENT_SUMMARY_PERSIST;
-
-    lib.target[0] = -1;
 
     // Initiate DAQ stimulation
     daq->reset();
@@ -271,23 +267,13 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         scalar t = rd.settleDuration + iT*rd.dt;
         scalar command = getCommandVoltage(aI, iT*rd.dt);
         pushToQ(qT + t, daq->voltage, daq->current, command);
-//        lib.target[iT] = rd.VC ? daq->current : daq->voltage;
-        if ( daq->voltage > -10. && lib.target[0] < 0 ) {
-            // Run lib to first spike
-            lib.target[0] = iT*rd.dt;
-            lib.pushTarget(-1, 1);
-            lib.run();
-        }
         os << t << '\t' << command << '\t' << daq->voltage << '\n';
+        lib.target[iT] = daq->voltage;
     }
     daq->reset();
 
-    // No spike detected, assume first spike is at I.duration
-    if ( lib.target[0] < 0 ) {
-        lib.target[0] = aI.duration;
-        lib.pushTarget(-1, 1);
-        lib.run();
-    }
+    lib.pushTarget();
+    lib.run();
 
     qT += rd.settleDuration + I.duration * rd.dt;
 }
