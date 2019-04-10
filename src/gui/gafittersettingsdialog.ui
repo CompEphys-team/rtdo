@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>848</width>
-    <height>630</height>
+    <height>705</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -493,12 +493,8 @@
       <string>Closed loop settings</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_8">
-      <item row="0" column="1">
-       <widget class="QSpinBox" name="cl_nStims">
-        <property name="maximum">
-         <number>99999</number>
-        </property>
-       </widget>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="cl_nSelect"/>
       </item>
       <item row="0" column="0">
        <widget class="QLabel" name="label_11">
@@ -514,8 +510,49 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="cl_nSelect"/>
+      <item row="0" column="1">
+       <widget class="QSpinBox" name="cl_nStims">
+        <property name="maximum">
+         <number>99999</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_18">
+        <property name="text">
+         <string>SDF size</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_19">
+        <property name="text">
+         <string>SDF decay</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDoubleSpinBox" name="SDF_size">
+        <property name="decimals">
+         <number>2</number>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QDoubleSpinBox" name="SDF_decay">
+        <property name="decimals">
+         <number>6</number>
+        </property>
+        <property name="maximum">
+         <double>1.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.001000000000000</double>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>

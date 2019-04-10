@@ -151,6 +151,8 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.chunkDuration", &q_settings, &Settings::gafs, &GAFitterSettings::chunkDuration);
     addAP(gafAP, "S.GAFitter.cl_nStims", &q_settings, &Settings::gafs, &GAFitterSettings::cl_nStims);
     addAP(gafAP, "S.GAFitter.cl_nSelect", &q_settings, &Settings::gafs, &GAFitterSettings::cl_nSelect);
+    addAP(gafAP, "S.GAFitter.SDF_size", &q_settings, &Settings::gafs, &GAFitterSettings::SDF_size);
+    addAP(gafAP, "S.GAFitter.SDF_decay", &q_settings, &Settings::gafs, &GAFitterSettings::SDF_decay);
 
     addAP(cdaqAP, "rec.Iidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Iidx);
     addAP(cdaqAP, "rec.Vidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Vidx);

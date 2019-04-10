@@ -433,6 +433,8 @@ struct GAFitterSettings {
 
     int cl_nStims = 64; // Closed loop: Number of stims to test against each other
     int cl_nSelect = 2; // Closed loop: Number of stims to select from each probe batch
+    double SDF_size = 100;
+    double SDF_decay = 0.999;
 
     // Retired values
     bool useLikelihood = false; // Retired 6 Nov 2018
