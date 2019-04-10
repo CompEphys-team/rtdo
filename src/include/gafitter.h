@@ -102,7 +102,7 @@ protected:
     void cl_settle();
     std::vector<iStimulation> cl_findStims(QFile&);
     void cl_stimulate(QFile &file, int stimIdx);
-    void cl_record_validation(QFile&);
+    void record_validation(QFile&);
 
     void populate();
 

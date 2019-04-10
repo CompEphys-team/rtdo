@@ -87,7 +87,8 @@ SOURCES += \
     src/core/gafitter_procreate.cpp \
     src/core/gafitter_fit.cpp \
     src/core/gafitter_state.cpp \
-    src/core/gafitter_closedloop.cpp
+    src/core/gafitter_closedloop.cpp \
+    src/core/gafitter_validation.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
