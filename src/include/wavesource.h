@@ -14,7 +14,8 @@ public:
         Selection = 1,
         Subset = 2,
         Deck = 3,
-        Manual = 4
+        Manual = 4,
+        Empty = 5
     };
 
     Type type;
@@ -22,7 +23,7 @@ public:
     int waveno;
     Session *session;
 
-    WaveSource() : waveno(-1), session(nullptr) {}
+    WaveSource() : type(Empty), idx(0), waveno(-1), session(nullptr) {}
     WaveSource(Session &session, Type type, size_t idx, int waveno = -1) : type(type), idx(idx), waveno(waveno), session(&session) {}
 
     const Wavegen::Archive *archive() const;

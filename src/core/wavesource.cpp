@@ -5,6 +5,7 @@ const Wavegen::Archive *WaveSource::archive() const
 {
     switch ( type ) {
     default:
+    case Empty:     return nullptr;
     case Archive:   return &session->wavegen().archives().at(idx);
     case Selection: return &selection()->archive();
     case Subset:    return subset()->src.archive();
@@ -17,6 +18,7 @@ const WavegenSelection *WaveSource::selection() const
 {
     switch ( type ) {
     default:
+    case Empty:
     case Archive:   return nullptr;
     case Selection: return &session->wavesets().selections().at(idx);
     case Subset:    return subset()->src.selection();
@@ -29,6 +31,7 @@ const WaveSubset *WaveSource::subset() const
 {
     switch ( type ) {
     default:
+    case Empty:
     case Archive:
     case Selection: return nullptr;
     case Subset:    return &session->wavesets().subsets().at(idx);
@@ -41,6 +44,7 @@ const WaveDeck *WaveSource::deck() const
 {
     switch ( type ) {
     default:
+    case Empty:
     case Archive:
     case Selection:
     case Subset:
@@ -55,6 +59,7 @@ int WaveSource::resultIndex() const
 {
     switch ( type ) {
     default:
+    case Empty:     return -1;
     case Archive:   return archive()->resultIndex;
     case Selection: return selection()->resultIndex;
     case Subset:    return subset()->resultIndex;
@@ -68,6 +73,8 @@ std::vector<Stimulation> WaveSource::stimulations() const
     std::vector<Stimulation> ret;
     bool shrunk = false;
     switch ( type ) {
+    case Empty:
+        return ret;
     case Archive :
     {
         ret.reserve(archive()->elites.size());
@@ -106,6 +113,8 @@ std::vector<MAPElite> WaveSource::elites() const
 {
     std::vector<MAPElite> ret;
     switch ( type ) {
+    case Empty:
+        return ret;
     case Archive:
     {
         ret.reserve(archive()->elites.size());
@@ -161,6 +170,8 @@ std::vector<iStimulation> WaveSource::iStimulations(double dt) const
     std::vector<iStimulation> ret;
     bool shrunk = false;
     switch ( type ) {
+    case Empty:
+        return ret;
     case Archive :
     {
         ret.reserve(archive()->elites.size());
@@ -218,6 +229,8 @@ std::vector<iObservations> WaveSource::observations(double dt) const
     bool needs_dt_adjustment = false;
 
     switch ( type ) {
+    case Empty:
+        return ret;
     case Archive:
     case Deck:
     case Manual:
@@ -261,6 +274,7 @@ QString WaveSource::prettyName() const
     QString ret;
     switch ( type ) {
     default:        ret = QString("Unknown source type"); break;
+    case Empty:     ret = QString("No preset stims"); break;
     case Archive:   ret = QString("Archive %2 [%3]: %1").arg(archive()->prettyName()); break;
     case Selection: ret = QString("Selection %2 [%3]: %1").arg(selection()->prettyName()); break;
     case Subset:
@@ -293,6 +307,8 @@ int WaveSource::index() const
     case Archive:
     default:
         return i + idx;
+    case Empty:
+        return -1;
     }
 }
 
@@ -301,6 +317,7 @@ QDataStream &operator<<(QDataStream &os, const WaveSource &src)
     os << WaveSource::version << quint32(src.type);
     switch ( src.type ) {
     default:
+    case WaveSource::Empty:     os << quint32(0); break;
     case WaveSource::Archive:   os << quint32(src.session->wavegen().archives().size() - src.idx); break;
     case WaveSource::Selection: os << quint32(src.session->wavesets().selections().size() - src.idx); break;
     case WaveSource::Subset:    os << quint32(src.session->wavesets().subsets().size() - src.idx); break;
@@ -326,6 +343,7 @@ QDataStream &operator>>(QDataStream &is, WaveSource &src)
     src.type = WaveSource::Type(type);
     switch ( src.type ) {
     default:
+    case WaveSource::Empty:     src.idx = 0; break;
     case WaveSource::Archive:   src.idx = src.session->wavegen().archives().size() - idx; break;
     case WaveSource::Selection: src.idx = src.session->wavesets().selections().size() - idx; break;
     case WaveSource::Subset:    src.idx = src.session->wavesets().subsets().size() - idx; break;

@@ -52,6 +52,8 @@ void GAFitterWidget::updateDecks()
 
     int idx = ui->decks->currentIndex();
     ui->decks->clear();
+    WaveSource empty(session, WaveSource::Empty, 0);
+    ui->decks->addItem(empty.prettyName(), QVariant::fromValue(empty));
     for ( WaveSource &src : session.wavesets().sources() )
         ui->decks->addItem(src.prettyName(), QVariant::fromValue(src));
     ui->decks->setCurrentIndex(idx);
@@ -76,14 +78,13 @@ void GAFitterWidget::done()
 
 void GAFitterWidget::on_start_clicked()
 {
-    int currentSource = ui->decks->currentIndex();
-    if ( currentSource < 0 )
+    if ( ui->decks->currentIndex() < 1 )
         return;
     if ( nQueued == 0 ) {
         ui->params_plotter->clear();
         ui->label_epoch->setText("Starting...");
     }
-    WaveSource src = session.wavesets().sources().at(currentSource);
+    WaveSource src = ui->decks->currentData().value<WaveSource>();
 
     if ( ui->resume->isChecked() ) {
         QStringList recs = ui->VCRecord->toPlainText().split('\n', QString::SkipEmptyParts);
@@ -141,10 +142,10 @@ void GAFitterWidget::on_VCBrowse_clicked()
 void GAFitterWidget::on_VCChannels_clicked()
 {
     QString record = ui->VCRecord->toPlainText().split('\n', QString::SkipEmptyParts).first();
-    if ( !QFile(record).exists() || ui->decks->currentIndex() < 0 )
+    if ( !QFile(record).exists() || ui->decks->currentIndex() < 1 )
         return;
     CannedDAQ daq(session, session.qSettings());
-    WaveSource src = session.wavesets().sources().at(ui->decks->currentIndex());
+    WaveSource src = ui->decks->currentData().value<WaveSource>();
     daq.setRecord(src.stimulations(), record, false);
     CannedChannelAssociationDialog *dlg = new CannedChannelAssociationDialog(session, &daq, this);
     dlg->open();
@@ -152,6 +153,8 @@ void GAFitterWidget::on_VCChannels_clicked()
 
 void GAFitterWidget::on_VCCreate_clicked()
 {
+    if ( ui->decks->currentIndex() < 1 )
+        return;
     QString file = QFileDialog::getSaveFileName(this, "Select output file");
     if ( file.isEmpty() )
         return;
@@ -161,7 +164,7 @@ void GAFitterWidget::on_VCCreate_clicked()
     std::ofstream of(file.toStdString());
     if ( !of.good() )
         return;
-    WaveSource src = session.wavesets().sources().at(ui->decks->currentIndex());
+    WaveSource src = ui->decks->currentData().value<WaveSource>();
     std::vector<Stimulation> stims = src.stimulations();
 
     int nTotal, nSamples, nBuffer;
