@@ -57,7 +57,7 @@ void Session::crossloadConfig(const QString &crossSessionDir)
 
     for ( int row = 0; row < crosslog.rowCount(); row++ ) {
         SessionLog::Entry entry = crosslog.entry(row);
-        QString filename = results(row, entry.actor, entry.action);
+        QString filename = resultFileName(row, entry.actor, entry.action);
         QFile file(crossdir.filePath(filename));
         try {
             if ( entry.actor == "Config" )
@@ -379,7 +379,7 @@ std::vector<SessionLog::Entry> Session::load(bool dryrun, SessionLog *log, int r
     for ( int row = 0; row < log->rowCount(); row++ ) {
         initial = false;
         SessionLog::Entry entry = log->entry(row);
-        QString filename = results(row + rowOffset, entry.actor, entry.action);
+        QString filename = resultFileName(row + rowOffset, entry.actor, entry.action);
         QFile file(dir.filePath(filename));
         result.resultIndex = row + rowOffset;
         result.dryrun = dryrun;
@@ -478,7 +478,7 @@ bool Session::readConfig(const QString &filename, bool incremental)
     return chgRun || chgSearch || chgStim || chgGafs || chgDaq; // chgCDaq omitted intentionally, as CDaq does not enter *.cfg output
 }
 
-QString Session::results(int idx, const QString &actor, const QString &action)
+QString Session::resultFileName(int idx, const QString &actor, const QString &action)
 {
     return QString("%1.%2.%3")
             .arg(idx, 4, 10, QChar('0')) // 4 digits, pad with zeroes
@@ -536,7 +536,7 @@ void Dispatcher::dispatch()
             break;
 
         bool success = false;
-        QFile file(dir.filePath(s.results(nextEntry.res->resultIndex, nextEntry.actor, nextEntry.action)));
+        QFile file(dir.filePath(s.resultFileName(nextEntry.res->resultIndex, nextEntry.actor, nextEntry.action)));
         nextEntry.res->dryrun = dryrun;
 
         if ( nextEntry.actor == s.wavegen().actorName() ) {

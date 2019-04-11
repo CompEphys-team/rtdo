@@ -111,6 +111,8 @@ public:
 
     CannedDAQ::ChannelAssociation cdaq_assoc;
 
+    static QString resultFileName(int idx, const QString &actor, const QString &action);
+
 public slots:
     /// Set runtime data
     void setRunData(RunData d);
@@ -151,8 +153,6 @@ protected:
     bool readConfig(const QString &filename, bool incremental = false);
 
     void sanitiseSettings(Settings &s);
-
-    static QString results(int idx, const QString &actor, const QString &action);
 
 protected slots:
     void getNextEntry();
