@@ -112,6 +112,7 @@ public:
     CannedDAQ::ChannelAssociation cdaq_assoc;
 
     static QString resultFileName(int idx, const QString &actor, const QString &action);
+    inline QString resultFilePath(int idx, const QString &actor, const QString &action) const { return dir.filePath(resultFileName(idx, actor, action)); }
 
 public slots:
     /// Set runtime data
