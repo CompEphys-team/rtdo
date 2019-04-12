@@ -2,16 +2,21 @@
 #include "session.h"
 #include "supportcode.h"
 #include "clustering.h"
+#include "populationsaver.h"
 
-double GAFitter::fit()
+double GAFitter::fit(QFile &file)
 {
     double simtime = 0;
+    PopSaver pop(file);
     for ( epoch = 0; !finished(); epoch++ ) {
         // Stimulate
         simtime += stimulate();
 
+        pop.savePop(lib);
+
         // Advance
         lib.pullSummary();
+        pop.saveErr(lib);
         if ( settings.useDE )
             procreateDE();
         else

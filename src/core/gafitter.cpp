@@ -120,7 +120,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     populate();
 
-    simtime = fit();
+    simtime = fit(file);
 
     // Finalise ranking and select winning parameter set
     simtime += finalise();

@@ -88,7 +88,8 @@ SOURCES += \
     src/core/gafitter_fit.cpp \
     src/core/gafitter_state.cpp \
     src/core/gafitter_closedloop.cpp \
-    src/core/gafitter_validation.cpp
+    src/core/gafitter_validation.cpp \
+    src/core/populationsaver.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -153,7 +154,8 @@ HEADERS  += \
     src/include/deviationboxplot.h \
     src/include/fiterrorplotter.h \
     src/include/universallibrary.h \
-    src/include/scope.h
+    src/include/scope.h \
+    src/include/populationsaver.h
 
 FORMS    += \
     src/gui/mainwindow.ui \

@@ -1,6 +1,7 @@
 #include "gafitter.h"
 #include "session.h"
 #include "supportcode.h"
+#include "populationsaver.h"
 
 void GAFitter::cl_run(WaveSource src)
 {
@@ -91,11 +92,14 @@ void GAFitter::cl_fit(QFile &file)
     lib.SDF_size = settings.SDF_size;
     lib.SDF_decay = settings.SDF_decay;
 
+    PopSaver pop(file);
+
     for ( epoch = 0; !finished(); epoch++ ) {
         cl_settle();
 
         if ( epoch % settings.cl_validation_interval == 0 )
             record_validation(file);
+        pop.savePop(lib);
 
         if ( finished() )
             break;
@@ -116,6 +120,7 @@ void GAFitter::cl_fit(QFile &file)
 
         // Advance
         lib.pullSummary();
+        pop.saveErr(lib);
 
         {
             QString epoch_file = QString("%1.%2.models").arg(file.fileName()).arg(epoch);

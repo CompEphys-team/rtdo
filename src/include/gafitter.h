@@ -96,7 +96,7 @@ protected:
     std::vector<double> bias;
 
     void setup(bool ad_hoc_stims = false);
-    double fit();
+    double fit(QFile &file);
 
     void cl_fit(QFile &file);
     void cl_settle();
