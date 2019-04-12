@@ -5,16 +5,25 @@
 
 void GAFitter::record_validation(QFile &base)
 {
+    if ( output.stimSource.type == WaveSource::Empty )
+        return;
+
     const RunData &rd = session.runData();
 
-    std::vector<std::vector<double>> traces;
-    int maxDuration = 0;
+    QFile traceFile(QString("%1.validation.ep_%2.bin").arg(base.fileName()).arg(epoch, 4, 10, QChar('0')));
+    if ( !traceFile.open(QIODevice::WriteOnly) ) {
+        std::cerr << "Failed to open file " << traceFile.fileName().toStdString() << " for writing.";
+        return;
+    }
+    QDataStream os(&traceFile);
 
     std::vector<iStimulation> val_iStims = output.stimSource.iStimulations(rd.dt);
     std::vector<Stimulation> val_aStims = output.stimSource.stimulations();
     for ( size_t i = 0; i < val_iStims.size(); i++ ) {
         const Stimulation &aI = val_aStims[i];
         const iStimulation &I = val_iStims[i];
+
+        os << qint32(I.duration);
 
         // Initiate DAQ stimulation
         daq->reset();
@@ -30,48 +39,36 @@ void GAFitter::record_validation(QFile &base)
             scalar t = rd.settleDuration + iT*rd.dt;
             scalar command = getCommandVoltage(aI, iT*rd.dt);
             pushToQ(qT + t, daq->voltage, daq->current, command);
-            traces[i][iT] = rd.VC ? daq->current : daq->voltage;
+            os << (rd.VC ? daq->current : daq->voltage);
         }
         daq->reset();
 
         qT += rd.settleDuration + I.duration * rd.dt;
-
-        if ( maxDuration < I.duration )
-            maxDuration = I.duration;
-    }
-
-    QFile traceFile(QString("%1.validation.ep_%2.bin").arg(base.fileName()).arg(epoch, 2, 10, QChar('0')));
-    if ( !traceFile.open(QIODevice::WriteOnly) ) {
-        std::cerr << "Failed to open file " << traceFile.fileName().toStdString() << " for writing.";
-        return;
-    }
-    QDataStream os(&traceFile);
-
-    for ( int iT = 0; iT < maxDuration; iT++ ) {
-        for ( const std::vector<double> &trace : traces ) {
-            if ( iT < int(trace.size()) )
-                os << trace[iT];
-            else
-                os << double(0);
-        }
     }
 }
 
-std::vector<std::vector<double>> load_validation(QFile &base, int ep, int nStims, int maxDuration)
+std::vector<std::vector<double>> load_validation(QFile &base, int ep)
 {
-    std::vector<std::vector<double>> traces(nStims, std::vector<double>(maxDuration));
+    std::vector<std::vector<double>> traces;
 
     QFile traceFile(QString("%1.validation.ep_%2.bin").arg(base.fileName()).arg(ep, 4, 10, QChar('0')));
+    if ( !traceFile.exists() )
+        traceFile.setFileName(QString("%1.validation.ep_%2.bin").arg(base.fileName()).arg(ep, 2, 10, QChar('0'))); // Legacy
     if ( !traceFile.open(QIODevice::ReadOnly) ) {
         std::cerr << "Failed to open file " << traceFile.fileName().toStdString() << " for reading.";
         return traces;
     }
     QDataStream is(&traceFile);
 
-    for ( int iT = 0; iT < maxDuration; iT++ ) {
-        for ( std::vector<double> &trace : traces ) {
-            is >> trace[iT];
-        }
+    qint32 duration;
+    int stimIdx = 0;
+
+    while ( !is.atEnd() ) {
+        is >> duration;
+        traces.emplace_back(duration);
+        for ( int i = 0; i < duration; i++ )
+            is >> traces[stimIdx][i];
+        ++stimIdx;
     }
     return traces;
 }
