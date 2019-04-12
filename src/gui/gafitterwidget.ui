@@ -139,13 +139,6 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="3" colspan="2">
-    <widget class="QComboBox" name="resumeSrc">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
-    </widget>
-   </item>
    <item row="1" column="2">
     <widget class="QCheckBox" name="resume">
      <property name="text">
@@ -157,6 +150,16 @@
     <widget class="QPushButton" name="cl_run">
      <property name="text">
       <string>Run closed-loop fit</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QComboBox" name="resumeSrc"/>
+   </item>
+   <item row="1" column="4">
+    <widget class="QPushButton" name="validate">
+     <property name="text">
+      <string>Validate this</string>
      </property>
     </widget>
    </item>

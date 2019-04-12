@@ -30,7 +30,6 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     });
     ui->records->setEnabled(this->session.qDaqData().simulate < 0);
 
-    connect(ui->resume, &QCheckBox::toggled, ui->resumeSrc, &QComboBox::setEnabled);
     for ( size_t i = 0; i < session.gaFitter().results().size(); i++ )
         ui->resumeSrc->addItem(QString("Fit %1 (%2)").arg(i).arg(session.gaFitter().results().at(i).resultIndex, 4, 10, QChar('0')));
 
@@ -233,4 +232,11 @@ void GAFitterWidget::on_cl_run_clicked()
         session.gaFitter().cl_resume(ui->resumeSrc->currentIndex(), src);
     else
         session.gaFitter().cl_run(src);
+}
+
+void GAFitterWidget::on_validate_clicked()
+{
+    if ( ui->resumeSrc->currentIndex() < 0 )
+        return;
+    session.gaFitter().validate(ui->resumeSrc->currentIndex());
 }

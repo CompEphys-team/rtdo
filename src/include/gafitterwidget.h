@@ -33,6 +33,8 @@ private slots:
 
     void on_cl_run_clicked();
 
+    void on_validate_clicked();
+
 private:
     Ui::GAFitterWidget *ui;
     Session &session;

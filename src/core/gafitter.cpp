@@ -68,8 +68,9 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 {
     if ( action == cl_action )
         return cl_exec(res, file);
-
-    if ( action != this->action )
+    else if ( action == validate_action )
+        return exec_validation(res, file);
+    else if ( action != this->action )
         return false;
 
     output = std::move(*static_cast<Output*>(res));
@@ -209,6 +210,8 @@ void GAFitter::finish()
 
 Result *GAFitter::load(const QString &act, const QString &, QFile &results, Result r)
 {
+    if ( act == validate_action )
+        return load_validation_result(r, results);
     if ( act != action && act != cl_action )
         throw std::runtime_error(std::string("Unknown action: ") + act.toStdString());
     QDataStream is;
