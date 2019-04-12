@@ -5,7 +5,7 @@
 const QString GAFitter::action = QString("fit");
 const QString GAFitter::cl_action = QString("closedloop");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 109;
+const quint32 GAFitter::version = 110;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -198,8 +198,6 @@ void GAFitter::save(QFile &file)
             os << n;
         for ( const double &p : out.resume.DEpX )
             os << p;
-
-        os << out.closedLoop;
     }
 }
 
@@ -313,8 +311,10 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
             is >> p;
     }
 
-    if ( ver >= 109 )
-        is >> out.closedLoop;
+    if ( ver == 109 ) {
+        bool tmp; is >> tmp;
+    }
+    out.closedLoop = (act == cl_action);
 
     return p_out;
 }
