@@ -191,6 +191,8 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
     lib.push(lib.stim);
 
     // Set up library
+    lib.iSettleDuration[0] = 0;
+    lib.push(lib.iSettleDuration);
     lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_PREVTHREAD | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_ERRFN;
     if ( !rd.VC )
         lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
@@ -244,6 +246,8 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     lib.stim[0] = I;
     lib.push(lib.stim);
 
+    lib.iSettleDuration[0] = 0;
+    lib.push(lib.iSettleDuration);
     lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_ERRFN;
     if ( !rd.VC )
         lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
