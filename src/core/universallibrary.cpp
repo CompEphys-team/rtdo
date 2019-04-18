@@ -602,8 +602,7 @@ void UniversalLibrary::push()
 {
     for ( Variable &v : stateVariables )
         push(v);
-    for ( Variable &v : adjustableParams )
-        push(v);
+    pushParams();
     push(stim);
     push(obs);
     push(clampGain);
@@ -612,6 +611,12 @@ void UniversalLibrary::push()
     push(Imax);
     push(dt);
     push(targetOffset);
+}
+
+void UniversalLibrary::pushParams()
+{
+    for ( Variable &v : adjustableParams )
+        push(v);
 }
 
 void UniversalLibrary::pull()

@@ -211,6 +211,7 @@ public:
     }
     inline void run(int iT = 0, unsigned int streamId = 0) { pointers.run(iT, streamId); }
     inline void reset() { pointers.reset(); }
+    void pushParams();
 
     inline void sync(unsigned int streamId = 0) { pointers.sync(streamId); }
     inline void resetEvents(unsigned int nExpected = 0) { pointers.resetEvents(nExpected); } //!< Resets the consecutive events counter and prepares nExpected events for immediate use.
