@@ -104,6 +104,7 @@ public:
         int *cl_blocksize;
         scalar *SDF_size;
         scalar *SDF_decay;
+        scalar *spike_threshold;
 
         std::function<void(void*, void*, size_t, int)> pushV;
         std::function<void(void*, void*, size_t, int)> pullV;
@@ -344,6 +345,7 @@ public:
     int &cl_blocksize;
     scalar &SDF_size;
     scalar &SDF_decay;
+    scalar &spike_threshold;
 
     scalar *&target;
     scalar *&output;

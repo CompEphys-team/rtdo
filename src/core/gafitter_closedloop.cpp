@@ -246,6 +246,9 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     QString epoch_file = QString("%1.%2.stim_%3.trace").arg(file.fileName()).arg(epoch).arg(stimIdx);
     std::ofstream os(epoch_file.toStdString());
 
+    scalar spike_threshold = settings.spike_threshold*rd.dt;
+    lib.spike_threshold = spike_threshold;
+
     // Set up library
     lib.setSingularStim();
     lib.stim[0] = I;
