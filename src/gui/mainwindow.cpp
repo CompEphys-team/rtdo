@@ -352,6 +352,14 @@ void MainWindow::on_abort_clicked()
 void MainWindow::on_remove_clicked()
 {
     QModelIndexList selectedRows = ui->log->selectionModel()->selectedRows();
+
+    if ( gaFitterWidget ) {
+        int n = 0;
+        for ( int row = selectedRows.first().row(); row < selectedRows.back().row(); row++ )
+            n += (session->getLog()->entry(row).actor == session->gaFitter().actorName());
+        gaFitterWidget->unqueue(n);
+    }
+
     session->getLog()->removeQueued(selectedRows.first().row(), selectedRows.back().row());
 }
 

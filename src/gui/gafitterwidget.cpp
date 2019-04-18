@@ -75,6 +75,12 @@ void GAFitterWidget::done()
         ui->resumeSrc->setCurrentIndex(ui->resumeSrc->count() - 1);
 }
 
+void GAFitterWidget::unqueue(int n)
+{
+    nQueued += n;
+    ui->label_queued->setText(QString("%1 queued").arg(nQueued));
+}
+
 void GAFitterWidget::on_start_clicked()
 {
     if ( ui->decks->currentIndex() < 1 )
@@ -232,6 +238,9 @@ void GAFitterWidget::on_cl_run_clicked()
         session.gaFitter().cl_resume(ui->resumeSrc->currentIndex(), src);
     else
         session.gaFitter().cl_run(src);
+
+    ++nQueued;
+    ui->label_queued->setText(QString("%1 queued").arg(nQueued));
 }
 
 void GAFitterWidget::on_validate_clicked()

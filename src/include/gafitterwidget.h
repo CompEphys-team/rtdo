@@ -15,6 +15,7 @@ class GAFitterWidget : public QWidget
 public:
     explicit GAFitterWidget(Session &session, QWidget *parent = 0);
     ~GAFitterWidget();
+    void unqueue(int n);
 
 private slots:
     void updateDecks();
