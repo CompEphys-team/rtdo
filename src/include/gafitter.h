@@ -18,7 +18,7 @@ public:
 
     const GAFitterSettings &settings;
 
-    RTMaybe::Queue<DataPoint> *qV, *qI, *qO;
+    RTMaybe::Queue<DataPoint> *qV, *qI, *qO, *qV2;
     double qT;
 
     struct Output : public Result

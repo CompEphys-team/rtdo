@@ -24,6 +24,7 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     session.gaFitter().qV = &ui->response_plotter->qV;
     session.gaFitter().qI = &ui->response_plotter->qI;
     session.gaFitter().qO = &ui->response_plotter->qO;
+    session.gaFitter().qV2 = &ui->response_plotter->qV2;
     ui->response_plotter->VC =& session.runData().VC;
 
     connect(&session, &Session::DAQDataChanged, this, [=](){

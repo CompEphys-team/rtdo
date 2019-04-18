@@ -246,6 +246,8 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     QString epoch_file = QString("%1.%2.stim_%3.trace").arg(file.fileName()).arg(epoch).arg(stimIdx);
     std::ofstream os(epoch_file.toStdString());
 
+    double dV = 0, Vprev = 0;
+    constexpr scalar SDF_dV_DECAY = 0.99;
     scalar spike_threshold = settings.spike_threshold*rd.dt;
     lib.spike_threshold = spike_threshold;
 
@@ -271,6 +273,11 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         daq->next();
         pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, I.baseV);
         os << iT*rd.dt << '\t' << I.baseV << '\t' << daq->voltage << '\n';
+
+        if ( qV2 )
+            qV2->push({qT + iT*rd.dt, dV});
+        dV = dV*SDF_dV_DECAY + (daq->voltage - Vprev);
+        Vprev = daq->voltage;
     }
     for ( int iT = 0; iT < I.duration; iT++ ) {
         daq->next();
@@ -279,6 +286,11 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         pushToQ(qT + t, daq->voltage, daq->current, command);
         os << t << '\t' << command << '\t' << daq->voltage << '\n';
         lib.target[iT] = daq->voltage;
+
+        if ( qV2 )
+            qV2->push({t, dV});
+        dV = dV*SDF_dV_DECAY + (daq->voltage - Vprev);
+        Vprev = daq->voltage;
     }
     daq->reset();
 
