@@ -74,6 +74,8 @@ public:
     inline QString actorName() const { return "GAFitter"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
 
+    QString getBaseFilePath(size_t fitIdx);
+
     bool cl_exec(Result *res, QFile &file);
 
 public slots:
