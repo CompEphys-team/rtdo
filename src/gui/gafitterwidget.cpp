@@ -12,6 +12,7 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     ui->setupUi(this);
 
     ui->params_plotter->init(&session, true);
+    ui->pca->init(&session.project.universal());
 
     connect(&session.wavesets(), SIGNAL(addedSet()), this, SLOT(updateDecks()));
     connect(&session.gaFitter(), SIGNAL(done()), this, SLOT(done()));
@@ -37,6 +38,8 @@ GAFitterWidget::GAFitterWidget(Session &session, QWidget *parent) :
     updateDecks();
 
     connect(ui->finish, SIGNAL(clicked(bool)), &session.gaFitter(), SLOT(finish()), Qt::DirectConnection);
+
+    connect(&session.gaFitter(), &GAFitter::pca_complete, ui->pca, &PCAPlot::replot);
 }
 
 GAFitterWidget::~GAFitterWidget()

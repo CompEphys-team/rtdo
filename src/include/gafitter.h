@@ -92,6 +92,7 @@ signals:
     void starting();
     void done();
     void progress(quint32 epoch);
+    void pca_complete();
 
 protected:
     friend class Session;
@@ -113,6 +114,7 @@ protected:
     void cl_settle();
     std::vector<iStimulation> cl_findStims(QFile&);
     void cl_stimulate(QFile &file, int stimIdx);
+    void cl_pca();
 
     bool exec_validation(Result *res, QFile &file);
     void save_validation_result(QFile &file);

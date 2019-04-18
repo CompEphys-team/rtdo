@@ -14,38 +14,8 @@
    <string>GA fitting</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="3" column="0">
-    <widget class="QLabel" name="label_queued">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>0 queued</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="4">
-    <widget class="QPushButton" name="abort">
-     <property name="text">
-      <string>Abort</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="1">
-    <widget class="QLabel" name="label_epoch">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
+   <item row="0" column="0">
+    <widget class="QComboBox" name="decks"/>
    </item>
    <item row="0" column="1">
     <widget class="QSpinBox" name="repeats">
@@ -64,8 +34,36 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="0">
-    <widget class="QComboBox" name="decks"/>
+   <item row="0" column="3">
+    <widget class="QPushButton" name="finish">
+     <property name="text">
+      <string>Finish</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="4">
+    <widget class="QPushButton" name="abort">
+     <property name="text">
+      <string>Abort</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QCheckBox" name="resume">
+     <property name="text">
+      <string>Resume from:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QComboBox" name="resumeSrc"/>
+   </item>
+   <item row="1" column="4">
+    <widget class="QPushButton" name="validate">
+     <property name="text">
+      <string>Validate this</string>
+     </property>
+    </widget>
    </item>
    <item row="2" column="0" colspan="5">
     <widget class="QWidget" name="records" native="true">
@@ -123,43 +121,65 @@
      </layout>
     </widget>
    </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="label_queued">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>0 queued</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QLabel" name="label_epoch">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
    <item row="4" column="0" colspan="5">
-    <widget class="QSplitter" name="splitter">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <widget class="ParameterFitPlotter" name="params_plotter" native="true"/>
-     <widget class="ResponsePlotter" name="response_plotter" native="true"/>
-    </widget>
-   </item>
-   <item row="0" column="3">
-    <widget class="QPushButton" name="finish">
-     <property name="text">
-      <string>Finish</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2">
-    <widget class="QCheckBox" name="resume">
-     <property name="text">
-      <string>Resume from:</string>
-     </property>
+    <widget class="QWidget" name="widget" native="true">
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="0">
+       <widget class="QSplitter" name="splitter">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <widget class="QTabWidget" name="tabWidget">
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="ParameterFitPlotter" name="params_plotter">
+          <attribute name="title">
+           <string>Parameters</string>
+          </attribute>
+         </widget>
+         <widget class="PCAPlot" name="pca">
+          <attribute name="title">
+           <string>PCA</string>
+          </attribute>
+         </widget>
+        </widget>
+        <widget class="ResponsePlotter" name="response_plotter" native="true"/>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
    <item row="1" column="0" colspan="2">
     <widget class="QPushButton" name="cl_run">
      <property name="text">
       <string>Run closed-loop fit</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="3">
-    <widget class="QComboBox" name="resumeSrc"/>
-   </item>
-   <item row="1" column="4">
-    <widget class="QPushButton" name="validate">
-     <property name="text">
-      <string>Validate this</string>
      </property>
     </widget>
    </item>
@@ -176,6 +196,12 @@
    <class>ResponsePlotter</class>
    <extends>QWidget</extends>
    <header>responseplotter.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>PCAPlot</class>
+   <extends>QWidget</extends>
+   <header>pcaplot.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

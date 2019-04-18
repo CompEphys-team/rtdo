@@ -2,6 +2,7 @@
 #include "session.h"
 #include "supportcode.h"
 #include "populationsaver.h"
+#include <QtConcurrent/QtConcurrent>
 
 void GAFitter::cl_run(WaveSource src)
 {
@@ -234,6 +235,10 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
 
 void GAFitter::cl_stimulate(QFile &file, int stimIdx)
 {
+    QFuture<void> pca_future;
+    if ( stimIdx == 0 )
+        pca_future = QtConcurrent::run(this, &GAFitter::cl_pca);
+
     const RunData &rd = session.runData();
     const Stimulation &aI = astims[targetStim];
     iStimulation I = stims[targetStim];
@@ -274,8 +279,25 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     }
     daq->reset();
 
+    if ( stimIdx == 0 )
+        pca_future.waitForFinished();
+
     lib.pushTarget();
     lib.run();
 
     qT += rd.settleDuration + I.duration * rd.dt;
+}
+
+void GAFitter::cl_pca()
+{
+    QTime wallclock = QTime::currentTime();
+    std::vector<scalar> singular_values = lib.get_params_principal_components(2);
+    std::cout << "PCA complete, pushing after " << wallclock.msecsTo(QTime::currentTime()) << " ms" << std::endl;
+    lib.pushParams();
+    for ( const scalar &s : singular_values )
+        std::cout << s << '\t';
+    lib.sync();
+    std::cout << "\nCompleted in " << wallclock.msecsTo(QTime::currentTime()) << " ms" << std::endl;
+
+    emit pca_complete();
 }
