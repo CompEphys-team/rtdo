@@ -68,8 +68,6 @@ void GAFitterWidget::done()
     nQueued--;
     ui->label_epoch->setText("");
     ui->label_queued->setText(QString("%1 queued").arg(nQueued));
-    if ( nQueued > 0 )
-        ui->params_plotter->clear();
     ui->resumeSrc->addItem(QString("Fit %1 (%2)").arg(session.gaFitter().results().size()-1).arg(session.gaFitter().results().back().resultIndex, 4, 10, QChar('0')));
     if ( ui->resumeSrc->currentIndex() == ui->resumeSrc->count() - 2 )
         ui->resumeSrc->setCurrentIndex(ui->resumeSrc->count() - 1);
@@ -86,7 +84,6 @@ void GAFitterWidget::on_start_clicked()
     if ( ui->decks->currentIndex() < 1 )
         return;
     if ( nQueued == 0 ) {
-        ui->params_plotter->clear();
         ui->label_epoch->setText("Starting...");
     }
     WaveSource src = ui->decks->currentData().value<WaveSource>();

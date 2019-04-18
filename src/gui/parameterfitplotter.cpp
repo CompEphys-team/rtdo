@@ -234,6 +234,7 @@ void ParameterFitPlotter::init(Session *session, bool enslave)
         ui->legend->setVisible(false);
         ui->opacity->setVisible(false);
         ui->summary_plot_controls->setVisible(false);
+        connect(&session->gaFitter(), &GAFitter::starting, this, &ParameterFitPlotter::clear);
         connect(&session->gaFitter(), &GAFitter::progress, this, &ParameterFitPlotter::progress);
         connect(&session->gaFitter(), &GAFitter::done, this, [=](){
             const GAFitter::Output &o = session->gaFitter().results().back();
