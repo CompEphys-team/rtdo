@@ -15,6 +15,7 @@
 #include "wavegendatadialog.h"
 #include "stimulationdatadialog.h"
 #include "daqdialog.h"
+#include "pcaplot.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -398,4 +399,11 @@ void MainWindow::on_load_clicked()
         return;
 
     session->exec_desiccated(desic, false);
+}
+
+void MainWindow::on_actionPCA_triggered()
+{
+    PCAPlot *figure = new PCAPlot(*session);
+    figure->setWindowTitle(figure->windowTitle() + " : " + title);
+    figure->show();
 }

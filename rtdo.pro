@@ -89,7 +89,8 @@ SOURCES += \
     src/core/gafitter_state.cpp \
     src/core/gafitter_closedloop.cpp \
     src/core/gafitter_validation.cpp \
-    src/core/populationsaver.cpp
+    src/core/populationsaver.cpp \
+    src/gui/pcaplot.cpp \
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -155,7 +156,8 @@ HEADERS  += \
     src/include/fiterrorplotter.h \
     src/include/universallibrary.h \
     src/include/scope.h \
-    src/include/populationsaver.h
+    src/include/populationsaver.h \
+    src/include/pcaplot.h \
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -182,7 +184,8 @@ FORMS    += \
     src/gui/fitinspector.ui \
     src/gui/deviationboxplot.ui \
     src/gui/fiterrorplotter.ui \
-    src/gui/scope.ui
+    src/gui/scope.ui \
+    src/gui/pcaplot.ui \
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl -lcusolver
 

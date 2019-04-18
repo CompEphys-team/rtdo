@@ -81,6 +81,8 @@ private slots:
 
     void on_load_clicked();
 
+    void on_actionPCA_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

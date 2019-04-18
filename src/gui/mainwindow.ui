@@ -128,6 +128,7 @@
     <addaction name="actionSampled_profiles"/>
     <addaction name="actionFitting_Parameters"/>
     <addaction name="actionStimulations"/>
+    <addaction name="actionPCA"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="enabled">
@@ -316,6 +317,11 @@
   <action name="actionScope">
    <property name="text">
     <string>Scope</string>
+   </property>
+  </action>
+  <action name="actionPCA">
+   <property name="text">
+    <string>PCA</string>
    </property>
   </action>
  </widget>
