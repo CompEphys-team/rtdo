@@ -6,6 +6,9 @@
 
 #include <curand.h>
 
+#define isinf ::isinf
+#include <cusolverDn.h>
+
 scalar *target = nullptr, *d_target = nullptr;
 __constant__ scalar *dd_target = nullptr;
 unsigned int target_size = 0, latest_target_size = 0;
@@ -79,6 +82,22 @@ constexpr int STIMS_PER_CLUSTER_BLOCK =
         : ( (2*NPARAMS*(PARTITION_SIZE+1) + 2*(PARTITION_SIZE+1)) * sizeof(scalar) < 0xc000 )
         ? 2
         : 1;
+
+
+// PCA (cuSolver) space and function macros
+cusolverDnHandle_t cusolverH = NULL;
+scalar *PCA_d_S = nullptr, *PCA_d_U = nullptr, *PCA_d_VT = nullptr, *PCA_d_lwork = nullptr;
+unsigned int PCA_S_size = 0, PCA_U_size = 0, PCA_VT_size = 0, PCA_lwork_size = 0;
+scalar *PCA_TL = nullptr;
+unsigned int PCA_TL_size = 0;
+
+#ifdef USEDOUBLE
+#define cusolverDn__scalar__gesvd_bufferSize cusolverDnDgesvd_bufferSize
+#define cusolverDn__scalar__gesvd cusolverDnDgesvd
+#else
+#define cusolverDn__scalar__gesvd_bufferSize cusolverDnSgesvd_bufferSize
+#define cusolverDn__scalar__gesvd cusolverDnSgesvd
+#endif
 
 
 template <typename T>

@@ -153,6 +153,9 @@ public:
         void (*observe_no_steps)(int blankCycles);
         void (*genRandom)(unsigned int n, scalar mean, scalar sd, unsigned long long seed);
         void (*get_posthoc_deviations)(int trajLen, int nTraj, unsigned int nStims, std::vector<double> deltabar, const MetaModel &, bool VC);
+
+        std::vector<scalar> (*principal_components)(int L, scalar *d_X, int n, int p);
+        scalar **PCA_TL;
     };
 
     Project &project;
@@ -300,6 +303,12 @@ public:
         pointers.get_posthoc_deviations(trajLen, nTraj, nStims, deltabar, model, VC);
     }
 
+    /// Utility call to perform PCA on adjustableParams. NOTE: Changes the device values of all adjustableParams!
+    /// Stores a projection to the first @a L PCs in PCA_TL, and returns (all) singular values.
+    inline std::vector<scalar> get_params_principal_components(int L) {
+        return pointers.principal_components(L, adjustableParams[0].d_v, NMODELS, adjustableParams.size());
+    }
+
 private:
     void *load();
     void *compile_and_load();
@@ -345,6 +354,8 @@ public:
     iObservations *&clusterObs; //!< Layout: [stimIdx][clusterIdx]
 
     Bubble *&bubbles; //!< Layout: [stimIdx][targetParamIdx]
+
+    scalar *&PCA_TL;
 
     unsigned int assignment_base = 0;
 };

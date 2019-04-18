@@ -54,7 +54,9 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     clusterPrimitives(light ? dummyScalarPtr : *pointers.clusterPrimitives),
     clusterObs(light ? dummyObsPtr : *pointers.clusterObs),
 
-    bubbles(light ? dummyBubblePtr : *pointers.bubbles)
+    bubbles(light ? dummyBubblePtr : *pointers.bubbles),
+
+    PCA_TL(light ? dummyScalarPtr : *pointers.PCA_TL)
 {
 }
 
@@ -566,6 +568,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.observe_no_steps =& observe_no_steps;" << endl;
     ss << "    pointers.genRandom =& genRandom;" << endl;
     ss << "    pointers.get_posthoc_deviations =& get_posthoc_deviations;" << endl;
+    ss << "    pointers.principal_components =& principal_components;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 

@@ -184,7 +184,7 @@ FORMS    += \
     src/gui/fiterrorplotter.ui \
     src/gui/scope.ui
 
-LIBS     += -rdynamic -ldl -lcomedi -lgsl
+LIBS     += -rdynamic -ldl -lcomedi -lgsl -lcusolver
 
 DEFINES += CORE_INCLUDE_PATH='\\"$${PWD}/src/include\\"'
 
@@ -290,4 +290,5 @@ DISTFILES += \
     src/cuda/deltabar.cu \
     src/cuda/deviations.cu \
     src/cuda/profile.cu \
-    src/cuda/util.cu
+    src/cuda/util.cu \
+    src/cuda/pca.cu

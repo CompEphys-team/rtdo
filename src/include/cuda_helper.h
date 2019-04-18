@@ -27,6 +27,16 @@
     }                                                           \
 }
 
+#define CUSOLVER_CALL(call)                                      \
+{                                                                \
+    cusolverStatus_t status = (call);                            \
+    if (status != CUSOLVER_STATUS_SUCCESS) {                     \
+        std::cerr << __FILE__ << ": " <<  __LINE__;              \
+        std::cerr << ": cusolver error " << status << std::endl; \
+        exit(EXIT_FAILURE);                                      \
+    }                                                            \
+}
+
 #define PULL(namesp, hostvar) \
     CHECK_CUDA_ERRORS(cudaMemcpy(hostvar, \
                                  d_ ## hostvar, \

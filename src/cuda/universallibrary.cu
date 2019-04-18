@@ -9,6 +9,7 @@
 #include "deviations.cu"
 #include "profile.cu"
 #include "util.cu"
+#include "pca.cu"
 
 static std::vector<cudaStream_t> lib_streams(1, 0);
 inline cudaStream_t getLibStream(unsigned int streamId)
@@ -61,6 +62,8 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 
     pointers.bubbles =& bubbles;
 
+    pointers.PCA_TL =& PCA_TL;
+
     allocateMem();
     initialize();
 
@@ -82,6 +85,8 @@ void libInit(UniversalLibrary &lib, UniversalLibrary::Pointers &pointers)
 
     // Philox is fastest for normal dist, if developer.nvidia.com/curand is to be believed
     CURAND_CALL(curandCreateGenerator(&cuRNG, CURAND_RNG_PSEUDO_PHILOX4_32_10));
+
+    CUSOLVER_CALL(cusolverDnCreate(&cusolverH))
 }
 
 extern "C" void libExit(UniversalLibrary::Pointers &pointers)
@@ -119,6 +124,8 @@ extern "C" void libExit(UniversalLibrary::Pointers &pointers)
     CHECK_CUDA_ERRORS(cudaFreeHost(sections));
     CHECK_CUDA_ERRORS(cudaFreeHost(clusterObs));
     CHECK_CUDA_ERRORS(cudaFreeHost(bubbles));
+
+    free_cusolver();
 }
 
 extern "C" void resetDevice()
