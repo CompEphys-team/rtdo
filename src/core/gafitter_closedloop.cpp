@@ -277,7 +277,7 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         os << iT*rd.dt << '\t' << I.baseV << '\t' << daq->voltage << '\n';
 
         if ( qV2 )
-            qV2->push({qT + iT*rd.dt, dV});
+            qV2->push({qT + iT*rd.dt, dV - spike_threshold});
         dV = dV*SDF_dV_DECAY + (daq->voltage - Vprev);
         Vprev = daq->voltage;
     }
@@ -290,7 +290,7 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         lib.target[iT] = daq->voltage;
 
         if ( qV2 )
-            qV2->push({qT + t, dV});
+            qV2->push({qT + t, dV - spike_threshold});
         dV = dV*SDF_dV_DECAY + (daq->voltage - Vprev);
         Vprev = daq->voltage;
     }
