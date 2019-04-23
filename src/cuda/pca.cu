@@ -19,14 +19,14 @@ template <typename T>
 struct Subtract {
     T arg;
     Subtract(T arg) : arg(arg) {}
-    __host__ __device__ T operator() (T operand) { return operand - arg; }
+    __host__ __device__ void operator() (T &operand) { operand -= arg; }
 };
 
 template <typename T>
 struct Multiply {
     T arg;
     Multiply(T arg) : arg(arg) {}
-    __host__ __device__ T operator() (T operand) { return operand * arg; }
+    __host__ __device__ void operator() (T &operand) { operand *= arg; }
 };
 
 void singular_value_decomposition(scalar *d_A, int m, int n, scalar *S)
