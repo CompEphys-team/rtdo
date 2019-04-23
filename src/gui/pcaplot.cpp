@@ -42,9 +42,6 @@ void PCAPlot::init(const UniversalLibrary *lib)
 {
     this->lib = lib;
 
-    QVector<QCPGraphData> tmp(lib->NMODELS, {0,0});
-    data->set(tmp);
-
     QCPGraph *g = ui->plot->addGraph();
     g->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 2));
     g->setLineStyle(QCPGraph::lsNone);
@@ -56,10 +53,14 @@ void PCAPlot::replot()
     if ( !lib )
         return;
 
+    if ( data->size() != lib->PCA_TL_size ) {
+        data->set(QVector<QCPGraphData>(lib->PCA_TL_size, {0,0}));
+    }
+
     size_t i = 0;
     for ( QCPGraphData &p : *data ) {
         p.key = lib->PCA_TL[i];
-        p.value = lib->PCA_TL[lib->NMODELS + i];
+        p.value = lib->PCA_TL[lib->PCA_TL_size + i];
         ++i;
     }
     data->sort();

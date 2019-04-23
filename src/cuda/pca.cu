@@ -29,16 +29,14 @@ struct Multiply {
     __host__ __device__ void operator() (T &operand) { operand *= arg; }
 };
 
-void singular_value_decomposition(scalar *d_A, int m, int n, scalar *S)
+void singular_value_decomposition(scalar *d_A, int lda, int m, int n, scalar *S)
 {
-    const int lda = m;
-
     int lwork = 0;
     int info_gpu = 0;
 
     // Prepare output space
     resizeArray(PCA_d_S, PCA_S_size, n);
-    resizeArray(PCA_d_U, PCA_U_size, lda * m);
+    resizeArray(PCA_d_U, PCA_U_size, m * m);
     resizeArray(PCA_d_VT, PCA_VT_size, lda * n);
 
     int *devInfo;
@@ -61,7 +59,7 @@ void singular_value_decomposition(scalar *d_A, int m, int n, scalar *S)
         lda,
         PCA_d_S,
         PCA_d_U,
-        lda,  // ldu
+        m,  // ldu
         PCA_d_VT,
         lda, // ldvt,
         PCA_d_lwork,
@@ -85,6 +83,7 @@ void singular_value_decomposition(scalar *d_A, int m, int n, scalar *S)
 /// The projection is stored in the host array PCA_TL.
 extern "C" std::vector<scalar> principal_components(int L, /* Number of components to project onto */
                                                     scalar *d_X, /* data on device - usually pointer to the first AdjustableParam */
+                                                    int ldX = NMODELS, /* Leading dimension of X (total number of rows in X, >= n) */
                                                     int n = NMODELS, /* number of rows = data items */
                                                     int p = NPARAMS) /* number of columns = dimensions */
 {
@@ -92,16 +91,17 @@ extern "C" std::vector<scalar> principal_components(int L, /* Number of componen
 
     // column-wise mean subtraction
     for ( int i = 0; i < p; i++ ) {
-        scalar sum = thrust::reduce(X + n*i, X + n*(i+1));
+        scalar sum = thrust::reduce(X + ldX*i, X + ldX*i + n);
         Subtract<scalar> sub(sum / n);
-        thrust::for_each(X + n*i, X + n*(i+1), sub);
+        thrust::for_each(X + ldX*i, X + ldX*i + n, sub);
     }
 
     // SVD
     std::vector<scalar> S(p);
-    singular_value_decomposition(d_X, n, p, S.data());
+    singular_value_decomposition(d_X, ldX, n, p, S.data());
 
     // Project onto first L components
+    // Note, singular_value_decomposition has has PCA_d_U sized as n*n, not ldX*n
     thrust::device_ptr<scalar> U(PCA_d_U);
     for ( int i = 0; i < L; i++ ) {
         Multiply<scalar> mult(S[i]);

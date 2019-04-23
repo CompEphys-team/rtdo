@@ -155,7 +155,7 @@ public:
         void (*genRandom)(unsigned int n, scalar mean, scalar sd, unsigned long long seed);
         void (*get_posthoc_deviations)(int trajLen, int nTraj, unsigned int nStims, std::vector<double> deltabar, const MetaModel &, bool VC);
 
-        std::vector<scalar> (*principal_components)(int L, scalar *d_X, int n, int p);
+        std::vector<scalar> (*principal_components)(int L, scalar *d_X, int ldX, int n, int p);
         scalar **PCA_TL;
     };
 
@@ -307,8 +307,11 @@ public:
 
     /// Utility call to perform PCA on adjustableParams. NOTE: Changes the device values of all adjustableParams!
     /// Stores a projection to the first @a L PCs in PCA_TL, and returns (all) singular values.
-    inline std::vector<scalar> get_params_principal_components(int L) {
-        return pointers.principal_components(L, adjustableParams[0].d_v, NMODELS, adjustableParams.size());
+    /// Use @arg nIgnored to exclude the given number of rows at the end of the model population from the PCA.
+    inline std::vector<scalar> get_params_principal_components(int L, int nIgnored = 0) {
+        auto ret = pointers.principal_components(L, adjustableParams[0].d_v, NMODELS, NMODELS-nIgnored, adjustableParams.size());
+        PCA_TL_size = NMODELS-nIgnored;
+        return ret;
     }
 
 private:
@@ -359,6 +362,7 @@ public:
     Bubble *&bubbles; //!< Layout: [stimIdx][targetParamIdx]
 
     scalar *&PCA_TL;
+    int PCA_TL_size = 0; // Number of projected points (and leading dimension of PCA_TL)
 
     unsigned int assignment_base = 0;
 };
