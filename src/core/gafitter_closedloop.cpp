@@ -138,10 +138,12 @@ void GAFitter::cl_fit(QFile &file)
             }
         }
 
-        if ( settings.useDE )
+        if ( settings.useDE ) {
             procreateDE();
-        else
-            procreate();
+        } else {
+            std::vector<errTupel> p_err = procreate();
+            cl_relegate_reinitialised(p_err);
+        }
 
         emit progress(epoch);
     }
@@ -306,7 +308,7 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
 void GAFitter::cl_pca()
 {
     QTime wallclock = QTime::currentTime();
-    std::vector<scalar> singular_values = lib.get_params_principal_components(2);
+    std::vector<scalar> singular_values = lib.get_params_principal_components(2, settings.nReinit);
     std::cout << "PCA complete, pushing after " << wallclock.msecsTo(QTime::currentTime()) << " ms" << std::endl;
     lib.pushParams();
     for ( const scalar &s : singular_values )
@@ -315,4 +317,19 @@ void GAFitter::cl_pca()
     std::cout << "\nCompleted in " << wallclock.msecsTo(QTime::currentTime()) << " ms" << std::endl;
 
     emit pca_complete();
+}
+
+void GAFitter::cl_relegate_reinitialised(std::vector<errTupel> &p_err)
+{
+    // Sort reinit subpopulation by idx, descending
+    std::sort(p_err.end() - settings.nReinit, p_err.end(), [](const errTupel &lhs, const errTupel &rhs){ return lhs.idx < rhs.idx; });
+
+    // Move subpop to end of population (tail first)
+    using std::swap;
+    size_t i = lib.NMODELS - 1;
+    for ( auto it = p_err.rbegin(); it != p_err.rbegin() + settings.nReinit; ++it, --i ) {
+        for ( AdjustableParam &p : lib.adjustableParams ) {
+            swap(p[i], p[it->idx]);
+        }
+    }
 }

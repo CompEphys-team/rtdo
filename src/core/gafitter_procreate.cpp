@@ -1,7 +1,7 @@
 #include "gafitter.h"
 #include "session.h"
 
-void GAFitter::procreate()
+std::vector<GAFitter::errTupel> GAFitter::procreate()
 {
     std::vector<errTupel> p_err(lib.NMODELS);
     for ( size_t i = 0; i < p_err.size(); i++ ) {
@@ -97,6 +97,8 @@ void GAFitter::procreate()
             }
         }
     }
+
+    return p_err;
 }
 
 void GAFitter::procreateDE()
