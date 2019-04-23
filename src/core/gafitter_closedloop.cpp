@@ -290,7 +290,7 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         lib.target[iT] = daq->voltage;
 
         if ( qV2 )
-            qV2->push({t, dV});
+            qV2->push({qT + t, dV});
         dV = dV*SDF_dV_DECAY + (daq->voltage - Vprev);
         Vprev = daq->voltage;
     }
