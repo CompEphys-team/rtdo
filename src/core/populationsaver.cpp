@@ -73,7 +73,7 @@ bool PopLoader::load(int epoch, UniversalLibrary &lib)
     for ( AdjustableParam &p : lib.adjustableParams )
         pop.read(reinterpret_cast<char*>(p.v), lib.NMODELS * sizeof(*p.v));
 
-    if ( combined ) {
+    if ( !combined ) {
         err.seekg(err_bytes * epoch);
         err.read(reinterpret_cast<char*>(lib.summary), lib.NMODELS * sizeof(*lib.summary));
         return pop.good() && err.good();
