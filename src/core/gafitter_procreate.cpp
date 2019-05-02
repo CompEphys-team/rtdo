@@ -122,12 +122,12 @@ void GAFitter::procreateDE()
             for ( int j = 0; j < nParams; j++ ) // replace parent with more successful offspring
                 P[j][i] = P[j][iOffspring];
             ++DEMethodSuccess[DEMethodUsed[i]];
+            if ( DEMethodUsed[i] < 3 )
+                pXList[DEMethodUsed[i]].push_back(DEpX[i]);
         } else {
             for ( int j = 0; j < nParams; j++ ) // replace failed offspring with parent, ready for mutation
                 P[j][iOffspring] = P[j][i];
             ++DEMethodFailed[DEMethodUsed[i]];
-            if ( DEMethodUsed[i] < 3 )
-                pXList[DEMethodUsed[i]].push_back(DEpX[i]);
         }
 
         if ( err < bestErr ) {
