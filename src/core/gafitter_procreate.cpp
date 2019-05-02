@@ -107,8 +107,8 @@ void GAFitter::procreateDE()
     int nParams = P.size();
     int nPop = lib.NMODELS/2;
 
-    std::vector<std::vector<double>> pXList(3);
-    std::vector<double> pXmed(3, 0.5);
+    std::vector<double> sum_pX(3, 0);
+    std::vector<int> nSuccesses(4, 0), nFailures(4, 0);
     std::vector<double> methodCutoff(4);
 
     // Select the winners
@@ -121,18 +121,28 @@ void GAFitter::procreateDE()
             err = lib.summary[iOffspring];
             for ( int j = 0; j < nParams; j++ ) // replace parent with more successful offspring
                 P[j][i] = P[j][iOffspring];
-            ++DEMethodSuccess[DEMethodUsed[i]];
+            ++nSuccesses[DEMethodUsed[i]];
             if ( DEMethodUsed[i] < 3 )
-                pXList[DEMethodUsed[i]].push_back(DEpX[i]);
+                sum_pX[DEMethodUsed[i]] += DEpXUsed[i];
         } else {
             for ( int j = 0; j < nParams; j++ ) // replace failed offspring with parent, ready for mutation
                 P[j][iOffspring] = P[j][i];
-            ++DEMethodFailed[DEMethodUsed[i]];
+            ++nFailures[DEMethodUsed[i]];
         }
 
         if ( err < bestErr ) {
             bestIdx = i;
             bestErr = err;
+        }
+    }
+
+    // Decay method and pX
+    if ( epoch > 0 ) {
+        for ( int i = 0; i < 4; i++ ) {
+            DEMethodSuccess[i] = (DEMethodSuccess[i]*settings.DE_decay + nSuccesses[i]) / (settings.DE_decay + 1);
+            DEMethodFailed[i] = (DEMethodFailed[i]*settings.DE_decay + nFailures[i]) / (settings.DE_decay + 1);
+            if ( i < 3 && nSuccesses[i] > 0 )
+                DEpX[i] = (DEpX[i]*settings.DE_decay + sum_pX[i]/nSuccesses[i]) / (settings.DE_decay + 1);
         }
     }
 
@@ -157,16 +167,6 @@ void GAFitter::procreateDE()
             double successRate = DEMethodSuccess[i] / (DEMethodSuccess[i] + DEMethodFailed[i]) + 0.01;
             successRateTotal += successRate;
             methodCutoff[i] = successRateTotal;
-
-            if ( i < 3 ) {
-                auto nth = pXList[i].begin() + pXList[i].size()/2;
-                std::nth_element(pXList[i].begin(), nth, pXList[i].end());
-                if ( pXList[i].size() % 2 )
-                    pXmed[i] = *nth;
-                else
-                    pXmed[i] = (*nth + *std::max_element(pXList[i].begin(), nth))/2;
-                pXList[i].clear();
-            }
         }
     }
 
@@ -183,18 +183,18 @@ void GAFitter::procreateDE()
         if ( method < methodCutoff[0] ) {
         // rand/1/bin
             DEMethodUsed[i] = 0;
-            DEpX[i] = session.RNG.variate<double>(pXmed[0], 0.1);
+            DEpXUsed[i] = session.RNG.variate<double>(DEpX[0], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
-                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
+                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpXUsed[i] ) )
                     P[j][i + nPop] = P[j][r1] + F * baseF[targetStim][j] * (P[j][r2] - P[j][r3]);
             }
         } else if ( method < methodCutoff[1] ) {
         // rand-to-best/2/bin
             DEMethodUsed[i] = 1;
             do { r4 = session.RNG.uniform<int>(0, nPop-1); } while ( r4 == i || r4 == r1 || r4 == r2 || r4 == r3 );
-            DEpX[i] = session.RNG.variate<double>(pXmed[1], 0.1);
+            DEpXUsed[i] = session.RNG.variate<double>(DEpX[1], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
-                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
+                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpXUsed[i] ) )
                     P[j][i + nPop] = P[j][i] + F * baseF[targetStim][j] * (P[j][bestIdx] - P[j][i] + P[j][r1] - P[j][r2] + P[j][r3] - P[j][r4]);
             }
         } else if ( method < methodCutoff[2] ) {
@@ -202,9 +202,9 @@ void GAFitter::procreateDE()
             DEMethodUsed[i] = 2;
             do { r4 = session.RNG.uniform<int>(0, nPop-1); } while ( r4 == i || r4 == r1 || r4 == r2 || r4 == r3 );
             do { r5 = session.RNG.uniform<int>(0, nPop-1); } while ( r5 == i || r5 == r1 || r5 == r2 || r5 == r3 || r5 == r4 );
-            DEpX[i] = session.RNG.variate<double>(pXmed[2], 0.1);
+            DEpXUsed[i] = session.RNG.variate<double>(DEpX[2], 0.1);
             for ( int j = 0; j < nParams; j++ ) {
-                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpX[i] ) )
+                if ( settings.constraints[j] < 2 && ( j == forcedJ || session.RNG.uniform(0.,1.) <= DEpXUsed[i] ) )
                     P[j][i + nPop] = P[j][r1] + F * baseF[targetStim][j] * (P[j][r2] - P[j][r3] + P[j][r4] - P[j][r5]);
             }
         } else {

@@ -438,6 +438,8 @@ struct GAFitterSettings {
     double spike_threshold = 40; // Threshold to register a spike on filtered dV/dt [mV/ms]
     int cl_validation_interval = 10;
 
+    int DE_decay = 10;
+
     // Retired values
     bool useLikelihood = false; // Retired 6 Nov 2018
     bool useClustering = false; // Retired 9 Jan 2019

@@ -5,7 +5,7 @@
 const QString GAFitter::action = QString("fit");
 const QString GAFitter::cl_action = QString("closedloop");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 110;
+const quint32 GAFitter::version = 111;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -137,7 +137,6 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
         for ( size_t j = 0; j < lib.NMODELS; j++ )
             output.resume.population[i][j] = lib.adjustableParams[i][j];
     output.resume.bias = bias;
-    output.resume.DEMethodUsed = DEMethodUsed;
     output.resume.DEMethodSuccess = DEMethodSuccess;
     output.resume.DEMethodFailed = DEMethodFailed;
     output.resume.DEpX = DEpX;
@@ -191,12 +190,10 @@ void GAFitter::save(QFile &file)
                 os << v;
         for ( const double &b : out.resume.bias )
             os << b;
-        for ( const int &n : out.resume.DEMethodUsed )
-            os << n;
-        for ( const int &n : out.resume.DEMethodSuccess )
-            os << n;
-        for ( const int &n : out.resume.DEMethodFailed )
-            os << n;
+        for ( const double &d : out.resume.DEMethodSuccess )
+            os << d;
+        for ( const double &d : out.resume.DEMethodFailed )
+            os << d;
         for ( const double &p : out.resume.DEpX )
             os << p;
     }
@@ -227,6 +224,7 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
         p_out =& m_results.back();
     }
     Output &out = *p_out;
+    out.closedLoop = (act == cl_action);
 
     is >> out.stimSource >> out.epochs;
     out.targetStim.resize(out.epochs);
@@ -294,30 +292,30 @@ Result *GAFitter::load(const QString &act, const QString &, QFile &results, Resu
         size_t nParams = lib.adjustableParams.size();
         out.resume.population.assign(nParams, std::vector<scalar>(lib.NMODELS));
         out.resume.bias.resize(out.stims.size());
-        out.resume.DEMethodUsed.resize(nParams);
-        out.resume.DEMethodSuccess.resize(nParams);
-        out.resume.DEMethodFailed.resize(nParams);
-        out.resume.DEpX.resize(nParams);
 
         for ( auto &vec : out.resume.population )
             for ( scalar &v : vec )
                 is >> v;
         for ( double &b : out.resume.bias )
             is >> b;
-        for ( int &n : out.resume.DEMethodUsed )
-            is >> n;
-        for ( int &n : out.resume.DEMethodSuccess )
-            is >> n;
-        for ( int &n : out.resume.DEMethodFailed )
-            is >> n;
-        for ( double &p : out.resume.DEpX )
-            is >> p;
     }
 
-    if ( ver == 109 ) {
-        bool tmp; is >> tmp;
+    if ( ver < 111 ) {
+        out.resume.DEMethodSuccess.assign(4, 1);
+        out.resume.DEMethodFailed.assign(4, 0);
+        out.resume.DEpX.resize(3, 0.5);
+    } else {
+        out.resume.DEMethodSuccess.resize(4);
+        out.resume.DEMethodFailed.resize(4);
+        out.resume.DEpX.resize(3);
+
+        for ( double &d : out.resume.DEMethodSuccess )
+            is >> d;
+        for ( double &d : out.resume.DEMethodFailed )
+            is >> d;
+        for ( double &d : out.resume.DEpX )
+            is >> d;
     }
-    out.closedLoop = (act == cl_action);
 
     return p_out;
 }

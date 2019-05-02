@@ -60,7 +60,7 @@ public:
         struct {
             std::vector<std::vector<scalar>> population;
             std::vector<double> bias;
-            std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
+            std::vector<double> DEMethodSuccess, DEMethodFailed;
             std::vector<double> DEpX;
         } resume;
 
@@ -152,8 +152,9 @@ protected:
     const static quint32 magic, version, validate_magic, validate_version;
 
     void procreateDE();
-    std::vector<int> DEMethodUsed, DEMethodSuccess, DEMethodFailed;
-    std::vector<double> DEpX;
+    std::vector<int> DEMethodUsed;
+    std::vector<double> DEMethodSuccess, DEMethodFailed;
+    std::vector<double> DEpXUsed, DEpX;
 
     std::vector<Stimulation> astims;
     std::vector<iStimulation> stims;

@@ -59,7 +59,6 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
         for ( size_t j = 0; j < lib.NMODELS; j++ )
             output.resume.population[i][j] = lib.adjustableParams[i][j];
     output.resume.bias = bias;
-    output.resume.DEMethodUsed = DEMethodUsed;
     output.resume.DEMethodSuccess = DEMethodSuccess;
     output.resume.DEMethodFailed = DEMethodFailed;
     output.resume.DEpX = DEpX;

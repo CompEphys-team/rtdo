@@ -6,13 +6,13 @@ void GAFitter::setup(bool ad_hoc_stims)
     int nParams = lib.adjustableParams.size();
     int nStims = astims.size();
 
+    DEMethodUsed.assign(lib.NMODELS/2, 0);
+    DEpXUsed.assign(lib.NMODELS/2, 0);
     if ( output.resume.population.empty() ) {
-        DEMethodUsed.assign(lib.NMODELS/2, 0);
-        DEMethodSuccess.assign(4, 0);
+        DEMethodSuccess.assign(4, 1);
         DEMethodFailed.assign(4, 0);
-        DEpX.assign(lib.NMODELS/2, 0);
+        DEpX.assign(3, 0.5);
     } else {
-        DEMethodUsed = output.resume.DEMethodUsed;
         DEMethodSuccess = output.resume.DEMethodSuccess;
         DEMethodFailed = output.resume.DEMethodFailed;
         DEpX = output.resume.DEpX;

@@ -140,6 +140,8 @@ void GAFitterSettingsDialog::importData()
     ui->spike_threshold->setValue(p.spike_threshold);
     ui->cl_validation_interval->setValue(p.cl_validation_interval);
 
+    ui->DE_decay->setValue(p.DE_decay);
+
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(p.constraints[i]);
         static_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 1))->setValue(p.sigma[i]);
@@ -179,6 +181,8 @@ void GAFitterSettingsDialog::exportData()
     p.SDF_decay = ui->SDF_decay->value();
     p.spike_threshold = ui->spike_threshold->value();
     p.cl_validation_interval = ui->cl_validation_interval->value();
+
+    p.DE_decay = ui->DE_decay->value();
 
     for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
         p.constraints.push_back(static_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex());
