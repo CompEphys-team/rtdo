@@ -213,7 +213,7 @@ void GAFitter::procreateDE()
             double K = session.RNG.uniform(0.,1.);
             for ( int j = 0; j < nParams; j++ ) {
                 if ( settings.constraints[j] < 2 )
-                    P[j][i + nPop] = P[j][i] + baseF[targetStim][j] * K * ((P[j][r1] - P[j][i]) + F*(P[j][r2] - P[j][r3]));
+                    P[j][i + nPop] = P[j][i] + baseF[targetStim][j] * (K*(P[j][r1] - P[j][i]) + F*(P[j][r2] - P[j][r3]));
             }
         }
 
