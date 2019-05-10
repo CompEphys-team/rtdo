@@ -99,6 +99,26 @@
        <string>Weight histogram by validation error</string>
       </property>
      </item>
+     <item>
+      <property name="text">
+       <string>Inverse mean cost in bin</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Inverse min cost in bin</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Inverse mean validation error in bin</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Inverse min validation error in bin</string>
+      </property>
+     </item>
     </widget>
    </item>
    <item row="0" column="7">

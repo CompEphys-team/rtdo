@@ -214,8 +214,8 @@ void PopulationPlot::replot()
     QFile basefile(session->gaFitter().getBaseFilePath(fitIdx));
     PopLoader loader(basefile, lib);
 
-    if ( mode == 2 ) {
-        if ( valIdx < 0 || session->gaFitter().validations().at(valIdx).fitIdx != fitIdx )
+    if ( mode == 2 || mode == 5 || mode == 6 ) {
+        if ( valIdx < 0 || (mode == 2 && session->gaFitter().validations().at(valIdx).fitIdx != fitIdx) )
             mode = -1; // Weighting invalid => don't pretend it can work, show a blank instead
         else
             validation =& session->gaFitter().validations().at(valIdx);
@@ -232,6 +232,7 @@ void PopulationPlot::replot()
         loader.load(epoch, lib);
         for ( size_t i = 0; i < axRects.size(); i++ ) {
             std::vector<double> hist(nBins, 0);
+            std::vector<std::vector<double>> binnedValues(nBins);
             double histTotal = mode ? 0 : 1;
             for ( size_t j = 0; j < lib.NMODELS; j++ ) {
                 const QCPRange &range = maps[i]->data()->valueRange();
@@ -246,10 +247,36 @@ void PopulationPlot::replot()
                     double invError = 1/validation->error[epoch][j];
                     hist[bucket] += invError;
                     histTotal += invError;
+                } else if ( mode == 3 ) {
+                    binnedValues[bucket].push_back(lib.summary[j]);
+                } else if ( mode == 4 ) {
+                    if ( binnedValues[bucket].empty() )
+                        binnedValues[bucket].push_back(lib.summary[j]);
+                    else
+                        binnedValues[bucket][0] = std::min(binnedValues[bucket][0], double(lib.summary[j]));
+                } else if ( mode == 5 && !validation->error[epoch].empty() ) {
+                    binnedValues[bucket].push_back(validation->error[epoch][j]);
+                } else if ( mode == 6 && !validation->error[epoch].empty() ) {
+                    if ( binnedValues[bucket].empty() )
+                        binnedValues[bucket].push_back(validation->error[epoch][j]);
+                    else
+                        binnedValues[bucket][0] = std::min(binnedValues[bucket][0], validation->error[epoch][j]);
                 }
             }
-            for ( int b = 0; b < nBins; b++ )
-                maps[i]->data()->setCell(epoch, b, hist[b] / histTotal);
+            if ( mode < 3 ) {
+                for ( int b = 0; b < nBins; b++ )
+                    maps[i]->data()->setCell(epoch, b, hist[b] / histTotal);
+            } else if ( mode == 3 || mode == 5 ) {
+                for ( int b = 0; b < nBins; b++ ) {
+                    double val = 0;
+                    for ( const double &v : binnedValues[b] )
+                        val += v;
+                    maps[i]->data()->setCell(epoch, b, (val > 0) ? binnedValues[b].size() / val : 0); // inverse mean
+                }
+            } else if ( mode == 4 || mode == 6 ) {
+                for ( int b = 0; b < nBins; b++ )
+                    maps[i]->data()->setCell(epoch, b, binnedValues[b].empty() ? 0 : 1/binnedValues[b][0]); // inverse min
+            }
         }
     }
 
