@@ -6,7 +6,7 @@
 
 const QString GAFitter::validate_action = QString("validate");
 const quint32 GAFitter::validate_magic = 0xaa3e9ef0;
-const quint32 GAFitter::validate_version = 100;
+const quint32 GAFitter::validate_version = 101;
 
 void GAFitter::record_validation(QFile &base)
 {
@@ -204,10 +204,10 @@ void GAFitter::save_validation_result(QFile &file)
     if ( !openSaveStream(file, os, validate_magic, validate_version) )
         return;
     const Validation &val = m_validations.back();
-    os << val.error << val.mean << val.sd;
+    os << val.error << val.mean << val.sd << qint32(val.fitIdx);
 }
 
-Result *GAFitter::load_validation_result(Result r, QFile &results)
+Result *GAFitter::load_validation_result(Result r, QFile &results, const QString &args)
 {
     QDataStream is;
     quint32 ver = openLoadStream(results, is, validate_magic);
@@ -216,14 +216,22 @@ Result *GAFitter::load_validation_result(Result r, QFile &results)
 
     Validation *p_out;
     if ( r.dryrun ) {
-        p_out = new Validation;
+        p_out = new Validation(r);
     } else {
-        m_validations.emplace_back();
+        m_validations.emplace_back(r);
         p_out =& m_validations.back();
     }
     Validation &val = *p_out;
 
     is >> val.error >> val.mean >> val.sd;
+
+    if ( ver < 101 ) {
+        val.fitIdx = args.split(' ').back().toInt();
+    } else {
+        qint32 fitIdx;
+        is >> fitIdx;
+        val.fitIdx = fitIdx;
+    }
 
     return p_out;
 }

@@ -69,6 +69,7 @@ public:
 
     struct Validation : public Result
     {
+        Validation(Result r = Result()) : Result(r) {}
         int fitIdx;
         QVector<QVector<double>> error;
         QVector<double> mean, sd;
@@ -76,6 +77,8 @@ public:
 
     inline const std::vector<Output> &results() const { return m_results; }
     Output currentResults() const { QMutexLocker locker(&mutex); if ( running) return output; else return m_results.back(); }
+
+    inline const std::vector<Validation> &validations() const { return m_validations; }
 
     inline QString actorName() const { return "GAFitter"; }
     bool execute(QString action, QString args, Result *res, QFile &file);
@@ -125,7 +128,7 @@ protected:
 
     bool exec_validation(Result *res, QFile &file);
     void save_validation_result(QFile &file);
-    Result *load_validation_result(Result r, QFile &file);
+    Result *load_validation_result(Result r, QFile &file, const QString &args);
 
     void record_validation(QFile&);
 
