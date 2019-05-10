@@ -155,7 +155,7 @@ std::vector<MAPElite> WaveSource::elites() const
             ret[i].wave.reset(new iStimulation(stims[i]));
             ret[i].obs = obs[i];
         }
-        break;
+        return ret;
     }
     }
 
@@ -266,7 +266,10 @@ std::vector<iObservations> WaveSource::observations(double dt) const
         }
     }
 
-    return ret;
+    if ( waveno >= 0 )
+        return {ret[waveno]};
+    else
+        return ret;
 }
 
 QString WaveSource::prettyName() const
