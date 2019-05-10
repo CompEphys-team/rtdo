@@ -472,6 +472,7 @@ std::vector<MAPElite> Wavegen::evaluatePremade(const std::vector<iStimulation> &
 
         for ( size_t stimIdx = 0; stimIdx < nStims; stimIdx++ ) {
             ret[nProcessedStims + stimIdx].current = ulib.clusterCurrent[stimIdx];
+            ret[nProcessedStims + stimIdx].deviations.resize(nParams);
             for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
                 ret[nProcessedStims + stimIdx].deviations[paramIdx] = ulib.clusters[stimIdx * nStims + paramIdx];
         }
