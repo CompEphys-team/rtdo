@@ -1,0 +1,275 @@
+#include "populationplot.h"
+#include "ui_populationplot.h"
+#include "populationsaver.h"
+
+PopulationPlot::PopulationPlot(QWidget *parent) :
+    QWidget(parent),
+    ui(new Ui::PopulationPlot)
+{
+    ui->setupUi(this);
+    connect(ui->slider, SIGNAL(valueChanged(int)), this, SLOT(resizePanel()));
+    connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(clearPlotLayout()));
+    connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(buildPlotLayout()));
+
+    ui->panel->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes);
+    connect(ui->panel, &QCustomPlot::selectionChangedByUser, [=](){
+        QList<QCPAxis *> axes = ui->panel->selectedAxes();
+        if ( axes.isEmpty() ) {
+            for ( QCPAxisRect *ar : axRects ) {
+                ar->setRangeZoomAxes(ar->axes());
+                ar->setRangeDragAxes(ar->axes());
+            }
+        } else {
+            QCPAxis *ax = axes.first(); // Note, no multiselect interaction; thus, list can only be one element long
+            int idx = 0;
+            while ( ax != ax->axisRect()->axis(ax->axisType(), idx) )
+                ++idx;
+            for ( QCPAxisRect *ar : axRects ) {
+                QCPAxis *axis = ar->axis(ax->axisType(), idx);
+                axis->setSelectedParts(QCPAxis::spAxis);
+                ar->setRangeDragAxes({axis});
+                ar->setRangeZoomAxes({axis});
+            }
+        }
+    });
+    connect(ui->panel, &QCustomPlot::axisDoubleClick, this, [=](QCPAxis *axis, QCPAxis::SelectablePart, QMouseEvent*) {
+        QCPAxisRect *ar = axis->axisRect();
+        const GAFitterSettings &settings = enslaved ? session->gaFitterSettings() : session->gaFitterSettings(session->gaFitter().results()[ui->fits->currentIndex()].resultIndex);
+        if ( axis == ar->axis(QCPAxis::atLeft, 0) ) {
+            for ( size_t i = 0; i < axRects.size(); i++ ) {
+                if ( axRects[i] == ar ) {
+                    axis->setRange(settings.min[i], settings.max[i]);
+                    break;
+                }
+            }
+        } else if ( axis == ar->axis(QCPAxis::atBottom) )
+            axis->rescale();
+        else if ( axis == ar->axis(QCPAxis::atLeft, 1) )
+            axis->setRange(0, 100);
+        else if ( !axis->graphs().isEmpty() ) { // atRight
+            bool foundRange;
+            QCPRange range = axis->graphs().first()->getValueRange(foundRange, QCP::sdBoth, ar->axis(QCPAxis::atBottom)->range());
+            if ( foundRange )
+                axis->setRange(range);
+        }
+        ui->panel->replot();
+    });
+
+    connect(ui->fits, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &PopulationPlot::replot);
+    connect(ui->bins, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &PopulationPlot::replot);
+    connect(ui->mode, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &PopulationPlot::replot);
+}
+
+PopulationPlot::PopulationPlot(Session &session, QWidget *parent) :
+    PopulationPlot(parent)
+{
+    init(&session, false);
+}
+
+void PopulationPlot::init(Session *session, bool enslave)
+{
+    this->session = session;
+    this->enslaved = enslave;
+
+    // Plots
+    axRects.resize(session->project.model().adjustableParams.size());
+    for ( size_t i = 0; i < axRects.size(); i++ ) {
+        const AdjustableParam &p = session->project.model().adjustableParams[i];
+        QCPAxisRect *ar = new QCPAxisRect(ui->panel);
+        axRects[i] = ar;
+
+        QCPAxis *xAxis = ar->axis(QCPAxis::atBottom);
+        xAxis->setLabel("Epoch");
+        xAxis->setRange(0, 1000);
+        connect(xAxis, SIGNAL(rangeChanged(QCPRange)), this, SLOT(xRangeChanged(QCPRange)));
+
+        QCPAxis *yAxis = ar->axis(QCPAxis::atLeft, 0);
+        yAxis->setLabel(QString::fromStdString(p.name));
+        yAxis->setRange(p.min, p.max);
+
+        ar->setRangeDragAxes(ar->axes());
+        ar->setRangeZoomAxes(ar->axes());
+    }
+    ui->panel->legend->setVisible(true);
+    ui->panel->setAutoAddPlottableToLegend(false);
+    ui->panel->legend->setFillOrder(QCPLegend::foColumnsFirst);
+    ui->panel->legend->setWrap(2);
+    ui->panel->axisRect()->insetLayout()->take(ui->panel->legend);
+    ui->columns->setMaximum(axRects.size());
+
+    // Enslave to GAFitterWidget
+//    if ( enslave ) {
+//        ui->fits->setVisible(false);
+//        connect(&session->gaFitter(), &GAFitter::starting, this, &PopulationPlot::clear);
+//        connect(&session->gaFitter(), &GAFitter::progress, this, &PopulationPlot::progress);
+//        connect(&session->gaFitter(), &GAFitter::done, this, [=](){
+//            const GAFitter::Output &o = session->gaFitter().results().back();
+//            if ( o.final )
+//                addFinal(o);
+//        });
+//        clear();
+//    } else {
+
+    updateCombos();
+    connect(&session->gaFitter(), &GAFitter::done, this, &PopulationPlot::updateCombos);
+
+    replot();
+    QTimer::singleShot(10, this, &PopulationPlot::resizePanel);
+}
+
+PopulationPlot::~PopulationPlot()
+{
+    delete ui;
+}
+
+void PopulationPlot::updateCombos()
+{
+    for ( size_t i = ui->fits->count(); i < session->gaFitter().results().size(); i++ )
+        ui->fits->addItem(QString("Fit %1 (%2)").arg(i).arg(session->gaFitter().results().at(i).resultIndex, 4, 10, QChar('0')));
+
+    for ( size_t i = ui->validations->count(); i < session->gaFitter().validations().size(); i++ ) {
+        const GAFitter::Validation &val = session->gaFitter().validations().at(i);
+        ui->validations->addItem(QString("Validation %1 for fit %2").arg(val.resultIndex, 4, 10, QChar('0')).arg(val.fitIdx));
+    }
+}
+
+void PopulationPlot::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    resizePanel();
+}
+
+void PopulationPlot::resizePanel()
+{
+    double height = std::max(1, ui->slider->height() * ui->slider->value() / ui->slider->maximum());
+    int nRows = (axRects.size() + ui->columns->value() - 1) / ui->columns->value();
+    ui->panel->setFixedHeight(height * nRows);
+
+    int legendWidth = 0;
+    if ( ui->panel->plotLayout()->columnCount() > 1 )
+        legendWidth = ui->panel->plotLayout()->element(0, 1)->outerRect().width();
+    ui->panel->setFixedWidth(ui->scrollArea->childrenRect().width() + legendWidth);
+
+    ui->panel->replot();
+}
+
+void PopulationPlot::clearPlotLayout()
+{
+    QCPLayoutGrid *graphLayout = qobject_cast<QCPLayoutGrid*>(ui->panel->plotLayout()->element(0, 0));
+    if ( graphLayout ) {
+        for ( QCPAxisRect *ar : axRects ) {
+            for ( int i = 0; i < graphLayout->elementCount(); i++ ) {
+                if ( graphLayout->elementAt(i) == ar ) {
+                    graphLayout->takeAt(i);
+                    break;
+                }
+            }
+        }
+        if ( ui->panel->plotLayout()->columnCount() > 1 )
+            qobject_cast<QCPLayoutGrid*>(ui->panel->plotLayout()->element(0, 1))->take(ui->panel->legend);
+    }
+    ui->panel->plotLayout()->clear();
+}
+
+void PopulationPlot::buildPlotLayout()
+{
+    ui->panel->plotLayout()->clear();
+
+    QCPLayoutGrid *graphLayout = new QCPLayoutGrid();
+    ui->panel->plotLayout()->addElement(0, 0, graphLayout);
+
+    size_t i = 0;
+    int n = ui->columns->value();
+    for ( int row = 0; row < std::ceil(double(axRects.size())/n); row++ ) {
+        for ( int col = 0; col < n; col++ ) {
+            graphLayout->addElement(row, col, axRects[i]);
+            if ( ++i >= axRects.size() )
+                row = col = axRects.size(); // break
+        }
+    }
+    ui->panel->replot(QCustomPlot::rpQueuedRefresh);
+    resizePanel();
+}
+
+void PopulationPlot::replot()
+{
+    ui->panel->clearPlottables();
+    clearPlotLayout();
+    ui->panel->plotLayout()->addElement(new QCPAxisRect(ui->panel)); // Prevent debug output from within QCP on adding items
+
+    if ( enslaved || ui->fits->currentIndex() < 0 || session->busy() ) {
+        buildPlotLayout();
+        return;
+    }
+
+    const int fitIdx = ui->fits->currentIndex();
+    const int valIdx = ui->validations->currentIndex();
+    const int nBins = ui->bins->value();
+    int mode = ui->mode->currentIndex();
+    const GAFitter::Output &fit = session->gaFitter().results().at(fitIdx);
+    const GAFitterSettings &settings = session->gaFitterSettings(fit.resultIndex);
+    const GAFitter::Validation *validation = nullptr;
+
+    UniversalLibrary &lib = session->gaFitter().lib;
+    QFile basefile(session->gaFitter().getBaseFilePath(fitIdx));
+    PopLoader loader(basefile, lib);
+
+    if ( mode == 2 ) {
+        if ( valIdx < 0 || session->gaFitter().validations().at(valIdx).fitIdx != fitIdx )
+            mode = -1; // Weighting invalid => don't pretend it can work, show a blank instead
+        else
+            validation =& session->gaFitter().validations().at(valIdx);
+    }
+
+    std::vector<QCPColorMap*> maps(axRects.size(), nullptr);
+    for ( size_t i = 0; i < axRects.size(); i++ ) {
+        maps[i] = new QCPColorMap(axRects[i]->axis(QCPAxis::atBottom), axRects[i]->axis(QCPAxis::atLeft));
+        maps[i]->data()->setSize(fit.epochs, nBins);
+        maps[i]->data()->setRange(QCPRange {0, double(fit.epochs)}, QCPRange {settings.min[i], settings.max[i]});
+    }
+
+    for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ ) {
+        loader.load(epoch, lib);
+        for ( size_t i = 0; i < axRects.size(); i++ ) {
+            std::vector<double> hist(nBins, 0);
+            double histTotal = mode ? 0 : 1;
+            for ( size_t j = 0; j < lib.NMODELS; j++ ) {
+                const QCPRange &range = maps[i]->data()->valueRange();
+                int bucket = std::min(int((lib.adjustableParams[i][j] - range.lower) / range.size() * nBins), nBins-1);
+                if ( mode == 0 ) // unweighted
+                    ++hist[bucket];
+                else if ( mode == 1 ) { // weighted by fit cost
+                    double invCost = 1/lib.summary[j];
+                    hist[bucket] += invCost;
+                    histTotal += invCost;
+                } else if ( mode == 2 && !validation->error[epoch].empty() ) { // weighted by validation
+                    double invError = 1/validation->error[epoch][j];
+                    hist[bucket] += invError;
+                    histTotal += invError;
+                }
+            }
+            for ( int b = 0; b < nBins; b++ )
+                maps[i]->data()->setCell(epoch, b, hist[b] / histTotal);
+        }
+    }
+
+    for ( size_t i = 0; i < axRects.size(); i++ ) {
+        maps[i]->rescaleDataRange();
+        maps[i]->setGradient(QCPColorGradient(QCPColorGradient::gpHot));
+    }
+
+    buildPlotLayout();
+
+    ui->panel->rescaleAxes();
+}
+
+void PopulationPlot::xRangeChanged(QCPRange range)
+{
+    for ( QCPAxisRect *ar : axRects ) {
+        QCPAxis *axis = ar->axis(QCPAxis::atBottom);
+        axis->blockSignals(true);
+        axis->setRange(range);
+        axis->blockSignals(false);
+    }
+    ui->panel->replot();
+}

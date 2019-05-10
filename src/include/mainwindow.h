@@ -83,6 +83,8 @@ private slots:
 
     void on_actionPCA_triggered();
 
+    void on_actionFit_as_heat_map_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

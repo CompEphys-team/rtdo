@@ -129,6 +129,7 @@
     <addaction name="actionFitting_Parameters"/>
     <addaction name="actionStimulations"/>
     <addaction name="actionPCA"/>
+    <addaction name="actionFit_as_heat_map"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="enabled">
@@ -322,6 +323,11 @@
   <action name="actionPCA">
    <property name="text">
     <string>PCA</string>
+   </property>
+  </action>
+  <action name="actionFit_as_heat_map">
+   <property name="text">
+    <string>Fit as heat map</string>
    </property>
   </action>
  </widget>

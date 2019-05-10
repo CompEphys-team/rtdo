@@ -16,6 +16,7 @@
 #include "stimulationdatadialog.h"
 #include "daqdialog.h"
 #include "pcaplot.h"
+#include "populationplot.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -404,6 +405,13 @@ void MainWindow::on_load_clicked()
 void MainWindow::on_actionPCA_triggered()
 {
     PCAPlot *figure = new PCAPlot(*session);
+    figure->setWindowTitle(figure->windowTitle() + " : " + title);
+    figure->show();
+}
+
+void MainWindow::on_actionFit_as_heat_map_triggered()
+{
+    PopulationPlot *figure = new PopulationPlot(*session);
     figure->setWindowTitle(figure->windowTitle() + " : " + title);
     figure->show();
 }

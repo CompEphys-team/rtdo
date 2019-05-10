@@ -91,6 +91,7 @@ SOURCES += \
     src/core/gafitter_validation.cpp \
     src/core/populationsaver.cpp \
     src/gui/pcaplot.cpp \
+    src/gui/populationplot.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -158,6 +159,7 @@ HEADERS  += \
     src/include/scope.h \
     src/include/populationsaver.h \
     src/include/pcaplot.h \
+    src/include/populationplot.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
@@ -186,6 +188,7 @@ FORMS    += \
     src/gui/fiterrorplotter.ui \
     src/gui/scope.ui \
     src/gui/pcaplot.ui \
+    src/gui/populationplot.ui
 
 LIBS     += -rdynamic -ldl -lcomedi -lgsl -lcusolver
 
