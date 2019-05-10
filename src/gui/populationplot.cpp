@@ -214,19 +214,34 @@ void PopulationPlot::replot()
     QFile basefile(session->gaFitter().getBaseFilePath(fitIdx));
     PopLoader loader(basefile, lib);
 
-    if ( mode == 2 || mode == 5 || mode == 6 ) {
-        if ( valIdx < 0 || (mode == 2 && session->gaFitter().validations().at(valIdx).fitIdx != fitIdx) )
-            mode = -1; // Weighting invalid => don't pretend it can work, show a blank instead
-        else
-            validation =& session->gaFitter().validations().at(valIdx);
+    if ( valIdx < 0 || session->gaFitter().validations().at(valIdx).fitIdx != fitIdx ) {
+        if ( mode == 2 || mode == 5 || mode == 6 )
+            mode = -1;
+    } else {
+        validation =& session->gaFitter().validations().at(valIdx);
     }
 
     std::vector<QCPColorMap*> maps(axRects.size(), nullptr);
+    std::vector<QCPGraph*> bestCostG(axRects.size(), nullptr);
+    std::vector<QCPGraph*> bestValiG(axRects.size(), nullptr);
     for ( size_t i = 0; i < axRects.size(); i++ ) {
         maps[i] = new QCPColorMap(axRects[i]->axis(QCPAxis::atBottom), axRects[i]->axis(QCPAxis::atLeft));
         maps[i]->data()->setSize(fit.epochs, nBins);
         maps[i]->data()->setRange(QCPRange {0, double(fit.epochs)}, QCPRange {settings.min[i], settings.max[i]});
+
+        bestCostG[i] = new QCPGraph(axRects[i]->axis(QCPAxis::atBottom), axRects[i]->axis(QCPAxis::atLeft));
+        bestCostG[i]->setVisible(ui->bestCost->isChecked());
+        bestCostG[i]->setLineStyle(QCPGraph::lsNone);
+        bestCostG[i]->setScatterStyle(QCPScatterStyle::ssCross);
+        if ( validation ) {
+            bestValiG[i] = new QCPGraph(axRects[i]->axis(QCPAxis::atBottom), axRects[i]->axis(QCPAxis::atLeft));
+            bestValiG[i]->setVisible(ui->bestVali->isChecked());
+            bestValiG[i]->setPen(QPen(Qt::green));
+            bestValiG[i]->setLineStyle(QCPGraph::lsNone);
+            bestValiG[i]->setScatterStyle(QCPScatterStyle::ssCross);
+        }
     }
+
 
     for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ ) {
         loader.load(epoch, lib);
@@ -234,6 +249,9 @@ void PopulationPlot::replot()
             std::vector<double> hist(nBins, 0);
             std::vector<std::vector<double>> binnedValues(nBins);
             double histTotal = mode ? 0 : 1;
+            double bestCost = lib.summary[0];
+            double bestVali = (validation && !validation->error[epoch].empty()) ? validation->error[epoch][0] : -1;
+            int bestCostIdx = 0, bestValiIdx = 0;
             for ( size_t j = 0; j < lib.NMODELS; j++ ) {
                 const QCPRange &range = maps[i]->data()->valueRange();
                 int bucket = std::min(int((lib.adjustableParams[i][j] - range.lower) / range.size() * nBins), nBins-1);
@@ -262,7 +280,17 @@ void PopulationPlot::replot()
                     else
                         binnedValues[bucket][0] = std::min(binnedValues[bucket][0], validation->error[epoch][j]);
                 }
+
+                if ( lib.summary[j] < bestCost ) {
+                    bestCost = lib.summary[j];
+                    bestCostIdx = j;
+                }
+                if ( validation && !validation->error[epoch].empty() && validation->error[epoch][j] < bestVali ) {
+                    bestVali = validation->error[epoch][j];
+                    bestValiIdx = j;
+                }
             }
+
             if ( mode < 3 ) {
                 for ( int b = 0; b < nBins; b++ )
                     maps[i]->data()->setCell(epoch, b, hist[b] / histTotal);
@@ -276,6 +304,12 @@ void PopulationPlot::replot()
             } else if ( mode == 4 || mode == 6 ) {
                 for ( int b = 0; b < nBins; b++ )
                     maps[i]->data()->setCell(epoch, b, binnedValues[b].empty() ? 0 : 1/binnedValues[b][0]); // inverse min
+            }
+
+            for ( size_t paramIdx = 0; paramIdx < bestCostG.size(); paramIdx++ ) {
+                bestCostG[paramIdx]->addData(epoch, lib.adjustableParams[paramIdx][bestCostIdx]);
+                if ( validation && !validation->error[epoch].empty() )
+                    bestValiG[paramIdx]->addData(epoch, lib.adjustableParams[paramIdx][bestValiIdx]);
             }
         }
     }
