@@ -106,6 +106,17 @@ std::vector<double> Wavegen::getDeltabar()
         ulib.run();
 
         std::vector<double> dbar = ulib.find_deltabar(searchd.trajectoryLength, searchd.nTrajectories);
+        bool nans = false;
+        for ( double &d : dbar ) {
+            if ( std::isnan(d) || std::isinf(d) ) {
+                nans = true;
+                break;
+            }
+        }
+        if ( nans ) {
+            --runIdx;
+            continue;
+        }
         for ( size_t paramIdx = 0; paramIdx < nParams; paramIdx++ )
             deltabar[paramIdx] += dbar[paramIdx];
     }
