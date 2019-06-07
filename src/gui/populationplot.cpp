@@ -330,9 +330,13 @@ void PopulationPlot::replot()
         }
     }
 
+    QCPColorGradient gradient(QCPColorGradient::gpHot);
+    gradient.setColorStopAt(0, Qt::darkGray);
+    gradient.setColorStopAt(__DBL_MIN__, Qt::black);
+
     for ( size_t i = 0; i < axRects.size(); i++ ) {
         maps[i]->rescaleDataRange();
-        maps[i]->setGradient(QCPColorGradient(QCPColorGradient::gpHot));
+        maps[i]->setGradient(gradient);
     }
 
     buildPlotLayout();
