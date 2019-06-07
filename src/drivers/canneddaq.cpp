@@ -130,9 +130,10 @@ void CannedDAQ::getReferenceParams(QString record)
 
     std::ifstream is(refname.toStdString());
     while ( is.good() ) {
-        std::string name, unit;
+        std::string name;
         double value;
-        is >> name >> value >> unit;
+        is >> name >> value;
+        is.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // discard possible units
         for ( size_t i = 0; i < ref_params.size(); i++ ) {
             if ( name == project.model().adjustableParams[i].name + ':' ) {
                 ref_params[i] = value;
