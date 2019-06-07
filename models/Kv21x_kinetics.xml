@@ -10,13 +10,13 @@
 	</capacitance>
 	<current name="I_Kfast">
 		<popen>$(nK)*$(nK)*$(nK)*$(nK)*$(hK)</popen>
-		<gbar>gK_fast</gbar>
+		<gbar>gK_fast_k</gbar>
 		<gunit>10e-6</gunit>
 		<E>EK</E>
 	</current>
 	<current name="I_Kslow">
 		<popen>$(sK)*$(sK)*$(sK)*$(sK)</popen>
-		<gbar>gK_slow</gbar>
+		<gbar>gK_slow_k</gbar>
 		<gunit>10e-6</gunit>
 		<E>EK</E>
 	</current>
@@ -47,11 +47,11 @@
 		<range min="0" max="1" />
 	</variable>
 
-	<adjustableParam name="gK_fast" value="60">
+	<adjustableParam name="gK_fast_k" value="60">
 		<range min="1" max="200"/>
 		<perturbation type="*" rate="0.05"/>
 	</adjustableParam>
-	<adjustableParam name="gK_slow" value="20">
+	<adjustableParam name="gK_slow_k" value="20">
 		<range min="1" max="100"/>
 		<perturbation type="*" rate="0.05"/>
 	</adjustableParam>
