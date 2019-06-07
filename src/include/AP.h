@@ -116,6 +116,18 @@ std::function<bool(T&)> getReadFunc(QString &, int, std::istream &is, bool *ok, 
     is >> val;
     return [=](T& v){ bool changed = (v!=val); v = val; return changed;};
 }
+template <>
+inline std::function<bool(bool&)> getReadFunc<bool>(QString &, int, std::istream &is, bool *ok, bool&)
+{
+    bool good = is.good();
+    if ( ok )
+        *ok = good;
+    if ( !good )
+        return [](bool&){return false;};
+    int val;
+    is >> val;
+    return [=](bool& v){ bool changed = (v!=bool(val)); v = val; return changed;};
+}
 
 template <typename T, typename... Tail>
 std::function<bool(std::vector<T>&)> getReadFunc(QString &name, int offset, std::istream &is, bool *ok,
