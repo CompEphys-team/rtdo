@@ -58,6 +58,9 @@ PopulationPlot::PopulationPlot(QWidget *parent) :
     connect(ui->fits, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &PopulationPlot::replot);
     connect(ui->bins, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, &PopulationPlot::replot);
     connect(ui->mode, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &PopulationPlot::replot);
+    connect(ui->bestCost, &QCheckBox::toggled, this, &PopulationPlot::replot);
+    connect(ui->bestVali, &QCheckBox::toggled, this, &PopulationPlot::replot);
+    connect(ui->target, &QCheckBox::toggled, this, &PopulationPlot::replot);
 }
 
 PopulationPlot::PopulationPlot(Session &session, QWidget *parent) :
@@ -311,6 +314,19 @@ void PopulationPlot::replot()
                 if ( validation && !validation->error[epoch].empty() )
                     bestValiG[paramIdx]->addData(epoch, lib.adjustableParams[paramIdx][bestValiIdx]);
             }
+        }
+    }
+
+    if ( ui->target->isChecked() ) {
+        for ( size_t i = 0; i < axRects.size(); i++ ) {
+            QCPItemStraightLine *line = new QCPItemStraightLine(ui->panel);
+            line->setPen(QPen(Qt::magenta));
+            line->point1->setAxes(axRects[i]->axis(QCPAxis::atBottom), axRects[i]->axis(QCPAxis::atLeft));
+            line->point2->setAxes(axRects[i]->axis(QCPAxis::atBottom), axRects[i]->axis(QCPAxis::atLeft));
+            line->point1->setCoords(0, fit.targets[i]);
+            line->point2->setCoords(1, fit.targets[i]);
+            line->setClipAxisRect(axRects[i]);
+            line->setClipToAxisRect(true);
         }
     }
 

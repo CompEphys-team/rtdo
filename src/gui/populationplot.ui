@@ -161,6 +161,13 @@
      </property>
     </widget>
    </item>
+   <item row="1" column="5">
+    <widget class="QCheckBox" name="target">
+     <property name="text">
+      <string>Target (pink)</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
