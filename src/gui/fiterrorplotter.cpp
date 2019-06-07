@@ -268,9 +268,10 @@ void FitErrorPlotter::on_run_clicked()
             prot.blankCycles = blankCycles;
             for ( size_t i = 0; i < prot.stims.size(); i++ ) {
                 prot.iObs[i] = iObserveNoSteps(prot.istims[i], blankCycles);
-                maxStimLen = std::max(maxStimLen, prot.istims[i].duration);
             }
         }
+        for ( const iStimulation &I : prot.istims )
+            maxStimLen = std::max(maxStimLen, I.duration);
     }
 
     // Find total number of target traces, and prepare list of fits & register entries
