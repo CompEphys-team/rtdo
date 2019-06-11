@@ -285,6 +285,15 @@ std::vector<std::unique_ptr<AP>> getStimAPs(std::vector<Stimulation> &stims, dou
 
 void WavesetCreator::writeStims(std::vector<Stimulation> stims, std::ostream &file, double dt)
 {
+    for ( Stimulation &stim : stims ) {
+        for ( Stimulation::Step &step : stim )
+            if ( step.ramp )
+                step.ramp = true;
+        for ( size_t i = stim.size(); i < Stimulation::maxSteps; i++ ) {
+            stim.steps[i].t = stim.steps[i].V = 0;
+            stim.steps[i].ramp = false;
+        }
+    }
     for ( auto const& ap : getStimAPs(stims, dt) )
         ap->write(file);
 }
