@@ -67,7 +67,7 @@ inline std::vector<T> Quantile(const std::vector<T>& inData, const std::vector<T
 
     if (1 == inData.size())
     {
-        return std::vector<T>(1, inData[0]);
+        return std::vector<T>(probs.size(), inData[0]);
     }
 
     std::vector<T> data = inData;
