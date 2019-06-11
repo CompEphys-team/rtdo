@@ -148,7 +148,8 @@ void genNeuronKernel(NNmodel &model, string &path)
 
 
 /// *********************** RTDO edit: reading state & params ***********************************
-        os << std::endl << pModel->populateStructs("dd_", model.neuronName[i] + "[" + localID + " % cl_blocksizeUNI]", "", model.neuronName[i]) << ENDL;
+        std::string ass = std::string("assignment") + model.neuronName[i];
+        os << std::endl << pModel->populateStructs("dd_", model.neuronName[i] + "[(" + ass + " & ASSIGNMENT_SUBSET_MUX) ? (" + localID + " % cl_blocksizeUNI) : " + localID + "]", "", model.neuronName[i]) << ENDL;
 
         for (size_t k = 0; k < nModels[nt].varNames.size(); k++) {
             bool include = true;
@@ -178,16 +179,18 @@ void genNeuronKernel(NNmodel &model, string &path)
             }
         }
         if ( pModel->isUniversalLib ) {
-            std::string ass = std::string("assignment") + model.neuronName[i];
             for ( const TypedVariableBase *var : pModel->singular_stim_vars )
-                os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_STIM) ? singular_" << var->name << " : dd_"
-                   << var->name << model.neuronName[i] << "[" << localID << " / cl_blocksizeUNI];" << ENDL;
+                os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_STIM) ? singular_" << var->name
+                   << " : dd_" << var->name << model.neuronName[i] << "["
+                   << "(" << ass << " & ASSIGNMENT_SUBSET_MUX) ? " << localID << " / cl_blocksizeUNI : " << localID << "];" << ENDL;
             for ( const TypedVariableBase *var : pModel->singular_rund_vars )
-                os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_RUND) ? singular_" << var->name << " : dd_"
-                   << var->name << model.neuronName[i] << "[" << localID << " % cl_blocksizeUNI];" << ENDL;
+                os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_RUND) ? singular_" << var->name
+                   << " : dd_" << var->name << model.neuronName[i] << "["
+                   << "(" << ass << " & ASSIGNMENT_SUBSET_MUX) ? " << localID << " % cl_blocksizeUNI : " << localID << "];" << ENDL;
             for ( const TypedVariableBase *var : pModel->singular_target_vars )
-                os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_TARGET) ? singular_" << var->name << " : dd_"
-                   << var->name << model.neuronName[i] << "[" << localID << " / cl_blocksizeUNI];" << ENDL;
+                os << var->type << " l" << var->name << " = (" << ass << " & ASSIGNMENT_SINGULAR_TARGET) ? singular_" << var->name
+                   << " : dd_" << var->name << model.neuronName[i] << "["
+                   << "(" << ass << " & ASSIGNMENT_SUBSET_MUX) ? " << localID << " / cl_blocksizeUNI : " << localID << "];" << ENDL;
         }
         os << ENDL;
 /// ************************** RTDO edit ends **************************************************

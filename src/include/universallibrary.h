@@ -79,6 +79,10 @@
 // Bit 28: Accumulate summary according to an error function (experimental)
 #define ASSIGNMENT_SUMMARY_ERRFN                static_cast<unsigned int>(0x1 << 28) /* Preprocess summary diff through an error function (experimental) */
 
+// Bit 29: Multiplex subset of models
+// Models (and RunData, if singular) are loaded as id % cl_blocksize; stim and target (if singular) are loaded as id / cl_blocksize.
+#define ASSIGNMENT_SUBSET_MUX                   static_cast<unsigned int>(0x1 << 29) /* Multiplex over the subset [0,cl_blocksize] */
+
 class UniversalLibrary
 {
 public:
