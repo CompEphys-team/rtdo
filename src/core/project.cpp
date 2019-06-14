@@ -179,6 +179,9 @@ bool Project::compile()
     std::ofstream proj(p_projectfile.toStdString());
     for ( auto const& p : ap )
         p->write(proj);
+    std::ofstream pnames(QString(dir() + "/paramnames").toStdString(), std::ios_base::out | std::ios_base::trunc);
+    for ( const AdjustableParam &p : unilib->adjustableParams )
+        pnames << p.name << '\n';
     frozen = true;
     return true;
 }
