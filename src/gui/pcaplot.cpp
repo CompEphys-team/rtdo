@@ -73,7 +73,7 @@ void PCAPlot::compute()
     if ( session->busy() || ui->fits->currentIndex() < 0 || !session )
         return;
 
-    QFile basefile(session->gaFitter().getBaseFilePath(ui->fits->currentIndex()));
+    QFile basefile(session->resultFilePath(session->gaFitter().results().at(ui->fits->currentIndex()).resultIndex));
     PopLoader loader(basefile, session->project.universal());
     loader.load(ui->epoch->value(), session->project.universal());
     session->project.universal().pushParams();

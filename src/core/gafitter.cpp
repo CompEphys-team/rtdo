@@ -343,13 +343,3 @@ void GAFitter::pushToQ(double t, double V, double I, double O)
     if ( qO )
         qO->push({t,O});
 }
-
-QString GAFitter::getBaseFilePath(size_t fitIdx)
-{
-    if ( fitIdx >= m_results.size() )
-        return QString();
-    if ( m_results[fitIdx].closedLoop )
-        return session.resultFilePath(m_results[fitIdx].resultIndex, actorName(), cl_action);
-    else
-        return session.resultFilePath(m_results[fitIdx].resultIndex, actorName(), action);
-}

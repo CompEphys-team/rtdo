@@ -480,10 +480,18 @@ bool Session::readConfig(const QString &filename, bool incremental)
     return chgRun || chgSearch || chgStim || chgGafs || chgDaq; // chgCDaq omitted intentionally, as CDaq does not enter *.cfg output
 }
 
-QString Session::resultFileName(int idx, const QString &actor, const QString &action)
+QString Session::resultFileName(int idx) const
+{
+    return resultFileName(
+                idx,
+                m_log.data(m_log.index(idx, 1), Qt::DisplayRole).toString(),
+                m_log.data(m_log.index(idx, 2), Qt::DisplayRole).toString());
+}
+
+QString Session::resultFileName(int idx, const QString &actor, const QString &action) const
 {
     return QString("%1.%2.%3")
-            .arg(idx, 4, 10, QChar('0')) // 4 digits, pad with zeroes
+            .arg(idx, 4, 10, QChar('0'))
             .arg(actor, action);
 }
 
