@@ -581,6 +581,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.genRandom =& genRandom;" << endl;
     ss << "    pointers.get_posthoc_deviations =& get_posthoc_deviations;" << endl;
     ss << "    pointers.principal_components =& principal_components;" << endl;
+    ss << "    pointers.get_mean_distance =& get_mean_distance;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 

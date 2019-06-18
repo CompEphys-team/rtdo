@@ -161,6 +161,8 @@ public:
 
         std::vector<scalar> (*principal_components)(int L, scalar *d_X, int ldX, int n, int p);
         scalar **PCA_TL;
+
+        double (*get_mean_distance)(const AdjustableParam &);
     };
 
     Project &project;
@@ -317,6 +319,9 @@ public:
         PCA_TL_size = NMODELS-nIgnored;
         return ret;
     }
+
+    /// Utility call to compute mean distance within the population along the given parameter axis
+    inline double get_mean_distance(size_t targetParam) { return pointers.get_mean_distance(adjustableParams.at(targetParam)); }
 
 private:
     void *load();

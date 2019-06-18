@@ -185,3 +185,36 @@ extern "C" void profile(int nSamples, const std::vector<AdjustableParam> &params
 
     CHECK_CUDA_ERRORS(cudaFree((void **)dd_params));
 }
+
+
+
+__global__ void collect_target_only_dist(scalar *target_params, scalar *dist)
+{
+    unsigned int xThread = blockIdx.x * blockDim.x + threadIdx.x; // probe
+    unsigned int yThread = blockIdx.y * blockDim.y + threadIdx.y; // reference
+    unsigned int x,y;
+    if ( xThread < yThread ) { // transpose subdiagonal half of the top-left quadrant to run on the supradiagonal half of bottom-right quadrant
+        // the coordinate transformation is equivalent to squashing the bottom-right supradiagonal triangle to the left border,
+        // then flipping it up across the midline.
+        x = xThread + NMODELS - yThread; // xnew = x + n-y
+        y = NMODELS - yThread - 1;       // ynew = n-y - 1
+    } else {
+        x = xThread;
+        y = yThread;
+    }
+
+    if ( x != y ) {
+        unsigned int idx = xThread + NMODELS*yThread - yThread - (xThread>yThread);
+        dist[idx] = std::fabs(target_params[x] - target_params[y]);
+    }
+}
+
+extern "C" double get_mean_distance(const AdjustableParam &p)
+{
+    dim3 block(32, 16);
+    dim3 grid(NMODELS/32, NMODELS/32);
+    collect_target_only_dist<<<grid, block>>>(p.d_v, d_prof_dist_to);
+    thrust::device_ptr<scalar> dist_to = thrust::device_pointer_cast(d_prof_dist_to);
+    double sum_dist_to = thrust::reduce(dist_to, dist_to + profSz);
+    return sum_dist_to / profSz;
+}
