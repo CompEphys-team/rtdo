@@ -43,6 +43,7 @@ quint32 GAFitter::findNextStim()
         }
     } else {
         nStims = astims.size();
+        previousStimIdx = targetStim;
     }
 
     quint32 nextStimIdx(previousStimIdx);
