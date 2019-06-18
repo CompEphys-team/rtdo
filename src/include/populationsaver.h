@@ -23,7 +23,7 @@ struct PopLoader {
     size_t pop_bytes, err_bytes;
     void open(const QFile &basefile, const UniversalLibrary &lib);
     void close();
-    bool load(int epoch, UniversalLibrary &lib);
+    bool load(int epoch, UniversalLibrary &lib, int param = -1);
     inline PopLoader(const QFile &basefile, const UniversalLibrary &lib) { open(basefile, lib); }
 };
 

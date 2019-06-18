@@ -64,21 +64,29 @@ void PopLoader::close()
     nEpochs = 0;
 }
 
-bool PopLoader::load(int epoch, UniversalLibrary &lib)
+bool PopLoader::load(int epoch, UniversalLibrary &lib, int param)
 {
     if ( epoch >= nEpochs )
         return false;
 
     pop.seekg(pop_bytes * epoch);
-    for ( AdjustableParam &p : lib.adjustableParams )
-        pop.read(reinterpret_cast<char*>(p.v), lib.NMODELS * sizeof(*p.v));
 
-    if ( !combined ) {
-        err.seekg(err_bytes * epoch);
-        err.read(reinterpret_cast<char*>(lib.summary), lib.NMODELS * sizeof(*lib.summary));
-        return pop.good() && err.good();
+    if ( param < 0 || param >= int(lib.adjustableParams.size()) ) {
+        for ( AdjustableParam &p : lib.adjustableParams )
+            pop.read(reinterpret_cast<char*>(p.v), lib.NMODELS * sizeof(*p.v));
+
+        if ( !combined ) {
+            err.seekg(err_bytes * epoch);
+            err.read(reinterpret_cast<char*>(lib.summary), lib.NMODELS * sizeof(*lib.summary));
+            return pop.good() && err.good();
+        } else {
+            pop.read(reinterpret_cast<char*>(lib.summary), lib.NMODELS * sizeof(*lib.summary));
+            return pop.good();
+        }
     } else {
-        pop.read(reinterpret_cast<char*>(lib.summary), lib.NMODELS * sizeof(*lib.summary));
+        for ( int i = 0; i < param; i++ )
+            pop.seekg(sizeof(*lib.adjustableParams.at(i).v) * lib.NMODELS, std::ios_base::cur);
+        pop.read(reinterpret_cast<char*>(lib.adjustableParams.at(param).v), lib.NMODELS * sizeof(*lib.adjustableParams.at(param).v));
         return pop.good();
     }
 }
