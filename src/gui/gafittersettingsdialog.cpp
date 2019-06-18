@@ -124,6 +124,7 @@ void GAFitterSettingsDialog::importData()
     ui->sigmaInitial->setValue(p.sigmaInitial);
     ui->method->setCurrentIndex(p.useDE ? 1 : 0);
     ui->selectivity->setCurrentIndex(p.mutationSelectivity);
+    ui->num_populations->setValue(p.num_populations);
 
     if ( p.obsSource == Wavegen::cluster_action.toStdString() )
         ui->obsSource->setCurrentIndex(1);
@@ -166,6 +167,7 @@ void GAFitterSettingsDialog::exportData()
     p.sigmaInitial = ui->sigmaInitial->value();
     p.useDE = ui->method->currentIndex() == 1;
     p.mutationSelectivity = ui->selectivity->currentIndex();
+    p.num_populations = ui->num_populations->value();
 
     switch ( ui->obsSource->currentIndex() ) {
     case 1: p.obsSource = Wavegen::cluster_action.toStdString(); break;

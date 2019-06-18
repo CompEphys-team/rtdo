@@ -137,6 +137,7 @@ protected:
     void stimulateChunked();
 
     std::vector<errTupel> procreate();
+    void procreate_subpopulation(std::vector<errTupel> &p_err, size_t modelOffset, size_t nModels);
     double finalise();
     quint32 findNextStim();
     bool finished();
@@ -153,6 +154,7 @@ protected:
     const static quint32 magic, version, validate_magic, validate_version;
 
     void procreateDE();
+    void procreateDE_subpopulation(int modelOffset, int nModels, int offspringOffset, const std::vector<double> &methodCutoff, double successRateTotal, int bestIdx);
     std::vector<int> DEMethodUsed;
     std::vector<double> DEMethodSuccess, DEMethodFailed;
     std::vector<double> DEpXUsed, DEpX;

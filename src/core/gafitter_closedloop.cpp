@@ -320,15 +320,25 @@ void GAFitter::cl_pca()
 
 void GAFitter::cl_relegate_reinitialised(std::vector<errTupel> &p_err)
 {
-    // Sort reinit subpopulation by idx, descending
-    std::sort(p_err.end() - settings.nReinit, p_err.end(), [](const errTupel &lhs, const errTupel &rhs){ return lhs.idx < rhs.idx; });
+    std::vector<size_t> reinitialised_indices;
+    reinitialised_indices.reserve(settings.num_populations * settings.nReinit);
+    size_t nModels = lib.NMODELS / settings.num_populations;
+    for ( int i = 0; i < settings.num_populations; i++ ) {
+        size_t modelOffset = i*nModels;
+        for ( size_t j = nModels - settings.nReinit; j < nModels; j++ ) {
+            reinitialised_indices.push_back(p_err[modelOffset + j].idx);
+        }
+    }
+
+    // Sort reinit subpopulation by idx, ascending
+    std::sort(reinitialised_indices.begin(), reinitialised_indices.end());
 
     // Move subpop to end of population (tail first)
     using std::swap;
     size_t i = lib.NMODELS - 1;
-    for ( auto it = p_err.rbegin(); it != p_err.rbegin() + settings.nReinit; ++it, --i ) {
+    for ( auto it = reinitialised_indices.rbegin(); it != reinitialised_indices.rend(); ++it, --i) {
         for ( AdjustableParam &p : lib.adjustableParams ) {
-            swap(p[i], p[it->idx]);
+            swap(p[i], p[*it]);
         }
     }
 }

@@ -156,6 +156,7 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.spike_threshold", &q_settings, &Settings::gafs, &GAFitterSettings::spike_threshold);
     addAP(gafAP, "S.GAFitter.cl_validation_interval", &q_settings, &Settings::gafs, &GAFitterSettings::cl_validation_interval);
     addAP(gafAP, "S.GAFitter.DE_decay", &q_settings, &Settings::gafs, &GAFitterSettings::DE_decay);
+    addAP(gafAP, "S.GAFitter.num_populations", &q_settings, &Settings::gafs, &GAFitterSettings::num_populations);
 
     addAP(cdaqAP, "rec.Iidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Iidx);
     addAP(cdaqAP, "rec.Vidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Vidx);

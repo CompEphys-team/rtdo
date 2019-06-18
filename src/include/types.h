@@ -440,6 +440,8 @@ struct GAFitterSettings {
 
     int DE_decay = 10;
 
+    int num_populations = 1;
+
     // Retired values
     bool useLikelihood = false; // Retired 6 Nov 2018
     bool useClustering = false; // Retired 9 Jan 2019
