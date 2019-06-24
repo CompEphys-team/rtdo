@@ -181,7 +181,7 @@ bool Project::compile()
         p->write(proj);
     std::ofstream pnames(QString(dir() + "/paramnames").toStdString(), std::ios_base::out | std::ios_base::trunc);
     for ( const AdjustableParam &p : unilib->adjustableParams )
-        pnames << p.name << '\n';
+        pnames << p.name << '\t' << p.sigma << '\n';
     frozen = true;
     return true;
 }
