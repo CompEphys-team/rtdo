@@ -200,7 +200,7 @@ void PopulationPlot::replot()
     clearPlotLayout();
     ui->panel->plotLayout()->addElement(new QCPAxisRect(ui->panel)); // Prevent debug output from within QCP on adding items
 
-    if ( enslaved || ui->fits->currentIndex() < 0 || session->busy() ) {
+    if ( enslaved || ui->fits->currentIndex() < 0 ) {
         buildPlotLayout();
         return;
     }
@@ -213,9 +213,10 @@ void PopulationPlot::replot()
     const GAFitterSettings &settings = session->gaFitterSettings(fit.resultIndex);
     const GAFitter::Validation *validation = nullptr;
 
-    UniversalLibrary &lib = session->gaFitter().lib;
+    if ( lib == nullptr )
+        lib = new UniversalLibrary(session->project, false);
     QFile basefile(session->resultFilePath(session->gaFitter().results().at(fitIdx).resultIndex));
-    PopLoader loader(basefile, lib);
+    PopLoader loader(basefile, *lib);
 
     if ( valIdx < 0 || session->gaFitter().validations().at(valIdx).fitIdx != fitIdx ) {
         if ( mode == 2 || mode == 5 || mode == 6 )
@@ -247,21 +248,21 @@ void PopulationPlot::replot()
 
 
     for ( quint32 epoch = 0; epoch < fit.epochs; epoch++ ) {
-        loader.load(epoch, lib);
+        loader.load(epoch, *lib);
         for ( size_t i = 0; i < axRects.size(); i++ ) {
             std::vector<double> hist(nBins, 0);
             std::vector<std::vector<double>> binnedValues(nBins);
             double histTotal = mode ? 0 : 1;
-            double bestCost = lib.summary[0];
+            double bestCost = lib->summary[0];
             double bestVali = (validation && !validation->error[epoch].empty()) ? validation->error[epoch][0] : -1;
             int bestCostIdx = 0, bestValiIdx = 0;
-            for ( size_t j = 0; j < lib.NMODELS; j++ ) {
+            for ( size_t j = 0; j < lib->NMODELS; j++ ) {
                 const QCPRange &range = maps[i]->data()->valueRange();
-                int bucket = std::min(int((lib.adjustableParams[i][j] - range.lower) / range.size() * nBins), nBins-1);
+                int bucket = std::min(int((lib->adjustableParams[i][j] - range.lower) / range.size() * nBins), nBins-1);
                 if ( mode == 0 ) // unweighted
                     ++hist[bucket];
                 else if ( mode == 1 ) { // weighted by fit cost
-                    double invCost = 1/lib.summary[j];
+                    double invCost = 1/lib->summary[j];
                     hist[bucket] += invCost;
                     histTotal += invCost;
                 } else if ( mode == 2 && !validation->error[epoch].empty() ) { // weighted by validation
@@ -269,12 +270,12 @@ void PopulationPlot::replot()
                     hist[bucket] += invError;
                     histTotal += invError;
                 } else if ( mode == 3 ) {
-                    binnedValues[bucket].push_back(lib.summary[j]);
+                    binnedValues[bucket].push_back(lib->summary[j]);
                 } else if ( mode == 4 ) {
                     if ( binnedValues[bucket].empty() )
-                        binnedValues[bucket].push_back(lib.summary[j]);
+                        binnedValues[bucket].push_back(lib->summary[j]);
                     else
-                        binnedValues[bucket][0] = std::min(binnedValues[bucket][0], double(lib.summary[j]));
+                        binnedValues[bucket][0] = std::min(binnedValues[bucket][0], double(lib->summary[j]));
                 } else if ( mode == 5 && !validation->error[epoch].empty() ) {
                     binnedValues[bucket].push_back(validation->error[epoch][j]);
                 } else if ( mode == 6 && !validation->error[epoch].empty() ) {
@@ -284,8 +285,8 @@ void PopulationPlot::replot()
                         binnedValues[bucket][0] = std::min(binnedValues[bucket][0], validation->error[epoch][j]);
                 }
 
-                if ( lib.summary[j] < bestCost ) {
-                    bestCost = lib.summary[j];
+                if ( lib->summary[j] < bestCost ) {
+                    bestCost = lib->summary[j];
                     bestCostIdx = j;
                 }
                 if ( validation && !validation->error[epoch].empty() && validation->error[epoch][j] < bestVali ) {
@@ -310,9 +311,9 @@ void PopulationPlot::replot()
             }
 
             for ( size_t paramIdx = 0; paramIdx < bestCostG.size(); paramIdx++ ) {
-                bestCostG[paramIdx]->addData(epoch, lib.adjustableParams[paramIdx][bestCostIdx]);
+                bestCostG[paramIdx]->addData(epoch, lib->adjustableParams[paramIdx][bestCostIdx]);
                 if ( validation && !validation->error[epoch].empty() )
-                    bestValiG[paramIdx]->addData(epoch, lib.adjustableParams[paramIdx][bestValiIdx]);
+                    bestValiG[paramIdx]->addData(epoch, lib->adjustableParams[paramIdx][bestValiIdx]);
             }
         }
     }

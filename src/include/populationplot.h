@@ -35,6 +35,7 @@ protected slots:
 private:
     Ui::PopulationPlot *ui;
     Session *session;
+    UniversalLibrary *lib = nullptr;
 
     std::vector<QCPAxisRect*> axRects;
 
