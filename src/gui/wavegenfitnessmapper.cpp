@@ -309,3 +309,13 @@ void WavegenFitnessMapper::on_readMaxFitness_clicked()
 {
     ui->fitnessTolerance->setValue(colorMap->dataRange().upper * ui->tolFitnessFraction->value());
 }
+
+void WavegenFitnessMapper::on_deltabar_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( file.isEmpty() )
+        return;
+    std::ofstream os(file.toStdString(), std::ios_base::out | std::ios_base::trunc);
+    for ( double dbar : ui->combo->currentData().value<WaveSource>().archive()->deltabar )
+        os << dbar << '\n';
+}

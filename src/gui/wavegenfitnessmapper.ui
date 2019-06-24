@@ -214,6 +214,13 @@
    <item row="4" column="4">
     <widget class="QDoubleSpinBox" name="tolFitnessFraction"/>
    </item>
+   <item row="2" column="3">
+    <widget class="QPushButton" name="deltabar">
+     <property name="text">
+      <string>Δbar...</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
