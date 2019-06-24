@@ -222,6 +222,13 @@
          </column>
         </widget>
        </item>
+       <item row="4" column="1">
+        <widget class="QPushButton" name="index">
+         <property name="text">
+          <string>Index...</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
      <widget class="QCustomPlot" name="plot" native="true">

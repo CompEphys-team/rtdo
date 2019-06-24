@@ -2,7 +2,7 @@
 #include "ui_fiterrorplotter.h"
 #include <QFileDialog>
 #include "clustering.h"
-
+#include "populationsaver.h"
 #include "supportcode.h"
 
 constexpr static int nColours = 8;
@@ -768,4 +768,100 @@ void FitErrorPlotter::on_pdf_clicked()
     if ( !file.endsWith(".pdf") )
         file.append(".pdf");
     ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), file);
+}
+
+void FitErrorPlotter::on_index_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select index file", session->directory());
+    if ( file.isEmpty() )
+        return;
+
+    std::ofstream os(file.toStdString(), std::ios_base::out | std::ios_base::trunc);
+    os << "fileno\tcell\tgroup\trecord\tn_epochs\tn_pop\tn_subpops\n";
+
+    if ( lib == nullptr )
+        lib = new UniversalLibrary(session->project, false);
+
+    for ( size_t iGroup = 0; iGroup < data.size(); iGroup++ ) {
+        for ( size_t iFit = 0; iFit < data[iGroup].fits.size(); iFit++ ) {
+            const FitInspector::Fit &f = data[iGroup].fits[iFit];
+            const GAFitterSettings settings = session->gaFitterSettings(f.fit().resultIndex);
+
+            // Find the cell to which this fit was targeted
+            QString cell = "";
+            for ( const auto &reg : register_map ) {
+                if ( f.fit().VCRecord.endsWith(reg.second.file) ) {
+                    cell = reg.second.cell;
+                    break;
+                }
+            }
+            if ( cell.isEmpty() )
+                continue;
+
+
+            os << f.fit().resultIndex << '\t' << cell << '\t' << data[iGroup].label << '\t' << f.fit().VCRecord << '\t'
+               << f.fit().epochs << '\t' << lib->NMODELS << '\t' << settings.num_populations << '\n';
+
+            // Add step size (sigma) binfiles for normalisation
+            std::ofstream stepf(session->resultFilePath(f.fit().resultIndex).toStdString() + ".steps", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+            std::vector<std::vector<std::vector<scalar>>> steps(settings.useDE ? settings.num_populations : 1,
+                                                                std::vector<std::vector<scalar>>(lib->adjustableParams.size(),
+                                                                                                 std::vector<scalar>(f.fit().epochs, 0)));
+            if ( settings.useDE ) {
+                PopLoader loader(QFile(session->resultFilePath(f.fit().resultIndex)), *lib);
+                for ( size_t epoch = 0; epoch < f.fit().epochs; epoch++ ) {
+                    size_t targetParam = f.fit().targetStim[epoch];
+                    AdjustableParam &P = lib->adjustableParams.at(targetParam);
+
+                    loader.load(epoch, *lib, targetParam);
+
+                    int popsz = lib->NMODELS / (2*settings.num_populations);
+                    std::vector<scalar> pop_steps(popsz);
+                    for ( int pop = 0; pop < settings.num_populations; pop++ ) {
+                        for ( int modelIdx = 0, offset = pop*popsz; modelIdx < popsz; modelIdx++ ) {
+                            pop_steps[modelIdx] = scalarfabs(P[offset + modelIdx] - P[offset + modelIdx + lib->NMODELS/2]);
+                        }
+                        auto it = pop_steps.begin() + popsz/2;
+                        std::nth_element(pop_steps.begin(), it, pop_steps.end());
+                        scalar median_step = (*it + *std::min_element(it+1, pop_steps.end()))/2;
+                        if ( steps[pop][targetParam][0] == 0 )
+                            steps[pop][targetParam][0] = median_step;
+                        else
+                            steps[pop][targetParam][epoch] = median_step;
+                    }
+                    /// Note: Assumptions made here:
+                    /// 1. The fit used a Deck, meaning that targetStim == targetParam
+                    /// 2. Conditions don't change much while parameters are not directly targeted
+                }
+
+                for ( size_t iParam = 0; iParam < lib->adjustableParams.size(); iParam++ )
+                    stepf << char(settings.num_populations); // DE step sizes are always additive, step type != 0
+
+                for ( int pop = 0; pop < settings.num_populations; pop++ ) {
+                    for ( size_t iParam = 0; iParam < lib->adjustableParams.size(); iParam++ ) {
+                        scalar step = steps[pop][iParam][0];
+                        for ( size_t epoch = 1; epoch < f.fit().epochs; epoch++ ) {
+                            if ( steps[pop][iParam][epoch] == 0 )
+                                steps[pop][iParam][epoch] = step;
+                            else
+                                step = steps[pop][iParam][epoch];
+                        }
+                    }
+                }
+            } else {
+                for ( size_t iParam = 0; iParam < lib->adjustableParams.size(); iParam++ ) {
+                    stepf << (lib->adjustableParams[iParam].multiplicative ? char(0) : char(1));
+                    for ( size_t epoch = 0; epoch < f.fit().epochs; epoch++ ) {
+                        double F = settings.decaySigma ? settings.sigmaInitial * std::exp2(-double(epoch)/settings.sigmaHalflife) : 1;
+                        scalar sigma = settings.constraints[iParam] == 1 ? settings.sigma[iParam] : lib->adjustableParams[iParam].sigma;
+                        steps[0][iParam][epoch] = f.fit().baseF[f.fit().targetStim[epoch]][iParam] * F * sigma;
+                    }
+                }
+            }
+
+            for ( auto popvec : steps )
+                for ( auto paramvec : popvec )
+                    stepf.write(reinterpret_cast<char*>(paramvec.data()), f.fit().epochs * sizeof(scalar));
+        }
+    }
 }
