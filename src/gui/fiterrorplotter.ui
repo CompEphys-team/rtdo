@@ -229,6 +229,32 @@
          </property>
         </widget>
        </item>
+       <item row="4" column="2">
+        <widget class="QPushButton" name="validate">
+         <property name="text">
+          <string>Validate...</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="3">
+        <widget class="QComboBox" name="validateTarget">
+         <item>
+          <property name="text">
+           <string>Target</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Medians</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Best</string>
+          </property>
+         </item>
+        </widget>
+       </item>
       </layout>
      </widget>
      <widget class="QCustomPlot" name="plot" native="true">

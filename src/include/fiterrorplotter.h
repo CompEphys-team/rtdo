@@ -62,6 +62,8 @@ private slots:
 
     void on_index_clicked();
 
+    void on_validate_clicked();
+
 private:
     Ui::FitErrorPlotter *ui;
     Session *session;
@@ -88,6 +90,7 @@ private:
 
     std::vector<RecStruct> get_requested_recordings(int &nTraces, int &maxStimLen);
     void setup_lib_for_validation(int nTraces, int maxStimLen, bool get_traces, bool average_summary);
+    std::vector<std::vector<std::vector<scalar>>> get_param_values(const GAFitter::Output &fit, int source);
 };
 
 #endif // FITERRORPLOTTER_H

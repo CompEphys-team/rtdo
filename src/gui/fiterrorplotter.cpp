@@ -881,3 +881,192 @@ void FitErrorPlotter::on_index_clicked()
         }
     }
 }
+
+/// Returns a (subpopulation, epoch, param) vector of parameter values for fit target (1,1,*; source==0), median (source==1) or lowest error (source==2)
+std::vector<std::vector<std::vector<scalar>>> FitErrorPlotter::get_param_values(const GAFitter::Output &fit, int source)
+{
+    if ( source == 0 ) { // target
+        return {{fit.targets}};
+    }
+
+    const GAFitterSettings settings = session->gaFitterSettings(fit.resultIndex);
+    if ( source == 2 && settings.num_populations == 1 ) { // best, full population
+        return {fit.params};
+    }
+
+    PopLoader loader(QFile(session->resultFilePath(fit.resultIndex)), *lib);
+    int popsz = lib->NMODELS / (settings.num_populations);
+    if ( settings.useDE )
+        popsz /= 2; // use ancestor population/errors only
+    std::vector<std::vector<std::vector<scalar>>> ret(settings.num_populations,
+                                                      std::vector<std::vector<scalar>>(fit.epochs,
+                                                                                       std::vector<scalar>(lib->adjustableParams.size())));
+    for ( size_t epoch = 0; epoch < fit.epochs; epoch++ ) {
+        loader.load(epoch, *lib);
+        for ( int pop = 0; pop < settings.num_populations; pop++ ) {
+            size_t lo_offset = pop*popsz;
+            size_t mid_offset = lo_offset + popsz/2;
+            size_t hi_offset = lo_offset + popsz/2;
+
+            if ( source == 1 ) { // median
+                for ( size_t paramIdx = 0; paramIdx < lib->adjustableParams.size(); paramIdx++ ) {
+                    AdjustableParam &P = lib->adjustableParams.at(paramIdx);
+                    scalar *mid = P.v + mid_offset;
+                    std::nth_element(P.v + lo_offset, mid, P.v + hi_offset);
+                    ret[pop][epoch][paramIdx] = (*mid + *std::max_element(P.v + lo_offset, mid))/2;
+                }
+            } else { // best
+                scalar *best = std::min_element(lib->summary + lo_offset, lib->summary + hi_offset);
+                size_t best_offset = best - lib->summary;
+                for ( size_t paramIdx = 0; paramIdx < lib->adjustableParams.size(); paramIdx++ ) {
+                    ret[pop][epoch][paramIdx] = lib->adjustableParams.at(paramIdx)[best_offset];
+                }
+            }
+        }
+    }
+
+    return ret;
+}
+
+void FitErrorPlotter::on_validate_clicked()
+{
+    int nTraces = 0, maxStimLen = 0;
+    std::vector<RecStruct> recordings = get_requested_recordings(nTraces, maxStimLen);
+    if ( recordings.empty() )
+        return;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    setup_lib_for_validation(nTraces, maxStimLen, false, false);
+
+    // Load parameter values from populations
+    std::cout << "Loading parameter values..." << std::endl;
+    std::vector<std::vector<std::vector<std::vector<scalar>>>> paramValues; // (fitIdx, subpopulation, epoch, param)
+    std::vector<std::vector<std::vector<double>>> accumulated_summary; // one per model: (fitIdx, subpopulation, epoch)
+    int nFits = 0;
+    for ( RecStruct &rec : recordings ) {
+        for ( const std::pair<size_t,size_t> fit_coords : rec.fit_coords ) {
+            const FitInspector::Fit &f = data[fit_coords.first].fits[fit_coords.second];
+            if ( nFits <= f.idx ) {
+                nFits = f.idx + 1;
+                paramValues.resize(nFits);
+                accumulated_summary.resize(nFits);
+            }
+            if ( paramValues[f.idx].empty() ) {
+                paramValues[f.idx] = get_param_values(f.fit(), ui->validateTarget->currentIndex());
+                accumulated_summary[f.idx].resize(paramValues[f.idx].size(), std::vector<double>(f.fit().epochs, 0));
+            }
+        }
+    }
+    std::vector<int> total_observed_duration(paramValues.size(), 0); // One per fit: (fitIdx)
+
+    std::vector<std::vector<std::vector<bool>>> queue_check(protocols.size()); // (protocol, stim, fitIdx)
+    int nTotalStims = 0;
+    for ( int iProtocol : get_protocol_indices() ) {
+        queue_check[iProtocol].resize(protocols[iProtocol].stims.size(), std::vector<bool>(nFits, false));
+        nTotalStims += ui->protocols->item(iProtocol, 0)->text().split('/')[0].toInt();
+    }
+
+    nTotalStims *= paramValues.back().size() * paramValues.back().back().size();
+    std::cout << "Estimated simulation count: " << nTotalStims << ", " << ((nTotalStims+lib->NMODELS-1)/lib->NMODELS) << " batches." << std::endl;
+
+    // Load models into lib
+    size_t modelIdx = 0;
+    size_t targetOffset = 0;
+    size_t batch = 0;
+    std::vector<double*> psummary(lib->NMODELS);
+    for ( RecStruct &rec : recordings ) {
+        RegisterEntry &reg = *rec.reg;
+        loadRecording(reg);
+
+        for ( size_t stimIdx = 0; stimIdx < reg.pprotocol->stims.size(); stimIdx++ ) {
+            // Write target traces to lib
+            for ( int iSample = 0; iSample < reg.data[stimIdx].size(); iSample++ )
+                lib->target[targetOffset + stimIdx + iSample*lib->targetStride] = reg.data[stimIdx][iSample];
+
+            // Write model parameters and settings
+            for ( const std::pair<size_t,size_t> fit_coords : rec.fit_coords ) {
+
+                // Check if data is already queued
+                const FitInspector::Fit &f = data[fit_coords.first].fits[fit_coords.second];
+                if ( queue_check[reg.pprotocol->idx][stimIdx][f.idx] )
+                    continue;
+                queue_check[reg.pprotocol->idx][stimIdx][f.idx] = true;
+
+                // Add this observation duration to the total
+                total_observed_duration[f.idx] += reg.pprotocol->iObs[stimIdx].duration();
+
+                // Write one model for each subpop and epoch
+                for ( size_t pop = 0; pop < paramValues[f.idx].size(); pop++ ) {
+                    for ( size_t epoch = 0; epoch < paramValues[f.idx][pop].size(); epoch++ ) {
+
+                        // Write parameter values
+                        for ( size_t i = 0; i < lib->adjustableParams.size(); i++ )
+                            lib->adjustableParams[i][modelIdx] = paramValues[f.idx][pop][epoch][i];
+
+                        // Write settings
+                        lib->setRundata(modelIdx, reg.rund);
+                        lib->stim[modelIdx] = reg.pprotocol->istims[stimIdx];
+                        lib->obs[modelIdx] = reg.pprotocol->iObs[stimIdx];
+                        lib->targetOffset[modelIdx] = targetOffset + stimIdx;
+
+                        // Keep tabs on where this goes
+                        psummary[modelIdx] =& accumulated_summary[f.idx][pop][epoch];
+
+                        // Increment
+                        ++modelIdx;
+
+                        // Run a batch as soon as the model bucket is full
+                        if ( modelIdx == lib->NMODELS ) {
+                            std::cout << "Simulating batch " << ++batch << "..." << std::endl;
+                            lib->pushTarget();
+                            lib->push();
+                            lib->run();
+                            lib->pullSummary();
+                            for ( size_t i = 0; i < modelIdx; i++ )
+                                *psummary[i] += lib->summary[i];
+                            modelIdx = 0;
+                        }
+                    }
+                }
+            }
+        }
+        targetOffset += reg.pprotocol->stims.size();
+    }
+
+    // push-run-pull the remaining models
+    if ( modelIdx > 0 ) {
+        for ( size_t i = modelIdx; i < lib->NMODELS; i++ ) {
+            lib->stim[i].duration = 0;
+            lib->iSettleDuration[i] = 0;
+        }
+        std::cout << "Simulating the final batch..." << std::endl;
+        lib->pushTarget();
+        lib->push();
+        lib->run();
+        lib->pullSummary();
+        for ( size_t i = 0; i < modelIdx; i++ )
+            *psummary[i] += lib->summary[i];
+    }
+
+    // Write
+    std::cout << "Writing to files..." << std::endl;
+    std::string suffix;
+    if ( ui->validateTarget->currentIndex() == 0 )      suffix = ".target_validation";
+    else if ( ui->validateTarget->currentIndex() == 1 ) suffix = ".median_validation";
+    else if ( ui->validateTarget->currentIndex() == 2 ) suffix = ".lowerr_validation";
+    for ( size_t fitIdx = 0; fitIdx < accumulated_summary.size(); fitIdx++ ) {
+        if ( accumulated_summary[fitIdx].empty() )
+            continue;
+        const GAFitter::Output &fit = session->gaFitter().results().at(fitIdx);
+        std::ofstream of(session->resultFilePath(fit.resultIndex).toStdString() + suffix, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+        for ( size_t pop = 0; pop < accumulated_summary[fitIdx].size(); pop++ ) {
+            for ( double &d : accumulated_summary[fitIdx][pop] )
+                d = std::sqrt(d / total_observed_duration[fitIdx]); // -> RMSE
+            of.write(reinterpret_cast<char*>(accumulated_summary[fitIdx][pop].data()), fit.epochs * sizeof(double));
+        }
+    }
+
+    std::cout << "Validation complete." << std::endl;
+    QApplication::restoreOverrideCursor();
+}
