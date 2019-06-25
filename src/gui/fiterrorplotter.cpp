@@ -964,7 +964,7 @@ void FitErrorPlotter::on_validate_clicked()
     int nTotalStims = 0;
     for ( int iProtocol : get_protocol_indices() ) {
         queue_check[iProtocol].resize(protocols[iProtocol].stims.size(), std::vector<bool>(nFits, false));
-        nTotalStims += ui->protocols->item(iProtocol, 0)->text().split('/')[0].toInt();
+        nTotalStims += ui->protocols->item(iProtocol, 0)->text().split('/')[0].toInt() * protocols[iProtocol].stims.size();
     }
 
     nTotalStims *= paramValues.back().size() * paramValues.back().back().size();
@@ -1018,7 +1018,8 @@ void FitErrorPlotter::on_validate_clicked()
 
                         // Run a batch as soon as the model bucket is full
                         if ( modelIdx == lib->NMODELS ) {
-                            std::cout << "Simulating batch " << ++batch << "..." << std::endl;
+                            std::cout << "Simulating batch " << ++batch << " (state: protocol " << reg.pprotocol->name << ", stim " << stimIdx
+                                      << ", fit " << f.idx << ", subpop " << pop << ", epoch " << epoch << ")..." << std::endl;
                             lib->pushTarget();
                             lib->push();
                             lib->run();
