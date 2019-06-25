@@ -780,7 +780,7 @@ void FitErrorPlotter::on_index_clicked()
         return;
 
     std::ofstream os(file.toStdString(), std::ios_base::out | std::ios_base::trunc);
-    os << "fileno\tcell\tgroup\trecord\tn_epochs\tn_pop\tn_subpops\n";
+    os << "fileno\tcell\tgroup\trecord\tn_epochs\tn_pop\tn_subpops\tsubpop_split\n";
 
     if ( lib == nullptr )
         lib = new UniversalLibrary(session->project, false);
@@ -803,7 +803,7 @@ void FitErrorPlotter::on_index_clicked()
 
 
             os << f.fit().resultIndex << '\t' << cell << '\t' << data[iGroup].label << '\t' << f.fit().VCRecord << '\t'
-               << f.fit().epochs << '\t' << lib->NMODELS << '\t' << settings.num_populations << '\n';
+               << f.fit().epochs << '\t' << lib->NMODELS << '\t' << settings.num_populations << '\t' << settings.useDE << '\n';
 
             // Add step size (sigma) binfiles for normalisation
             std::ofstream stepf(session->resultFilePath(f.fit().resultIndex).toStdString() + ".steps", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
