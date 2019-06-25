@@ -434,7 +434,8 @@ void FitErrorPlotter::push_run_pull(std::vector<ResultKey> keys, size_t keySz, b
     lib->push();
     lib->run();
     lib->pullSummary();
-    lib->pullOutput();
+    if ( get_traces )
+        lib->pullOutput();
 
     for ( size_t k = 0; k < keySz; k++ ) {
         summaries[keys[k]] = lib->summary[k];
