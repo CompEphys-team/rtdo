@@ -69,10 +69,10 @@ private:
     std::vector<Protocol> protocols; // Protocols in register
     QDir register_dir;
 
-    //                       MSE summary, current trace
-    std::map<ResultKey, std::pair<double, QVector<double>>> results;
+    std::map<ResultKey, double> summaries;
+    std::map<ResultKey, QVector<double>> traces;
 
-    void push_run_pull(std::vector<ResultKey> keys, size_t keySz);
+    void push_run_pull(std::vector<ResultKey> keys, size_t keySz, bool get_traces);
 
     void plot_traces(Protocol &prot);
     void plot_boxes(std::vector<int> protocol_indices);

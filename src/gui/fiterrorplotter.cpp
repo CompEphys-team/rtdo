@@ -319,6 +319,8 @@ void FitErrorPlotter::on_run_clicked()
         }
     }
 
+    bool get_traces = ui->tabWidget->currentWidget() == ui->trace_tab;
+
     // Prepare lib
     if ( lib == nullptr )
         lib = new UniversalLibrary(session->project, false);
@@ -330,15 +332,12 @@ void FitErrorPlotter::on_run_clicked()
 
     lib->simCycles = session->qRunData().simCycles;
     lib->integrator = session->qRunData().integrator;
-    if ( session->qRunData().VC )
-        lib->assignment = lib->assignment_base
-                | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE
-                | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES;
-    else
-        lib->assignment = lib->assignment_base
-                | ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN
-                | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_NONE | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE
-                | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES;
+    lib->assignment = lib->assignment_base
+            | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE;
+    if ( !session->qRunData().VC )
+        lib->assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN;
+    if ( get_traces )
+        lib->assignment |= ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES;
     lib->summaryOffset = 0;
 
     int parameterSourceSelection = get_parameter_selection();
@@ -365,8 +364,9 @@ void FitErrorPlotter::on_run_clicked()
                             stimIdx,
                             data[fit_coords.first].fits[fit_coords.second].idx,
                             parameterSourceSelection);
-                if ( results.find(keys[modelIdx]) != results.end()
-                     || std::find(keys.begin(), keys.begin()+modelIdx, keys[modelIdx]) != keys.begin()+modelIdx )
+                if ( (get_traces && traces.find(keys[modelIdx]) != traces.end())
+                     || (!get_traces && summaries.find(keys[modelIdx]) != summaries.end())
+                     || (std::find(keys.begin(), keys.begin()+modelIdx, keys[modelIdx]) != keys.begin()+modelIdx) )
                     continue;
 
                 // Write parameter values
@@ -394,7 +394,7 @@ void FitErrorPlotter::on_run_clicked()
 
                 // Run a batch as soon as the model bucket is full
                 if ( modelIdx == lib->NMODELS ) {
-                    push_run_pull(keys, modelIdx);
+                    push_run_pull(keys, modelIdx, get_traces);
                     modelIdx = 0;
                 }
             }
@@ -408,7 +408,7 @@ void FitErrorPlotter::on_run_clicked()
             lib->stim[i].duration = 0;
             lib->iSettleDuration[i] = 0;
         }
-        push_run_pull(keys, modelIdx);
+        push_run_pull(keys, modelIdx, get_traces);
     }
 
     replot();
@@ -416,7 +416,7 @@ void FitErrorPlotter::on_run_clicked()
     QApplication::restoreOverrideCursor();
 }
 
-void FitErrorPlotter::push_run_pull(std::vector<ResultKey> keys, size_t keySz)
+void FitErrorPlotter::push_run_pull(std::vector<ResultKey> keys, size_t keySz, bool get_traces)
 {
     lib->pushTarget();
     lib->push();
@@ -425,10 +425,13 @@ void FitErrorPlotter::push_run_pull(std::vector<ResultKey> keys, size_t keySz)
     lib->pullOutput();
 
     for ( size_t k = 0; k < keySz; k++ ) {
-        QVector<double> trace(lib->stim[k].duration);
-        for ( int i = 0; i < trace.size(); i++ )
-            trace[i] = lib->output[i*lib->NMODELS + k];
-        results[keys[k]] = std::make_pair(std::sqrt(lib->summary[k]), std::move(trace));
+        summaries[keys[k]] = lib->summary[k];
+        if ( get_traces ) {
+            QVector<double> &trace = traces[keys[k]];
+            trace.resize(lib->stim[k].duration);
+            for ( int i = 0; i < trace.size(); i++ )
+                trace[i] = lib->output[i*lib->NMODELS + k];
+        }
     }
 }
 
@@ -489,7 +492,7 @@ void FitErrorPlotter::plot_traces(Protocol &prot)
     RegisterEntry &reg = reg_iter->second;
 
     bool found = false;
-    for ( auto res : results ) {
+    for ( auto res : traces ) {
         if ( std::get<0>(res.first) == prot.idx && std::get<2>(res.first) == f.idx && std::get<3>(res.first) == get_parameter_selection() ) {
             found = true;
             break;
@@ -535,12 +538,12 @@ void FitErrorPlotter::plot_traces(Protocol &prot)
     if ( ui->trace_sim->isChecked() ) {
         for ( int stimIdx : stim_indices ) {
             sizeKeys(stimIdx);
-            auto res = results.find(std::make_tuple(prot.idx, stimIdx, f.idx, get_parameter_selection()));
-            if ( res == results.end() )
+            auto res = traces.find(std::make_tuple(prot.idx, stimIdx, f.idx, get_parameter_selection()));
+            if ( res == traces.end() )
                 continue;
 
             g = ui->plot->addGraph();
-            g->setData(keys, res->second.second);
+            g->setData(keys, res->second);
             g->setPen(QPen(Qt::red));
         }
     }
@@ -627,9 +630,9 @@ void FitErrorPlotter::plot_boxes(std::vector<int> protocol_indices)
                 for ( int fitIdx : fits[i] ) {
                     for ( size_t stimIdx = 0; stimIdx < protocols[protocol_indices[j]].stims.size(); stimIdx++ ) {
                         ResultKey key(protocol_indices[j], stimIdx, fitIdx, targetvsfinal ? k-2 : source_selection);
-                        auto res_iter = results.find(key);
-                        if ( res_iter != results.end() )
-                            errors.push_back(res_iter->second.first);
+                        auto res_iter = summaries.find(key);
+                        if ( res_iter != summaries.end() )
+                            errors.push_back(res_iter->second);
                     }
                 }
                 rmse[targetvsfinal ? 2*i+k : i][j] = Quantile(errors, {0, 0.25, 0.5, 0.75, 1});
