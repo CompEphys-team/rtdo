@@ -826,7 +826,7 @@ void FitErrorPlotter::on_index_clicked()
                         }
                         auto it = pop_steps.begin() + popsz/2;
                         std::nth_element(pop_steps.begin(), it, pop_steps.end());
-                        scalar median_step = (*it + *std::min_element(it+1, pop_steps.end()))/2;
+                        scalar median_step = (*it + *std::max_element(pop_steps.begin(), it))/2;
                         if ( steps[pop][targetParam][0] == 0 )
                             steps[pop][targetParam][0] = median_step;
                         else
