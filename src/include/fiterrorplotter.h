@@ -26,6 +26,11 @@ struct RegisterEntry {
     CannedDAQ::ChannelAssociation assoc;
 };
 
+struct RecStruct {
+    std::vector<std::pair<size_t,size_t>> fit_coords;
+    RegisterEntry *reg;
+};
+
 class FitErrorPlotter : public QWidget
 {
     Q_OBJECT
@@ -80,6 +85,9 @@ private:
     std::vector<int> get_protocol_indices();
     int get_parameter_selection();
     bool loadRecording(RegisterEntry &reg, bool readData = true);
+
+    std::vector<RecStruct> get_requested_recordings(int &nTraces, int &maxStimLen);
+    void setup_lib_for_validation(int nTraces, int maxStimLen, bool get_traces, bool average_summary);
 };
 
 #endif // FITERRORPLOTTER_H

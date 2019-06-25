@@ -251,16 +251,16 @@ bool FitErrorPlotter::loadRecording(RegisterEntry &reg, bool readData)
     return true;
 }
 
-void FitErrorPlotter::on_run_clicked()
+std::vector<RecStruct> FitErrorPlotter::get_requested_recordings(int &nTraces, int &maxStimLen)
 {
+    std::vector<RecStruct> recordings;
+    nTraces = maxStimLen = 0;
+
     std::vector<int> protocol_indices = get_protocol_indices();
     if ( protocol_indices.empty() )
-        return;
-
-    QApplication::setOverrideCursor(Qt::WaitCursor);
+        return recordings;
 
     // Adjust observations to potentially changed settings, and find longest stim duration
-    int maxStimLen = 0;
     for ( int iProtocol : protocol_indices ) {
         Protocol &prot = protocols[iProtocol];
         int blankCycles = session->qWavegenData().cluster.blank/prot.dt;
@@ -275,12 +275,6 @@ void FitErrorPlotter::on_run_clicked()
     }
 
     // Find total number of target traces, and prepare list of fits & register entries
-    struct RecStruct {
-        std::vector<std::pair<size_t,size_t>> fit_coords;
-        RegisterEntry *reg;
-    };
-    std::vector<RecStruct> recordings;
-    int nTraces = 0;
     for ( size_t iGroup = 0; iGroup < data.size(); iGroup++ ) {
         for ( size_t iFit = 0; iFit < data[iGroup].fits.size(); iFit++ ) {
             const FitInspector::Fit &f = data[iGroup].fits[iFit];
@@ -319,8 +313,11 @@ void FitErrorPlotter::on_run_clicked()
         }
     }
 
-    bool get_traces = ui->tabWidget->currentWidget() == ui->trace_tab;
+    return recordings;
+}
 
+void FitErrorPlotter::setup_lib_for_validation(int nTraces, int maxStimLen, bool get_traces, bool average_summary)
+{
     // Prepare lib
     if ( lib == nullptr )
         lib = new UniversalLibrary(session->project, false);
@@ -333,14 +330,29 @@ void FitErrorPlotter::on_run_clicked()
     lib->simCycles = session->qRunData().simCycles;
     lib->integrator = session->qRunData().integrator;
     lib->assignment = lib->assignment_base
-            | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_AVERAGE;
+            | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED;
+    if ( average_summary )
+        lib->assignment |= ASSIGNMENT_SUMMARY_AVERAGE;
     if ( !session->qRunData().VC )
         lib->assignment |= ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_PC_REPORT_PIN;
     if ( get_traces )
         lib->assignment |= ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_TIMESERIES_ZERO_UNTOUCHED_SAMPLES;
     lib->summaryOffset = 0;
+}
 
+void FitErrorPlotter::on_run_clicked()
+{
+    int nTraces = 0, maxStimLen = 0;
+    std::vector<RecStruct> recordings = get_requested_recordings(nTraces, maxStimLen);
+    if ( recordings.empty() )
+        return;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    bool get_traces = ui->tabWidget->currentWidget() == ui->trace_tab;
     int parameterSourceSelection = get_parameter_selection();
+
+    setup_lib_for_validation(nTraces, maxStimLen, get_traces, true);
 
     // Load models into lib
     size_t modelIdx = 0;
