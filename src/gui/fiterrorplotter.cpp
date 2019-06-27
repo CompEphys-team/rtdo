@@ -233,19 +233,10 @@ bool FitErrorPlotter::loadRecording(RegisterEntry &reg, bool readData)
         recording.run(stims[stimIdx]);
         reg.data[stimIdx].resize(reg.pprotocol->istims[stimIdx].duration);
 
-        size_t nextObs = 0;
         int iSample = 0;
-        while ( iSample < reg.pprotocol->istims[stimIdx].duration && nextObs < iObservations::maxObs) {
-            while ( iSample < reg.pprotocol->iObs[stimIdx].start[nextObs] ) {
-                recording.next();
-                ++iSample;
-            }
-            while ( iSample < reg.pprotocol->iObs[stimIdx].stop[nextObs] ) {
                 recording.next();
                 reg.data[stimIdx][iSample] = reg.rund.VC ? recording.current : recording.voltage;
                 ++iSample;
-            }
-            ++nextObs;
         }
     }
     return true;
