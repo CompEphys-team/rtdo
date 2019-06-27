@@ -945,7 +945,7 @@ void FitErrorPlotter::on_validate_clicked()
             }
             if ( paramValues[f.idx].empty() ) {
                 paramValues[f.idx] = get_param_values(f.fit(), ui->validateTarget->currentIndex());
-                accumulated_summary[f.idx].resize(paramValues[f.idx].size(), std::vector<double>(f.fit().epochs, 0));
+                accumulated_summary[f.idx].resize(paramValues[f.idx].size(), std::vector<double>(paramValues[f.idx][0].size(), 0));
             }
         }
     }
@@ -1055,7 +1055,7 @@ void FitErrorPlotter::on_validate_clicked()
         for ( size_t pop = 0; pop < accumulated_summary[fitIdx].size(); pop++ ) {
             for ( double &d : accumulated_summary[fitIdx][pop] )
                 d = std::sqrt(d / total_observed_duration[fitIdx]); // -> RMSE
-            of.write(reinterpret_cast<char*>(accumulated_summary[fitIdx][pop].data()), fit.epochs * sizeof(double));
+            of.write(reinterpret_cast<char*>(accumulated_summary[fitIdx][pop].data()), accumulated_summary[fitIdx][pop].size() * sizeof(double));
         }
     }
 
