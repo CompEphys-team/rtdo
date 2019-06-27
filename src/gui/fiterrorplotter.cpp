@@ -861,7 +861,11 @@ void FitErrorPlotter::on_index_clicked()
                     for ( size_t epoch = 0; epoch < f.fit().epochs; epoch++ ) {
                         double F = settings.decaySigma ? settings.sigmaInitial * std::exp2(-double(epoch)/settings.sigmaHalflife) : 1;
                         scalar sigma = settings.constraints[iParam] == 1 ? settings.sigma[iParam] : lib->adjustableParams[iParam].sigma;
-                        steps[0][iParam][epoch] = f.fit().baseF[f.fit().targetStim[epoch]][iParam] * F * sigma;
+                        if ( settings.mutationSelectivity == 2 ) { // target-only needs special treatment, because most baseF are 0; substitute them with 1
+                            steps[0][iParam][epoch] = F * sigma;
+                        } else {
+                            steps[0][iParam][epoch] = f.fit().baseF[f.fit().targetStim[epoch]][iParam] * F * sigma;
+                        }
                     }
                 }
             }
