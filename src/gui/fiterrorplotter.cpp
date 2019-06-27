@@ -925,6 +925,11 @@ std::vector<std::vector<std::vector<scalar>>> FitErrorPlotter::get_param_values(
 
 void FitErrorPlotter::on_validate_clicked()
 {
+    if ( ui->validate_protocol->currentIndex() == 1 ) {
+        validate_original();
+        return;
+    }
+
     int nTraces = 0, maxStimLen = 0;
     std::vector<RecStruct> recordings = get_requested_recordings(nTraces, maxStimLen);
     if ( recordings.empty() )
@@ -1003,6 +1008,169 @@ void FitErrorPlotter::on_validate_clicked()
                         lib->setRundata(modelIdx, reg.rund);
                         lib->stim[modelIdx] = reg.pprotocol->istims[stimIdx];
                         lib->obs[modelIdx] = reg.pprotocol->iObs[stimIdx];
+                        lib->targetOffset[modelIdx] = targetOffset + stimIdx;
+
+                        // Keep tabs on where this goes
+                        psummary[modelIdx] =& accumulated_summary[f.idx][pop][epoch];
+
+                        // Increment
+                        ++modelIdx;
+
+                        // Run a batch as soon as the model bucket is full
+                        if ( modelIdx == lib->NMODELS ) {
+                            std::cout << "Simulating batch " << ++batch << " (state: protocol " << reg.pprotocol->name << ", stim " << stimIdx
+                                      << ", fit " << f.idx << ", subpop " << pop << ", epoch " << epoch << ")..." << std::endl;
+                            lib->pushTarget();
+                            lib->push();
+                            lib->run();
+                            lib->pullSummary();
+                            for ( size_t i = 0; i < modelIdx; i++ )
+                                *psummary[i] += lib->summary[i];
+                            modelIdx = 0;
+                        }
+                    }
+                }
+            }
+        }
+        targetOffset += reg.pprotocol->stims.size();
+    }
+
+    // push-run-pull the remaining models
+    if ( modelIdx > 0 ) {
+        for ( size_t i = modelIdx; i < lib->NMODELS; i++ ) {
+            lib->stim[i].duration = 0;
+            lib->iSettleDuration[i] = 0;
+        }
+        std::cout << "Simulating the final batch..." << std::endl;
+        lib->pushTarget();
+        lib->push();
+        lib->run();
+        lib->pullSummary();
+        for ( size_t i = 0; i < modelIdx; i++ )
+            *psummary[i] += lib->summary[i];
+    }
+
+    // Write
+    std::cout << "Writing to files..." << std::endl;
+    std::string suffix;
+    if ( ui->validateTarget->currentIndex() == 0 )      suffix = ".target_xvalidation";
+    else if ( ui->validateTarget->currentIndex() == 1 ) suffix = ".median_xvalidation";
+    else if ( ui->validateTarget->currentIndex() == 2 ) suffix = ".lowerr_xvalidation";
+    for ( size_t fitIdx = 0; fitIdx < accumulated_summary.size(); fitIdx++ ) {
+        if ( accumulated_summary[fitIdx].empty() )
+            continue;
+        const GAFitter::Output &fit = session->gaFitter().results().at(fitIdx);
+        std::ofstream of(session->resultFilePath(fit.resultIndex).toStdString() + suffix, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+        for ( size_t pop = 0; pop < accumulated_summary[fitIdx].size(); pop++ ) {
+            for ( double &d : accumulated_summary[fitIdx][pop] )
+                d = std::sqrt(d / total_observed_duration[fitIdx]); // -> RMSE
+            of.write(reinterpret_cast<char*>(accumulated_summary[fitIdx][pop].data()), accumulated_summary[fitIdx][pop].size() * sizeof(double));
+        }
+    }
+
+    std::cout << "Validation complete." << std::endl;
+    QApplication::restoreOverrideCursor();
+}
+
+void FitErrorPlotter::validate_original()
+{
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    std::cout << "Loading parameter values..." << std::endl;
+
+    // Load parameter values from populations
+    std::vector<RegisterEntry*> recordings;
+    std::vector<std::vector<FitInspector::Fit>> fits; // (rec, *)
+    std::vector<std::vector<std::vector<std::vector<scalar>>>> paramValues; // (fitIdx, subpopulation, epoch, param)
+    std::vector<std::vector<std::vector<double>>> accumulated_summary; // one per model: (fitIdx, subpopulation, epoch)
+    int nModels = 0;
+    for ( size_t iGroup = 0; iGroup < data.size(); iGroup++ ) {
+        for ( size_t iFit = 0; iFit < data[iGroup].fits.size(); iFit++ ) {
+            const FitInspector::Fit &f = data[iGroup].fits[iFit];
+
+            // Discard fits that didn't target recordings
+            if ( session->daqData(f.fit().resultIndex).simulate != -1 )
+                continue;
+
+            // Check for already selected recording
+            bool found = false;
+            for ( size_t iRec = 0; iRec < recordings.size(); iRec++ ) {
+                if ( f.fit().VCRecord.endsWith(recordings[iRec]->file) ) {
+                    fits[iRec].push_back(f);
+                    found = true;
+                    break;
+                }
+            }
+
+            // Add new recording
+            if ( !found ) {
+                for ( auto &reg : register_map ) {
+                    if ( f.fit().VCRecord.endsWith(reg.second.file) ) {
+                        recordings.push_back(&reg.second);
+                        fits.push_back({f});
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            // Load parameter values
+            if ( found ) {
+                if ( int(paramValues.size()) <= f.idx ) {
+                    paramValues.resize(f.idx+1);
+                    accumulated_summary.resize(f.idx+1);
+                }
+                paramValues[f.idx] = get_param_values(f.fit(), ui->validateTarget->currentIndex());
+                accumulated_summary[f.idx].resize(paramValues[f.idx].size(), std::vector<double>(paramValues[f.idx][0].size(), 0));
+                nModels += f.fit().stims.size() * paramValues[f.idx].size() * paramValues[f.idx][0].size();
+            }
+        }
+    }
+
+    int nTraces = 0, maxStimLen = 0;
+    for ( RegisterEntry *rec : recordings ) {
+        nTraces += rec->pprotocol->istims.size();
+        for ( const iStimulation &I: rec->pprotocol->istims )
+            maxStimLen = std::max(maxStimLen, I.duration);
+    }
+
+    std::vector<int> total_observed_duration(paramValues.size(), 0); // One per fit: (fitIdx)
+
+    setup_lib_for_validation(nTraces, maxStimLen, false, false);
+
+    std::cout << "Simulation count: " << nModels << ", " << ((nModels+lib->NMODELS-1)/lib->NMODELS) << " batches." << std::endl;
+
+    // Load models into lib
+    size_t modelIdx = 0;
+    size_t targetOffset = 0;
+    size_t batch = 0;
+    std::vector<double*> psummary(lib->NMODELS);
+    for ( size_t iRec = 0; iRec < recordings.size(); iRec++ ) {
+        RegisterEntry &reg = *recordings[iRec];
+        loadRecording(reg);
+
+        for ( size_t stimIdx = 0; stimIdx < reg.pprotocol->stims.size(); stimIdx++ ) {
+            // Write target traces to lib
+            for ( int iSample = 0; iSample < reg.data[stimIdx].size(); iSample++ )
+                lib->target[targetOffset + stimIdx + iSample*lib->targetStride] = reg.data[stimIdx][iSample];
+
+            for ( size_t iFit = 0; iFit < fits[iRec].size(); iFit++ ) {
+                const FitInspector::Fit &f = fits[iRec][iFit];
+
+                // Add this observation duration to the total
+                total_observed_duration[f.idx] += f.fit().obs[stimIdx].duration();
+
+                // Write one model for each subpop and epoch
+                for ( size_t pop = 0; pop < paramValues[f.idx].size(); pop++ ) {
+                    for ( size_t epoch = 0; epoch < paramValues[f.idx][pop].size(); epoch++ ) {
+
+                        // Write parameter values
+                        for ( size_t i = 0; i < lib->adjustableParams.size(); i++ )
+                            lib->adjustableParams[i][modelIdx] = paramValues[f.idx][pop][epoch][i];
+
+                        // Write settings
+                        lib->setRundata(modelIdx, reg.rund);
+                        lib->stim[modelIdx] = reg.pprotocol->istims[stimIdx];
+                        lib->obs[modelIdx] = f.fit().obs[stimIdx];
                         lib->targetOffset[modelIdx] = targetOffset + stimIdx;
 
                         // Keep tabs on where this goes
