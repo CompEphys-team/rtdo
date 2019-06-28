@@ -399,10 +399,10 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
                     }
                 }
 
-                iStimulation *wave = new iStimulation(chunk[stimIdx]);
+                std::shared_ptr<iStimulation> wave(new iStimulation(chunk[stimIdx]));
                 for ( size_t targetParam = 0; targetParam < nParams; targetParam++ ) {
                     MAPElite &el = ret[targetParam][nProcessedStims + stimIdx];
-                    el.wave.reset(wave);
+                    el.wave = wave;
                     el.current = ulib.clusterCurrent[stimIdx * ulib.maxClusters + bestClusterIdx[targetParam]];
                     el.fitness = bestClusterFitness[targetParam];
                     el.obs = ulib.clusterObs[stimIdx * ulib.maxClusters + bestClusterIdx[targetParam]];
@@ -416,11 +416,11 @@ std::vector<std::vector<MAPElite> > Wavegen::findObservations(const std::vector<
                         sectionLength, deltabar, VC, false);
             ulib.pullBubbles(nStimsPerEpoch, VC);
             for ( size_t stimIdx = 0; stimIdx < chunk.size(); stimIdx++ ) {
-                iStimulation *wave = new iStimulation(chunk[stimIdx]);
+                std::shared_ptr<iStimulation> wave(new iStimulation(chunk[stimIdx]));
                 for ( size_t targetParam = 0; targetParam < nParams; targetParam++ ) {
                     MAPElite &el = ret[targetParam][nProcessedStims + stimIdx];
                     const Bubble &bubble = ulib.bubbles[stimIdx * nParams + targetParam];
-                    el.wave.reset(wave);
+                    el.wave = wave;
                     el.current = ulib.clusterCurrent[stimIdx * nParams + targetParam];
                     el.fitness = bubble.value;
                     el.obs.start[0] = bubble.startCycle;
