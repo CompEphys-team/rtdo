@@ -246,6 +246,9 @@ void MainWindow::sessionOpened()
         ui->runBtn->setText("Run");
         ui->abort->setText("Abort");
     });
+    connect(ui->log->selectionModel(), &QItemSelectionModel::selectionChanged, [=](const QItemSelection &, const QItemSelection &){
+        ui->menuHistoric_settings->setEnabled(ui->log->selectionModel()->selectedRows().size() == 1);
+    });
 }
 
 void MainWindow::setTitle()
@@ -414,4 +417,44 @@ void MainWindow::on_actionFit_as_heat_map_triggered()
     PopulationPlot *figure = new PopulationPlot(*session);
     figure->setWindowTitle(figure->windowTitle() + " : " + title);
     figure->show();
+}
+
+void MainWindow::on_actionWavegenData_2_triggered()
+{
+    int idx = ui->log->selectionModel()->currentIndex().row();
+    WavegenDataDialog *dlg = new WavegenDataDialog(*session, idx);
+    dlg->setWindowTitle(QString("%1 - %2 : %3").arg(idx,4,10,QChar('0')).arg(dlg->windowTitle(), title));
+    dlg->show();
+}
+
+void MainWindow::on_actionStimulationData_2_triggered()
+{
+    int idx = ui->log->selectionModel()->currentIndex().row();
+    StimulationDataDialog *dlg = new StimulationDataDialog(*session, idx);
+    dlg->setWindowTitle(QString("%1 - %2 : %3").arg(idx,4,10,QChar('0')).arg(dlg->windowTitle(), title));
+    dlg->show();
+}
+
+void MainWindow::on_actionRunData_2_triggered()
+{
+    int idx = ui->log->selectionModel()->currentIndex().row();
+    RunDataDialog *dlg = new RunDataDialog(*session, idx);
+    dlg->setWindowTitle(QString("%1 - %2 : %3").arg(idx,4,10,QChar('0')).arg(dlg->windowTitle(), title));
+    dlg->show();
+}
+
+void MainWindow::on_actionDAQData_2_triggered()
+{
+    int idx = ui->log->selectionModel()->currentIndex().row();
+    DAQDialog *dlg = new DAQDialog(*session, idx);
+    dlg->setWindowTitle(QString("%1 - %2 : %3").arg(idx,4,10,QChar('0')).arg(dlg->windowTitle(), title));
+    dlg->show();
+}
+
+void MainWindow::on_actionGA_Fitter_2_triggered()
+{
+    int idx = ui->log->selectionModel()->currentIndex().row();
+    GAFitterSettingsDialog *dlg = new GAFitterSettingsDialog(*session, idx);
+    dlg->setWindowTitle(QString("%1 - %2 : %3").arg(idx,4,10,QChar('0')).arg(dlg->windowTitle(), title));
+    dlg->show();
 }

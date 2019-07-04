@@ -85,6 +85,16 @@ private slots:
 
     void on_actionFit_as_heat_map_triggered();
 
+    void on_actionWavegenData_2_triggered();
+
+    void on_actionStimulationData_2_triggered();
+
+    void on_actionRunData_2_triggered();
+
+    void on_actionDAQData_2_triggered();
+
+    void on_actionGA_Fitter_2_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;
