@@ -925,11 +925,20 @@ std::vector<std::vector<std::vector<scalar>>> FitErrorPlotter::get_param_values(
 
 void FitErrorPlotter::on_validate_clicked()
 {
-    if ( ui->validate_protocol->currentIndex() == 1 ) {
-        validate_original();
-        return;
+    if ( ui->validate_protocol->currentIndex() == 0 ) {
+        crossvalidate(ui->validateTarget->currentIndex());
+    } else if ( ui->validate_protocol->currentIndex() == 1 ) {
+        validate(ui->validateTarget->currentIndex());
+    } else if ( ui->validate_protocol->currentIndex() == 2 ) {
+        for ( int i = 0; i < 3; i++ ) {
+            crossvalidate(i);
+            validate(i);
+        }
     }
+}
 
+void FitErrorPlotter::crossvalidate(int target)
+{
     int nTraces = 0, maxStimLen = 0;
     std::vector<RecStruct> recordings = get_requested_recordings(nTraces, maxStimLen);
     if ( recordings.empty() )
@@ -953,7 +962,7 @@ void FitErrorPlotter::on_validate_clicked()
                 accumulated_summary.resize(nFits);
             }
             if ( paramValues[f.idx].empty() ) {
-                paramValues[f.idx] = get_param_values(f.fit(), ui->validateTarget->currentIndex());
+                paramValues[f.idx] = get_param_values(f.fit(), target);
                 accumulated_summary[f.idx].resize(paramValues[f.idx].size(), std::vector<double>(paramValues[f.idx][0].size(), 0));
             }
         }
@@ -1018,7 +1027,7 @@ void FitErrorPlotter::on_validate_clicked()
 
                         // Run a batch as soon as the model bucket is full
                         if ( modelIdx == lib->NMODELS ) {
-                            std::cout << "Simulating batch " << ++batch << " (state: protocol " << reg.pprotocol->name << ", stim " << stimIdx
+                            std::cout << "Simulating batch " << ++batch << " (state: cell " << reg.cell << ", protocol " << reg.pprotocol->name << ", stim " << stimIdx
                                       << ", fit " << f.idx << ", subpop " << pop << ", epoch " << epoch << ")..." << std::endl;
                             lib->pushTarget();
                             lib->push();
@@ -1053,9 +1062,9 @@ void FitErrorPlotter::on_validate_clicked()
     // Write
     std::cout << "Writing to files..." << std::endl;
     std::string suffix;
-    if ( ui->validateTarget->currentIndex() == 0 )      suffix = ".target_xvalidation";
-    else if ( ui->validateTarget->currentIndex() == 1 ) suffix = ".median_xvalidation";
-    else if ( ui->validateTarget->currentIndex() == 2 ) suffix = ".lowerr_xvalidation";
+    if ( target == 0 )      suffix = ".target_xvalidation";
+    else if ( target == 1 ) suffix = ".median_xvalidation";
+    else if ( target == 2 ) suffix = ".lowerr_xvalidation";
     for ( size_t fitIdx = 0; fitIdx < accumulated_summary.size(); fitIdx++ ) {
         if ( accumulated_summary[fitIdx].empty() )
             continue;
@@ -1072,7 +1081,7 @@ void FitErrorPlotter::on_validate_clicked()
     QApplication::restoreOverrideCursor();
 }
 
-void FitErrorPlotter::validate_original()
+void FitErrorPlotter::validate(int target)
 {
     QApplication::setOverrideCursor(Qt::WaitCursor);
     std::cout << "Loading parameter values..." << std::endl;
@@ -1119,7 +1128,7 @@ void FitErrorPlotter::validate_original()
                     paramValues.resize(f.idx+1);
                     accumulated_summary.resize(f.idx+1);
                 }
-                paramValues[f.idx] = get_param_values(f.fit(), ui->validateTarget->currentIndex());
+                paramValues[f.idx] = get_param_values(f.fit(), target);
                 accumulated_summary[f.idx].resize(paramValues[f.idx].size(), std::vector<double>(paramValues[f.idx][0].size(), 0));
                 nModels += f.fit().stims.size() * paramValues[f.idx].size() * paramValues[f.idx][0].size();
             }
@@ -1216,9 +1225,9 @@ void FitErrorPlotter::validate_original()
     // Write
     std::cout << "Writing to files..." << std::endl;
     std::string suffix;
-    if ( ui->validateTarget->currentIndex() == 0 )      suffix = ".target_validation";
-    else if ( ui->validateTarget->currentIndex() == 1 ) suffix = ".median_validation";
-    else if ( ui->validateTarget->currentIndex() == 2 ) suffix = ".lowerr_validation";
+    if ( target == 0 )      suffix = ".target_validation";
+    else if ( target == 1 ) suffix = ".median_validation";
+    else if ( target == 2 ) suffix = ".lowerr_validation";
     for ( size_t fitIdx = 0; fitIdx < accumulated_summary.size(); fitIdx++ ) {
         if ( accumulated_summary[fitIdx].empty() )
             continue;

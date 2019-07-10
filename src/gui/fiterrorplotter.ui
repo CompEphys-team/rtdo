@@ -267,6 +267,11 @@
            <string>Target protocol (original obs)</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string>Both, and all parameter sets</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>
