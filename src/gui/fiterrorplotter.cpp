@@ -1178,7 +1178,7 @@ void FitErrorPlotter::validate(int target)
 
                         // Write settings
                         lib->setRundata(modelIdx, reg.rund);
-                        lib->stim[modelIdx] = reg.pprotocol->istims[stimIdx];
+                        lib->stim[modelIdx] = f.fit().stims[stimIdx];
                         lib->obs[modelIdx] = f.fit().obs[stimIdx];
                         lib->targetOffset[modelIdx] = targetOffset + stimIdx;
 
