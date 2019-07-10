@@ -130,6 +130,8 @@ void GAFitterSettingsDialog::importData()
         ui->obsSource->setCurrentIndex(1);
     else if ( p.obsSource == Wavegen::bubble_action.toStdString() )
         ui->obsSource->setCurrentIndex(2);
+    else if ( p.obsSource == "random" )
+        ui->obsSource->setCurrentIndex(3);
     else
         ui->obsSource->setCurrentIndex(0);
     ui->chunkDuration->setValue(p.chunkDuration);
@@ -172,6 +174,7 @@ void GAFitterSettingsDialog::exportData()
     switch ( ui->obsSource->currentIndex() ) {
     case 1: p.obsSource = Wavegen::cluster_action.toStdString(); break;
     case 2: p.obsSource = Wavegen::bubble_action.toStdString(); break;
+    case 3: p.obsSource = "random"; break;
     case 0:
     default: p.obsSource = "-"; break;
     }

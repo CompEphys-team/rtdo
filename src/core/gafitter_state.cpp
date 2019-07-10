@@ -1,5 +1,6 @@
 #include "gafitter.h"
 #include "session.h"
+#include "clustering.h"
 
 void GAFitter::setup(bool ad_hoc_stims)
 {
@@ -53,6 +54,66 @@ void GAFitter::setup(bool ad_hoc_stims)
         }
         using std::swap;
         swap(astims, astims_ordered);
+    } else if ( obsSource == "random" ) {
+        std::vector<int> idx(nStims);
+        for ( int i = 0; i < nStims; i++ )
+            idx[i] = i;
+        session.RNG.shuffle(idx);
+
+        std::vector<MAPElite> elites = output.stimSource.elites();
+        std::vector<Stimulation> astims_orig(astims);
+        for ( int i = 0; i < nStims; i++ ) {
+            astims[i] = astims_orig[idx[i]];
+            stims[i] = *elites[idx[i]].wave;
+
+            // Create random observation with similar statistics to this target's obs (no index shuffling here!)
+            iObservations ref = elites[i].obs;
+            std::vector<int> chunks;
+            for ( size_t i = 0; i < iObservations::maxObs && ref.stop[i] > 0; i++ )
+                chunks.push_back(ref.stop[i] - ref.start[i]);
+            std::sort(chunks.rbegin(), chunks.rend()); // largest first
+
+            std::vector<std::pair<int, int>> observables = observeNoSteps(stims[i], session.wavegenData().cluster.blank/session.runData().dt);
+            std::vector<std::pair<int, int>> observations;
+            for ( int chunk : chunks ) {
+                std::vector<int> possibleLocations;
+                ++chunk;
+                do {
+                    --chunk;
+                    for ( size_t j = 0; j < observables.size(); j++ )
+                        if ( observables[j].second - observables[j].first >= chunk )
+                            possibleLocations.push_back(j);
+                } while ( possibleLocations.empty() );
+                int loc = session.RNG.pick(possibleLocations);
+                int leeway = observables[loc].second - observables[loc].first - chunk;
+                int start = observables[loc].first + session.RNG.uniform<int>(0, leeway);
+                observations.push_back(std::make_pair(start, start+chunk));
+
+                if ( leeway == 0 ) {
+                    observables.erase(observables.begin() + loc);
+                } else if ( start == 0 ) {
+                    observables[loc].first += chunk;
+                } else if ( start == leeway ) {
+                    observables[loc].second -= chunk;
+                } else {
+                    observables.insert(observables.begin() + loc + 1, std::make_pair(start+chunk, observables[loc].second));
+                    observables[loc].second = start;
+                }
+            }
+            std::sort(observations.begin(), observations.end());
+            obs[i] = {{},{}};
+            for ( size_t j = 0; j < observations.size(); j++ ) {
+                obs[i].start[j] = observations[j].first;
+                obs[i].stop[j] = observations[j].second;
+            }
+        }
+
+        if ( settings.mutationSelectivity == 1 ) {
+            std::vector<MAPElite> posthoc = session.wavegen().evaluatePremade(stims, obs);
+            for ( int stimIdx = 0; stimIdx < nStims; stimIdx++ )
+                for ( int i = 0; i < nParams; i++ )
+                    baseF[stimIdx][i] = posthoc[stimIdx].deviations[i];
+        }
     } else {
         std::vector<int> needPosthocEval;
         int stimIdx = 0;

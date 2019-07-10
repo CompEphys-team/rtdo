@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>848</width>
-    <height>822</height>
+    <height>851</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -159,6 +159,11 @@
         <item>
          <property name="text">
           <string>Use bubble algorithm</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Randomise</string>
          </property>
         </item>
        </widget>
