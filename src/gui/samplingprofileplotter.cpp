@@ -342,6 +342,9 @@ void SamplingProfilePlotter::updateTable()
     else if ( ui->rho_normalisation->currentIndex() == 2 ) // [min(min(rho), 0), max(rho)]
         for ( size_t i = 0; i < 3; i++ )
             minima[i] = std::min(minima[i], 0.);
+    else if ( ui->rho_normalisation->currentIndex() == 3 ) // [floor(rho), max(rho)]
+        for ( size_t i = 0; i < 3; i++ )
+            minima[i] = floor(minima[i]);
 
     // Update table contents
     ui->table->setSortingEnabled(false);

@@ -311,6 +311,9 @@
        </item>
        <item row="0" column="1">
         <widget class="QComboBox" name="rho_normalisation">
+         <property name="currentIndex">
+          <number>3</number>
+         </property>
          <item>
           <property name="text">
            <string>[-1, max(𝛒)]</string>
@@ -324,6 +327,11 @@
          <item>
           <property name="text">
            <string>[min(𝛒 ∪ {0}), max(𝛒)]</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>[floor(𝛒), max(𝛒)]</string>
           </property>
          </item>
         </widget>
