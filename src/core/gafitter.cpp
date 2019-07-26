@@ -82,6 +82,7 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     }
 
     if ( output.dryrun ) {
+        output.epochs = settings.maxEpochs;
         save(file);
         return true;
     }
@@ -141,17 +142,17 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
     output.resume.DEMethodFailed = DEMethodFailed;
     output.resume.DEpX = DEpX;
 
-    // Finish
+    // Save
     output.epochs = epoch;
+    save(file);
+
+    // Finish
     {
         QMutexLocker locker(&mutex);
         m_results.push_back(std::move(output));
         running = false;
     }
     emit done();
-
-    // Save
-    save(file);
 
     delete daq;
     daq = nullptr;
@@ -163,38 +164,37 @@ void GAFitter::save(QFile &file)
 {
     QDataStream os;
     if ( openSaveStream(file, os, magic, version) ) {
-        const Output &out = m_results.back();
-        os << out.stimSource << out.epochs;
-        for ( quint32 i = 0; i < out.epochs; i++ ) {
-            os << out.targetStim[i] << out.error[i];
-            for ( const scalar &p : out.params[i] )
+        os << output.stimSource << output.epochs;
+        for ( quint32 i = 0; i < output.epochs; i++ ) {
+            os << output.targetStim[i] << output.error[i];
+            for ( const scalar &p : output.params[i] )
                 os << p;
         }
-        for ( const scalar &t : out.targets )
+        for ( const scalar &t : output.targets )
             os << t;
-        os << out.final;
-        for ( const scalar &p : out.finalParams )
+        os << output.final;
+        for ( const scalar &p : output.finalParams )
             os << p;
-        for ( const scalar &e : out.finalError )
+        for ( const scalar &e : output.finalError )
             os << e;
-        os << out.VCRecord;
-        os << out.variance;
-        os << out.stims;
-        os << out.obs;
-        os << out.baseF;
-        os << qint32(out.assoc.Iidx) << qint32(out.assoc.Vidx) << qint32(out.assoc.V2idx);
-        os << out.assoc.Iscale << out.assoc.Vscale << out.assoc.V2scale;
+        os << output.VCRecord;
+        os << output.variance;
+        os << output.stims;
+        os << output.obs;
+        os << output.baseF;
+        os << qint32(output.assoc.Iidx) << qint32(output.assoc.Vidx) << qint32(output.assoc.V2idx);
+        os << output.assoc.Iscale << output.assoc.Vscale << output.assoc.V2scale;
 
-        for ( const auto &vec : out.resume.population )
+        for ( const auto &vec : output.resume.population )
             for ( const scalar &v : vec )
                 os << v;
-        for ( const double &b : out.resume.bias )
+        for ( const double &b : output.resume.bias )
             os << b;
-        for ( const double &d : out.resume.DEMethodSuccess )
+        for ( const double &d : output.resume.DEMethodSuccess )
             os << d;
-        for ( const double &d : out.resume.DEMethodFailed )
+        for ( const double &d : output.resume.DEMethodFailed )
             os << d;
-        for ( const double &p : out.resume.DEpX )
+        for ( const double &p : output.resume.DEpX )
             os << p;
     }
 }
