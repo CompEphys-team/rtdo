@@ -802,9 +802,22 @@ void FitErrorPlotter::on_index_clicked()
         for ( size_t iFit = 0; iFit < data[iGroup].fits.size(); iFit++ ) {
             const FitInspector::Fit &f = data[iGroup].fits[iFit];
             const GAFitterSettings settings = session->gaFitterSettings(f.fit().resultIndex);
+            const DAQData daqd = session->daqData(f.fit().resultIndex);
+            QString cell = "";
+
+            if ( daqd.simulate == 1 ) {
+                cell = (daqd.simd.paramSet==0 ? "base":QString("r%1").arg(f.fit().resultIndex));
+                os << f.fit().resultIndex << '\t' << cell << '\t' << data[iGroup].label << '\t' << "simulated" << '\t'
+                   << f.fit().epochs << '\t' << lib->NMODELS << '\t' << settings.num_populations << '\t' << settings.useDE << '\n';
+                QDir fdir(file);
+                fdir.cdUp();
+                std::ofstream pfile(fdir.filePath(cell).toStdString() + ".params");
+                for ( const scalar &t : f.fit().targets )
+                    pfile << t << '\n';
+                continue;
+            }
 
             // Find the cell to which this fit was targeted
-            QString cell = "";
             for ( const auto &reg : register_map ) {
                 if ( f.fit().VCRecord.endsWith(reg.second.file) ) {
                     cell = reg.second.cell;
