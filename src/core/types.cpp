@@ -243,7 +243,7 @@ size_t MAPEDimension::bin_genotype(const iStimulation &I, size_t multiplier, dou
 
 size_t MAPEDimension::bin_processed(scalar value, size_t multiplier) const
 {
-    if ( isnan(value) || value < min )
+    if ( std::isnan(value) || value < min )
         return 0;
     else if ( value >= max )
         return multiplier * resolution - 1;
