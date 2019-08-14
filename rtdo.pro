@@ -190,7 +190,7 @@ FORMS    += \
     src/gui/pcaplot.ui \
     src/gui/populationplot.ui
 
-LIBS     += -rdynamic -ldl -lcomedi -lgsl -lcusolver
+LIBS     += -rdynamic -ldl -lcomedi -lgsl
 
 DEFINES += CORE_INCLUDE_PATH='\\"$${PWD}/src/include\\"'
 
@@ -219,9 +219,11 @@ SOURCES += \
     $$libGENN.path/lib/src/generateRunner.cc \
     src/core/generateAllNoMain.cpp
 DEFINES += NVCC=\\\"\"$$(CUDA_PATH)/bin/nvcc\"\\\"
-contains(QMAKE_HOST.arch, x86_64): LIBS += -L$$(CUDA_PATH)/lib64
-                             else: LIBS += -L$$(CUDA_PATH)/lib
-LIBS += -lcuda -lcudart -lcurand
+contains(QMAKE_HOST.arch, x86_64): culibs = -L$$(CUDA_PATH)/lib64
+                             else: culibs = -L$$(CUDA_PATH)/lib
+culibs += -lcuda -lcudart -lcurand -lcusolver
+LIBS += $$culibs
+DEFINES += CULIBS='\\\"\"$$culibs\"\\\"'
 
 
 # TinyXML2 lib

@@ -104,7 +104,7 @@ void *UniversalLibrary::compile_and_load()
     std::ofstream makefile(dir + "/Makefile", std::ios_base::app);
     makefile << endl;
     makefile << "runner.so: runner.o" << endl;
-    makefile << "\t$(CXX) -o $@ $< -shared" << endl;
+    makefile << "\t$(CXX) -o $@ $< -shared " << CULIBS << endl;
     std::stringstream cmd;
     cmd << "cd " << dir << " && make runner.so";
     if ( system(cmd.str().c_str()) )
