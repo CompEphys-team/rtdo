@@ -959,7 +959,7 @@ void FitErrorPlotter::on_validate_clicked()
     }
 }
 
-void FitErrorPlotter::crossvalidate(int target)
+void FitErrorPlotter::crossvalidate(int target, std::vector<std::vector<std::vector<std::vector<std::vector<scalar>>>>> models /* (iGroup,iFit,subpop,epochparam) */)
 {
     int nTraces = 0, maxStimLen = 0;
     std::vector<RecStruct> recordings = get_requested_recordings(nTraces, maxStimLen);
@@ -984,7 +984,10 @@ void FitErrorPlotter::crossvalidate(int target)
                 accumulated_summary.resize(nFits);
             }
             if ( paramValues[f.idx].empty() ) {
-                paramValues[f.idx] = get_param_values(f.fit(), target);
+                if ( models.empty() )
+                    paramValues[f.idx] = get_param_values(f.fit(), target);
+                else
+                    paramValues[f.idx] = models[fit_coords.first][fit_coords.second];
                 accumulated_summary[f.idx].resize(paramValues[f.idx].size(), std::vector<double>(paramValues[f.idx][0].size(), 0));
             }
         }
@@ -1087,6 +1090,7 @@ void FitErrorPlotter::crossvalidate(int target)
     if ( target == 0 )      suffix = ".target_xvalidation";
     else if ( target == 1 ) suffix = ".median_xvalidation";
     else if ( target == 2 ) suffix = ".lowerr_xvalidation";
+    else if ( target == 3 ) suffix = ".final_xvalidation";
     for ( size_t fitIdx = 0; fitIdx < accumulated_summary.size(); fitIdx++ ) {
         if ( accumulated_summary[fitIdx].empty() )
             continue;
@@ -1264,4 +1268,129 @@ void FitErrorPlotter::validate(int target)
 
     std::cout << "Validation complete." << std::endl;
     QApplication::restoreOverrideCursor();
+}
+
+// Returns (npops, 1, nparams) finalists with the lowest cost across all fit/obs
+std::vector<std::vector<std::vector<scalar>>> find_best_finalists(Session *session, UniversalLibrary *lib, const GAFitter::Output &f)
+{
+    // Setup
+    for ( size_t i = 0; i < lib->adjustableParams.size(); i++ ) {
+        for ( size_t j = 0; j < lib->NMODELS; j++ ) {
+            lib->adjustableParams[i][j] = f.resume.population[i][j];
+        }
+    }
+
+    const RunData rd = session->runData(f.resultIndex);
+    lib->setSingularRund(true);
+    lib->simCycles = rd.simCycles;
+    lib->integrator = rd.integrator;
+    lib->setRundata(0, rd);
+
+    lib->setSingularTarget(true);
+
+    lib->setSingularStim(true);
+
+    lib->summaryOffset = 0;
+    lib->stim[0] = f.stims[0];
+    lib->push();
+
+    // settle
+    lib->assignment = lib->assignment_base | ASSIGNMENT_SETTLE_ONLY;
+    lib->run();
+    lib->iSettleDuration[0] = 0;
+    lib->push(lib->iSettleDuration);
+
+    lib->assignment = lib->assignment_base
+            | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED;
+
+    Settings cfg = session->getSettings(f.resultIndex);
+    DAQFilter *daq = new DAQFilter(*session, cfg);
+    if ( session->daqData(f.resultIndex).simulate < 0 ) {
+        daq->getCannedDAQ()->assoc = f.assoc;
+        daq->getCannedDAQ()->setRecord(f.stimSource.stimulations(), f.VCRecord);
+    } else {
+        for ( size_t i = 0; i < lib->adjustableParams.size(); i++ )
+            daq->setAdjustableParam(i, f.targets[i]);
+    }
+
+    // Run all stims
+    for ( const iStimulation &I : f.stims ) {
+        lib->stim[0] = I;
+        lib->obs[0] = iObserveNoSteps(I, session->wavegenData(f.resultIndex).cluster.blank/rd.dt);
+        lib->push(lib->stim);
+        lib->push(lib->obs);
+
+        lib->resizeTarget(1, I.duration);
+
+        // Initiate DAQ stimulation
+        daq->reset();
+        daq->run(Stimulation(I, rd.dt), rd.settleDuration);
+        for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ )
+            daq->next();
+
+
+        // Step DAQ through full stimulation
+        for ( int iT = 0; iT < I.duration; iT++ ) {
+            daq->next();
+            lib->target[iT] = daq->current;
+        }
+
+        // Run lib against target
+        lib->pushTarget();
+        lib->run();
+
+        lib->assignment |= ASSIGNMENT_SUMMARY_PERSIST;
+    }
+
+    // Evaluate
+    lib->pullSummary();
+    std::vector<GAFitter::errTupel> f_err(lib->NMODELS);
+    for ( size_t i = 0; i < lib->NMODELS; i++ ) {
+        f_err[i].idx = i;
+        f_err[i].err = lib->summary[i];
+    }
+
+    const GAFitterSettings gafs = session->gaFitterSettings(f.resultIndex);
+    std::vector<std::vector<std::vector<scalar>>> best_models(gafs.num_populations, std::vector<std::vector<scalar>>(1, std::vector<scalar>(lib->adjustableParams.size())));
+
+    if ( gafs.useDE ) {
+        int nmodels = lib->NMODELS / gafs.num_populations / 2;
+        for ( int i = 0; i < gafs.num_populations; i++ ) {
+            auto parent = std::min_element(f_err.begin() + nmodels * i, f_err.begin() + nmodels * (i+1), &GAFitter::errTupelSort);
+            auto child = std::min_element(f_err.begin() + nmodels * i + lib->NMODELS/2, f_err.begin() + nmodels * (i+1) + lib->NMODELS/2, &GAFitter::errTupelSort);
+            int idx = parent->err < child->err ? parent->idx : child->idx;
+            for ( size_t j = 0; j < lib->adjustableParams.size(); j++ )
+                best_models[i][0][j] = lib->adjustableParams[j][idx];
+        }
+    } else {
+        int nmodels = lib->NMODELS / gafs.num_populations;
+        for ( int i = 0; i < gafs.num_populations; i++ ) {
+            auto winner = std::min_element(f_err.begin() + nmodels*i, f_err.begin() + nmodels*(i+1), &GAFitter::errTupelSort);
+            for ( size_t j = 0; j < lib->adjustableParams.size(); j++ )
+                best_models[i][0][j] = lib->adjustableParams[j][winner->idx];
+        }
+    }
+
+    return best_models;
+}
+
+void FitErrorPlotter::on_finalise_clicked()
+{
+    if ( lib == nullptr )
+        lib = new UniversalLibrary(session->project, false);
+    std::vector<std::vector<std::vector<std::vector<std::vector<scalar>>>>> finalists(data.size());
+    for ( size_t iGroup = 0; iGroup < data.size(); iGroup++ ) {
+        finalists[iGroup].resize(data[iGroup].fits.size());
+        for ( size_t iFit = 0; iFit < data[iGroup].fits.size(); iFit++ ) {
+            const FitInspector::Fit &f = data[iGroup].fits[iFit];
+            std::cout << "Finalising resultIdx " << f.fit().resultIndex << ", fit " << iFit << " in group " << iGroup << std::endl;
+            finalists[iGroup][iFit] = find_best_finalists(session, lib, f.fit());
+            std::ofstream of(session->resultFilePath(f.fit().resultIndex).toStdString() + ".final.params", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+            for ( std::vector<std::vector<scalar>> b : finalists[iGroup][iFit] )
+                of.write(reinterpret_cast<char*>(b[0].data()), b[0].size() * sizeof(scalar));
+        }
+    }
+
+    if ( session->daqData().simulate == -1 )
+        crossvalidate(3, finalists);
 }
