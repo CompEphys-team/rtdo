@@ -249,10 +249,10 @@ Result *GAFitter::load(const QString &act, const QString &args, QFile &results, 
         is >> out.VCRecord;
         if ( session.daqData().simulate < 0 ) {
             CannedDAQ tmp(session, session.getSettings());
-            tmp.setRecord(out.stimSource.stimulations(), out.VCRecord, false);
-            for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
-                if ( settings.constraints[i] != 3 ) // Never overwrite fixed target
-                    out.targets[i] = tmp.getAdjustableParam(i);
+            if ( tmp.setRecord(out.stimSource.stimulations(), out.VCRecord, false) )
+                for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+                    if ( settings.constraints[i] != 3 ) // Never overwrite fixed target
+                        out.targets[i] = tmp.getAdjustableParam(i);
         }
     }
     if ( ver >= 104 )

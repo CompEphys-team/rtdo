@@ -23,6 +23,10 @@ bool CannedDAQ::setRecord(std::vector<Stimulation> stims, QString record, bool r
     bool backcompat_noise = finfo.baseName().startsWith("2018_05_03"), hasVariance = false;
 
     std::ifstream is(record.toStdString());
+    if ( !is.good() ) {
+        std::cerr << "Failed to open " << record << std::endl;
+        return false;
+    }
     std::string str;
     is >> str;
     if ( str != "ATF" ) {
