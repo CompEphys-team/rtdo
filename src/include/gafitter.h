@@ -11,12 +11,13 @@ class GAFitter : public SessionWorker
 {
     Q_OBJECT
 
+public:
     struct errTupel {
         size_t idx = 0;
         scalar err = 0;
     };
+    static bool errTupelSort(const errTupel &x, const errTupel &y);
 
-public:
     GAFitter(Session &session);
     ~GAFitter();
 
@@ -144,8 +145,6 @@ protected:
     void pushToQ(double t, double V, double I, double O);
 
     void save(QFile &file);
-
-    static bool errTupelSort(const errTupel &x, const errTupel &y);
 
     std::vector<Output> m_results;
     Output output;
