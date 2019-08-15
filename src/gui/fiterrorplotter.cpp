@@ -1383,6 +1383,11 @@ void FitErrorPlotter::on_finalise_clicked()
         finalists[iGroup].resize(data[iGroup].fits.size());
         for ( size_t iFit = 0; iFit < data[iGroup].fits.size(); iFit++ ) {
             const FitInspector::Fit &f = data[iGroup].fits[iFit];
+
+            std::ofstream pof(session->resultFilePath(f.fit().resultIndex).toStdString() + ".final.pop", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+            for ( size_t i = 0; i < lib->adjustableParams.size(); i++ )
+                pof.write(reinterpret_cast<const char*>(f.fit().resume.population[i].data()), lib->NMODELS * sizeof(scalar));
+
             std::cout << "Finalising resultIdx " << f.fit().resultIndex << ", fit " << iFit << " in group " << iGroup << std::endl;
             finalists[iGroup][iFit] = find_best_finalists(session, lib, f.fit());
             std::ofstream of(session->resultFilePath(f.fit().resultIndex).toStdString() + ".final.params", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
