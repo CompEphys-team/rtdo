@@ -1,0 +1,71 @@
+<model name="SquidAxon">
+	<voltage>
+		<value>-53</value>
+		<range min="-150" max="100" />
+	</voltage>
+	<capacitance>
+		<value>1.0</value>
+		<range min="0.1" max="10"/>
+		<perturbation type="*" rate="0.029"/>
+	</capacitance>
+	<current name="I_Na">
+		<popen>$(m)*$(m)*$(m)*$(h)</popen>
+		<gbar>gNa</gbar>
+		<E>ENa</E>
+	</current>
+	<current name="I_K">
+		<popen>$(n)*$(n)*$(n)*$(n)</popen>
+		<gbar>gK</gbar>
+		<E>EK</E>
+	</current>
+	<current name="I_l">
+		<gbar>gl</gbar>
+		<E>El</E>
+	</current>
+
+	<variable name="m" value="0.0285961">
+		<tmp name="alpha_">(3.5 + 0.1*$(V))/(1.0 - exp(-3.5 - 0.1*$(V)))</tmp>
+		<tmp name="beta_">4.0*exp((-$(V)-60.0)/18.0)</tmp>
+		<dYdt>alpha_*(1-$(m)) - beta_*$(m)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="h" value="0.9977761">
+		<tmp name="alpha_">0.07*exp(-$(V)/20.0 - 3.0)</tmp>
+		<tmp name="beta_">1.0/(1.0 + exp(-3.0 - 0.1*$(V)))</tmp>
+		<dYdt>alpha_*(1-$(h)) - beta_*$(h)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="n" value="0.0285961">
+		<tmp name="alpha_">(-0.5 - 0.01*$(V))/(exp(-5.0 - 0.1*$(V)) - 1.0)</tmp>
+		<tmp name="beta_">0.125*exp((-$(V)-60.0)/80.0)</tmp>
+		<dYdt>alpha_*(1-$(n)) - beta_*$(n)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+
+	<adjustableParam name="gNa" value="120">
+		<range min="1" max="500"/>
+		<perturbation type="*" rate="0.03"/>
+	</adjustableParam>
+	<adjustableParam name="ENa" value="55">
+		<range min="20" max="80"/>
+		<perturbation type="+" rate="1.14"/>
+	</adjustableParam>
+
+	<adjustableParam name="gK" value="36">
+		<range min="0.1" max="100"/>
+		<perturbation type="*" rate="0.008"/>
+	</adjustableParam>
+	<adjustableParam name="EK" value="-72">
+		<range min="-90" max="-50"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="gl" value="0.3">
+		<range min="0.01" max="10"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="El" value="-50">
+		<range min="-100" max="0"/>
+		<perturbation type="+" rate="0.5"/>
+	</adjustableParam>
+</model>
