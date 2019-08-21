@@ -1270,8 +1270,8 @@ void FitErrorPlotter::validate(int target)
     QApplication::restoreOverrideCursor();
 }
 
-// Returns (npops, 1, nparams) finalists with the lowest cost across all fit/obs
-std::vector<std::vector<std::vector<scalar>>> find_best_finalists(Session *session, UniversalLibrary *lib, const GAFitter::Output &f)
+// Returns (npops, 1, nparams) finalists with the lowest cost across all fit/obs, and populates cost with the associated (npops) RMSEs
+std::vector<std::vector<std::vector<scalar>>> find_best_finalists(Session *session, UniversalLibrary *lib, const GAFitter::Output &f, std::vector<double> &cost)
 {
     // Setup
     for ( size_t i = 0; i < lib->adjustableParams.size(); i++ ) {
@@ -1314,9 +1314,11 @@ std::vector<std::vector<std::vector<scalar>>> find_best_finalists(Session *sessi
     }
 
     // Run all stims
+    int tTotal = 0;
     for ( const iStimulation &I : f.stims ) {
         lib->stim[0] = I;
         lib->obs[0] = iObserveNoSteps(I, session->wavegenData(f.resultIndex).cluster.blank/rd.dt);
+        tTotal += lib->obs[0].duration();
         lib->push(lib->stim);
         lib->push(lib->obs);
 
@@ -1352,6 +1354,7 @@ std::vector<std::vector<std::vector<scalar>>> find_best_finalists(Session *sessi
 
     const GAFitterSettings gafs = session->gaFitterSettings(f.resultIndex);
     std::vector<std::vector<std::vector<scalar>>> best_models(gafs.num_populations, std::vector<std::vector<scalar>>(1, std::vector<scalar>(lib->adjustableParams.size())));
+    cost.resize(gafs.num_populations);
 
     if ( gafs.useDE ) {
         int nmodels = lib->NMODELS / gafs.num_populations / 2;
@@ -1361,6 +1364,7 @@ std::vector<std::vector<std::vector<scalar>>> find_best_finalists(Session *sessi
             int idx = parent->err < child->err ? parent->idx : child->idx;
             for ( size_t j = 0; j < lib->adjustableParams.size(); j++ )
                 best_models[i][0][j] = lib->adjustableParams[j][idx];
+            cost[i] = std::sqrt(lib->summary[idx] / tTotal);
         }
     } else {
         int nmodels = lib->NMODELS / gafs.num_populations;
@@ -1368,6 +1372,7 @@ std::vector<std::vector<std::vector<scalar>>> find_best_finalists(Session *sessi
             auto winner = std::min_element(f_err.begin() + nmodels*i, f_err.begin() + nmodels*(i+1), &GAFitter::errTupelSort);
             for ( size_t j = 0; j < lib->adjustableParams.size(); j++ )
                 best_models[i][0][j] = lib->adjustableParams[j][winner->idx];
+            cost[i] = std::sqrt(winner->err / tTotal);
         }
     }
 
@@ -1383,16 +1388,19 @@ void FitErrorPlotter::on_finalise_clicked()
         finalists[iGroup].resize(data[iGroup].fits.size());
         for ( size_t iFit = 0; iFit < data[iGroup].fits.size(); iFit++ ) {
             const FitInspector::Fit &f = data[iGroup].fits[iFit];
+            std::vector<double> cost;
 
             std::ofstream pof(session->resultFilePath(f.fit().resultIndex).toStdString() + ".final.pop", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
             for ( size_t i = 0; i < lib->adjustableParams.size(); i++ )
                 pof.write(reinterpret_cast<const char*>(f.fit().resume.population[i].data()), lib->NMODELS * sizeof(scalar));
 
             std::cout << "Finalising resultIdx " << f.fit().resultIndex << ", fit " << iFit << " in group " << iGroup << std::endl;
-            finalists[iGroup][iFit] = find_best_finalists(session, lib, f.fit());
+            finalists[iGroup][iFit] = find_best_finalists(session, lib, f.fit(), cost);
             std::ofstream of(session->resultFilePath(f.fit().resultIndex).toStdString() + ".final.params", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
             for ( std::vector<std::vector<scalar>> b : finalists[iGroup][iFit] )
                 of.write(reinterpret_cast<char*>(b[0].data()), b[0].size() * sizeof(scalar));
+            std::ofstream cof(session->resultFilePath(f.fit().resultIndex).toStdString() + ".final.cost", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+            cof.write(reinterpret_cast<char*>(cost.data()), cost.size() * sizeof(double));
         }
     }
 
