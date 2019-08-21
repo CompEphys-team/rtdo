@@ -1,12 +1,12 @@
 <model name="SquidAxon">
 	<voltage>
-		<value>-53</value>
+		<value>-70</value>
 		<range min="-150" max="100" />
 	</voltage>
 	<capacitance>
 		<value>1.0</value>
-		<range min="0.1" max="10"/>
-		<perturbation type="*" rate="0.029"/>
+		<range min="0.5" max="2"/>
+		<perturbation type="*" rate="0.1"/>
 	</capacitance>
 	<current name="I_Na">
 		<popen>$(m)*$(m)*$(m)*$(h)</popen>
@@ -23,49 +23,49 @@
 		<E>El</E>
 	</current>
 
-	<variable name="m" value="0.0285961">
-		<tmp name="alpha_">(3.5 + 0.1*$(V))/(1.0 - exp(-3.5 - 0.1*$(V)))</tmp>
-		<tmp name="beta_">4.0*exp((-$(V)-60.0)/18.0)</tmp>
+	<variable name="m" value="0.053">
+		<tmp name="alpha_">-0.1*($(V)+45.)/(exp(($(V)+45.)/-10.)-1)</tmp>
+		<tmp name="beta_">4.*exp(($(V)+70.)/-18.)</tmp>
 		<dYdt>alpha_*(1-$(m)) - beta_*$(m)</dYdt>
 		<range min="0" max="1" />
 	</variable>
-	<variable name="h" value="0.9977761">
-		<tmp name="alpha_">0.07*exp(-$(V)/20.0 - 3.0)</tmp>
-		<tmp name="beta_">1.0/(1.0 + exp(-3.0 - 0.1*$(V)))</tmp>
+	<variable name="h" value="0.594">
+		<tmp name="alpha_">0.07*exp(($(V)+70.)/-20.)</tmp>
+		<tmp name="beta_">1./(1. + exp(($(V)+40.)/-10.))</tmp>
 		<dYdt>alpha_*(1-$(h)) - beta_*$(h)</dYdt>
 		<range min="0" max="1" />
 	</variable>
-	<variable name="n" value="0.0285961">
-		<tmp name="alpha_">(-0.5 - 0.01*$(V))/(exp(-5.0 - 0.1*$(V)) - 1.0)</tmp>
-		<tmp name="beta_">0.125*exp((-$(V)-60.0)/80.0)</tmp>
+	<variable name="n" value="0.319">
+		<tmp name="alpha_">-0.01*($(V)+60.)/(exp(($(V)+60.)/-10.)-1)</tmp>
+		<tmp name="beta_">0.125*exp(($(V)+70.)/-80.)</tmp>
 		<dYdt>alpha_*(1-$(n)) - beta_*$(n)</dYdt>
 		<range min="0" max="1" />
 	</variable>
 
 	<adjustableParam name="gNa" value="120">
-		<range min="1" max="500"/>
-		<perturbation type="*" rate="0.03"/>
+		<range min="60" max="240"/>
+		<perturbation type="*" rate="0.05"/>
 	</adjustableParam>
-	<adjustableParam name="ENa" value="55">
-		<range min="20" max="80"/>
-		<perturbation type="+" rate="1.14"/>
+	<adjustableParam name="ENa" value="45">
+		<range min="25" max="65"/>
+		<perturbation type="+" rate="0.1"/>
 	</adjustableParam>
 
 	<adjustableParam name="gK" value="36">
-		<range min="0.1" max="100"/>
-		<perturbation type="*" rate="0.008"/>
+		<range min="18" max="72"/>
+		<perturbation type="*" rate="0.05"/>
 	</adjustableParam>
-	<adjustableParam name="EK" value="-72">
-		<range min="-90" max="-50"/>
+	<adjustableParam name="EK" value="-82">
+		<range min="-102" max="-62"/>
 		<perturbation type="+" rate="0.1"/>
 	</adjustableParam>
 
 	<adjustableParam name="gl" value="0.3">
-		<range min="0.01" max="10"/>
-		<perturbation type="*" rate="0.1"/>
+		<range min="0.15" max="0.6"/>
+		<perturbation type="*" rate="0.01"/>
 	</adjustableParam>
-	<adjustableParam name="El" value="-50">
-		<range min="-100" max="0"/>
-		<perturbation type="+" rate="0.5"/>
+	<adjustableParam name="El" value="-60">
+		<range min="--80" max="-40"/>
+		<perturbation type="+" rate="0.1"/>
 	</adjustableParam>
 </model>
