@@ -5,8 +5,6 @@
 #include "cuda_helper.h"
 
 #include <curand.h>
-
-#define isinf ::isinf
 #include <cusolverDn.h>
 
 scalar *target = nullptr, *d_target = nullptr;
