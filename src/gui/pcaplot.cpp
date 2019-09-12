@@ -70,7 +70,7 @@ void PCAPlot::replot()
 
 void PCAPlot::compute()
 {
-    if ( session->busy() || ui->fits->currentIndex() < 0 || !session )
+    if ( !session || session->busy() || ui->fits->currentIndex() < 0 )
         return;
 
     QFile basefile(session->resultFilePath(session->gaFitter().results().at(ui->fits->currentIndex()).resultIndex));

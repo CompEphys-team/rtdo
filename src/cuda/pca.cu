@@ -3,6 +3,8 @@
 #include <thrust/reduce.h>
 #include <thrust/for_each.h>
 
+static scalar *d_params = nullptr;
+
 void free_cusolver()
 {
     cusolverDnDestroy(cusolverH);
@@ -13,6 +15,14 @@ void free_cusolver()
     CHECK_CUDA_ERRORS(cudaFree(PCA_d_lwork));
 
     CHECK_CUDA_ERRORS(cudaFreeHost(PCA_TL));
+    CHECK_CUDA_ERRORS(cudaFree(d_params));
+}
+
+void copy_param(int i, scalar *d_v)
+{
+    if ( !d_params )
+        CHECK_CUDA_ERRORS(cudaMalloc((void**)&d_params, NMODELS * NPARAMS * sizeof(scalar)));
+    CHECK_CUDA_ERRORS(cudaMemcpy(d_params + i*NMODELS, d_v, NMODELS*sizeof(scalar), cudaMemcpyDeviceToDevice))
 }
 
 template <typename T>
@@ -41,6 +51,7 @@ void singular_value_decomposition(scalar *d_A, int lda, int m, int n, scalar *S)
 
     int *devInfo;
     CHECK_CUDA_ERRORS(cudaMalloc((void**)&devInfo, sizeof(int)))
+    CHECK_CUDA_ERRORS(cudaMemcpy(devInfo, &info_gpu, sizeof(int), cudaMemcpyHostToDevice))
 
     // Prepare working space
     CUSOLVER_CALL(cusolverDn__scalar__gesvd_bufferSize(cusolverH, m, n, &lwork))
@@ -71,7 +82,6 @@ void singular_value_decomposition(scalar *d_A, int lda, int m, int n, scalar *S)
     CHECK_CUDA_ERRORS(cudaMemcpy(&info_gpu, devInfo, sizeof(int), cudaMemcpyDeviceToHost))
     if ( info_gpu != 0 ) {
         std::cerr << "SVD failed, info = " << info_gpu << std::endl;
-        exit(EXIT_FAILURE);
     }
     CHECK_CUDA_ERRORS(cudaFree(devInfo));
 
@@ -87,6 +97,8 @@ extern "C" std::vector<scalar> principal_components(int L, /* Number of componen
                                                     int n = NMODELS, /* number of rows = data items */
                                                     int p = NPARAMS) /* number of columns = dimensions */
 {
+    if ( !d_X )
+        d_X = d_params;
     thrust::device_ptr<scalar> X = thrust::device_pointer_cast(d_X);
 
     // column-wise mean subtraction

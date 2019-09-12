@@ -160,6 +160,7 @@ public:
         void (*get_posthoc_deviations)(int trajLen, int nTraj, unsigned int nStims, std::vector<double> deltabar, const MetaModel &, bool VC);
 
         std::vector<scalar> (*principal_components)(int L, scalar *d_X, int ldX, int n, int p);
+        void (*copy_param)(int i, scalar *d_v);
         scalar **PCA_TL;
 
         double (*get_mean_distance)(const AdjustableParam &);
@@ -311,11 +312,13 @@ public:
         pointers.get_posthoc_deviations(trajLen, nTraj, nStims, deltabar, model, VC);
     }
 
-    /// Utility call to perform PCA on adjustableParams. NOTE: Changes the device values of all adjustableParams!
+    /// Utility call to perform PCA on adjustableParams.
     /// Stores a projection to the first @a L PCs in PCA_TL, and returns (all) singular values.
     /// Use @arg nIgnored to exclude the given number of rows at the end of the model population from the PCA.
     inline std::vector<scalar> get_params_principal_components(int L, int nIgnored = 0) {
-        auto ret = pointers.principal_components(L, adjustableParams[0].d_v, NMODELS, NMODELS-nIgnored, adjustableParams.size());
+        for ( size_t i = 0; i < adjustableParams.size(); i++ )
+            pointers.copy_param(i, adjustableParams[i].d_v);
+        auto ret = pointers.principal_components(L, nullptr, NMODELS, NMODELS-nIgnored, adjustableParams.size());
         PCA_TL_size = NMODELS-nIgnored;
         return ret;
     }
