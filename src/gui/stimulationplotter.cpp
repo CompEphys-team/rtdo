@@ -178,7 +178,7 @@ void StimulationPlotter::replot()
             updateColor(row, true);
         });
 
-        if ( src.type != WaveSource::Manual ) {
+        if ( !elites[i].deviations.empty() ) {
             ui->legend->setItem(row, 2, new QTableWidgetItem(QString::number(elites[i].fitness)));
             ui->legend->setItem(row, 3, new QTableWidgetItem(QString::number(elites[i].current)));
             for ( size_t j = 0; j < session->project.model().adjustableParams.size(); j++ )
@@ -197,26 +197,30 @@ void StimulationPlotter::replot()
 
     bool hasTitle = ui->titles->isChecked();
     bool hasScale = ui->scale->isChecked();
+    int fig_col = ui->fig_column->currentIndex();
 
-    for ( size_t i = 0; i < upper-lower; i++ ) {
+    for ( size_t i = 0, end = upper-lower; i < end; i++ ) {
+        int row = 2 * int(i / ui->columns->value());
+        int col = i % ui->columns->value();
+
         StimulationGraph *g = new StimulationGraph(ui->overlay->xAxis, ui->overlay->yAxis, stims[i+lower]); // ui->overlay takes ownership
         g->setObservations(obs[i+lower], rd.dt);
         QCPAxisRect *axes = new QCPAxisRect(ui->panel);
         QCPAxis *xAxis = axes->axis(QCPAxis::atBottom);
         QCPAxis *yAxis = axes->axis(QCPAxis::atLeft);
         xAxis->setTicks(hasScale);
-        xAxis->setTickLabels(hasScale);
-        xAxis->setLabel(hasScale ? "Time (ms)" : "");
+        xAxis->setTickLabels(hasScale && (fig_col==0 || i >= end-ui->columns->value()));
+        xAxis->setLabel((hasScale && (fig_col==0 || i >= end-ui->columns->value())) ? "Time (ms)" : "");
         xAxis->setLayer("axes");
         xAxis->grid()->setLayer("grid");
+        xAxis->grid()->setVisible(false);
         yAxis->setTicks(hasScale);
-        yAxis->setTickLabels(hasScale);
-        yAxis->setLabel(hasScale ? "Voltage (mV)" : "");
+        yAxis->setTickLabels(hasScale && (fig_col==0 || (fig_col == 1 && col == 0)));
+        yAxis->setLabel((hasScale && (fig_col==0 || (fig_col == 1 && col == 0))) ? "Voltage (mV)" : "");
         yAxis->setLayer("axes");
         yAxis->grid()->setLayer("grid");
+        yAxis->grid()->setVisible(false);
 
-        int row = 2 * int(i / ui->columns->value());
-        int col = i % ui->columns->value();
         QCPTextElement *title = new QCPTextElement(ui->panel, labels.at(i));
         title->setVisible(hasTitle);
         ui->panel->plotLayout()->addElement(row, col, title);
@@ -246,6 +250,7 @@ void StimulationPlotter::updateColor(size_t idx, bool replot)
 {
     QColor c = colors[idx];
     QPen pen(c);
+    pen.setWidth(2);
     c.setAlpha(c.alpha()/5.0);
     QBrush brush(c);
     ui->overlay->graph(idx)->setPen(pen);
