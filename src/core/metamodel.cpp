@@ -629,6 +629,15 @@ std::string MetaModel::structDeclarations() const
 
     ss << "};" << endl;
 
+    ss << endl << "std::ostream &operator<<(std::ostream &os, const State &s) {" << endl;
+    ss << "    os";
+    for ( const StateVariable &v : stateVariables )
+        ss << " << '\t' << s." << v.name;
+    ss << ";" << endl;
+    ss << "    return os;" << endl;
+    ss << "}" << endl;
+    ss << endl;
+
 #ifdef USEDOUBLE
     return ensureFtype(ss.str(), "double");
 #else
