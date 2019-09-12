@@ -112,9 +112,6 @@
    <item row="0" column="0" colspan="2">
     <widget class="QComboBox" name="combo"/>
    </item>
-   <item row="5" column="0" colspan="5">
-    <widget class="QCustomPlot" name="plot" native="true"/>
-   </item>
    <item row="0" column="3">
     <widget class="QPushButton" name="btnDraw">
      <property name="text">
@@ -197,6 +194,9 @@
      </property>
     </widget>
    </item>
+   <item row="4" column="4">
+    <widget class="QDoubleSpinBox" name="tolFitnessFraction"/>
+   </item>
    <item row="2" column="2">
     <widget class="QPushButton" name="readMinFitness">
      <property name="text">
@@ -211,14 +211,29 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="4">
-    <widget class="QDoubleSpinBox" name="tolFitnessFraction"/>
-   </item>
    <item row="2" column="3">
     <widget class="QPushButton" name="deltabar">
      <property name="text">
       <string>Δbar...</string>
      </property>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="5">
+    <widget class="QWidget" name="widget" native="true">
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
+       <widget class="QSplitter" name="splitter">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QCustomPlot" name="plot" native="true"/>
+        <widget class="QWidget" name="widget_2" native="true"/>
+       </widget>
+      </item>
+     </layout>
+     <zorder>plot</zorder>
+     <zorder>plot</zorder>
+     <zorder>widget_2</zorder>
     </widget>
    </item>
   </layout>
