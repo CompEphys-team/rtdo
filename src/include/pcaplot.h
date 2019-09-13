@@ -26,6 +26,8 @@ public slots:
 private slots:
     void compute();
 
+    void on_pdf_clicked();
+
 private:
     Ui::PCAPlot *ui;
     Session *session;

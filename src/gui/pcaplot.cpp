@@ -65,6 +65,11 @@ void PCAPlot::replot()
     }
     data->sort();
     ui->plot->rescaleAxes();
+    ui->plot->xAxis->setTicks(false);
+    ui->plot->yAxis->setTicks(false);
+    ui->plot->xAxis->grid()->setVisible(false);
+    ui->plot->yAxis->grid()->setVisible(false);
+    ui->plot->axisRect()->setupFullAxesBox();
     ui->plot->replot();
 }
 
@@ -82,4 +87,15 @@ void PCAPlot::compute()
         std::cout << s << '\t';
     std::cout << std::endl;
     replot();
+}
+
+void PCAPlot::on_pdf_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( file.isEmpty() )
+        return;
+    if ( !file.endsWith(".pdf") )
+        file.append(".pdf");
+    ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(),
+                      QString("Fit %1, epoch %2").arg(session->gaFitter().results().at(ui->fits->currentIndex()).resultIndex).arg(ui->epoch->value()));
 }

@@ -26,9 +26,6 @@
       </sizepolicy>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
-      <item row="0" column="2">
-       <widget class="QSpinBox" name="epoch"/>
-      </item>
       <item row="0" column="1">
        <widget class="QLabel" name="label">
         <property name="text">
@@ -36,8 +33,18 @@
         </property>
        </widget>
       </item>
+      <item row="0" column="2">
+       <widget class="QSpinBox" name="epoch"/>
+      </item>
       <item row="0" column="0">
        <widget class="QComboBox" name="fits"/>
+      </item>
+      <item row="0" column="3">
+       <widget class="QPushButton" name="pdf">
+        <property name="text">
+         <string>PDF...</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
