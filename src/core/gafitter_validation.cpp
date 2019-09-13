@@ -52,7 +52,7 @@ void GAFitter::record_validation(QFile &base)
     }
 }
 
-std::vector<std::vector<double>> load_validation(QFile &base, int ep)
+std::vector<std::vector<double>> GAFitter::load_validation(QFile &base, int ep)
 {
     std::vector<std::vector<double>> traces;
 
@@ -60,7 +60,7 @@ std::vector<std::vector<double>> load_validation(QFile &base, int ep)
     if ( !traceFile.exists() )
         traceFile.setFileName(QString("%1.validation.ep_%2.bin").arg(base.fileName()).arg(ep, 2, 10, QChar('0'))); // Legacy
     if ( !traceFile.open(QIODevice::ReadOnly) ) {
-        std::cerr << "Failed to open file " << traceFile.fileName().toStdString() << " for reading.";
+        std::cerr << "Failed to open file " << traceFile.fileName().toStdString() << " for reading." << std::endl;
         return traces;
     }
     QDataStream is(&traceFile);

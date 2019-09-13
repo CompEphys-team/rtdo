@@ -86,6 +86,9 @@ public:
 
     bool cl_exec(Result *res, QFile &file);
 
+    // Utility
+    static std::vector<std::vector<double>> load_validation(QFile &base, int ep);
+
 public slots:
     void run(WaveSource src, QString VCRecord = "", bool readRecConfig = false);
     void resume(size_t fitIdx, WaveSource src, QString VCRecord = "", bool readRecConfig = false);
