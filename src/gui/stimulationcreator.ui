@@ -21,6 +21,131 @@
      </property>
      <widget class="QWidget" name="widget_2" native="true">
       <layout class="QGridLayout" name="gridLayout_4">
+       <item row="1" column="0">
+        <widget class="QTabWidget" name="editor">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="QWidget" name="editorPage1">
+          <attribute name="title">
+           <string>Stimulation</string>
+          </attribute>
+          <layout class="QGridLayout" name="gridLayout">
+           <item row="1" column="1">
+            <widget class="QDoubleSpinBox" name="duration">
+             <property name="suffix">
+              <string> ms</string>
+             </property>
+             <property name="maximum">
+              <double>100000.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0" colspan="3">
+            <widget class="QTableWidget" name="steps">
+             <attribute name="horizontalHeaderStretchLastSection">
+              <bool>true</bool>
+             </attribute>
+             <attribute name="verticalHeaderVisible">
+              <bool>false</bool>
+             </attribute>
+             <attribute name="verticalHeaderDefaultSectionSize">
+              <number>24</number>
+             </attribute>
+             <column>
+              <property name="text">
+               <string>Ramp</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Time</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Voltage|Current</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QPushButton" name="copy">
+             <property name="text">
+              <string>Copy</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QPushButton" name="paste">
+             <property name="text">
+              <string>Paste</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QDoubleSpinBox" name="baseV">
+             <property name="suffix">
+              <string> [mV|nA]</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QSpinBox" name="nSteps">
+             <property name="suffix">
+              <string> steps</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QPushButton" name="diagnose">
+             <property name="text">
+              <string>Diagnose</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QPushButton" name="randomise">
+             <property name="text">
+              <string>Randomise</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tab">
+          <attribute name="title">
+           <string>Observation</string>
+          </attribute>
+          <layout class="QGridLayout" name="gridLayout_6">
+           <item row="0" column="0">
+            <widget class="QTableWidget" name="observations">
+             <column>
+              <property name="text">
+               <string>start</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>stop</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="pdf">
+         <property name="text">
+          <string>PDF</string>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0">
         <widget class="QTabWidget" name="tabWidget">
          <property name="currentIndex">
@@ -92,6 +217,9 @@
           </layout>
          </widget>
          <widget class="QWidget" name="tab_traces">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <attribute name="title">
            <string>Traces</string>
           </attribute>
@@ -168,131 +296,149 @@
            </item>
           </layout>
          </widget>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QTabWidget" name="editor">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="currentIndex">
-          <number>0</number>
-         </property>
-         <widget class="QWidget" name="editorPage1">
+         <widget class="QWidget" name="cl_magic_tab">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <attribute name="title">
-           <string>Stimulation</string>
+           <string>Closed-loop magic</string>
           </attribute>
-          <layout class="QGridLayout" name="gridLayout">
+          <layout class="QGridLayout" name="gridLayout_7">
            <item row="3" column="0">
-            <widget class="QPushButton" name="diagnose">
+            <widget class="ColorButton" name="cl_col_bestF">
+             <property name="maximumSize">
+              <size>
+               <width>25</width>
+               <height>25</height>
+              </size>
+             </property>
              <property name="text">
-              <string>Diagnose</string>
+              <string/>
              </property>
             </widget>
            </item>
-           <item row="1" column="2">
-            <widget class="QDoubleSpinBox" name="baseV">
-             <property name="suffix">
-              <string> [mV|nA]</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0" colspan="3">
-            <widget class="QTableWidget" name="steps">
-             <attribute name="horizontalHeaderStretchLastSection">
-              <bool>true</bool>
-             </attribute>
-             <attribute name="verticalHeaderVisible">
-              <bool>false</bool>
-             </attribute>
-             <attribute name="verticalHeaderDefaultSectionSize">
-              <number>24</number>
-             </attribute>
-             <column>
-              <property name="text">
-               <string>Ramp</string>
-              </property>
-             </column>
-             <column>
-              <property name="text">
-               <string>Time</string>
-              </property>
-             </column>
-             <column>
-              <property name="text">
-               <string>Voltage|Current</string>
-              </property>
-             </column>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QPushButton" name="copy">
+           <item row="3" column="1">
+            <widget class="QCheckBox" name="cl_bestfit">
              <property name="text">
-              <string>Copy</string>
+              <string>Best-fit model</string>
              </property>
             </widget>
            </item>
-           <item row="0" column="0">
-            <widget class="QPushButton" name="randomise">
+           <item row="3" column="3">
+            <widget class="QCheckBox" name="cl_bestvalidated">
              <property name="text">
-              <string>Randomise</string>
+              <string>Best-validated model</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="duration">
-             <property name="suffix">
-              <string> ms</string>
+           <item row="4" column="3">
+            <widget class="QCheckBox" name="cl_reference">
+             <property name="text">
+              <string>Validation trace</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="2">
+            <widget class="ColorButton" name="cl_col_bestV">
+             <property name="maximumSize">
+              <size>
+               <width>25</width>
+               <height>25</height>
+              </size>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="2">
+            <widget class="ColorButton" name="cl_col_ref">
+             <property name="maximumSize">
+              <size>
+               <width>25</width>
+               <height>25</height>
+              </size>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="2" colspan="2">
+            <widget class="QPushButton" name="cl_magic">
+             <property name="text">
+              <string>Go</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="2" colspan="2">
+            <widget class="QSpinBox" name="cl_start">
+             <property name="prefix">
+              <string>epoch </string>
              </property>
              <property name="maximum">
-              <double>100000.000000000000000</double>
+              <number>10000</number>
              </property>
             </widget>
            </item>
-           <item row="0" column="2">
-            <widget class="QPushButton" name="paste">
-             <property name="text">
-              <string>Paste</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QSpinBox" name="nSteps">
+           <item row="1" column="2" colspan="2">
+            <widget class="QSpinBox" name="cl_epochs">
              <property name="suffix">
-              <string> steps</string>
+              <string> epochs</string>
+             </property>
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>1000</number>
+             </property>
+             <property name="value">
+              <number>10</number>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2" colspan="2">
+            <widget class="QComboBox" name="cl_validations"/>
+           </item>
+           <item row="1" column="0" colspan="2">
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>Every</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0" colspan="2">
+            <widget class="QComboBox" name="cl_fits"/>
+           </item>
+           <item row="2" column="0" colspan="2">
+            <widget class="QLabel" name="label_4">
+             <property name="text">
+              <string>Starting from</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0" colspan="2">
+            <widget class="QSpinBox" name="cl_width">
+             <property name="suffix">
+              <string> px wide</string>
+             </property>
+             <property name="maximum">
+              <number>10000</number>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0" colspan="2">
+            <widget class="QSpinBox" name="cl_height">
+             <property name="suffix">
+              <string> px high</string>
+             </property>
+             <property name="maximum">
+              <number>10000</number>
              </property>
             </widget>
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="tab">
-          <attribute name="title">
-           <string>Observation</string>
-          </attribute>
-          <layout class="QGridLayout" name="gridLayout_6">
-           <item row="0" column="0">
-            <widget class="QTableWidget" name="observations">
-             <column>
-              <property name="text">
-               <string>start</string>
-              </property>
-             </column>
-             <column>
-              <property name="text">
-               <string>stop</string>
-              </property>
-             </column>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QPushButton" name="pdf">
-         <property name="text">
-          <string>PDF</string>
-         </property>
         </widget>
        </item>
       </layout>
@@ -308,6 +454,11 @@
    <extends>QWidget</extends>
    <header>qcustomplot.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ColorButton</class>
+   <extends>QToolButton</extends>
+   <header>colorbutton.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>

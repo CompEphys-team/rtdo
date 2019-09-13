@@ -52,6 +52,8 @@ private slots:
 
     void on_pdf_clicked();
 
+    void on_cl_magic_clicked();
+
 private:
     Ui::StimulationCreator *ui;
     Session &session;

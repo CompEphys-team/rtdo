@@ -3,6 +3,7 @@
 #include "colorbutton.h"
 #include "stimulationgraph.h"
 #include "clustering.h"
+#include "populationsaver.h"
 
 constexpr static int nColours = 8;
 const static QString colours[nColours] = {
@@ -185,6 +186,10 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
     emit ui->paramSource->valueChanged(0); // ensure paramSource minimum is correctly set up
 
     connect(ui->traceTable, &QTableWidget::itemChanged, this, &StimulationCreator::traceEdited);
+
+    ui->cl_col_ref->setColor(QColor("#ff0000"));
+    ui->cl_col_bestF->setColor(QColor("#0000ff"));
+    ui->cl_col_bestV->setColor(QColor("#005500"));
 }
 
 StimulationCreator::~StimulationCreator()
@@ -204,6 +209,14 @@ void StimulationCreator::updateSources()
         ui->sources->addItem(src.prettyName(), QVariant::fromValue(src));
     }
     ui->sources->setCurrentIndex(0);
+
+    for ( size_t i = ui->cl_fits->count(); i < session.gaFitter().results().size(); i++ )
+        ui->cl_fits->addItem(QString("Fit %1 (%2)").arg(i).arg(session.gaFitter().results().at(i).resultIndex, 4, 10, QChar('0')));
+
+    for ( size_t i = ui->cl_validations->count(); i < session.gaFitter().validations().size(); i++ ) {
+        const GAFitter::Validation &val = session.gaFitter().validations().at(i);
+        ui->cl_validations->addItem(QString("Validation %1 for fit %2").arg(val.resultIndex, 4, 10, QChar('0')).arg(val.fitIdx));
+    }
 }
 
 void StimulationCreator::copySource()
@@ -330,9 +343,11 @@ void StimulationCreator::setStimulation()
         setNSteps(stim->size());
 
         ui->tab_traces->setEnabled(true);
+        ui->cl_magic_tab->setEnabled(true);
     } else {
         ui->editor->setEnabled(false);
         ui->tab_traces->setEnabled(false);
+        ui->cl_magic_tab->setEnabled(false);
     }
 
     redraw();
@@ -735,4 +750,161 @@ void StimulationCreator::on_pdf_clicked()
     if ( !file.endsWith(".pdf") )
         file.append(".pdf");
     ui->plot->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(), file);
+}
+
+
+
+void StimulationCreator::on_cl_magic_clicked()
+{
+    QString outfile_base = QFileDialog::getSaveFileName(this, "Select output file base");
+    if ( outfile_base.isEmpty() )
+        return;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+
+    const int fitIdx = ui->cl_fits->currentIndex();
+    const int valIdx = ui->cl_validations->currentIndex();
+    const GAFitter::Output &fit = session.gaFitter().results().at(fitIdx);
+    const Settings settings = session.getSettings(fit.resultIndex);
+    const GAFitter::Validation *validation = nullptr;
+
+    if ( lib == nullptr )
+        lib = new UniversalLibrary(session.project, false);
+    QFile basefile(session.resultFilePath(fit.resultIndex));
+    PopLoader loader(basefile, *lib);
+
+    if ( valIdx >= 0 && session.gaFitter().validations().at(valIdx).fitIdx == fitIdx ) {
+        validation =& session.gaFitter().validations().at(valIdx);
+    }
+
+    int nEpochs = ui->cl_epochs->value(), firstEpoch = ui->cl_start->value();
+    int nPlots = fit.epochs / nEpochs, nParams = lib->adjustableParams.size();
+    bool bf = ui->cl_bestfit->isChecked(), bv = ui->cl_bestvalidated->isChecked(), ref = ui->cl_reference->isChecked();
+    std::vector<QVector<double>> tracesBF, tracesBV, tracesRef;
+
+    // Load parameter values for bestFit, bestValidation
+    if ( bf || bv ) {
+        std::vector<std::vector<scalar>> bestFits(nPlots, std::vector<scalar>(nParams)), bestVali(nPlots, std::vector<scalar>(nParams));
+        if ( bf )
+            tracesBF.assign(nPlots, QVector<double>(stim->duration));
+        if ( bv )
+            tracesBV.assign(nPlots, QVector<double>(stim->duration));
+
+
+        for ( quint32 epoch = firstEpoch, i = 0; epoch < fit.epochs; epoch += nEpochs, i++ ) {
+            if ( bf ) {
+                loader.load(epoch, *lib);
+                size_t idx = std::min_element(lib->summary, lib->summary + lib->NMODELS) - lib->summary;
+                for ( int j = 0; j < nParams; j++ )
+                    bestFits[i][j] = lib->adjustableParams[j][idx];
+            }
+
+            if ( bv && validation && !validation->error[epoch].empty() ) {
+                size_t idx = std::min_element(validation->error.begin(), validation->error.end()) - validation->error.begin();
+                for ( int j = 0; j < nParams; j++ )
+                    bestVali[i][j] = lib->adjustableParams[j][idx];
+            }
+        }
+
+        // Run all parameter sets in lib
+        lib->setSingularRund();
+        lib->simCycles = settings.rund.simCycles;
+        lib->integrator = settings.rund.integrator;
+        lib->setRundata(0, settings.rund);
+
+        lib->setSingularStim(true);
+        lib->stim[0] = *stim;
+        lib->obs[0] = {{},{}};
+        lib->obs[0].stop[0] = stim->duration;
+
+        lib->resizeOutput(stim->duration);
+
+        for ( size_t iParam = 0; iParam < lib->adjustableParams.size(); iParam++ ) {
+            for ( int iModel = 0, p = 0; p < nPlots; p++ ) {
+                if ( bf )
+                    lib->adjustableParams[iParam][iModel++] = bestFits[p][iParam];
+                if ( bv )
+                    lib->adjustableParams[iParam][iModel++] = bestVali[p][iParam];
+            }
+        }
+
+        lib->assignment = lib->assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE;
+        if ( !settings.rund.VC )
+            lib->assignment |= ASSIGNMENT_CURRENTCLAMP;
+
+        lib->push();
+        lib->run();
+        lib->pullOutput();
+
+        for ( int iModel = 0, p = 0; p < nPlots; p++ ) {
+            if ( bf ) {
+                scalar *start = lib->output + (iModel++);
+                for ( int i = 0; i < stim->duration; i++ )
+                    tracesBF[p][i] = start[i*lib->NMODELS];
+            }
+            if ( bv ) {
+                scalar *start = lib->output + (iModel++);
+                for ( int i = 0; i < stim->duration; i++ )
+                    tracesBV[p][i] = start[i*lib->NMODELS];
+            }
+        }
+    }
+
+    // Get validation traces
+    if ( ref ) {
+        size_t stimIdx = 0;
+        std::vector<iStimulation> valStims = fit.stimSource.iStimulations(session.qRunData().dt);
+        for ( ; stimIdx < valStims.size(); stimIdx++ ) {
+            if ( *stim == valStims[stimIdx] )
+                break;
+        }
+        if ( stimIdx == valStims.size() ) {
+            std::cerr << "Stim " << *stim << " not in validation set:" << std::endl;
+            for ( auto s : valStims )
+                std::cerr << s << std::endl;
+            ref = false;
+        } else {
+            tracesRef.assign(nPlots, QVector<double>(stim->duration));
+            for ( quint32 epoch = firstEpoch, i = 0; epoch < fit.epochs; epoch += nEpochs, i++ ) {
+                int closest = settings.gafs.cl_validation_interval * std::round(double(epoch) / settings.gafs.cl_validation_interval);
+                std::vector<std::vector<double>> traces = GAFitter::load_validation(basefile, closest);
+                if ( traces.empty() )
+                    continue;
+                tracesRef[i] = QVector<double>::fromStdVector(traces[stimIdx]);
+            }
+        }
+    }
+
+    // Plot
+    QVector<double> keys(stim->duration);
+    for ( int i = 0; i < keys.size(); i++ )
+        keys[i] = i * settings.rund.dt;
+
+    for ( int i = 0; i < nPlots; i++ ) {
+        ui->plot->clearPlottables();
+        if ( ref ) {
+            QCPGraph *g = ui->plot->addGraph();
+            g->setPen(QPen(ui->cl_col_ref->color));
+            g->setData(keys, tracesRef[i], true);
+        }
+        if ( bf ) {
+            QCPGraph *g = ui->plot->addGraph();
+            g->setPen(QPen(ui->cl_col_bestF->color));
+            g->setData(keys, tracesBF[i], true);
+        }
+        if ( bv ) {
+            QCPGraph *g = ui->plot->addGraph();
+            g->setPen(QPen(ui->cl_col_bestV->color));
+            g->setData(keys, tracesBV[i], true);
+        }
+
+        ui->plot->yAxis2->setVisible(false);
+        ui->plot->xAxis->setLabel(i == nPlots-1 ? "Time [ms]" : "");
+        ui->plot->xAxis->setTickLabels(i == nPlots-1);
+        ui->plot->xAxis->rescale();
+        ui->plot->yAxis->rescale();
+        ui->plot->savePdf(QString("%1.ep_%2.pdf").arg(outfile_base).arg(firstEpoch + i*nEpochs), ui->cl_width->value(), ui->cl_height->value(), QCP::epNoCosmetic, windowTitle());
+    }
+
+    QApplication::restoreOverrideCursor();
 }
