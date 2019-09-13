@@ -32,6 +32,9 @@ protected slots:
     void buildPlotLayout();
     void xRangeChanged(QCPRange);
 
+private slots:
+    void on_pdf_clicked();
+
 private:
     Ui::PopulationPlot *ui;
     Session *session;

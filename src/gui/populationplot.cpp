@@ -233,17 +233,17 @@ void PopulationPlot::replot()
         maps[i]->data()->setSize(fit.epochs, nBins);
         maps[i]->data()->setRange(QCPRange {0, double(fit.epochs)}, QCPRange {settings.min[i], settings.max[i]});
 
-        bestCostG[i] = new QCPGraph(axRects[i]->axis(QCPAxis::atBottom), axRects[i]->axis(QCPAxis::atLeft));
-        bestCostG[i]->setVisible(ui->bestCost->isChecked());
-        bestCostG[i]->setLineStyle(QCPGraph::lsNone);
-        bestCostG[i]->setScatterStyle(QCPScatterStyle::ssCross);
         if ( validation ) {
             bestValiG[i] = new QCPGraph(axRects[i]->axis(QCPAxis::atBottom), axRects[i]->axis(QCPAxis::atLeft));
             bestValiG[i]->setVisible(ui->bestVali->isChecked());
             bestValiG[i]->setPen(QPen(Qt::green));
             bestValiG[i]->setLineStyle(QCPGraph::lsNone);
-            bestValiG[i]->setScatterStyle(QCPScatterStyle::ssCross);
+            bestValiG[i]->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 4));
         }
+        bestCostG[i] = new QCPGraph(axRects[i]->axis(QCPAxis::atBottom), axRects[i]->axis(QCPAxis::atLeft));
+        bestCostG[i]->setVisible(ui->bestCost->isChecked());
+        bestCostG[i]->setLineStyle(QCPGraph::lsNone);
+        bestCostG[i]->setScatterStyle(QCPScatterStyle::ssCross);
     }
 
 
@@ -354,4 +354,15 @@ void PopulationPlot::xRangeChanged(QCPRange range)
         axis->blockSignals(false);
     }
     ui->panel->replot();
+}
+
+void PopulationPlot::on_pdf_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( file.isEmpty() )
+        return;
+    if ( !file.endsWith(".pdf") )
+        file.append(".pdf");
+    ui->panel->savePdf(file, 0,0, QCP::epNoCosmetic, windowTitle(),
+                      QString("Fit %1").arg(session->gaFitter().results().at(ui->fits->currentIndex()).resultIndex));
 }
