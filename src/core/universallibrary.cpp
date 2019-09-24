@@ -463,7 +463,7 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
             t = iT * $(dt);
 
             if ( $(assignment) & ASSIGNMENT_SUMMARY_ERRFN )
-                SDF_dV = SDF_dV*SDF_dV_DECAY + (V - state.V);
+                SDF_dV = SDF_dV*SDF_dV_DECAY + (state.V - V);
         }
     }
     ++nextObs;
