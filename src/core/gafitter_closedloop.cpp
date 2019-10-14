@@ -82,17 +82,16 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
     output.resume.DEMethodFailed = DEMethodFailed;
     output.resume.DEpX = DEpX;
 
-    // Finish
+    // Save
     output.epochs = epoch;
+    save(file);
+
     {
         QMutexLocker locker(&mutex);
         m_results.push_back(std::move(output));
         running = false;
     }
     emit done();
-
-    // Save
-    save(file);
 
     delete daq;
     daq = nullptr;
