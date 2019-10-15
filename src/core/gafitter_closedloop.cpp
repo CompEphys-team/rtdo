@@ -109,6 +109,7 @@ void GAFitter::cl_fit(QFile &file)
     for ( int i = 0; i < settings.cl_nStims; i++ )
         lib.obs[i] = obs[0];
     lib.push(lib.obs);
+    lib.resizeOutput(obs[0].duration());
 
     lib.SDF_size = settings.SDF_size;
     lib.SDF_decay = settings.SDF_decay;
@@ -216,36 +217,25 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
     // Set up library
     lib.iSettleDuration[0] = 0;
     lib.push(lib.iSettleDuration);
-    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_PREVTHREAD | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_ERRFN | ASSIGNMENT_SUBSET_MUX;
+    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES | ASSIGNMENT_TIMESERIES_COMPARE_NONE | ASSIGNMENT_SUBSET_MUX;
     if ( !rd.VC )
         lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
 
     lib.run();
-    lib.pullSummary();
+    std::vector<scalar> mean_cost = lib.cl_get_mean_cost(settings.cl_nStims, lib.stim[0].duration, settings.spike_threshold * session.runData().dt, 0.99, settings.SDF_size, settings.SDF_decay);
 
-    std::vector<errTupel> variance(settings.cl_nStims);
+    std::vector<errTupel> cost(settings.cl_nStims);
     for ( int stimIdx = 0; stimIdx < settings.cl_nStims; stimIdx++ ) {
-        double mean = 0;
-        for ( int i = 0; i < lib.cl_blocksize; i++ )
-            mean += lib.summary[stimIdx*lib.cl_blocksize + i];
-        mean /= lib.cl_blocksize;
-
-        variance[stimIdx].idx = stimIdx;
-        variance[stimIdx].err = 0;
-        for ( int i = 0; i < lib.cl_blocksize; i++ ) {
-            double delta = mean - lib.summary[stimIdx*lib.cl_blocksize + i];
-            variance[stimIdx].err += delta*delta;
-        }
-        variance[stimIdx].err /= lib.cl_blocksize;
-
-        os << stimIdx << '\t' << mean << '\t' << variance[stimIdx].err << '\n' << lib.stim[stimIdx] << '\n' << '\n';
+        cost[stimIdx].idx = stimIdx;
+        cost[stimIdx].err = mean_cost[stimIdx];
+        os << stimIdx << '\t' << mean_cost[stimIdx] << '\n' << lib.stim[stimIdx] << '\n' << '\n';
     }
 
     // Pick the nSelect highest variance stimulations to return. Note, ascending sort
-    std::sort(variance.begin(), variance.end(), &errTupelSort);
+    std::sort(cost.begin(), cost.end(), &errTupelSort);
     std::vector<iStimulation> ret(settings.cl_nSelect);
     for ( int i = 0; i < settings.cl_nSelect; i++ ) {
-        int stimIdx = variance[settings.cl_nStims - i - 1].idx;
+        int stimIdx = cost[settings.cl_nStims - i - 1].idx;
         ret[i] = lib.stim[stimIdx];
         os << "Picked stim # " << stimIdx << '\n';
     }
@@ -329,8 +319,6 @@ void GAFitter::cl_pca()
 {
     QTime wallclock = QTime::currentTime();
     std::vector<scalar> singular_values = lib.get_params_principal_components(2, settings.nReinit);
-    std::cout << "PCA complete, pushing after " << wallclock.msecsTo(QTime::currentTime()) << " ms" << std::endl;
-    lib.pushParams();
     for ( const scalar &s : singular_values )
         std::cout << s << '\t';
     lib.sync();
