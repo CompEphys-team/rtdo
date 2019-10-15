@@ -144,21 +144,6 @@ void GAFitter::cl_fit(QFile &file)
         lib.pullSummary();
         pop.saveErr(lib);
 
-        {
-            QString epoch_file = QString("%1.%2.models").arg(file.fileName()).arg(epoch);
-            std::ofstream os(epoch_file.toStdString());
-            os << "idx\terr";
-            for ( const AdjustableParam &p : lib.adjustableParams )
-                os << '\t' << p.name;
-            os << '\n';
-            for ( size_t i = 0; i < lib.NMODELS; i++ ) {
-                os << i << '\t' << lib.summary[i];
-                for ( const AdjustableParam &p : lib.adjustableParams )
-                    os << '\t' << p[i];
-                os << '\n';
-            }
-        }
-
         if ( settings.useDE ) {
             procreateDE();
         } else {
