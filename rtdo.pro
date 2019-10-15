@@ -299,4 +299,5 @@ DISTFILES += \
     src/cuda/deviations.cu \
     src/cuda/profile.cu \
     src/cuda/util.cu \
-    src/cuda/pca.cu
+    src/cuda/pca.cu \
+    src/cuda/closedloop.cu

@@ -183,6 +183,8 @@ public:
         scalar **PCA_TL;
 
         double (*get_mean_distance)(const AdjustableParam &);
+
+        std::vector<scalar> (*cl_get_mean_cost)(int nStims, int nSamples, scalar dV_threshold, scalar dV_decay, scalar SDF_size, scalar SDF_decay);
     };
 
     Project &project;
@@ -344,6 +346,13 @@ public:
 
     /// Utility call to compute mean distance within the population along the given parameter axis
     inline double get_mean_distance(size_t targetParam) { return pointers.get_mean_distance(adjustableParams.at(targetParam)); }
+
+    /// Runs the trace/spike density error function on timeseries data (duration nSamples, NMODELS/nStims time series per stimulus),
+    /// compares the instantaneous errors all-to-all within a stim, yielding a mean squared residual of the error,
+    /// and returns the variance of that MSR within a stim.
+    inline std::vector<scalar> cl_get_mean_cost(int nStims, int nSamples, scalar dV_threshold, scalar dV_decay, scalar SDF_size, scalar SDF_decay) {
+        return pointers.cl_get_mean_cost(nStims, nSamples, dV_threshold, dV_decay, SDF_size, SDF_decay);
+    }
 
 private:
     void *load();

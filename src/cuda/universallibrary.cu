@@ -29,6 +29,7 @@
 #include "profile.cu"
 #include "util.cu"
 #include "pca.cu"
+#include "closedloop.cu"
 
 static std::vector<cudaStream_t> lib_streams(1, 0);
 inline cudaStream_t getLibStream(unsigned int streamId)
