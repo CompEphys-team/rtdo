@@ -77,7 +77,8 @@ void GAFitter::resume(size_t fitIdx, WaveSource src, QString VCRecord, bool read
         if ( QFileInfo(cfg).exists() )
             session.loadConfig(cfg);
     }
-    Output *out = new Output(m_results[fitIdx]);
+    Output *out = new Output(session, src, VCRecord);
+    out->resume = m_results[fitIdx].resume;
     out->stimSource = src;
     out->VCRecord = VCRecord;
     session.queue(actorName(), action, src.prettyName(), out);
