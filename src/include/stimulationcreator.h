@@ -49,6 +49,7 @@ public:
 protected:
     void makeHidable(QCPGraph *g);
 
+    void setupPlot();
     void setupTraces();
     void addTrace(Trace &trace, int idx);
 

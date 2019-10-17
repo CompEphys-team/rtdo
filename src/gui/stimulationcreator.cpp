@@ -131,12 +131,7 @@ StimulationCreator::StimulationCreator(Session &session, QWidget *parent) :
         axis->rescale(true);
         ui->plot->replot();
     });
-    ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
-    ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
-    ui->plot->xAxis->setLabel("Time [ms]");
-    ui->plot->yAxis->setLabel("Voltage [mV]");
-    ui->plot->yAxis2->setLabel("Current [nA]");
-    ui->plot->yAxis2->setVisible(true);
+    setupPlot();
 
     // *** Traces ***
     int n = session.project.model().adjustableParams.size();
@@ -217,6 +212,16 @@ StimulationCreator::~StimulationCreator()
     delete lib;
     session.project.universal().destroySimulator(simulator);
     simulator = nullptr;
+}
+
+void StimulationCreator::setupPlot()
+{
+    ui->plot->axisRect()->setRangeZoomAxes(ui->plot->axisRect()->axes());
+    ui->plot->axisRect()->setRangeDragAxes(ui->plot->axisRect()->axes());
+    ui->plot->xAxis->setLabel("Time [ms]");
+    ui->plot->yAxis->setLabel("Voltage [mV]");
+    ui->plot->yAxis2->setLabel("Current [nA]");
+    ui->plot->yAxis2->setVisible(true);
 }
 
 void StimulationCreator::updateSources()
