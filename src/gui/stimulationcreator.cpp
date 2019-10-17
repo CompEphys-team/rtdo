@@ -778,6 +778,23 @@ void StimulationCreator::on_pdf_clicked()
 
 
 
+int get_spike_count(QVector<double> trace, double thresh, double fudgeTicks = 5)
+{
+    int n = 0;
+    bool spike = false;
+    int nBelow = 0;
+    for ( double V : trace ) {
+        if ( !spike && V > thresh ) {
+            spike = true;
+            ++n;
+        } else if ( spike && V < thresh && nBelow++ > fudgeTicks ) {
+            spike = false;
+            nBelow = 0;
+        }
+    }
+    return n;
+}
+
 void StimulationCreator::on_cl_magic_clicked()
 {
     QString outfile = QFileDialog::getSaveFileName(this, "Select output file");
@@ -901,6 +918,21 @@ void StimulationCreator::on_cl_magic_clicked()
         }
     }
 
+    // Count spikes
+    bool spkCount = ui->cl_countspikes->isChecked();
+    QVector<double> spkBF(nPlots), spkBV(nPlots), spkRef(nPlots);
+    double spkThreshold = ui->cl_threshold->value();
+    if ( spkCount ) {
+        for ( int i = 0; i < nPlots; i++ ) {
+            if ( ref )
+                spkRef[i] = get_spike_count(tracesRef[i], spkThreshold);
+            if ( bv )
+                spkBV[i] = get_spike_count(tracesBV[i], spkThreshold);
+            if ( bf )
+                spkBF[i] = get_spike_count(tracesBF[i], spkThreshold);
+        }
+    }
+
     // Plot
     QVector<double> keys(stim->duration);
     for ( int i = 0; i < keys.size(); i++ )
@@ -930,14 +962,43 @@ void StimulationCreator::on_cl_magic_clicked()
             g->setData(keys, tracesBV[i], true);
         }
 
-        ax->axis(QCPAxis::atRight)->setVisible(false);
         ax->axis(QCPAxis::atBottom)->setLabel(i == nPlots-1 ? "Time [ms]" : "");
         ax->axis(QCPAxis::atBottom)->setTickLabels(i == nPlots-1);
         ax->axis(QCPAxis::atBottom)->rescale();
         ax->axis(QCPAxis::atLeft)->setLabel(QString("Voltage [mV] - epoch %1").arg(firstEpoch + i*nEpochs));
         ax->axis(QCPAxis::atLeft)->rescale();
     }
-    ui->plot->savePdf(outfile, ui->cl_width->value(), nPlots * ui->cl_height->value(), QCP::epNoCosmetic, windowTitle());
+
+    // Plot spike counts
+    if ( spkCount ) {
+        QCPAxisRect *ax = new QCPAxisRect(ui->plot);
+        graphLayout->addElement(nPlots, 0, ax);
+        keys.resize(nPlots);
+        for ( int i = 0; i < nPlots; i++ )
+            keys[i] = firstEpoch + i*nEpochs;
+        if ( ref ) {
+            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
+            g->setPen(QPen(ui->cl_col_ref->color));
+            g->setData(keys, spkRef, true);
+        }
+        if ( bf ) {
+            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
+            g->setPen(QPen(ui->cl_col_bestF->color));
+            g->setData(keys, spkBF, true);
+        }
+        if ( bv ) {
+            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
+            g->setPen(QPen(ui->cl_col_bestV->color));
+            g->setData(keys, spkBV, true);
+        }
+
+        ax->axis(QCPAxis::atBottom)->setLabel("Epoch");
+        ax->axis(QCPAxis::atLeft)->setLabel("Spikes");
+        ax->axis(QCPAxis::atBottom)->rescale();
+        ax->axis(QCPAxis::atLeft)->rescale();
+    }
+
+    ui->plot->savePdf(outfile, ui->cl_width->value(), (nPlots + (spkCount?1:0)) * ui->cl_height->value(), QCP::epNoCosmetic, windowTitle());
 
     ui->plot->plotLayout()->clear();
     ui->plot->plotLayout()->addElement(new QCPAxisRect(ui->plot));
