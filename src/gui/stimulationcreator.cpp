@@ -780,9 +780,11 @@ void StimulationCreator::on_pdf_clicked()
 
 void StimulationCreator::on_cl_magic_clicked()
 {
-    QString outfile_base = QFileDialog::getSaveFileName(this, "Select output file base");
-    if ( outfile_base.isEmpty() )
+    QString outfile = QFileDialog::getSaveFileName(this, "Select output file");
+    if ( outfile.isEmpty() )
         return;
+    if ( !outfile.endsWith(".pdf") )
+        outfile.append(".pdf");
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
@@ -802,7 +804,7 @@ void StimulationCreator::on_cl_magic_clicked()
     }
 
     int nEpochs = ui->cl_epochs->value(), firstEpoch = ui->cl_start->value();
-    int nPlots = fit.epochs / nEpochs, nParams = lib->adjustableParams.size();
+    int nPlots = (fit.epochs+nEpochs-1 - firstEpoch) / nEpochs, nParams = lib->adjustableParams.size();
     bool bf = ui->cl_bestfit->isChecked(), bv = ui->cl_bestvalidated->isChecked(), ref = ui->cl_reference->isChecked();
     std::vector<QVector<double>> tracesBF, tracesBV, tracesRef;
 
@@ -904,31 +906,42 @@ void StimulationCreator::on_cl_magic_clicked()
     for ( int i = 0; i < keys.size(); i++ )
         keys[i] = i * settings.rund.dt;
 
+    ui->plot->plotLayout()->clear();
+    QCPLayoutGrid *graphLayout = new QCPLayoutGrid();
+    ui->plot->plotLayout()->addElement(0, 0, graphLayout);
+
     for ( int i = 0; i < nPlots; i++ ) {
-        ui->plot->clearPlottables();
+        QCPAxisRect *ax = new QCPAxisRect(ui->plot);
+        graphLayout->addElement(i, 0, ax);
+
         if ( ref ) {
-            QCPGraph *g = ui->plot->addGraph();
+            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
             g->setPen(QPen(ui->cl_col_ref->color));
             g->setData(keys, tracesRef[i], true);
         }
         if ( bf ) {
-            QCPGraph *g = ui->plot->addGraph();
+            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
             g->setPen(QPen(ui->cl_col_bestF->color));
             g->setData(keys, tracesBF[i], true);
         }
         if ( bv ) {
-            QCPGraph *g = ui->plot->addGraph();
+            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
             g->setPen(QPen(ui->cl_col_bestV->color));
             g->setData(keys, tracesBV[i], true);
         }
 
-        ui->plot->yAxis2->setVisible(false);
-        ui->plot->xAxis->setLabel(i == nPlots-1 ? "Time [ms]" : "");
-        ui->plot->xAxis->setTickLabels(i == nPlots-1);
-        ui->plot->xAxis->rescale();
-        ui->plot->yAxis->rescale();
-        ui->plot->savePdf(QString("%1.ep_%2.pdf").arg(outfile_base).arg(firstEpoch + i*nEpochs), ui->cl_width->value(), ui->cl_height->value(), QCP::epNoCosmetic, windowTitle());
+        ax->axis(QCPAxis::atRight)->setVisible(false);
+        ax->axis(QCPAxis::atBottom)->setLabel(i == nPlots-1 ? "Time [ms]" : "");
+        ax->axis(QCPAxis::atBottom)->setTickLabels(i == nPlots-1);
+        ax->axis(QCPAxis::atBottom)->rescale();
+        ax->axis(QCPAxis::atLeft)->setLabel(QString("Voltage [mV] - epoch %1").arg(firstEpoch + i*nEpochs));
+        ax->axis(QCPAxis::atLeft)->rescale();
     }
+    ui->plot->savePdf(outfile, ui->cl_width->value(), nPlots * ui->cl_height->value(), QCP::epNoCosmetic, windowTitle());
+
+    ui->plot->plotLayout()->clear();
+    ui->plot->plotLayout()->addElement(new QCPAxisRect(ui->plot));
+    setupPlot();
 
     QApplication::restoreOverrideCursor();
 }
