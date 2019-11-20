@@ -388,14 +388,6 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                 summary += ($(assignment) & ASSIGNMENT_SUMMARY_SQUARED) ? (double(diff)*diff) : fabs(diff);
             }
 
-            if ( ($(assignment) & ASSIGNMENT_REPORT_FIRST_SPIKE) && value > -10.0 && summary == 0 ) {
-                summary = t - dd_target[0];
-                if ( $(assignment) & ASSIGNMENT_SUMMARY_SQUARED )
-                    summary *= summary;
-                iT = $(obs).stop[nextObs];
-                break;
-            }
-
             // Integrate forward by one $(dt)
             if ( $(assignment) & ASSIGNMENT_NOISY_OBSERVATION ) {
                 scalar *offset_rand = dd_random + nSamples * 2*$(simCycles) * NMODELS + id;
@@ -420,13 +412,7 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
     ++nextObs;
 }
 
-if ( ($(assignment) & ASSIGNMENT_REPORT_FIRST_SPIKE) && summary == 0 && t == iT*$(dt) ) { // Note: Test for no spike requires break in spike detection, otherwise t is updated correctly
-    summary = iT*$(dt) - dd_target[0];
-    if ( $(assignment) & ASSIGNMENT_SUMMARY_SQUARED )
-        summary *= summary;
-}
-
-if ( $(assignment) & (ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_REPORT_FIRST_SPIKE) && !($(assignment) & ASSIGNMENT_SETTLE_ONLY) ) {
+if ( $(assignment) & ASSIGNMENT_REPORT_SUMMARY && !($(assignment) & ASSIGNMENT_SETTLE_ONLY) ) {
     if ( $(assignment) & ASSIGNMENT_SUMMARY_AVERAGE )
         summary /= nSamples;
     if ( $(assignment) & ASSIGNMENT_SUMMARY_PERSIST )
