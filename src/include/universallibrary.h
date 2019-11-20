@@ -95,8 +95,7 @@
 // Bit 27: Report first spike time to summary for closed-loop
 #define ASSIGNMENT_REPORT_FIRST_SPIKE           static_cast<unsigned int>(0x1 << 27) /* Report first time state.V > 10, then bail */
 
-// Bit 28: Accumulate summary according to an error function (experimental)
-#define ASSIGNMENT_SUMMARY_ERRFN                static_cast<unsigned int>(0x1 << 28) /* Preprocess summary diff through an error function (experimental) */
+// Bit 28: Unused
 
 // Bit 29: Multiplex subset of models
 // Models (and RunData, if singular) are loaded as id % cl_blocksize; stim and target (if singular) are loaded as id / cl_blocksize.
@@ -125,9 +124,6 @@ public:
         scalar *noiseAmplitude;
         int *summaryOffset;
         int *cl_blocksize;
-        scalar *SDF_size;
-        scalar *SDF_decay;
-        scalar *spike_threshold;
 
         std::function<void(void*, void*, size_t, int)> pushV;
         std::function<void(void*, void*, size_t, int)> pullV;
@@ -390,9 +386,6 @@ public:
     scalar &noiseAmplitude;
     int &summaryOffset;
     int &cl_blocksize;
-    scalar &SDF_size;
-    scalar &SDF_decay;
-    scalar &spike_threshold;
 
     scalar *&target;
     scalar *&output;

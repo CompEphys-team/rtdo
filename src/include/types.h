@@ -469,9 +469,6 @@ struct GAFitterSettings {
 
     int cl_nStims = 64; // Closed loop: Number of stims to test against each other
     int cl_nSelect = 2; // Closed loop: Number of stims to select from each probe batch
-    double SDF_size = 100;
-    double SDF_decay = 0.999;
-    double spike_threshold = 40; // Threshold to register a spike on filtered dV/dt [mV/ms]
     int cl_validation_interval = 10;
     ClosedLoopData cl;
 

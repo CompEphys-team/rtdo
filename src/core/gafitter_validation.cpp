@@ -138,9 +138,6 @@ bool GAFitter::exec_validation(Result *res, QFile &file)
     lib.setSingularTarget();
     lib.summaryOffset = 0;
 
-    lib.SDF_size = settings.SDF_size;
-    lib.SDF_decay = settings.SDF_decay;
-
     const unsigned int assignment = lib.assignment_base
             | (ancestor.closedLoop ? ASSIGNMENT_REPORT_TIMESERIES : (ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_COMPARE_TARGET))
             | (cfg.rund.VC ? 0 : ASSIGNMENT_CURRENTCLAMP);

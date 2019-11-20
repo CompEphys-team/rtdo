@@ -170,9 +170,6 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.chunkDuration", &q_settings, &Settings::gafs, &GAFitterSettings::chunkDuration);
     addAP(gafAP, "S.GAFitter.cl_nStims", &q_settings, &Settings::gafs, &GAFitterSettings::cl_nStims);
     addAP(gafAP, "S.GAFitter.cl_nSelect", &q_settings, &Settings::gafs, &GAFitterSettings::cl_nSelect);
-    addAP(gafAP, "S.GAFitter.SDF_size", &q_settings, &Settings::gafs, &GAFitterSettings::SDF_size);
-    addAP(gafAP, "S.GAFitter.SDF_decay", &q_settings, &Settings::gafs, &GAFitterSettings::SDF_decay);
-    addAP(gafAP, "S.GAFitter.spike_threshold", &q_settings, &Settings::gafs, &GAFitterSettings::spike_threshold);
     addAP(gafAP, "S.GAFitter.cl_validation_interval", &q_settings, &Settings::gafs, &GAFitterSettings::cl_validation_interval);
     addAP(gafAP, "S.GAFitter.DE_decay", &q_settings, &Settings::gafs, &GAFitterSettings::DE_decay);
     addAP(gafAP, "S.GAFitter.num_populations", &q_settings, &Settings::gafs, &GAFitterSettings::num_populations);

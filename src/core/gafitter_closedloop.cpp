@@ -111,9 +111,6 @@ void GAFitter::cl_fit(QFile &file)
     lib.push(lib.obs);
     lib.resizeOutput(obs[0].duration());
 
-    lib.SDF_size = settings.SDF_size;
-    lib.SDF_decay = settings.SDF_decay;
-
     PopSaver pop(file);
 
     for ( epoch = 0; !finished(); epoch++ ) {

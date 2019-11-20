@@ -157,9 +157,6 @@ void GAFitterSettingsDialog::importData()
 
     ui->cl_nStims->setValue(p.cl_nStims);
     ui->cl_nSelect->setValue(p.cl_nSelect);
-    ui->SDF_size->setValue(p.SDF_size);
-    ui->SDF_decay->setValue(p.SDF_decay);
-    ui->spike_threshold->setValue(p.spike_threshold);
     ui->cl_validation_interval->setValue(p.cl_validation_interval);
 
     ui->DE_decay->setValue(p.DE_decay);
@@ -201,9 +198,6 @@ void GAFitterSettingsDialog::exportData()
 
     p.cl_nStims = ui->cl_nStims->value();
     p.cl_nSelect = ui->cl_nSelect->value();
-    p.SDF_size = ui->SDF_size->value();
-    p.SDF_decay = ui->SDF_decay->value();
-    p.spike_threshold = ui->spike_threshold->value();
     p.cl_validation_interval = ui->cl_validation_interval->value();
 
     p.DE_decay = ui->DE_decay->value();

@@ -61,9 +61,6 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     noiseAmplitude(light ? dummyScalar : *pointers.noiseAmplitude),
     summaryOffset(light ? dummyInt : *pointers.summaryOffset),
     cl_blocksize(light ? dummyInt : *pointers.cl_blocksize),
-    SDF_size(light ? dummyScalar : *pointers.SDF_size),
-    SDF_decay(light ? dummyScalar : *pointers.SDF_decay),
-    spike_threshold(light ? dummyScalar : *pointers.spike_threshold),
 
     target(light ? dummyScalarPtr : *pointers.target),
     output(light ? dummyScalarPtr : *pointers.output),
@@ -158,10 +155,7 @@ void UniversalLibrary::GeNN_modelDefinition(NNmodel &nn)
         Variable("noiseExp"),
         Variable("noiseAmplitude"),
         Variable("summaryOffset", "", "int"),
-        Variable("cl_blocksize", "", "int"),
-        Variable("SDF_size"),
-        Variable("SDF_decay"),
-        Variable("spike_threshold")
+        Variable("cl_blocksize", "", "int")
     };
     for ( Variable &p : globals ) {
         n.extraGlobalNeuronKernelParameters.push_back(p.name);
@@ -224,12 +218,6 @@ double summary = 0;
 scalar noiseI[3];
 if ( $(assignment) & ASSIGNMENT_NOISY_OBSERVATION )
     noiseI[0] = dd_random[id];
-
-bool spike = false, spike_target = false;
-scalar SDF_dV = 0, SDF_dV_target = 0;
-scalar SDF = 0, SDF_target = 0;
-scalar Vprev_target = 0;
-constexpr scalar SDF_dV_DECAY = 0.99;
 
 scalar V = state.V;
 if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP )
@@ -397,59 +385,6 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
                     break;
                 }
 
-                // Closed-loop error function
-                if ( $(assignment) & ASSIGNMENT_SUMMARY_ERRFN ) {
-                    // Detect spike
-                    if ( !spike && SDF_dV > $(spike_threshold) ) {
-                        spike = true;
-                        SDF += $(SDF_size);
-                    } else if ( spike && SDF_dV < 0 ) {
-                        spike = false;
-                    }
-
-                    // Add voltage error outside of spikes
-                    if ( !spike )
-                        summary += ($(assignment) & ASSIGNMENT_SUMMARY_SQUARED) ? (double(diff)*diff) : fabs(diff);
-
-                    // Compare SDF
-                    switch ( $(assignment) & ASSIGNMENT_SUMMARY_COMPARE_MASK ) {
-                    case ASSIGNMENT_SUMMARY_COMPARE_TARGET:
-                        // Generate target SDF
-                        value = dd_target[$(targetOffset) + $(targetStride)*iT];
-                        if ( !spike_target && SDF_dV_target > $(spike_threshold) ) {
-                            spike_target = true;
-                            SDF_target += $(SDF_size);
-                        } else if ( spike_target && SDF_dV_target < 0 ) {
-                            spike_target = false;
-                        }
-
-                        diff = SDF_target - SDF;
-
-                        // Decay target SDF
-                        SDF_target *= $(SDF_decay);
-                        SDF_dV_target = SDF_dV_target*SDF_dV_DECAY + (value - Vprev_target);
-                        Vprev_target = value;
-                        break;
-                    case ASSIGNMENT_SUMMARY_COMPARE_LANE0:
-                        diff = __shfl_sync(0xffffffff, SDF, 0) - SDF;
-                        if ( (threadIdx.x & 31) == 0 )
-                            diff = SDF;
-                        break;
-                    case ASSIGNMENT_SUMMARY_COMPARE_PREVTHREAD:
-                        diff = __shfl_sync(0xffffffff, SDF, (threadIdx.x&31)-1) - SDF;
-                        break;
-                    case ASSIGNMENT_SUMMARY_COMPARE_NONE:
-                        default:
-                        diff = SDF;
-                        break;
-                    }
-
-                    // Decay SDF
-                    SDF *= $(SDF_decay);
-
-                    V = state.V;
-                }
-
                 summary += ($(assignment) & ASSIGNMENT_SUMMARY_SQUARED) ? (double(diff)*diff) : fabs(diff);
             }
 
@@ -480,9 +415,6 @@ while ( !($(assignment)&ASSIGNMENT_SETTLE_ONLY)
             --tStep;
             ++iT;
             t = iT * $(dt);
-
-            if ( $(assignment) & ASSIGNMENT_SUMMARY_ERRFN )
-                SDF_dV = SDF_dV*SDF_dV_DECAY + (state.V - V);
         }
     }
     ++nextObs;
