@@ -306,7 +306,7 @@ __global__ void cl_process_dmaps_kernel_multi(scalar dmap_low, scalar dmap_step,
 scalar cl_process_timeseries_target(int nSamples, scalar Kfilter, scalar Kfilter2,
                                     scalar spike_threshold, scalar sdf_tau,
                                     int delaySize, scalar dmap_low, scalar dmap_step, scalar dmap_2_sigma_squared,
-                                    scalar *filtV, int *spiketimes, scalar *spikemarks, scalar *dmap_smooth)
+                                    scalar *filtV, int *spiketimes, scalar *spikemarks, scalar *dmap_smooth, scalar *target)
 {
     scalar V, fV = 0, ffV = 0, fn = 0, ffn = 0;
     unsigned int spike = 0x0;
@@ -387,13 +387,13 @@ scalar cl_process_timeseries_target(int nSamples, scalar Kfilter, scalar Kfilter
     return sdf_target_sum_m_norm;
 }
 
-extern "C" void cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary)
+extern "C" void cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target)
 {
     int delaySize = min(DELAYSZ, int(round(d.tDelay/dt)));
     unsigned int filtV_size_h = filtV_size;
     resizeHostArray(h_filtV, filtV_size_h, nSamples);
     scalar sdf_target_sum_m_norm = cl_process_timeseries_target(nSamples, d.Kfilter, d.Kfilter2, d.spike_threshold, d.sdf_tau/dt, delaySize, d.dmap_low, d.dmap_step, 2*d.dmap_sigma*d.dmap_sigma,
-                                                                h_filtV, h_spiketimes_target, h_spikemarks_target, h_dmap_target);
+                                                                h_filtV, h_spiketimes_target, h_spikemarks_target, h_dmap_target, target);
 
     CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(spiketimes_target, h_spiketimes_target, NSPIKES * sizeof(int)));
     CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(spikemarks_target, h_spikemarks_target, NSPIKES * sizeof(scalar)));

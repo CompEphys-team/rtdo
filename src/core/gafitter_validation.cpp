@@ -142,8 +142,7 @@ bool GAFitter::exec_validation(Result *res, QFile &file)
     lib.SDF_decay = settings.SDF_decay;
 
     const unsigned int assignment = lib.assignment_base
-            | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_COMPARE_TARGET
-            | (ancestor.closedLoop ? ASSIGNMENT_SUMMARY_ERRFN : 0)
+            | (ancestor.closedLoop ? ASSIGNMENT_REPORT_TIMESERIES : (ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_COMPARE_TARGET))
             | (cfg.rund.VC ? 0 : ASSIGNMENT_CURRENTCLAMP);
 
     std::vector<std::vector<double>> traces;
@@ -182,6 +181,9 @@ bool GAFitter::exec_validation(Result *res, QFile &file)
 
             lib.assignment = assignment | (i ? ASSIGNMENT_SUMMARY_PERSIST : 0);
             lib.run();
+
+            if ( ancestor.closedLoop )
+                lib.cl_compare_to_target(stims[i].duration, cfg.gafs.cl, cfg.rund.dt, i==0);
         }
 
         val.error[epoch].resize(lib.NMODELS);

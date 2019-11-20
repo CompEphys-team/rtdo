@@ -184,7 +184,7 @@ public:
 
         double (*get_mean_distance)(const AdjustableParam &);
 
-        void (*cl_compare_to_target)(int nSamples, ClosedLoopData d, double dt, bool reset_summary);
+        void (*cl_compare_to_target)(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target);
         std::vector<scalar> (*cl_compare_models)(int nStims, unsigned int nSamples, ClosedLoopData d, double dt);
     };
 
@@ -348,9 +348,9 @@ public:
     /// Utility call to compute mean distance within the population along the given parameter axis
     inline double get_mean_distance(size_t targetParam) { return pointers.get_mean_distance(adjustableParams.at(targetParam)); }
 
-    /// Compares model timeseries to the timeseries provided in lib.target (host-side), reporting the error in lib.summary (device-side).
+    /// Compares model timeseries to the timeseries provided in lib.target (host-side; respects targetOffset[0]), reporting the error in lib.summary (device-side).
     inline void cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary) {
-        pointers.cl_compare_to_target(nSamples, d, dt, reset_summary);
+        pointers.cl_compare_to_target(nSamples, d, dt, reset_summary, target + targetOffset[0]);
     }
 
     /// Compares model timeseries for closed-loop stimulus selection after multiplexed stim evaluation.
