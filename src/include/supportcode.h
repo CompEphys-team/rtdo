@@ -56,6 +56,12 @@ __host__ __device__ inline scalar clip(scalar value, scalar limit)
         return value;
 }
 
+template <typename T>
+__host__ __device__ inline T clip(T value, T lo, T hi)
+{
+    return (value > hi) ? hi : ((value < lo) ? lo : value);
+}
+
 namespace RKF45_Constants {
     constexpr scalar c2 = 1./4.;
     constexpr scalar c3 = 3./8.;

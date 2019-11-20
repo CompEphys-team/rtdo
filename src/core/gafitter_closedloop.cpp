@@ -207,7 +207,7 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
         lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
 
     lib.run();
-    std::vector<scalar> mean_cost = lib.cl_get_mean_cost(settings.cl_nStims, lib.stim[0].duration, settings.spike_threshold * session.runData().dt, 0.99, settings.SDF_size, settings.SDF_decay);
+    std::vector<scalar> mean_cost = lib.cl_compare_models(settings.cl_nStims, lib.stim[0].duration, settings.cl, session.runData().dt);
 
     std::vector<errTupel> cost(settings.cl_nStims);
     for ( int stimIdx = 0; stimIdx < settings.cl_nStims; stimIdx++ ) {
@@ -243,11 +243,6 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     QString epoch_file = QString("%1.%2.stim_%3.trace").arg(file.fileName()).arg(epoch).arg(stimIdx);
     std::ofstream os(epoch_file.toStdString());
 
-    double dV = 0, Vprev = 0;
-    constexpr scalar SDF_dV_DECAY = 0.99;
-    scalar spike_threshold = settings.spike_threshold*rd.dt;
-    lib.spike_threshold = spike_threshold;
-
     // Set up library
     lib.setSingularStim();
     lib.stim[0] = I;
@@ -255,11 +250,9 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
 
     lib.iSettleDuration[0] = 0;
     lib.push(lib.iSettleDuration);
-    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_COMPARE_TARGET | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_ERRFN;
+    lib.assignment = lib.assignment_base | ASSIGNMENT_REPORT_TIMESERIES;
     if ( !rd.VC )
         lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
-    if ( stimIdx > 0 )
-        lib.assignment |= ASSIGNMENT_SUMMARY_PERSIST;
 
     // Initiate DAQ stimulation
     daq->reset();
@@ -270,12 +263,8 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         daq->next();
         pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, I.baseV);
         os << iT*rd.dt << '\t' << I.baseV << '\t' << daq->voltage << '\n';
-
-        if ( qV2 )
-            qV2->push({qT + iT*rd.dt, dV - spike_threshold});
-        dV = dV*SDF_dV_DECAY + (daq->voltage - Vprev);
-        Vprev = daq->voltage;
     }
+    double fV = 0, ffV = 0, fn = 0, ffn = 0;
     for ( int iT = 0; iT < I.duration; iT++ ) {
         daq->next();
         scalar t = rd.settleDuration + iT*rd.dt;
@@ -284,18 +273,22 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         os << t << '\t' << command << '\t' << daq->voltage << '\n';
         lib.target[iT] = daq->voltage;
 
-        if ( qV2 )
-            qV2->push({qT + t, dV - spike_threshold});
-        dV = dV*SDF_dV_DECAY + (daq->voltage - Vprev);
-        Vprev = daq->voltage;
+        if ( qV2 ) {
+            // Recapitulate filtering, see closedloop.cu:cl_process_timeseries_*().
+            fV = fV * settings.cl.Kfilter + daq->voltage;
+            fn = fn * settings.cl.Kfilter + 1.0;
+            ffV = ffV * settings.cl.Kfilter2 + daq->voltage;
+            ffn = ffn * settings.cl.Kfilter2 + 1.0;
+            qV2->push({qT+t, fV/fn - ffV/ffn});
+        }
     }
     daq->reset();
 
     if ( stimIdx == 0 )
         pca_future.waitForFinished();
 
-    lib.pushTarget();
     lib.run();
+    lib.cl_compare_to_target(I.duration, settings.cl, rd.dt, stimIdx==0);
 
     qT += rd.settleDuration + I.duration * rd.dt;
 }

@@ -184,7 +184,8 @@ public:
 
         double (*get_mean_distance)(const AdjustableParam &);
 
-        std::vector<scalar> (*cl_get_mean_cost)(int nStims, int nSamples, scalar dV_threshold, scalar dV_decay, scalar SDF_size, scalar SDF_decay);
+        void (*cl_compare_to_target)(int nSamples, ClosedLoopData d, double dt, bool reset_summary);
+        std::vector<scalar> (*cl_compare_models)(int nStims, unsigned int nSamples, ClosedLoopData d, double dt);
     };
 
     Project &project;
@@ -347,11 +348,14 @@ public:
     /// Utility call to compute mean distance within the population along the given parameter axis
     inline double get_mean_distance(size_t targetParam) { return pointers.get_mean_distance(adjustableParams.at(targetParam)); }
 
-    /// Runs the trace/spike density error function on timeseries data (duration nSamples, NMODELS/nStims time series per stimulus),
-    /// compares the instantaneous errors all-to-all within a stim, yielding a mean squared residual of the error,
-    /// and returns the variance of that MSR within a stim.
-    inline std::vector<scalar> cl_get_mean_cost(int nStims, int nSamples, scalar dV_threshold, scalar dV_decay, scalar SDF_size, scalar SDF_decay) {
-        return pointers.cl_get_mean_cost(nStims, nSamples, dV_threshold, dV_decay, SDF_size, SDF_decay);
+    /// Compares model timeseries to the timeseries provided in lib.target (host-side), reporting the error in lib.summary (device-side).
+    inline void cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary) {
+        pointers.cl_compare_to_target(nSamples, d, dt, reset_summary);
+    }
+
+    /// Compares model timeseries for closed-loop stimulus selection after multiplexed stim evaluation.
+    inline std::vector<scalar> cl_compare_models(int nStims, unsigned int nSamples, ClosedLoopData d, double dt) {
+        return pointers.cl_compare_models(nStims, nSamples, d, dt);
     }
 
 private:

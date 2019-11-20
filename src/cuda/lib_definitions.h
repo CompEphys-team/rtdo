@@ -111,9 +111,15 @@ unsigned int PCA_TL_size = 0;
 #ifdef USEDOUBLE
 #define cusolverDn__scalar__gesvd_bufferSize cusolverDnDgesvd_bufferSize
 #define cusolverDn__scalar__gesvd cusolverDnDgesvd
+#define scalarfloor(a) floor(a)
+#define scalarsqrt(a) sqrt(a)
+#define scalarexp(a) exp(a)
 #else
 #define cusolverDn__scalar__gesvd_bufferSize cusolverDnSgesvd_bufferSize
 #define cusolverDn__scalar__gesvd cusolverDnSgesvd
+#define scalarfloor(a) floorf(a)
+#define scalarsqrt(a) sqrtf(a)
+#define scalarexp(a) expf(a)
 #endif
 
 

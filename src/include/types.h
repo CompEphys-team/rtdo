@@ -418,6 +418,23 @@ struct WavegenData
     ClusterData cluster;
 };
 
+struct ClosedLoopData
+{
+    double err_weight_trace = 1.; //!< Trace error is the mean filtered sample difference in mV.
+    double Kfilter = 0.8; //!< Trace decay per sample (note, sensitive to dt!)
+    double Kfilter2 = 0.99999; //!< Baseline removal trace decay per sample
+
+    double err_weight_sdf = 1.; //!< SDF is the van Rossum spike train distance.
+    double spike_threshold = 10.; //!< mV/ms. Note, the gradient is estimated as (V(t) - V(t-tDelay)) / tDelay, and is thus somewhat sensitive to tDelay below.
+    double sdf_tau = 50.; //!< ms.
+
+    double err_weight_dmap = 1.; //!< dmap error is the RMS error in the smoothed delay map.
+    double tDelay = 1.; //!< ms. Note, this may be shortened to fit into closedloop.cu::DELAYSZ (16) time steps.
+    double dmap_low = -85; //!< mV
+    double dmap_step = 2.; //!< mV; upper bound is dmap_low + dmap_step*closedloop.cu::DMAP_SIZE (64).
+    double dmap_sigma = 5.; //!< mV. Note that the dmap is smoothed with a fixed-size kernel of width closedloop.cu::DMAP_KW (16) steps
+};
+
 struct GAFitterSettings {
     size_t maxEpochs = 5000;
 
@@ -456,6 +473,7 @@ struct GAFitterSettings {
     double SDF_decay = 0.999;
     double spike_threshold = 40; // Threshold to register a spike on filtered dV/dt [mV/ms]
     int cl_validation_interval = 10;
+    ClosedLoopData cl;
 
     int DE_decay = 10;
 

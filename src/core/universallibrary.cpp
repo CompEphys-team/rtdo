@@ -602,7 +602,8 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.principal_components =& principal_components;" << endl;
     ss << "    pointers.get_mean_distance =& get_mean_distance;" << endl;
     ss << "    pointers.copy_param =& copy_param;" << endl;
-    ss << "    pointers.cl_get_mean_cost =& cl_get_mean_cost;" << endl;
+    ss << "    pointers.cl_compare_to_target =& cl_compare_to_target;" << endl;
+    ss << "    pointers.cl_compare_models =& cl_compare_models;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 
