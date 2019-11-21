@@ -39,18 +39,16 @@ scalar h_spikemarks_target[NSPIKES];
 scalar h_dmap_target[DMAP_SIZE * DMAP_SIZE];
 
 
-/// This calculates a partial van Rossum distance using the algorithm in Houghton & Kreuz (2012), http://sci-hub.tw/10.3109/0954898X.2012.673048
-/// The missing parts are n_target and sum m(target), along with the square root; the caller must add these.
-__device__ scalar cl_get_sdf_error(const int nSpikes, int *t_self, int *t_target, scalar *m_self, scalar *m_target, scalar sdf_tau, int nSamples, int stride = 1)
+/// This calculates the cross-terms of the van Rossum distance using the algorithm in Houghton & Kreuz (2012), http://sci-hub.tw/10.3109/0954898X.2012.673048
+__device__ scalar cl_get_sdf_crossterms(const int nSpikes, int *t_self, int *t_target, scalar *m_self, scalar *m_target, scalar sdf_tau, int tEnd, int stride = 1)
 {
-    scalar err = 0.5*nSpikes;
+    scalar err = 0;
     for ( int i = 0, j = -1; i < nSpikes; i++ ) {
-        err += m_self[i*stride]; // sum m(self)
         while ( j < NSPIKES-1 && t_target[(j+1)*stride] < t_self[i*stride] )
             ++j;
         err += (j == -1) ? 0 : (m_target[j*stride] + 1) * scalarexp((t_target[j*stride] - t_self[i*stride]) / sdf_tau); // Cross-term with m(target)
     }
-    for ( int i = -1, j = 0; j < NSPIKES && t_target[j*stride] < nSamples; j++ ) {
+    for ( int i = -1, j = 0; j < NSPIKES && t_target[j*stride] < tEnd; j++ ) {
         while ( i < nSpikes-1 && t_self[(i+1)*stride] < t_target[j*stride] )
             ++i;
         err += (i == -1) ? 0 : (m_self[i*stride] + 1) * scalarexp((t_self[i*stride] - t_target[j*stride]) / sdf_tau); // Cross-term with m(self)
@@ -89,8 +87,8 @@ __global__ void compare_models_kernel(int nTraces, int nSamples, int *st_in, sca
     __shared__ int t1[2*HALFWARP*NSPIKES], t2[2*HALFWARP*NSPIKES];
     __shared__ scalar m1[2*HALFWARP*NSPIKES], m2[2*HALFWARP*NSPIKES];
     int nSpikes = 0;
-    scalar sum_m = 0;
-    scalar err_sdf = 0;
+    scalar sum_m_N = 0;
+    double err_sdf = 0;
 
     double err_dmaps[HALFWARP+1] = {};
 
@@ -112,21 +110,24 @@ __global__ void compare_models_kernel(int nTraces, int nSamples, int *st_in, sca
     for ( int i = 0; i < NSPIKES; i++ ) {
         int t = st_in[i*NMODELS + offset1];
         scalar m = sm_in[i*NMODELS + offset1];
+        int tt = ndiag ? st_in[i*NMODELS + offset2] : t;
+        int mm = ndiag ? sm_in[i*NMODELS + offset2] : m;
         t1[i*warpSize + threadIdx.x] = t;
         m1[i*warpSize + threadIdx.x] = m;
-        t2[i*warpSize + threadIdx.x] = ndiag ? st_in[i*NMODELS + offset2] : t;
-        m2[i*warpSize + threadIdx.x] = ndiag ? sm_in[i*NMODELS + offset2] : m;
+        t2[i*warpSize + threadIdx.x] = tt;
+        m2[i*warpSize + threadIdx.x] = mm;
         if ( t < nSamples ) {
             ++nSpikes;
-            sum_m += m;
+            sum_m_N += m + 0.5;
         }
+        if ( t > nSamples && tt > nSamples )
+            break;
     }
     __syncwarp();
     // compare
     for ( int i = ndiag ? 0 : 1; i < HALFWARP+1; i++ ) {
-        err = cl_get_sdf_error(nSpikes, t1 + threadIdx.x, t2 + ((threadIdx.x+i)%32), m1 + threadIdx.x, m2 + ((threadIdx.x+i)%32), sdf_tau, nSamples, warpSize);
-        err += 0.5 * __shfl_sync(0xffffffff, nSpikes, threadIdx.x+i);
-        err += __shfl_sync(0xffffffff, sum_m, threadIdx.x+i);
+        err = cl_get_sdf_crossterms(nSpikes, t1 + threadIdx.x, t2 + ((threadIdx.x+i)%32), m1 + threadIdx.x, m2 + ((threadIdx.x+i)%32), sdf_tau, nSamples, warpSize);
+        err += sum_m_N + __shfl_sync(0xffffffff, sum_m_N, threadIdx.x+i);
         err_sdf += (i == HALFWARP && threadIdx.x >= HALFWARP) ? 0 : scalarsqrt(err);
     }
 
@@ -159,7 +160,7 @@ __global__ void compare_models_kernel(int nTraces, int nSamples, int *st_in, sca
 /// In both modes, a raw delay map is produced in Vx, Vy.
 template <bool SINGLETARGET>
 __global__ void cl_process_timeseries_kernel(int nSamples, scalar Kfilter, scalar Kfilter2, scalar *filtV, scalar err_weight_trace,
-                                             scalar spike_threshold, scalar sdf_tau, scalar sdf_target_sum_m_norm, scalar err_weight_sdf, int *st_out, scalar *sm_out,
+                                             scalar spike_threshold, scalar sdf_tau, scalar sum_m_N, scalar err_weight_sdf, int *st_out, scalar *sm_out,
                                              int delaySize, scalar dmap_low, scalar dmap_step, bool cumulative)
 {
     const unsigned int modelIdx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -205,6 +206,7 @@ if ( SINGLETARGET ) {
                 if ( V < Vbuf[(t-1) % delaySize] ) { // Spike peak detected
                     spike &= NSPIKES_MASK;
                     spikemarks[spike] = spike==0 ? 0 : (spikemarks[spike-1] + 1) * scalarexp((spiketimes[spike-1] - t) / sdf_tau);
+                    sum_m_N += spikemarks[spike] + 0.5;
                     spiketimes[spike] = t;
                     spike = (spike+1) | PEAK_DETECTED;
                 }
@@ -223,8 +225,9 @@ if ( SINGLETARGET ) {
     }
 
 if ( SINGLETARGET ) {
-    err = err_weight_trace * err
-            + err_weight_sdf * scalarsqrt(cl_get_sdf_error(spike & NSPIKES_MASK, spiketimes, spiketimes_target, spikemarks, spikemarks_target, sdf_tau, nSamples) + sdf_target_sum_m_norm);
+    scalar err_trace = err_weight_trace * err;
+    scalar err_sdf = err_weight_sdf * scalarsqrt(cl_get_sdf_crossterms(spike & NSPIKES_MASK, spiketimes, spiketimes_target, spikemarks, spikemarks_target, sdf_tau, nSamples) + sum_m_N);
+    err = err_trace + err_sdf;
     if ( cumulative )
         dd_summary[modelIdx] += err;
     else
