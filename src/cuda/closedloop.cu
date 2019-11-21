@@ -31,6 +31,9 @@ scalar *d_Vx = nullptr, *d_Vy = nullptr;
 __constant__ scalar *Vx = nullptr, *Vy = nullptr;
 unsigned int Vx_size = 0, Vy_size = 0;
 
+scalar *d_partial_errors = nullptr, *h_partial_errors = nullptr;
+unsigned int partial_errors_size = 0, partial_errors_hsize = 0;
+
 __constant__ int spiketimes_target[NSPIKES];
 __constant__ scalar spikemarks_target[NSPIKES];
 __constant__ scalar dmap_target[DMAP_SIZE * DMAP_SIZE];
@@ -147,11 +150,17 @@ __global__ void compare_models_kernel(int nTraces, int nSamples, int *st_in, sca
         err_dmaps[0] += sqrt(err_dmaps[i]);
     }
 
-    // Collate (using err_trace as collective accumulator)
-    err_trace = err_trace * err_weight_trace + err_sdf * err_weight_sdf + err_dmaps[0] * err_weight_dmap;
-    err_trace = warpReduceSum(err_trace);
-    if ( threadIdx.x == 0 )
-        atomicAdd(&errors[blockIdx.z], (scalar)err_trace);
+    // Collate within block
+    err_trace = warpReduceSum(err_trace * err_weight_trace);
+    err_sdf = warpReduceSum(err_sdf * err_weight_sdf);
+    err_dmaps[0] = warpReduceSum(err_dmaps[0] * err_weight_dmap);
+
+    if ( threadIdx.x == 0 ) {
+        atomicAdd(&errors[blockIdx.z], scalar(err_trace + err_sdf + err_dmaps[0]));
+        atomicAdd(&errors[gridDim.z + blockIdx.z], scalar(err_trace));
+        atomicAdd(&errors[2*gridDim.z + blockIdx.z], scalar(err_sdf));
+        atomicAdd(&errors[3*gridDim.z + blockIdx.z], scalar(err_dmaps[0]));
+    }
 }
 
 /// First pass; one thread per model
@@ -161,7 +170,7 @@ __global__ void compare_models_kernel(int nTraces, int nSamples, int *st_in, sca
 template <bool SINGLETARGET>
 __global__ void cl_process_timeseries_kernel(int nSamples, scalar Kfilter, scalar Kfilter2, scalar *filtV, scalar err_weight_trace,
                                              scalar spike_threshold, scalar sdf_tau, scalar sum_m_N, scalar err_weight_sdf, int *st_out, scalar *sm_out,
-                                             int delaySize, scalar dmap_low, scalar dmap_step, bool cumulative)
+                                             int delaySize, scalar dmap_low, scalar dmap_step, bool cumulative, scalar *err_partial)
 {
     const unsigned int modelIdx = blockIdx.x * blockDim.x + threadIdx.x;
     scalar V, fV = 0, ffV = 0, fn = 0, ffn = 0;
@@ -226,7 +235,11 @@ if ( SINGLETARGET ) {
 
 if ( SINGLETARGET ) {
     scalar err_trace = err_weight_trace * err;
+    err_partial[modelIdx] = err_trace;
+
     scalar err_sdf = err_weight_sdf * scalarsqrt(cl_get_sdf_crossterms(spike & NSPIKES_MASK, spiketimes, spiketimes_target, spikemarks, spikemarks_target, sdf_tau, nSamples) + sum_m_N);
+    err_partial[NMODELS + modelIdx] = err_sdf;
+
     err = err_trace + err_sdf;
     if ( cumulative )
         dd_summary[modelIdx] += err;
@@ -268,7 +281,7 @@ __device__ void cl_get_smooth_dmap(scalar dmap_low, scalar dmap_step, scalar dma
 }
 
 /// Second pass (single-target): smoothen delay map and compare to target
-__global__ void cl_process_dmaps_kernel_single(scalar dmap_low, scalar dmap_step, scalar dmap_2_sigma_squared, scalar err_weight)
+__global__ void cl_process_dmaps_kernel_single(scalar dmap_low, scalar dmap_step, scalar dmap_2_sigma_squared, scalar err_weight, scalar *err_partial)
 {
     __shared__ scalar dmap[DMAP_SIZE * DMAP_SIZE];
     for ( int i = threadIdx.x + threadIdx.y*DMAP_KW + threadIdx.z*32; i < DMAP_SIZE*DMAP_SIZE; i += 32*DMAP_STRIDE )
@@ -294,7 +307,9 @@ __global__ void cl_process_dmaps_kernel_single(scalar dmap_low, scalar dmap_step
         __syncwarp();
         err = warpReduceSum(err, DMAP_STRIDE);
         if ( threadIdx.x == 0 && threadIdx.y == 0 ) {
-            dd_summary[blockIdx.x] += scalarsqrt(err) * err_weight;
+            err = scalarsqrt(err) * err_weight;
+            err_partial[2*NMODELS + blockIdx.x] = err;
+            dd_summary[blockIdx.x] += err;
         }
     }
 }
@@ -390,7 +405,7 @@ scalar cl_process_timeseries_target(int nSamples, scalar Kfilter, scalar Kfilter
     return sdf_target_sum_m_norm;
 }
 
-extern "C" void cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target)
+extern "C" std::tuple<scalar, scalar, scalar> cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target)
 {
     int delaySize = min(DELAYSZ, int(round(d.tDelay/dt)));
     unsigned int filtV_size_h = filtV_size;
@@ -414,14 +429,22 @@ extern "C" void cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, 
     thrust::device_ptr<scalar> t_Vx = thrust::device_pointer_cast(d_Vx);
     thrust::fill(t_Vx, t_Vx + DMAP_MAXENTRIES * NMODELS, d.dmap_low - 1.);
 
+    resizeArray(d_partial_errors, partial_errors_size, 3*NMODELS);
+
     cl_process_timeseries_kernel<true><<<NMODELS/CL_PROCESS_KERNSZ, CL_PROCESS_KERNSZ>>>(nSamples, d.Kfilter, d.Kfilter2, d_filtV, d.err_weight_trace/nSamples,
                                                                                          d.spike_threshold*dt*delaySize, d.sdf_tau/dt, sdf_target_sum_m_norm, d.err_weight_sdf, nullptr, nullptr,
-                                                                                         delaySize, d.dmap_low, d.dmap_step, !reset_summary);
+                                                                                         delaySize, d.dmap_low, d.dmap_step, !reset_summary, d_partial_errors);
 
-    cl_process_dmaps_kernel_single<<<NMODELS, dim3(DMAP_KW, 32/DMAP_KW, DMAP_STRIDE)>>>(d.dmap_low, d.dmap_step, 2*d.dmap_sigma*d.dmap_sigma, d.err_weight_dmap/DMAP_SIZE);
+    cl_process_dmaps_kernel_single<<<NMODELS, dim3(DMAP_KW, 32/DMAP_KW, DMAP_STRIDE)>>>(d.dmap_low, d.dmap_step, 2*d.dmap_sigma*d.dmap_sigma, d.err_weight_dmap/DMAP_SIZE, d_partial_errors);
+
+    thrust::device_ptr<scalar> t_partial_errors = thrust::device_pointer_cast(d_partial_errors);
+    scalar mean_trace = thrust::reduce(t_partial_errors, t_partial_errors + NMODELS) / NMODELS;
+    scalar mean_sdf = thrust::reduce(t_partial_errors + NMODELS, t_partial_errors + 2*NMODELS) / NMODELS;
+    scalar mean_dmap = thrust::reduce(t_partial_errors + 2*NMODELS, t_partial_errors + 3*NMODELS) / NMODELS;
+    return make_tuple(mean_trace, mean_sdf, mean_dmap);
 }
 
-extern "C" std::vector<scalar> cl_compare_models(int nStims, unsigned int nSamples, ClosedLoopData d, double dt)
+extern "C" std::tuple<std::vector<scalar>, scalar, scalar, scalar> cl_compare_models(int nStims, unsigned int nSamples, ClosedLoopData d, double dt)
 {
     int delaySize = min(DELAYSZ, int(round(d.tDelay/dt)));
     resizeArray(spiketimes_models, spiketimes_size, NSPIKES * NMODELS);
@@ -437,9 +460,12 @@ extern "C" std::vector<scalar> cl_compare_models(int nStims, unsigned int nSampl
     thrust::device_ptr<scalar> tmp = thrust::device_pointer_cast(d_Vx);
     thrust::fill(tmp, tmp + DMAP_MAXENTRIES * NMODELS, d.dmap_low - 1.);
 
+    resizeArray(d_partial_errors, partial_errors_size, 4*nStims);
+    resizeHostArray(h_partial_errors, partial_errors_hsize, 4*nStims);
+
     cl_process_timeseries_kernel<false><<<NMODELS/CL_PROCESS_KERNSZ, CL_PROCESS_KERNSZ>>>(nSamples, d.Kfilter, d.Kfilter2, nullptr, d.err_weight_trace/nSamples,
                                                                                           d.spike_threshold*dt*delaySize, d.sdf_tau/dt, 0, d.err_weight_sdf, spiketimes_models, spikemarks_models,
-                                                                                          delaySize, d.dmap_low, d.dmap_step, false);
+                                                                                          delaySize, d.dmap_low, d.dmap_step, false, nullptr);
 
     cl_process_dmaps_kernel_multi<<<NMODELS, dim3(DMAP_KW, 32/DMAP_KW, DMAP_STRIDE)>>>(d.dmap_low, d.dmap_step, 2*d.dmap_sigma*d.dmap_sigma, d_dmaps);
 
@@ -447,18 +473,26 @@ extern "C" std::vector<scalar> cl_compare_models(int nStims, unsigned int nSampl
     int nUnits = nTraces / 32;
     int nComparisonsPerStim = nTraces*(nTraces-1)/2;
     std::vector<scalar> means(nStims);
+    double mean_trace = 0, mean_sdf = 0, mean_dmap = 0;
 
-    tmp = thrust::device_pointer_cast(d_prof_error);
-    thrust::fill(tmp, tmp + nStims, scalar(0));
+    tmp = thrust::device_pointer_cast(d_partial_errors);
+    thrust::fill(tmp, tmp + 4*nStims, scalar(0));
 
     dim3 grid(nUnits, nUnits, nStims);
-    compare_models_kernel<<<grid, 32>>>(nTraces, nSamples, spiketimes_models, spikemarks_models, d_dmaps, d.sdf_tau/dt, d.err_weight_trace/nSamples, d.err_weight_sdf, d.err_weight_dmap/DMAP_SIZE, d_prof_error);
+    compare_models_kernel<<<grid, 32>>>(nTraces, nSamples, spiketimes_models, spikemarks_models, d_dmaps, d.sdf_tau/dt, d.err_weight_trace/nSamples, d.err_weight_sdf, d.err_weight_dmap/DMAP_SIZE, d_partial_errors);
 
-    CHECK_CUDA_ERRORS(cudaMemcpy(means.data(), d_prof_error, nStims*sizeof(scalar), cudaMemcpyDeviceToHost));
+    CHECK_CUDA_ERRORS(cudaMemcpy(h_partial_errors, d_partial_errors, 4*nStims*sizeof(scalar), cudaMemcpyDeviceToHost));
+    for ( int i = 0; i < nStims; i++ ) {
+        means[i] = h_partial_errors[i] / nComparisonsPerStim;
+        mean_trace += h_partial_errors[nStims + i];
+        mean_sdf += h_partial_errors[2*nStims + i];
+        mean_dmap += h_partial_errors[3*nStims + i];
+    }
+    mean_trace /= nComparisonsPerStim * nStims;
+    mean_sdf /= nComparisonsPerStim * nStims;
+    mean_dmap /= nComparisonsPerStim * nStims;
 
-    for ( scalar &m : means )
-        m /= nComparisonsPerStim;
-    return means;
+    return std::make_tuple(means, mean_trace, mean_sdf, mean_dmap);
 }
 
 extern "C" scalar cl_dmap_hi(scalar dmap_low, scalar dmap_step) { return dmap_low + DMAP_SIZE*dmap_step; }

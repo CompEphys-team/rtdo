@@ -204,13 +204,13 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
         lib.assignment |= ASSIGNMENT_CURRENTCLAMP;
 
     lib.run();
-    std::vector<scalar> mean_cost = lib.cl_compare_models(settings.cl_nStims, lib.stim[0].duration, settings.cl, session.runData().dt);
+    std::tuple<std::vector<scalar>, scalar, scalar, scalar> means = lib.cl_compare_models(settings.cl_nStims, lib.stim[0].duration, settings.cl, session.runData().dt);
 
     std::vector<errTupel> cost(settings.cl_nStims);
     for ( int stimIdx = 0; stimIdx < settings.cl_nStims; stimIdx++ ) {
         cost[stimIdx].idx = stimIdx;
-        cost[stimIdx].err = mean_cost[stimIdx];
-        os << stimIdx << '\t' << mean_cost[stimIdx] << '\n' << lib.stim[stimIdx] << '\n' << '\n';
+        cost[stimIdx].err = std::get<0>(means)[stimIdx];
+        os << stimIdx << '\t' << std::get<0>(means)[stimIdx] << '\n' << lib.stim[stimIdx] << '\n' << '\n';
     }
 
     // Pick the nSelect highest variance stimulations to return. Note, ascending sort
@@ -221,6 +221,7 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
         ret[i] = lib.stim[stimIdx];
         os << "Picked stim # " << stimIdx << '\n';
     }
+    os << "Mean costs across all stims were: trace: " << std::get<1>(means) << ", sdf: " << std::get<2>(means) << ", dmap: " << std::get<3>(means) << '\n';
 
     lib.cl_blocksize = lib.NMODELS;
 
@@ -285,7 +286,9 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         pca_future.waitForFinished();
 
     lib.run();
-    lib.cl_compare_to_target(I.duration, settings.cl, rd.dt, stimIdx==0);
+    std::tuple<scalar, scalar, scalar> means = lib.cl_compare_to_target(I.duration, settings.cl, rd.dt, stimIdx==0);
+
+    std::cout << std::get<0>(means) << '\t' << std::get<1>(means) << '\t' << std::get<2>(means);
 
     qT += rd.settleDuration + I.duration * rd.dt;
 }

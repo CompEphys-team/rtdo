@@ -140,6 +140,7 @@ extern "C" void libExit(UniversalLibrary::Pointers &pointers)
     CHECK_CUDA_ERRORS(cudaFree(d_dmaps));
     CHECK_CUDA_ERRORS(cudaFree(d_Vx));
     CHECK_CUDA_ERRORS(cudaFree(d_Vy));
+    CHECK_CUDA_ERRORS(cudaFree(d_partial_errors));
 
     CHECK_CUDA_ERRORS(cudaFreeHost(target));
     CHECK_CUDA_ERRORS(cudaFreeHost(timeseries));
@@ -151,6 +152,7 @@ extern "C" void libExit(UniversalLibrary::Pointers &pointers)
     CHECK_CUDA_ERRORS(cudaFreeHost(clusterObs));
     CHECK_CUDA_ERRORS(cudaFreeHost(bubbles));
     CHECK_CUDA_ERRORS(cudaFreeHost(h_filtV));
+    CHECK_CUDA_ERRORS(cudaFreeHost(h_partial_errors));
 
     free_cusolver();
 }
