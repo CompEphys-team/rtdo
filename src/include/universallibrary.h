@@ -180,6 +180,7 @@ public:
 
         std::tuple<scalar, scalar, scalar> (*cl_compare_to_target)(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target);
         std::tuple<std::vector<scalar>, scalar, scalar, scalar> (*cl_compare_models)(int nStims, unsigned int nSamples, ClosedLoopData d, double dt);
+        scalar (*cl_dmap_hi)(scalar lo, scalar step);
     };
 
     Project &project;
@@ -352,6 +353,9 @@ public:
     inline std::tuple<std::vector<scalar>, scalar, scalar, scalar> cl_compare_models(int nStims, unsigned int nSamples, ClosedLoopData d, double dt) {
         return pointers.cl_compare_models(nStims, nSamples, d, dt);
     }
+
+    /// Utility to find dmap upper limit
+    inline scalar cl_dmap_hi(scalar lo, scalar step) { return pointers.cl_dmap_hi(lo, step); }
 
 private:
     void *load();

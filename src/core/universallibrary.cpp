@@ -522,6 +522,7 @@ std::string UniversalLibrary::supportCode(const std::vector<Variable> &globals)
     ss << "    pointers.copy_param =& copy_param;" << endl;
     ss << "    pointers.cl_compare_to_target =& cl_compare_to_target;" << endl;
     ss << "    pointers.cl_compare_models =& cl_compare_models;" << endl;
+    ss << "    pointers.cl_dmap_hi =& cl_dmap_hi;" << endl;
     ss << "    return pointers;" << endl;
     ss << "}" << endl;
 
