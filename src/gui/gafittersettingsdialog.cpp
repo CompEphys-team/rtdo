@@ -120,6 +120,12 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
             qobject_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->setCurrentIndex(ui->constraints_all->currentIndex());
     });
 
+    auto update_dmap_hi = [=](){
+        ui->cl_dmap_hi->setValue(session.project.universal().cl_dmap_hi(ui->cl_dmap_lo->value(), ui->cl_dmap_step->value()));
+    };
+    connect(ui->cl_dmap_lo, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), update_dmap_hi);
+    connect(ui->cl_dmap_step, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), update_dmap_hi);
+
     importData();
 }
 
@@ -158,6 +164,17 @@ void GAFitterSettingsDialog::importData()
     ui->cl_nStims->setValue(p.cl_nStims);
     ui->cl_nSelect->setValue(p.cl_nSelect);
     ui->cl_validation_interval->setValue(p.cl_validation_interval);
+    ui->cl_trace_weight->setValue(p.cl.err_weight_trace);
+    ui->cl_trace_K->setValue(p.cl.Kfilter);
+    ui->cl_trace_K2->setValue(p.cl.Kfilter2);
+    ui->cl_sdf_weight->setValue(p.cl.err_weight_sdf);
+    ui->cl_sdf_threshold->setValue(p.cl.spike_threshold);
+    ui->cl_sdf_tau->setValue(p.cl.sdf_tau);
+    ui->cl_dmap_weight->setValue(p.cl.err_weight_dmap);
+    ui->cl_tDelay->setValue(p.cl.tDelay);
+    ui->cl_dmap_lo->setValue(p.cl.dmap_low);
+    ui->cl_dmap_step->setValue(p.cl.dmap_step);
+    ui->cl_dmap_sigma->setValue(p.cl.dmap_sigma);
 
     ui->DE_decay->setValue(p.DE_decay);
 
@@ -199,6 +216,17 @@ void GAFitterSettingsDialog::exportData()
     p.cl_nStims = ui->cl_nStims->value();
     p.cl_nSelect = ui->cl_nSelect->value();
     p.cl_validation_interval = ui->cl_validation_interval->value();
+    p.cl.err_weight_trace = ui->cl_trace_weight->value();
+    p.cl.Kfilter = ui->cl_trace_K->value();
+    p.cl.Kfilter2 = ui->cl_trace_K2->value();
+    p.cl.err_weight_sdf = ui->cl_sdf_weight->value();
+    p.cl.spike_threshold = ui->cl_sdf_threshold->value();
+    p.cl.sdf_tau = ui->cl_sdf_tau->value();
+    p.cl.err_weight_dmap = ui->cl_dmap_weight->value();
+    p.cl.tDelay = ui->cl_tDelay->value();
+    p.cl.dmap_low = ui->cl_dmap_lo->value();
+    p.cl.dmap_step = ui->cl_dmap_step->value();
+    p.cl.dmap_sigma = ui->cl_dmap_sigma->value();
 
     p.DE_decay = ui->DE_decay->value();
 
