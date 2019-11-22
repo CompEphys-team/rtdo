@@ -289,7 +289,7 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     lib.run();
     std::tuple<scalar, scalar, scalar> means = lib.cl_compare_to_target(I.duration, settings.cl, rd.dt, stimIdx==0);
 
-    std::cout << std::get<0>(means) << '\t' << std::get<1>(means) << '\t' << std::get<2>(means);
+    std::cout << std::get<0>(means) << '\t' << std::get<1>(means) << '\t' << std::get<2>(means) << std::endl;
 
     qT += rd.settleDuration + I.duration * rd.dt;
 }
