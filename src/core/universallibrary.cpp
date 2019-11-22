@@ -232,6 +232,8 @@ else if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
 // Settle
 if ( iT == 0 && $(iSettleDuration) > 0 ) {
     if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
+        scalar tGainFac = 1./$(iSettleDuration);
+        clamp.accessResistance = clamp.clampGain; // accessResistance is unused during pattern clamp, so use it as a backup for CLAMP_GAIN_DECAY
         clamp.dIClamp = 0.0;
         clamp.IClamp0 = $(stim).baseV;
         for ( iT = -$(iSettleDuration); iT < 0; iT++ ) {
@@ -246,6 +248,8 @@ if ( iT == 0 && $(iSettleDuration) > 0 ) {
             }
             clamp.dVClamp = dV / $(dt);
             clamp.VClamp0 = V - iT * dV;
+            if ( $(assignment) & ASSIGNMENT_CLAMP_GAIN_DECAY )
+                clamp.clampGain = clamp.accessResistance * -iT * tGainFac; // Note, clamp.accessResistance is used for persistent originally requested clampGain
             integrate(1, $(integrator), $(simCycles), iT * $(dt), $(dt), mdt, hP, state, params, clamp);
         }
     } else if ( $(assignment) & ASSIGNMENT_CURRENTCLAMP ) {

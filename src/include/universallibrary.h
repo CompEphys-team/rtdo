@@ -92,7 +92,9 @@
 #define ASSIGNMENT_PC_PIN_4     static_cast<unsigned int>(0x03 << ASSIGNMENT_PC_PIN__SHIFT) /* Pin 3 following threads to local lane 0 voltage, rather than lib.target; lane 0 not pinned */
 #define ASSIGNMENT_PC_PIN_2     static_cast<unsigned int>(0x01 << ASSIGNMENT_PC_PIN__SHIFT) /* Pin odd threads to their next lower even thread's voltage, rather than lib.target; even threads not pinned */
 
-// Bit 27: Unused
+// Bit 27: Clamp gain decay
+#define ASSIGNMENT_CLAMP_GAIN_DECAY             static_cast<unsigned int>(0x1 << 27) /* Decay clamp gain to zero over the duration of PC settling */
+
 // Bit 28: Unused
 
 // Bit 29: Multiplex subset of models
