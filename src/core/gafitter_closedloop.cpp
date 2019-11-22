@@ -67,6 +67,7 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
         output.targets[i] = lib.adjustableParams[i].initial;
 
     setup(true);
+    stims[0].baseV = session.stimulationData().baseV;
 
     populate();
 
