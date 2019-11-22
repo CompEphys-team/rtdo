@@ -173,6 +173,17 @@ void Session::addAPs()
     addAP(gafAP, "S.GAFitter.cl_validation_interval", &q_settings, &Settings::gafs, &GAFitterSettings::cl_validation_interval);
     addAP(gafAP, "S.GAFitter.DE_decay", &q_settings, &Settings::gafs, &GAFitterSettings::DE_decay);
     addAP(gafAP, "S.GAFitter.num_populations", &q_settings, &Settings::gafs, &GAFitterSettings::num_populations);
+    addAP(gafAP, "S.GAFitter.cl.err_weight_trace", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::err_weight_trace);
+    addAP(gafAP, "S.GAFitter.cl.Kfilter", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::Kfilter);
+    addAP(gafAP, "S.GAFitter.cl.Kfilter2", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::Kfilter2);
+    addAP(gafAP, "S.GAFitter.cl.err_weight_sdf", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::err_weight_sdf);
+    addAP(gafAP, "S.GAFitter.cl.spike_threshold", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::spike_threshold);
+    addAP(gafAP, "S.GAFitter.cl.sdf_tau", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::sdf_tau);
+    addAP(gafAP, "S.GAFitter.cl.err_weight_dmap", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::err_weight_dmap);
+    addAP(gafAP, "S.GAFitter.cl.tDelay", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::tDelay);
+    addAP(gafAP, "S.GAFitter.cl.dmap_low", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::dmap_low);
+    addAP(gafAP, "S.GAFitter.cl.dmap_step", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::dmap_step);
+    addAP(gafAP, "S.GAFitter.cl.dmap_sigma", &q_settings, &Settings::gafs, &GAFitterSettings::cl, &ClosedLoopData::dmap_sigma);
 
     addAP(cdaqAP, "rec.Iidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Iidx);
     addAP(cdaqAP, "rec.Vidx", &cdaq_assoc, &CannedDAQ::ChannelAssociation::Vidx);
