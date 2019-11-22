@@ -237,9 +237,9 @@ if ( iT == 0 && $(iSettleDuration) > 0 ) {
         for ( iT = -$(iSettleDuration); iT < 0; iT++ ) {
             scalar dV;
             if ( $(assignment) & ASSIGNMENT_PC_PIN_2 ) {
-                unsigned short target = threadIdx.x & 31 & ~($(assignment) >> ASSIGNMENT_PC_PIN__SHIFT);
-                dV = V - __shfl_sync(0xffffffff, state.V, target);
-                V = __shfl_sync(0xffffffff, state.V, target);
+                unsigned short offset = threadIdx.x & 31 & ~($(assignment) >> ASSIGNMENT_PC_PIN__SHIFT);
+                dV = V - __shfl_up_sync(0xffffffff, state.V, offset);
+                V = __shfl_up_sync(0xffffffff, state.V, offset);
             } else {
                 V = dd_target[$(targetOffset) + $(targetStride)*(iT+$(iSettleDuration))];
                 dV = dd_target[$(targetOffset) + $(targetStride)*(iT+1+$(iSettleDuration))] - V;

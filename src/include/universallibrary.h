@@ -86,11 +86,11 @@
 #define ASSIGNMENT_PC_REPORT_PIN                static_cast<unsigned int>(0x1 << 21) /* Report pattern clamp pin current, rather than voltage */
 
 #define ASSIGNMENT_PC_PIN__SHIFT 22
-#define ASSIGNMENT_PC_PIN_32    static_cast<unsigned int>(0x31 << ASSIGNMENT_PC_PIN__SHIFT) /* Pin full warp to lane 0 voltage, rather than lib.target; lane 0 not pinned */
-#define ASSIGNMENT_PC_PIN_16    static_cast<unsigned int>(0x15 << ASSIGNMENT_PC_PIN__SHIFT) /* Pin half warp to local lane 0 voltage, rather than lib.target; lane 0 not pinned */
-#define ASSIGNMENT_PC_PIN_8     static_cast<unsigned int>(0x7  << ASSIGNMENT_PC_PIN__SHIFT) /* Pin 7 following threads to local lane 0 voltage, rather than lib.target; lane 0 not pinned */
-#define ASSIGNMENT_PC_PIN_4     static_cast<unsigned int>(0x3  << ASSIGNMENT_PC_PIN__SHIFT) /* Pin 3 following threads to local lane 0 voltage, rather than lib.target; lane 0 not pinned */
-#define ASSIGNMENT_PC_PIN_2     static_cast<unsigned int>(0x1  << ASSIGNMENT_PC_PIN__SHIFT) /* Pin odd threads to their next lower even thread's voltage, rather than lib.target; even threads not pinned */
+#define ASSIGNMENT_PC_PIN_32    static_cast<unsigned int>(0x1f << ASSIGNMENT_PC_PIN__SHIFT) /* Pin full warp to lane 0 voltage, rather than lib.target; lane 0 not pinned */
+#define ASSIGNMENT_PC_PIN_16    static_cast<unsigned int>(0x0f << ASSIGNMENT_PC_PIN__SHIFT) /* Pin half warp to local lane 0 voltage, rather than lib.target; lane 0 not pinned */
+#define ASSIGNMENT_PC_PIN_8     static_cast<unsigned int>(0x07 << ASSIGNMENT_PC_PIN__SHIFT) /* Pin 7 following threads to local lane 0 voltage, rather than lib.target; lane 0 not pinned */
+#define ASSIGNMENT_PC_PIN_4     static_cast<unsigned int>(0x03 << ASSIGNMENT_PC_PIN__SHIFT) /* Pin 3 following threads to local lane 0 voltage, rather than lib.target; lane 0 not pinned */
+#define ASSIGNMENT_PC_PIN_2     static_cast<unsigned int>(0x01 << ASSIGNMENT_PC_PIN__SHIFT) /* Pin odd threads to their next lower even thread's voltage, rather than lib.target; even threads not pinned */
 
 // Bit 27: Unused
 // Bit 28: Unused
