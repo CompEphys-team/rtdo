@@ -181,7 +181,7 @@ public:
         double (*get_mean_distance)(const AdjustableParam &);
 
         std::tuple<scalar, scalar, scalar> (*cl_compare_to_target)(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target);
-        std::tuple<std::vector<scalar>, scalar, scalar, scalar> (*cl_compare_models)(int nStims, unsigned int nSamples, ClosedLoopData d, double dt);
+        std::vector<std::tuple<scalar, scalar, scalar, scalar>> (*cl_compare_models)(int nStims, unsigned int nSamples, ClosedLoopData d, double dt);
         scalar (*cl_dmap_hi)(scalar lo, scalar step);
     };
 
@@ -352,7 +352,7 @@ public:
     }
 
     /// Compares model timeseries for closed-loop stimulus selection after multiplexed stim evaluation.
-    inline std::tuple<std::vector<scalar>, scalar, scalar, scalar> cl_compare_models(int nStims, unsigned int nSamples, ClosedLoopData d, double dt) {
+    inline std::vector<std::tuple<scalar, scalar, scalar, scalar>> cl_compare_models(int nStims, unsigned int nSamples, ClosedLoopData d, double dt) {
         return pointers.cl_compare_models(nStims, nSamples, d, dt);
     }
 

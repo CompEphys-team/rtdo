@@ -444,7 +444,7 @@ extern "C" std::tuple<scalar, scalar, scalar> cl_compare_to_target(int nSamples,
     return make_tuple(mean_trace, mean_sdf, mean_dmap);
 }
 
-extern "C" std::tuple<std::vector<scalar>, scalar, scalar, scalar> cl_compare_models(int nStims, unsigned int nSamples, ClosedLoopData d, double dt)
+extern "C" std::vector<std::tuple<scalar, scalar, scalar, scalar>> cl_compare_models(int nStims, unsigned int nSamples, ClosedLoopData d, double dt)
 {
     int delaySize = min(DELAYSZ, int(round(d.tDelay/dt)));
     resizeArray(spiketimes_models, spiketimes_size, NSPIKES * NMODELS);
@@ -472,8 +472,7 @@ extern "C" std::tuple<std::vector<scalar>, scalar, scalar, scalar> cl_compare_mo
     int nTraces = NMODELS / nStims;
     int nUnits = nTraces / 32;
     int nComparisonsPerStim = nTraces*(nTraces-1)/2;
-    std::vector<scalar> means(nStims);
-    double mean_trace = 0, mean_sdf = 0, mean_dmap = 0;
+    std::vector<std::tuple<scalar, scalar, scalar, scalar>> means(nStims);
 
     tmp = thrust::device_pointer_cast(d_partial_errors);
     thrust::fill(tmp, tmp + 4*nStims, scalar(0));
@@ -483,16 +482,14 @@ extern "C" std::tuple<std::vector<scalar>, scalar, scalar, scalar> cl_compare_mo
 
     CHECK_CUDA_ERRORS(cudaMemcpy(h_partial_errors, d_partial_errors, 4*nStims*sizeof(scalar), cudaMemcpyDeviceToHost));
     for ( int i = 0; i < nStims; i++ ) {
-        means[i] = h_partial_errors[i] / nComparisonsPerStim;
-        mean_trace += h_partial_errors[nStims + i];
-        mean_sdf += h_partial_errors[2*nStims + i];
-        mean_dmap += h_partial_errors[3*nStims + i];
+        scalar mean = h_partial_errors[i] / nComparisonsPerStim;
+        scalar trace = h_partial_errors[nStims + i] / nComparisonsPerStim;
+        scalar sdf = h_partial_errors[2*nStims + i] / nComparisonsPerStim;
+        scalar dmap = h_partial_errors[3*nStims + i] / nComparisonsPerStim;
+        means[i] = std::make_tuple(mean, trace, sdf, dmap);
     }
-    mean_trace /= nComparisonsPerStim * nStims;
-    mean_sdf /= nComparisonsPerStim * nStims;
-    mean_dmap /= nComparisonsPerStim * nStims;
 
-    return std::make_tuple(means, mean_trace, mean_sdf, mean_dmap);
+    return means;
 }
 
 extern "C" scalar cl_dmap_hi(scalar dmap_low, scalar dmap_step) { return dmap_low + DMAP_SIZE*dmap_step; }
