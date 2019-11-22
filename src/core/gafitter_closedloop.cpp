@@ -262,6 +262,10 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, I.baseV);
         os << iT*rd.dt << '\t' << I.baseV << '\t' << daq->voltage << '\n';
     }
+
+    if ( stimIdx == 0 )
+        pca_future.waitForFinished();
+
     double fV = 0, ffV = 0, fn = 0, ffn = 0;
     for ( int iT = 0; iT < I.duration; iT++ ) {
         daq->next();
@@ -282,9 +286,6 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     }
     daq->reset();
 
-    if ( stimIdx == 0 )
-        pca_future.waitForFinished();
-
     lib.run();
     std::tuple<scalar, scalar, scalar> means = lib.cl_compare_to_target(I.duration, settings.cl, rd.dt, stimIdx==0);
 
@@ -295,13 +296,8 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
 
 void GAFitter::cl_pca()
 {
-    QTime wallclock = QTime::currentTime();
-    std::vector<scalar> singular_values = lib.get_params_principal_components(2, settings.nReinit);
-    for ( const scalar &s : singular_values )
-        std::cout << s << '\t';
+    lib.get_params_principal_components(2, settings.nReinit);
     lib.sync();
-    std::cout << "\nCompleted in " << wallclock.msecsTo(QTime::currentTime()) << " ms" << std::endl;
-
     emit pca_complete();
 }
 
