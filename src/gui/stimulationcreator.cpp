@@ -816,14 +816,16 @@ void StimulationCreator::on_cl_magic_clicked()
     QFile basefile(session.resultFilePath(fit.resultIndex));
     PopLoader loader(basefile, *lib);
 
-    if ( valIdx >= 0 && session.gaFitter().validations().at(valIdx).fitIdx == fitIdx ) {
-        validation =& session.gaFitter().validations().at(valIdx);
-    }
-
     int nEpochs = ui->cl_epochs->value(), firstEpoch = ui->cl_start->value();
     int nPlots = (fit.epochs+nEpochs-1 - firstEpoch) / nEpochs, nParams = lib->adjustableParams.size();
     bool bf = ui->cl_bestfit->isChecked(), bv = ui->cl_bestvalidated->isChecked(), ref = ui->cl_reference->isChecked();
     std::vector<QVector<double>> tracesBF, tracesBV, tracesRef;
+
+    if ( valIdx >= 0 && session.gaFitter().validations().at(valIdx).fitIdx == fitIdx ) {
+        validation =& session.gaFitter().validations().at(valIdx);
+    } else {
+        bv = false;
+    }
 
     // Load parameter values for bestFit, bestValidation
     if ( bf || bv ) {
