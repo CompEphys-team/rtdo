@@ -142,7 +142,8 @@ bool GAFitter::exec_validation(Result *res, QFile &file)
 
     const unsigned int assignment = lib.assignment_base
             | (ancestor.closedLoop ? ASSIGNMENT_REPORT_TIMESERIES : (ASSIGNMENT_REPORT_SUMMARY | ASSIGNMENT_SUMMARY_SQUARED | ASSIGNMENT_SUMMARY_COMPARE_TARGET))
-            | (cfg.rund.VC ? 0 : ASSIGNMENT_CURRENTCLAMP);
+            | (cfg.rund.VC ? 0 : ASSIGNMENT_CURRENTCLAMP)
+            | ((ancestor.closedLoop && !cfg.rund.VC) ? ASSIGNMENT_NO_SETTLING : 0);
 
     std::vector<std::vector<double>> traces;
     val.error.resize(ancestor.epochs);
@@ -180,6 +181,12 @@ bool GAFitter::exec_validation(Result *res, QFile &file)
             lib.obs[0].stop[0] = stims[i].duration;
             lib.push(lib.stim);
             lib.push(lib.obs);
+
+            if ( ancestor.closedLoop && !cfg.rund.VC ) {
+                lib.push(lib.targetOffset);
+                lib.assignment = ASSIGNMENT_PATTERNCLAMP | ASSIGNMENT_CLAMP_GAIN_DECAY | ASSIGNMENT_SETTLE_ONLY;
+                lib.run();
+            }
 
             lib.targetOffset[0] += iSettleDuration;
             lib.push(lib.targetOffset);
