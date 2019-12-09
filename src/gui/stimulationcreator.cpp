@@ -903,12 +903,7 @@ void StimulationCreator::on_cl_magic_clicked()
             if ( *stim == valStims[stimIdx] )
                 break;
         }
-        if ( stimIdx == valStims.size() ) {
-            std::cerr << "Stim " << *stim << " not in validation set:" << std::endl;
-            for ( auto s : valStims )
-                std::cerr << s << std::endl;
-            ref = false;
-        } else {
+        if ( stimIdx < valStims.size() ) {
             tracesRef.assign(nPlots, QVector<double>(stim->duration));
             for ( quint32 epoch = firstEpoch, i = 0; epoch < fit.epochs; epoch += nEpochs, i++ ) {
                 int closest = settings.gafs.cl_validation_interval * std::round(double(epoch) / settings.gafs.cl_validation_interval);
@@ -919,6 +914,24 @@ void StimulationCreator::on_cl_magic_clicked()
                 if ( tracesRef[i].size() > stim->duration/settings.rund.dt ) // Exclude settling trace
                     tracesRef[i].remove(0, tracesRef[i].size() - stim->duration/settings.rund.dt);
             }
+        } else if ( settings.daqd.simulate > 0 ) {
+            QVector<double> trace(stim->duration);
+            DAQFilter daq(session, settings);
+            for ( size_t i = 0; i < lib->adjustableParams.size(); i++ )
+                daq.setAdjustableParam(i, fit.targets[i]);
+            daq.run(Stimulation(*stim, settings.rund.dt), settings.rund.settleDuration);
+            for ( int iT = 0; iT < settings.rund.settleDuration/settings.rund.dt; iT++ )
+                daq.next();
+            for ( int iT = 0; iT < stim->duration; iT++ ) {
+                daq.next();
+                trace[iT] = settings.rund.VC ? daq.current : daq.voltage;
+            }
+            tracesRef.assign(nPlots, trace);
+        } else {
+            std::cerr << "Stim " << *stim << " not in validation set:" << std::endl;
+            for ( auto s : valStims )
+                std::cerr << s << std::endl;
+            ref = false;
         }
     }
 
