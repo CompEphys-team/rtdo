@@ -960,6 +960,26 @@ void StimulationCreator::on_cl_magic_clicked()
     QCPLayoutGrid *graphLayout = new QCPLayoutGrid();
     plot->plotLayout()->addElement(0, 0, graphLayout);
 
+    double ymin = __DBL_MAX__, ymax = -__DBL_MAX__;
+    for ( auto tr : tracesRef ) {
+        for ( const double &y : tr ) {
+            if ( y < ymin ) ymin = y;
+            if ( y > ymax ) ymax = y;
+        }
+    }
+    for ( auto tr : tracesBF ) {
+        for ( const double &y : tr ) {
+            if ( y < ymin ) ymin = y;
+            if ( y > ymax ) ymax = y;
+        }
+    }
+    for ( auto tr : tracesBV ) {
+        for ( const double &y : tr ) {
+            if ( y < ymin ) ymin = y;
+            if ( y > ymax ) ymax = y;
+        }
+    }
+
     for ( int i = 0; i < nPlots; i++ ) {
         QCPAxisRect *ax = new QCPAxisRect(plot);
         graphLayout->addElement(i, 0, ax);
@@ -984,7 +1004,7 @@ void StimulationCreator::on_cl_magic_clicked()
         ax->axis(QCPAxis::atBottom)->setTickLabels(i == nPlots-1);
         ax->axis(QCPAxis::atBottom)->rescale();
         ax->axis(QCPAxis::atLeft)->setLabel(QString("Voltage [mV] - epoch %1").arg(firstEpoch + i*nEpochs));
-        ax->axis(QCPAxis::atLeft)->rescale();
+        ax->axis(QCPAxis::atLeft)->setRange(ymin, ymax);
     }
 
     // Plot spike counts
