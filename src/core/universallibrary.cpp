@@ -230,7 +230,7 @@ else if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
 }
 
 // Settle
-if ( iT == 0 && $(iSettleDuration) > 0 ) {
+if ( iT == 0 && $(iSettleDuration) > 0 && !($(assignment) & ASSIGNMENT_NO_SETTLING) ) {
     if ( $(assignment) & ASSIGNMENT_PATTERNCLAMP ) {
         scalar tGainFac = 1./$(iSettleDuration);
         clamp.accessResistance = clamp.clampGain; // accessResistance is unused during pattern clamp, so use it as a backup for CLAMP_GAIN_DECAY

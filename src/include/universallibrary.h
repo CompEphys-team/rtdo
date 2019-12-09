@@ -95,7 +95,8 @@
 // Bit 27: Clamp gain decay
 #define ASSIGNMENT_CLAMP_GAIN_DECAY             static_cast<unsigned int>(0x1 << 27) /* Decay clamp gain to zero over the duration of PC settling */
 
-// Bit 28: Unused
+// Bit 28: Override iSettleDuration
+#define ASSIGNMENT_NO_SETTLING                  static_cast<unsigned int>(0x1 << 28) /* No settling regardless of iSettleDuration value */
 
 // Bit 29: Multiplex subset of models
 // Models (and RunData, if singular) are loaded as id % cl_blocksize; stim and target (if singular) are loaded as id / cl_blocksize.
