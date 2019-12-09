@@ -940,26 +940,27 @@ void StimulationCreator::on_cl_magic_clicked()
     for ( int i = 0; i < keys.size(); i++ )
         keys[i] = i * settings.rund.dt;
 
-    ui->plot->plotLayout()->clear();
+    QCustomPlot *plot = new QCustomPlot();
+    plot->plotLayout()->clear();
     QCPLayoutGrid *graphLayout = new QCPLayoutGrid();
-    ui->plot->plotLayout()->addElement(0, 0, graphLayout);
+    plot->plotLayout()->addElement(0, 0, graphLayout);
 
     for ( int i = 0; i < nPlots; i++ ) {
-        QCPAxisRect *ax = new QCPAxisRect(ui->plot);
+        QCPAxisRect *ax = new QCPAxisRect(plot);
         graphLayout->addElement(i, 0, ax);
 
         if ( ref ) {
-            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
+            QCPGraph *g = plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
             g->setPen(QPen(ui->cl_col_ref->color));
             g->setData(keys, tracesRef[i], true);
         }
         if ( bf ) {
-            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
+            QCPGraph *g = plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
             g->setPen(QPen(ui->cl_col_bestF->color));
             g->setData(keys, tracesBF[i], true);
         }
         if ( bv ) {
-            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
+            QCPGraph *g = plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
             g->setPen(QPen(ui->cl_col_bestV->color));
             g->setData(keys, tracesBV[i], true);
         }
@@ -973,23 +974,23 @@ void StimulationCreator::on_cl_magic_clicked()
 
     // Plot spike counts
     if ( spkCount ) {
-        QCPAxisRect *ax = new QCPAxisRect(ui->plot);
+        QCPAxisRect *ax = new QCPAxisRect(plot);
         graphLayout->addElement(nPlots, 0, ax);
         keys.resize(nPlots);
         for ( int i = 0; i < nPlots; i++ )
             keys[i] = firstEpoch + i*nEpochs;
         if ( ref ) {
-            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
+            QCPGraph *g = plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
             g->setPen(QPen(ui->cl_col_ref->color));
             g->setData(keys, spkRef, true);
         }
         if ( bf ) {
-            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
+            QCPGraph *g = plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
             g->setPen(QPen(ui->cl_col_bestF->color));
             g->setData(keys, spkBF, true);
         }
         if ( bv ) {
-            QCPGraph *g = ui->plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
+            QCPGraph *g = plot->addGraph(ax->axis(QCPAxis::atBottom), ax->axis(QCPAxis::atLeft));
             g->setPen(QPen(ui->cl_col_bestV->color));
             g->setData(keys, spkBV, true);
         }
@@ -1000,11 +1001,8 @@ void StimulationCreator::on_cl_magic_clicked()
         ax->axis(QCPAxis::atLeft)->rescale();
     }
 
-    ui->plot->savePdf(outfile, ui->cl_width->value(), (nPlots + (spkCount?1:0)) * ui->cl_height->value(), QCP::epNoCosmetic, windowTitle());
-
-    ui->plot->plotLayout()->clear();
-    ui->plot->plotLayout()->addElement(new QCPAxisRect(ui->plot));
-    setupPlot();
+    plot->savePdf(outfile, ui->cl_width->value(), (nPlots + (spkCount?1:0)) * ui->cl_height->value(), QCP::epNoCosmetic, windowTitle());
+    delete plot;
 
     QApplication::restoreOverrideCursor();
 }
