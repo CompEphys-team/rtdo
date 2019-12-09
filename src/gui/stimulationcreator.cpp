@@ -914,6 +914,8 @@ void StimulationCreator::on_cl_magic_clicked()
                 if ( traces.empty() )
                     continue;
                 tracesRef[i] = QVector<double>::fromStdVector(traces[stimIdx]);
+                if ( tracesRef[i].size() > stim->duration/settings.rund.dt ) // Exclude settling trace
+                    tracesRef[i].remove(0, tracesRef[i].size() - stim->duration/settings.rund.dt);
             }
         }
     }

@@ -33,6 +33,7 @@ void GAFitter::record_validation(QFile &base)
         return;
 
     const RunData &rd = session.runData();
+    int iSettleDuration = rd.settleDuration/rd.dt;
 
     QFile traceFile(QString("%1.validation.ep_%2.bin").arg(base.fileName()).arg(epoch, 4, 10, QChar('0')));
     if ( !traceFile.open(QIODevice::WriteOnly) ) {
@@ -47,16 +48,17 @@ void GAFitter::record_validation(QFile &base)
         const Stimulation &aI = val_aStims[i];
         const iStimulation &I = val_iStims[i];
 
-        os << qint32(I.duration);
+        os << qint32(iSettleDuration + I.duration);
 
         // Initiate DAQ stimulation
         daq->reset();
         daq->run(aI, rd.settleDuration);
 
         // Step DAQ through full stimulation
-        for ( int iT = 0, iTEnd = rd.settleDuration/rd.dt; iT < iTEnd; iT++ ) {
+        for ( int iT = 0; iT < iSettleDuration; iT++ ) {
             daq->next();
             pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, I.baseV);
+            os << (rd.VC ? daq->current : daq->voltage);
         }
         for ( int iT = 0; iT < I.duration; iT++ ) {
             daq->next();
@@ -147,7 +149,8 @@ bool GAFitter::exec_validation(Result *res, QFile &file)
     val.mean.resize(ancestor.epochs);
     val.sd.resize(ancestor.epochs);
 
-    int nSamples = 0;
+    unsigned int iSettleDuration = cfg.rund.settleDuration/cfg.rund.dt;
+    int nSamples = stims.size() * iSettleDuration;
     for ( const iStimulation &I : stims )
         nSamples += I.duration;
     lib.resizeTarget(1, nSamples);
@@ -157,9 +160,14 @@ bool GAFitter::exec_validation(Result *res, QFile &file)
             int nSamplesDone = 0;
             traces = load_validation(basefile, epoch);
             for ( size_t i = 0; i < stims.size(); i++ ) {
-                for ( int j = 0; j < stims[i].duration; j++ )
+                if ( int(traces[i].size()) == stims[i].duration ) { // Settling trace not included
+                    for ( unsigned int j = 0; j < iSettleDuration; j++ )
+                        lib.target[nSamplesDone + j] = traces[i][0];
+                    nSamplesDone += iSettleDuration;
+                }
+                for ( unsigned int j = 0; j < traces[i].size(); j++ )
                     lib.target[nSamplesDone + j] = traces[i][j];
-                nSamplesDone += stims[i].duration;
+                nSamplesDone += traces[i].size();
             }
             lib.pushTarget();
         }
@@ -173,14 +181,15 @@ bool GAFitter::exec_validation(Result *res, QFile &file)
             lib.push(lib.stim);
             lib.push(lib.obs);
 
+            lib.targetOffset[0] += iSettleDuration;
             lib.push(lib.targetOffset);
-            lib.targetOffset[0] += stims[i].duration;
 
             lib.assignment = assignment | (i ? ASSIGNMENT_SUMMARY_PERSIST : 0);
             lib.run();
 
             if ( ancestor.closedLoop )
                 lib.cl_compare_to_target(stims[i].duration, cfg.gafs.cl, cfg.rund.dt, i==0);
+            lib.targetOffset[0] += stims[i].duration;
         }
 
         val.error[epoch].resize(lib.NMODELS);
