@@ -1,0 +1,304 @@
+<model name="B1_Thomas">
+	<voltage>
+		<value>-52.5</value>
+		<range min="-150" max="100" />
+	</voltage>
+	<capacitance>
+		<value>1</value>
+		<range min="0.1" max="10"/>
+		<perturbation type="*" rate="0.01"/>
+	</capacitance>
+	<current name="I_Na">
+		<popen>$(m)*$(m)*$(m)*$(h)</popen>
+		<gbar>gNa</gbar>
+		<E>VNa</E>
+	</current>
+	<current name="I_KA">
+		<popen>$(NA)*$(NA)</popen>
+		<gbar>gKA</gbar>
+		<E>VK</E>
+	</current>
+	<current name="I_KB">
+		<popen>$(NB)</popen>
+		<gbar>gKB</gbar>
+		<E>VK</E>
+	</current>
+	<current name="I_A">
+		<popen>$(a)*$(a)*$(a)*$(a)*$(b)</popen>
+		<gbar>gA</gbar>
+		<E>VK</E>
+	</current>
+	<current name="I_M">
+		<popen>$(M)</popen>
+		<gbar>gM</gbar>
+		<E>VK</E>
+	</current>
+	<current name="I_l">
+		<gbar>gLeak</gbar>
+		<E>VLeak</E>
+	</current>
+
+	<variable name="m" value="0.027585">
+		<tmp name="_inf">1./(1. + exp(($(Vm) - $(V))/$(sm)))</tmp>
+		<tmp name="tau_">$(t0m)+ $(tAm)/(1. + exp(($(tVm) - $(V))/$(tsm)))</tmp>
+		<dYdt>((_inf-$(m))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="h" value="0.997943">
+		<tmp name="_inf">1./(1. + exp(($(Vh) - $(V))/$(sh)))</tmp>
+		<tmp name="tau_">$(t0h) + $(tAh)/(1. + exp(($(tVh) - $(V))/$(tsh)))</tmp>
+		<dYdt>((_inf-$(h))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="NA" value="0.016953">
+		<tmp name="_inf">1./(1. + exp(($(VNA) - $(V))/$(sNA)))</tmp>
+		<tmp name="tau_">$(t0NA) + $(tANA)/(1. + exp(($(tVNA) - $(V))/$(tsNA)))</tmp>
+		<dYdt>((_inf-$(NA))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="NB" value="0.014995">
+		<tmp name="_inf">1./(1. + exp(($(VNB) - $(V))/$(sNB)))</tmp>
+		<tmp name="tau_">$(t0NB) + $(tANB)/(1. + exp(($(tVNB) - $(V))/$(tsNB)))</tmp>
+		<dYdt>((_inf-$(NB))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="a" value="0.054994">
+		<tmp name="_inf">1./(1. + exp(($(Va) - $(V))/$(sa)))</tmp>
+		<tmp name="tau_">$(t0a) + $(tAa)/(1. + exp(($(tVa) - $(V))/$(tsa)))</tmp>
+		<dYdt>((_inf-$(a))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="b" value="0.057161">
+		<tmp name="_inf">1./(1. + exp(($(Vb) - $(V))/$(sb)))</tmp>
+		<tmp name="tau_">$(t0b) + $(tAb)/(1. + exp(($(tVb) - $(V))/$(tsb)))</tmp>
+		<dYdt>((_inf-$(b))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+	<variable name="M" value="0.0">
+		<tmp name="_inf">1./(1. + exp(($(VM) - $(V))/$(sM)))</tmp>
+		<tmp name="tau_">$(t0M) + $(tAM)/(1. + exp(($(tVM) - $(V))/$(tsM)))</tmp>
+		<dYdt>((_inf-$(b))/tau_)</dYdt>
+		<range min="0" max="1" />
+	</variable>
+
+	<adjustableParam name="gNa" value="7">
+		<range min="0.1" max="25"/>
+		<perturbation type="*" rate="0.05"/>
+	</adjustableParam>
+	<adjustableParam name="VNa" value="35">
+		<range min="20" max="50"/>
+		<perturbation type="+" rate="0.5"/>
+	</adjustableParam>
+
+	<adjustableParam name="gKA" value="1.44">
+		<range min="0.01" max="10"/>
+		<perturbation type="*" rate="0.05"/>
+	</adjustableParam>
+	<adjustableParam name="gKB" value="2.88">
+		<range min="0.01" max="10"/>
+		<perturbation type="*" rate="0.05"/>
+	</adjustableParam>
+	<adjustableParam name="VK" value="-67">
+		<range min="-85" max="-50"/>
+		<perturbation type="+" rate="0.5"/>
+	</adjustableParam>
+	<adjustableParam name="gA" value="12">
+		<range min="0.1" max="40"/>
+		<perturbation type="*" rate="0.05"/>
+	</adjustableParam>
+
+	<adjustableParam name="gLeak" value="0.02">
+		<range min="0.0001" max="1"/>
+		<perturbation type="*" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="VLeak" value="-20">
+		<range min="-50" max="10"/>
+		<perturbation type="+" rate="0.5"/>
+	</adjustableParam>
+
+	<adjustableParam name="Vm" value="-24">
+		<range min="-44" max="4"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="sm" value="8">
+		<range min="0.8" max="80"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="Vh" value="-29">
+		<range min="-49" max="-9"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="sh" value="-3.8">
+		<range min="-0.38" max="-38"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="VNA" value="14.9">
+		<range min="-5.1" max="34.9"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="sNA" value="16.6">
+		<range min="1.66" max="166"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="VNB" value="8.6">
+		<range min="-11.4" max="28.6"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="sNB" value="14.6">
+		<range min="1.46" max="146"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="Va" value="-12.4">
+		<range min="-7.6" max="32.4"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="sa" value="14.1">
+		<range min="1.41" max="141"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="Vb" value="-71">
+		<range min="-91" max="-51"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="sb" value="-6.6">
+		<range min="-.66" max="-66"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="t0m" value="0.3">
+		<range min=".03" max="3"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tAm" value="8">
+		<range min=".8" max="80"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tVm" value="-40">
+		<range min="-60" max="-20"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tsm" value="-2">
+		<range min="-20" max="-.2"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="t0h" value="2.3">
+		<range min=".23" max="23"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tAh" value="15">
+		<range min="1.5" max="150"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tVh" value="-24.3">
+		<range min="-44.3" max="-4.3"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tsh" value="-3.8">
+		<range min="-.38" max="-38"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="t0NA" value="10">
+		<range min="1" max="100"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tANA" value="70">
+		<range min="7" max="700"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tVNA" value="-20">
+		<range min="-40" max="0"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tsNA" value="-40">
+		<range min="-4" max="-400"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="t0NB" value="1.5">
+		<range min=".15" max="15"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tANB" value="11.5">
+		<range min="1.15" max="115"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tVNB" value="-20">
+		<range min="-40" max="0"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tsNB" value="-40">
+		<range min="-4" max="-400"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="t0a" value=".05">
+		<range min=".005" max=".5"/>
+		<perturbation type="*" rate="0.01"/>
+	</adjustableParam>
+	<adjustableParam name="tAa" value="4.75">
+		<range min=".475" max="47.5"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tVa" value="-20">
+		<range min="-40" max="0"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tsa" value="-40">
+		<range min="-4" max="-400"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="t0b" value="4">
+		<range min=".4" max="40"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tAb" value="35.175">
+		<range min="3.5175" max="351.75"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tVb" value="-20">
+		<range min="-40" max="0"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tsb" value="40">
+		<range min="4" max="400"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="gM" value="1">
+		<range min="0.01" max="4"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="VM" value="-12">
+		<range min="-22" max="2"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="sM" value="1.5">
+		<range min="0.8" max="8"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+
+	<adjustableParam name="t0M" value="0.6">
+		<range min=".1" max="6"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tAM" value="1000">
+		<range min="100" max="2000"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tVM" value="13">
+		<range min="3" max="23"/>
+		<perturbation type="+" rate="0.1"/>
+	</adjustableParam>
+	<adjustableParam name="tsM" value="-1.7">
+		<range min="-8" max="-.1"/>
+		<perturbation type="*" rate="0.1"/>
+	</adjustableParam>
+</model>
