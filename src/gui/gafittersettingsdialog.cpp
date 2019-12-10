@@ -105,12 +105,14 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
             if ( session.project.model().adjustableParams[i].multiplicative ) {
                 double baseVal = qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->value();
                 double delta = ui->range_mul->value();
+                int small = baseVal>0 ? 3 : 4;
+                int large = baseVal>0 ? 4 : 3;
                 if ( delta >= 1 ) {
-                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(baseVal / delta);
-                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(baseVal * delta);
+                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, small))->setValue(baseVal / delta);
+                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, large))->setValue(baseVal * delta);
                 } else {
-                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(baseVal - baseVal * delta);
-                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(baseVal + baseVal * delta);
+                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, small))->setValue(baseVal - baseVal * delta);
+                    qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, large))->setValue(baseVal + baseVal * delta);
                 }
             }
         }
