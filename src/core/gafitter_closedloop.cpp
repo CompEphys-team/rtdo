@@ -63,8 +63,12 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
 
     daq = new DAQFilter(session, session.getSettings());
 
-    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
-        output.targets[i] = lib.adjustableParams[i].initial;
+    if ( session.daqData().simulate == 0 )
+        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+            output.targets[i] = lib.adjustableParams[i].initial;
+    else
+        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
+            output.targets[i] = daq->getAdjustableParam(i);
 
     setup(true);
     stims[0].baseV = session.stimulationData().baseV;
