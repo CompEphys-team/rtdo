@@ -93,7 +93,7 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
     });
     connect(ui->range_add_set, &QPushButton::clicked, [=](){
         for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
-            if ( !session.project.model().adjustableParams[i].multiplicative ) {
+            if ( qobject_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex() == 1 && !session.project.model().adjustableParams[i].multiplicative ) {
                 double baseVal = qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->value();
                 qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(baseVal - ui->range_add->value());
                 qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(baseVal + ui->range_add->value());
@@ -102,7 +102,7 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
     });
     connect(ui->range_mul_set, &QPushButton::clicked, [=](){
         for ( int i = 0; i < ui->constraints->rowCount(); i++ ) {
-            if ( session.project.model().adjustableParams[i].multiplicative ) {
+            if ( qobject_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex() == 1 && session.project.model().adjustableParams[i].multiplicative ) {
                 double baseVal = qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->value();
                 double delta = ui->range_mul->value();
                 int small = baseVal>0 ? 3 : 4;
