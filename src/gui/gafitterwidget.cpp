@@ -254,12 +254,14 @@ void GAFitterWidget::on_cl_run_clicked()
     else
         src = ui->decks->currentData().value<WaveSource>();
 
-    if ( ui->resume->isChecked() )
-        session.gaFitter().cl_resume(ui->resumeSrc->currentIndex(), src);
-    else
-        session.gaFitter().cl_run(src);
+    for ( int i = 0; i < ui->repeats->value(); i++ ) {
+        if ( ui->resume->isChecked() )
+            session.gaFitter().cl_resume(ui->resumeSrc->currentIndex(), src);
+        else
+            session.gaFitter().cl_run(src);
 
-    ++nQueued;
+        ++nQueued;
+    }
     ui->label_queued->setText(QString("%1 queued").arg(nQueued));
 }
 
