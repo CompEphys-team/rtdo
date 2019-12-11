@@ -233,7 +233,10 @@ void PopulationPlot::replot()
     const GAFitter::Validation *validation = nullptr;
 
     if ( lib == nullptr )
-        lib = new UniversalLibrary(session->project, false);
+        lib =& session->project.universal();
+    if ( session->busy() )
+        return;
+//        lib = new UniversalLibrary(session->project, false);
     QFile basefile(session->resultFilePath(session->gaFitter().results().at(fitIdx).resultIndex));
     PopLoader loader(basefile, *lib);
 
