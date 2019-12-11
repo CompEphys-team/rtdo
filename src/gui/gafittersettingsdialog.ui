@@ -331,6 +331,9 @@
       </item>
       <item row="17" column="1">
        <widget class="QDoubleSpinBox" name="cl_dmap_hi">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="suffix">
          <string> mV</string>
         </property>

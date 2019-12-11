@@ -34,10 +34,11 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
             if ( actor == "Config" && action == "cfg" )
                 importData();
         });
-        connect(this, SIGNAL(apply(GAFitterSettings)), &session, SLOT(setGAFitterSettings(GAFitterSettings)));
     } else {
-        ui->buttonBox->setStandardButtons(QDialogButtonBox::Close);
+        ui->buttonBox->setStandardButtons(QDialogButtonBox::Close | QDialogButtonBox::Apply);
+        ui->buttonBox->button(QDialogButtonBox::Apply)->setText("Reapply");
     }
+    connect(this, SIGNAL(apply(GAFitterSettings)), &session, SLOT(setGAFitterSettings(GAFitterSettings)));
 
     const MetaModel &model = session.project.model();
     ui->constraints->setRowCount(model.adjustableParams.size());
