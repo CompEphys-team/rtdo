@@ -154,8 +154,7 @@ void GAFitter::cl_fit(QFile &file)
         if ( settings.useDE ) {
             procreateDE();
         } else {
-            std::vector<errTupel> p_err = procreate();
-            cl_relegate_reinitialised(p_err);
+            procreate();
         }
 
         emit progress(epoch);
@@ -323,22 +322,7 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
 
 void GAFitter::cl_pca()
 {
-    lib.get_params_principal_components(2, settings.nReinit);
+    lib.get_params_principal_components(2);
     lib.sync();
     emit pca_complete();
-}
-
-void GAFitter::cl_relegate_reinitialised(std::vector<errTupel> &p_err)
-{
-    // Sort reinit subpopulation by idx, descending
-    std::sort(p_err.end() - settings.nReinit, p_err.end(), [](const errTupel &lhs, const errTupel &rhs){ return lhs.idx < rhs.idx; });
-
-    // Move subpop to end of population (tail first)
-    using std::swap;
-    size_t i = lib.NMODELS - 1;
-    for ( auto it = p_err.rbegin(); it != p_err.rbegin() + settings.nReinit; ++it, --i ) {
-        for ( AdjustableParam &p : lib.adjustableParams ) {
-            swap(p[i], p[it->idx]);
-        }
-    }
 }

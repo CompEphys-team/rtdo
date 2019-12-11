@@ -145,7 +145,6 @@ protected:
     std::vector<iStimulation> cl_findStims(QFile&);
     void cl_stimulate(QFile &file, int stimIdx);
     void cl_pca();
-    void cl_relegate_reinitialised(std::vector<errTupel> &p_err);
 
     bool exec_validation(Result *res, QFile &file);
     void save_validation_result(QFile &file);
