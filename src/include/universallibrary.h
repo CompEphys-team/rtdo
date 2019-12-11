@@ -181,7 +181,7 @@ public:
 
         double (*get_mean_distance)(const AdjustableParam &);
 
-        std::tuple<scalar, scalar, scalar> (*cl_compare_to_target)(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target);
+        scalar *(*cl_compare_to_target)(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target);
         std::vector<std::tuple<scalar, scalar, scalar, scalar>> (*cl_compare_models)(int nStims, unsigned int nSamples, ClosedLoopData d, double dt);
         scalar (*cl_dmap_hi)(scalar lo, scalar step);
     };
@@ -347,8 +347,8 @@ public:
     inline double get_mean_distance(size_t targetParam) { return pointers.get_mean_distance(adjustableParams.at(targetParam)); }
 
     /// Compares model timeseries to the timeseries provided in lib.target (host-side; respects targetOffset[0]), reporting the error in lib.summary (device-side).
-    /// Returns the mean trace, sdf, and dmaps error across all models.
-    inline std::tuple<scalar, scalar, scalar> cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary) {
+    /// Returns a pointer to the partial (trace, sdf, and dmaps) errors across all models, laid out as [errtype*NMODELS + modelIdx].
+    inline scalar *cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary) {
         return pointers.cl_compare_to_target(nSamples, d, dt, reset_summary, target + targetOffset[0]);
     }
 

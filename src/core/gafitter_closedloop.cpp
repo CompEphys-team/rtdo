@@ -120,7 +120,7 @@ void GAFitter::cl_fit(QFile &file)
 
     PopSaver pop(file);
 
-    QString cost_file = QString("%1.cost").arg(file.fileName());
+    QString cost_file = QString("%1.cost.bin").arg(file.fileName());
     cost_os.open(cost_file.toStdString());
 
     for ( epoch = 0; !finished(); epoch++ ) {
@@ -320,9 +320,9 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     lib.push(lib.iSettleDuration);
 
     lib.run();
-    std::tuple<scalar, scalar, scalar> means = lib.cl_compare_to_target(I.duration, settings.cl, rd.dt, stimIdx==0);
+    scalar *cost = lib.cl_compare_to_target(I.duration, settings.cl, rd.dt, stimIdx==0);
 
-    cost_os << std::get<0>(means) << '\t' << std::get<1>(means) << '\t' << std::get<2>(means) << '\n';
+    cost_os.write(reinterpret_cast<char*>(cost), 3*lib.NMODELS*sizeof(scalar));
 
     qT += rd.settleDuration + I.duration * rd.dt;
 }

@@ -405,7 +405,7 @@ scalar cl_process_timeseries_target(int nSamples, scalar Kfilter, scalar Kfilter
     return sdf_target_sum_m_norm;
 }
 
-extern "C" std::tuple<scalar, scalar, scalar> cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target)
+extern "C" scalar *cl_compare_to_target(int nSamples, ClosedLoopData d, double dt, bool reset_summary, scalar *target)
 {
     int delaySize = min(DELAYSZ, int(round(d.tDelay/dt)));
     unsigned int filtV_size_h = filtV_size;
@@ -437,11 +437,9 @@ extern "C" std::tuple<scalar, scalar, scalar> cl_compare_to_target(int nSamples,
 
     cl_process_dmaps_kernel_single<<<NMODELS, dim3(DMAP_KW, 32/DMAP_KW, DMAP_STRIDE)>>>(d.dmap_low, d.dmap_step, 2*d.dmap_sigma*d.dmap_sigma, d.err_weight_dmap/DMAP_SIZE, d_partial_errors);
 
-    thrust::device_ptr<scalar> t_partial_errors = thrust::device_pointer_cast(d_partial_errors);
-    scalar mean_trace = thrust::reduce(t_partial_errors, t_partial_errors + NMODELS) / NMODELS;
-    scalar mean_sdf = thrust::reduce(t_partial_errors + NMODELS, t_partial_errors + 2*NMODELS) / NMODELS;
-    scalar mean_dmap = thrust::reduce(t_partial_errors + 2*NMODELS, t_partial_errors + 3*NMODELS) / NMODELS;
-    return make_tuple(mean_trace, mean_sdf, mean_dmap);
+    resizeHostArray(h_partial_errors, partial_errors_hsize, 3*NMODELS);
+    CHECK_CUDA_ERRORS(cudaMemcpy(h_partial_errors, d_partial_errors, 3*NMODELS*sizeof(scalar), cudaMemcpyDeviceToHost));
+    return h_partial_errors;
 }
 
 extern "C" std::vector<std::tuple<scalar, scalar, scalar, scalar>> cl_compare_models(int nStims, unsigned int nSamples, ClosedLoopData d, double dt)
