@@ -196,13 +196,21 @@ void GAFitter::cl_settle()
 
 std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
 {
-    lib.cl_blocksize = lib.NMODELS / settings.cl_nStims;
-
     QString epoch_file = QString("%1.%2.stims").arg(base.fileName()).arg(epoch);
     std::ofstream os(epoch_file.toStdString());
 
     const RunData &rd = session.runData();
     iStimData istimd(session.stimulationData(), rd.dt);
+    std::vector<iStimulation> ret(settings.cl_nSelect);
+
+    if ( settings.cl_nStims == 0 ) { // Generate some random stimuli as control
+        for ( int i = 0; i < settings.cl_nSelect; i++ ) {
+            ret[i] = session.wavegen().getRandomStim(session.stimulationData(), istimd);
+        }
+        return ret;
+    }
+
+    lib.cl_blocksize = lib.NMODELS / settings.cl_nStims;
 
     // Put in some random stims
     lib.setSingularStim(false);
@@ -231,7 +239,6 @@ std::vector<iStimulation> GAFitter::cl_findStims(QFile &base)
 
     // Pick the nSelect highest variance stimulations to return. Note, ascending sort
     std::sort(cost.begin(), cost.end(), &errTupelSort);
-    std::vector<iStimulation> ret(settings.cl_nSelect);
     for ( int i = 0; i < settings.cl_nSelect; i++ ) {
         int stimIdx = cost[settings.cl_nStims - i - 1].idx;
         ret[i] = lib.stim[stimIdx];
