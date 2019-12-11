@@ -196,8 +196,15 @@ void GAFitter::populate()
                     min = settings.min[i];
                     max = settings.max[i];
                 }
+                scalar sig = (max-min)/6;
+                scalar mid = min + (max-min)/2;
+                scalar x;
                 for ( size_t j = 0; j < lib.NMODELS; j++ ) {
-                    lib.adjustableParams[i][j] = session.RNG.uniform<scalar>(min, max);
+//                    lib.adjustableParams[i][j] = session.RNG.uniform<scalar>(min, max);
+                    do {
+                        x = session.RNG.variate<scalar>(mid, sig);
+                    } while ( x < min || x > max );
+                    lib.adjustableParams[i][j] = x;
                 }
             }
         }
