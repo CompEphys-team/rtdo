@@ -11,7 +11,6 @@
 #define PEAK_DETECTED 0x200
 #define DELAYSZ 16
 #define DMAP_MAXENTRIES 1024
-#define DMAP_ENTRY_STRIDE 41 /* Being a factor of 1025, striding by 41 mod 1024 fills the list perfectly while keeping adjacent entries far from each other */
 #define DMAP_SIZE 64
 #define DMAP_STRIDE 16
 #define DMAP_KW 16 /* kernel width */
@@ -227,7 +226,7 @@ if ( SINGLETARGET ) {
                 dmap[c/32][threadIdx.x] |= (1u << (c%32));
                 pVx[dmx] = V;
                 pVy[dmx] = Vbuf[t % delaySize];
-                dmx = (dmx + DMAP_ENTRY_STRIDE) % DMAP_MAXENTRIES;
+                ++dmx;
             }
         }
         Vbuf[t % delaySize] = V;
@@ -262,7 +261,7 @@ __device__ void cl_get_smooth_dmap(scalar dmap_low, scalar dmap_step, scalar dma
     // blockIdx : modelidx
     // threadIdx.z == warpid : Vx/Vy list idx, striding
     // threadIdx x/y : kernel pixel coordinates
-    // Note, atomic clashes can't happen within a warp, and are made less likely between warps (I hope) with the DMAP_ENTRY_STRIDE trickery above.
+    // Note, atomic clashes can't happen within a warp.
     for ( int i = threadIdx.z; i < DMAP_MAXENTRIES; i += DMAP_STRIDE ) {
         scalar lVx = Vx[blockIdx.x * DMAP_MAXENTRIES + i];
         scalar lVy = Vy[blockIdx.x * DMAP_MAXENTRIES + i];
