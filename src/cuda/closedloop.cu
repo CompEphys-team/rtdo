@@ -178,7 +178,7 @@ __global__ void cl_process_timeseries_kernel(int nSamples, scalar Kfilter, scala
 {
     const unsigned int modelIdx = blockIdx.x * blockDim.x + threadIdx.x;
     scalar V, fV = 0, ffV = 0, fn = 0, ffn = 0;
-    scalar err = 0;
+    double err_trace = 0;
     unsigned int spike = 0x0;
     int spiketimes[NSPIKES];
     __shared__ uint32_t dmap[DMAP_SIZE * DMAP_SIZE/32][CL_PROCESS_KERNSZ]; // Bitmap. Register relief only, no cross-thread communication.
@@ -200,7 +200,7 @@ __global__ void cl_process_timeseries_kernel(int nSamples, scalar Kfilter, scala
         ffV = ffV * Kfilter2 + V;
         ffn = ffn * Kfilter2 + 1.0;
 if ( SINGLETARGET ) {
-        err += scalarfabs(filtV[t] - fV/fn + ffV/ffn);
+        err_trace += abs(filtV[t] - fV/fn + ffV/ffn);
 } else {
         dd_timeseries[t*NMODELS + modelIdx] = fV/fn - ffV/ffn;
 }
@@ -251,14 +251,14 @@ if ( SINGLETARGET ) {
     }
     err_partial[NMODELS + modelIdx] = err_sdf * err_weight_sdf;
 
-    scalar err_trace = err_weight_trace * err;
+    err_trace *= err_weight_trace;
     err_partial[modelIdx] = err_trace;
 
-    err = err_trace + err_sdf;
+    err_trace += err_sdf;
     if ( cumulative )
-        dd_summary[modelIdx] += err;
+        dd_summary[modelIdx] += err_trace;
     else
-        dd_summary[modelIdx] = err;
+        dd_summary[modelIdx] = err_trace;
 } else {
     for ( int i = 0; i < NSPIKES; i++ ) {
         st_out[i*NMODELS + modelIdx] = spiketimes[i];
