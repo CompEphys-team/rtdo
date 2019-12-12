@@ -71,6 +71,7 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
             output.targets[i] = daq->getAdjustableParam(i);
 
     setup(true);
+    errNorm[0] = 1;
     stims[0].baseV = session.stimulationData().baseV;
 
     populate();
