@@ -425,7 +425,7 @@ struct ClosedLoopData
     double Kfilter2 = 0.99999; //!< Baseline removal trace decay per sample
 
     double err_weight_sdf = 1.; //!< Spike density is calculated by convolving the spikes with a Gaussian kernel.
-    double spike_threshold = 10.; //!< mV/ms. Note, the gradient is estimated as (V(t) - V(t-tDelay)) / tDelay, and is thus somewhat sensitive to tDelay below.
+    double spike_threshold = 10.; //!< mV in the filtered trace.
     double sdf_tau = 50.; //!< ms. Legacy naming, this is the standard deviation of the Gaussian kernel. Note, the kernel is only calculated to 4*tau or 1024 samples from the center, whichever is less.
 
     double err_weight_dmap = 1.; //!< dmap error is the RMS error in the smoothed delay map.

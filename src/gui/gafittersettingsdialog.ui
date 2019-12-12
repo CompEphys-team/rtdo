@@ -288,7 +288,7 @@
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Note, the voltage gradient is estimated as (V(t) - V(t-tDelay)) / tDelay, and is thus somewhat sensitive to tDelay below.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="suffix">
-         <string> mV/ms</string>
+         <string> mV</string>
         </property>
        </widget>
       </item>

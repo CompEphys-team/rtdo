@@ -193,36 +193,10 @@ __global__ void cl_process_timeseries_kernel(int nSamples, scalar Kfilter, scala
     // No sync necessary
 
     for ( int t = 0; t < nSamples; t++ ) {
-        // Trace comparison
         V = dd_timeseries[t*NMODELS + modelIdx];
-        fV = fV * Kfilter + V;
-        fn = fn * Kfilter + 1.0;
-        ffV = ffV * Kfilter2 + V;
-        ffn = ffn * Kfilter2 + 1.0;
-if ( SINGLETARGET ) {
-        err_trace += abs(filtV[t] - fV/fn + ffV/ffn);
-} else {
-        dd_timeseries[t*NMODELS + modelIdx] = fV/fn - ffV/ffn;
-}
 
+        // Build raw delay map
         if ( t > delaySize ) {
-
-            // Spike detection
-            if ( spike < NSPIKES ) {
-                if ( V - Vbuf[t % delaySize] > spike_threshold ) // Spike onset detected
-                    spike = spike | SPIKE_DETECTED;
-            } else if ( spike & PEAK_DETECTED ) {
-                if ( V - Vbuf[t % delaySize] < spike_threshold ) // Spike offset detected
-                    spike &= NSPIKES_MASK;
-            } else if ( spike & SPIKE_DETECTED ) {
-                if ( V < Vbuf[(t-1) % delaySize] ) { // Spike peak detected
-                    spike &= NSPIKES_MASK;
-                    spiketimes[spike] = t;
-                    spike = (spike+1) | PEAK_DETECTED;
-                }
-            }
-
-            // Build raw delay map
             c = clip(int((Vbuf[t % delaySize]-dmap_low) / dmap_step), 0, DMAP_SIZE-1) * DMAP_SIZE + clip(int((V-dmap_low) / dmap_step), 0, DMAP_SIZE-1);
             if ( !(dmap[c/32][threadIdx.x] & (1u << (c%32))) ) {
                 dmap[c/32][threadIdx.x] |= (1u << (c%32));
@@ -232,6 +206,32 @@ if ( SINGLETARGET ) {
             }
         }
         Vbuf[t % delaySize] = V;
+
+        // Filter trace
+        fV = fV * Kfilter + V;
+        fn = fn * Kfilter + 1.0;
+        ffV = ffV * Kfilter2 + V;
+        ffn = ffn * Kfilter2 + 1.0;
+        V = fV/fn - ffV/ffn;
+if ( SINGLETARGET ) {
+        err_trace += abs(filtV[t] - V);
+} else {
+        dd_timeseries[t*NMODELS + modelIdx] = V;
+}
+
+        // Spike detection
+        if ( t > delaySize ) {
+            if ( spike < NSPIKES ) {
+                if ( V > spike_threshold ) { // Spike onset detected
+                    spiketimes[spike] = t;
+                    spike = (spike+1) | SPIKE_DETECTED;
+                }
+            } else if ( spike & SPIKE_DETECTED ) {
+                if ( V < spike_threshold ) { // Spike offset detected
+                    spike &= NSPIKES_MASK;
+                }
+            }
+        }
     }
 
     for ( spike &= NSPIKES_MASK; spike < NSPIKES; spike++ )
@@ -348,32 +348,10 @@ void cl_process_timeseries_target(int nSamples, scalar Kfilter, scalar Kfilter2,
         dmap[i] = 0u;
 
     for ( int t = 0; t < nSamples; t++ ) {
-        // Trace comparison
         V = target[t];
-        fV = fV * Kfilter + V;
-        fn = fn * Kfilter + 1.0;
-        ffV = ffV * Kfilter2 + V;
-        ffn = ffn * Kfilter2 + 1.0;
-        filtV[t] = fV/fn - ffV/ffn;
 
+        // Build raw delay map
         if ( t > delaySize ) {
-
-            // Spike detection
-            if ( spike < NSPIKES ) {
-                if ( V - Vbuf[t % delaySize] > spike_threshold ) // Spike onset detected
-                    spike = spike | SPIKE_DETECTED;
-            } else if ( spike & PEAK_DETECTED ) {
-                if ( V - Vbuf[t % delaySize] < spike_threshold ) // Spike offset detected
-                    spike &= NSPIKES_MASK;
-            } else if ( spike & SPIKE_DETECTED ) {
-                if ( V < Vbuf[(t-1) % delaySize] ) { // Spike peak detected
-                    spike &= NSPIKES_MASK;
-                    spiketimes[spike] = t;
-                    spike = (spike+1) | PEAK_DETECTED;
-                }
-            }
-
-            // Build raw delay map
             c = clip(int((Vbuf[t % delaySize]-dmap_low) / dmap_step), 0, DMAP_SIZE-1) * DMAP_SIZE + clip(int((V-dmap_low) / dmap_step), 0, DMAP_SIZE-1);
             if ( !(dmap[c/32] & (1u << (c%32))) ) {
                 dmap[c/32] |= (1u << (c%32));
@@ -383,6 +361,28 @@ void cl_process_timeseries_target(int nSamples, scalar Kfilter, scalar Kfilter2,
             }
         }
         Vbuf[t % delaySize] = V;
+
+        // Filter trace
+        fV = fV * Kfilter + V;
+        fn = fn * Kfilter + 1.0;
+        ffV = ffV * Kfilter2 + V;
+        ffn = ffn * Kfilter2 + 1.0;
+        V = fV/fn - ffV/ffn;
+        filtV[t] = V;
+
+        // Spike detection
+        if ( t > delaySize ) {
+            if ( spike < NSPIKES ) {
+                if ( V > spike_threshold ) { // Spike onset detected
+                    spiketimes[spike] = t;
+                    spike = (spike+1) | SPIKE_DETECTED;
+                }
+            } else if ( spike & SPIKE_DETECTED ) {
+                if ( V < spike_threshold ) { // Spike offset detected
+                    spike &= NSPIKES_MASK;
+                }
+            }
+        }
     }
 
     // Pad spiketimes with past-the-end values
