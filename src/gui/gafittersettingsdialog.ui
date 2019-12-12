@@ -87,7 +87,7 @@
       <item row="11" column="0">
        <widget class="QLabel" name="label_26">
         <property name="text">
-         <string>SDF tau</string>
+         <string>SDF sigma</string>
         </property>
        </widget>
       </item>
@@ -276,6 +276,9 @@
        <widget class="QDoubleSpinBox" name="cl_sdf_tau">
         <property name="suffix">
          <string> ms</string>
+        </property>
+        <property name="maximum">
+         <double>999.990000000000009</double>
         </property>
        </widget>
       </item>
