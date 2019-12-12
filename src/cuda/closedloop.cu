@@ -455,7 +455,7 @@ extern "C" scalar *cl_compare_to_target(int nSamples, ClosedLoopData d, double d
     int sdf_kernel_width = generate_sdf_kernel(d.sdf_tau/dt);
 
     cl_process_timeseries_kernel<true><<<NMODELS/CL_PROCESS_KERNSZ, CL_PROCESS_KERNSZ>>>(nSamples, d.Kfilter, d.Kfilter2, d_filtV, d.err_weight_trace/nSamples,
-                                                                                         d.spike_threshold*dt*delaySize, sdf_kernel_width, d.err_weight_sdf, nullptr,
+                                                                                         d.spike_threshold*dt*delaySize, sdf_kernel_width, d.err_weight_sdf/nSamples, nullptr,
                                                                                          delaySize, d.dmap_low, d.dmap_step, !reset_summary, d_partial_errors);
 
     cl_process_dmaps_kernel_single<<<NMODELS, dim3(DMAP_KW, 32/DMAP_KW, DMAP_STRIDE)>>>(d.dmap_low, d.dmap_step, 2*d.dmap_sigma*d.dmap_sigma, d.err_weight_dmap/DMAP_SIZE, d_partial_errors);
@@ -484,7 +484,7 @@ extern "C" std::vector<std::tuple<scalar, scalar, scalar, scalar>> cl_compare_mo
     resizeHostArray(h_partial_errors, partial_errors_hsize, 4*nStims);
 
     cl_process_timeseries_kernel<false><<<NMODELS/CL_PROCESS_KERNSZ, CL_PROCESS_KERNSZ>>>(nSamples, d.Kfilter, d.Kfilter2, nullptr, d.err_weight_trace/nSamples,
-                                                                                          d.spike_threshold*dt*delaySize, 0, d.err_weight_sdf, spiketimes_models,
+                                                                                          d.spike_threshold*dt*delaySize, 0, d.err_weight_sdf/nSamples, spiketimes_models,
                                                                                           delaySize, d.dmap_low, d.dmap_step, false, nullptr);
 
     cl_process_dmaps_kernel_multi<<<NMODELS, dim3(DMAP_KW, 32/DMAP_KW, DMAP_STRIDE)>>>(d.dmap_low, d.dmap_step, 2*d.dmap_sigma*d.dmap_sigma, d_dmaps);
@@ -501,7 +501,7 @@ extern "C" std::vector<std::tuple<scalar, scalar, scalar, scalar>> cl_compare_mo
 
     dim3 grid(nUnits, nUnits, nStims);
     compare_models_kernel<<<grid, 32>>>(nTraces, nSamples, d_dmaps, d.err_weight_trace/nSamples, d.err_weight_dmap/DMAP_SIZE, d_partial_errors);
-    compare_model_sdf_kernel<<<grid, 32>>>(nTraces, nSamples, sdf_kernel_width, spiketimes_models, d.err_weight_sdf, d_partial_errors);
+    compare_model_sdf_kernel<<<grid, 32>>>(nTraces, nSamples, sdf_kernel_width, spiketimes_models, d.err_weight_sdf/nSamples, d_partial_errors);
 
     CHECK_CUDA_ERRORS(cudaMemcpy(h_partial_errors, d_partial_errors, 4*nStims*sizeof(scalar), cudaMemcpyDeviceToHost));
     for ( int i = 0; i < nStims; i++ ) {
