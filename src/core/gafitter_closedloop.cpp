@@ -161,6 +161,8 @@ void GAFitter::cl_fit(QFile &file)
         emit progress(epoch);
     }
 
+    record_validation(file);
+
     cost_os.close();
 }
 
