@@ -93,6 +93,7 @@ public:
         int fitIdx;
         QVector<QVector<double>> error;
         QVector<double> mean, sd;
+        WaveSource stimSource; /// For simulated targets only.
     };
 
     inline const std::vector<Output> &results() const { return m_results; }
@@ -116,7 +117,7 @@ public slots:
     void cl_run(WaveSource src);
     void cl_resume(size_t fitIdx, WaveSource src);
 
-    void validate(size_t fitIdx);
+    void validate(size_t fitIdx, WaveSource src);
 
 signals:
     void starting();

@@ -269,5 +269,12 @@ void GAFitterWidget::on_validate_clicked()
 {
     if ( ui->resumeSrc->currentIndex() < 0 )
         return;
-    session.gaFitter().validate(ui->resumeSrc->currentIndex());
+
+    WaveSource src;
+    if ( ui->decks->currentIndex() < 0 )
+        src = ui->decks->itemData(0).value<WaveSource>();
+    else
+        src = ui->decks->currentData().value<WaveSource>();
+
+    session.gaFitter().validate(ui->resumeSrc->currentIndex(), src);
 }
