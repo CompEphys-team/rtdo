@@ -116,7 +116,7 @@ void DeviationBoxPlot::replot()
                 if ( p.multiplicative ) {
                     value = 100 * std::fabs(1 - params->at(j) / fit.targets[j]);
                 } else {
-                    double range = session->gaFitterSettings(fit.resultIndex).constraints[j] == 1
+                    double range = (session->gaFitterSettings(fit.resultIndex).constraints[j] == 1 && !ui->range_orig->isChecked())
                             ? (session->gaFitterSettings(fit.resultIndex).max[j] - session->gaFitterSettings(fit.resultIndex).min[j])
                             : (p.max - p.min);
                     value = 100 * std::fabs((params->at(j) - fit.targets[j]) / range);
