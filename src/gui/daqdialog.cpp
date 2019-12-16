@@ -156,12 +156,19 @@ void DAQDialog::importData()
     ui->targetType->setCurrentIndex(p.simd.paramSet);
     if ( p.simulate > 0 ) {
         if ( p.simd.paramSet == 2 ) {
-            for ( size_t i = 0; i < p.simd.paramValues.size(); i++ )
-                qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->setValue(p.simd.paramValues[i]);
+            for ( size_t i = 0; i < p.simd.paramValues.size(); i++ ) {
+                QDoubleSpinBox *cell = qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0));
+                if ( p.simd.paramValues[i] < cell->minimum() )
+                    cell->setMinimum(p.simd.paramValues[i] - 1);
+                if ( p.simd.paramValues[i] < cell->maximum() )
+                    cell->setMaximum(p.simd.paramValues[i] + 1);
+                cell->setValue(p.simd.paramValues[i]);
+            }
         } else {
             const MetaModel &model = session.project.model(p.simulate-1);
-            for ( size_t i = 0; i < model.adjustableParams.size(); i++ )
+            for ( size_t i = 0; i < model.adjustableParams.size(); i++ ) {
                 qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->setValue(model.adjustableParams[i].initial);
+            }
         }
     }
 
