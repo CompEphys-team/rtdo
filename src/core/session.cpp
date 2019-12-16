@@ -396,7 +396,7 @@ Settings Session::getSettings(int i) const
 
     // Fall back to historic settings
     auto it = hist_settings.begin() + 1;
-    while ( it != hist_settings.end() && it->first < i )
+    while ( it != hist_settings.end() && it->first <= i )
         ++it;
     return (it-1)->second;
 }
