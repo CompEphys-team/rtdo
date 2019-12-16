@@ -19,6 +19,7 @@
 
 #include "gafittersettingsdialog.h"
 #include "ui_gafittersettingsdialog.h"
+#include <functional>
 
 GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QWidget *parent) :
     QDialog(parent),
@@ -73,11 +74,40 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
         });
         cb->addItems({"Original", "Range", "Fixed", "Target", "Reset"});
 
+        QTableWidgetItem *relativeDisplay = new QTableWidgetItem("");
+        std::function<void(void)> setRelativeRange;
+        if ( p.multiplicative ) {
+            setRelativeRange = [=](){
+                double lo = min->value(), hi = max->value(), c = fixed->value();
+                if ( c < 0 )
+                    std::swap(lo, hi);
+                double ldelta = lo/c, hdelta = hi/c;
+                if ( (1-ldelta)/(hdelta-1) > 0.95 && (1-ldelta)/(hdelta-1) < 1.05 )
+                    relativeDisplay->setText(QString::number((hdelta-ldelta)/2));
+                else if ( ldelta*hdelta > 0.95 && ldelta*hdelta < 1.05 )
+                    relativeDisplay->setText(QString::number((1/ldelta+hdelta)/2));
+                else
+                    relativeDisplay->setText("");
+            };
+        } else {
+            setRelativeRange = [=](){
+                double lo = min->value(), hi = max->value(), c = fixed->value();
+                double ldelta = c-lo, hdelta = hi-c;
+                if ( ldelta/hdelta > 0.95 && ldelta/hdelta < 1.05 )
+                    relativeDisplay->setText(QString::number((ldelta+hdelta)/2));
+                else
+                    relativeDisplay->setText("");
+            };
+        }
+        connect(min, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), setRelativeRange);
+        connect(max, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), setRelativeRange);
+
         ui->constraints->setCellWidget(i, 0, cb);
         ui->constraints->setCellWidget(i, 1, sigma);
         ui->constraints->setCellWidget(i, 2, fixed);
         ui->constraints->setCellWidget(i, 3, min);
         ui->constraints->setCellWidget(i, 4, max);
+        ui->constraints->setItem(i, 5, relativeDisplay);
     }
     ui->constraints->setVerticalHeaderLabels(labels);
     ui->constraints->setColumnWidth(0, 75);

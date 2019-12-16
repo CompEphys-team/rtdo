@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1098</width>
+    <width>1155</width>
     <height>784</height>
    </rect>
   </property>
@@ -540,6 +540,11 @@
         <column>
          <property name="text">
           <string>max</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>rel. range</string>
          </property>
         </column>
        </widget>
