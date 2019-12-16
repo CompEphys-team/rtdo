@@ -389,6 +389,12 @@ void Session::queue(QString actor, QString action, QString args, Result *res)
 
 Settings Session::getSettings(int i) const
 {
+    // Check for queued settings
+    for ( int firstQueued = m_log.rowCount() - m_log.queueSize(); i >= firstQueued; i-- )
+        if ( m_log.entry(i).actor == "Config" )
+            return *static_cast<Settings*>(m_log.entry(i).res);
+
+    // Fall back to historic settings
     auto it = hist_settings.begin() + 1;
     while ( it != hist_settings.end() && it->first < i )
         ++it;
