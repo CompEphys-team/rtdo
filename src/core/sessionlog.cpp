@@ -129,6 +129,7 @@ void SessionLog::clearActive(bool success)
     int row = m_data.size();
     if ( success ) {
         m_active.timestamp = QDateTime::currentDateTime();
+        m_active.res = nullptr;
         m_data.push_back(m_active);
         m_hasActive = false;
         emit dataChanged(index(row, 0), index(row, columnCount()));

@@ -447,6 +447,8 @@ std::vector<SessionLog::Entry> Session::load(bool dryrun, SessionLog *log, int r
                       << ", " << filename << ") : "
                       << err.what() << std::endl;
         }
+        if ( !dryrun )
+            entry.res = nullptr;
         ret.push_back(entry);
     }
     return ret;
