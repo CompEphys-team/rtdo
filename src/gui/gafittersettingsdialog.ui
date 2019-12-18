@@ -512,7 +512,91 @@
       <string>Parameter constraints</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
-      <item row="3" column="0" colspan="5">
+      <item row="1" column="2">
+       <widget class="QDoubleSpinBox" name="range_add">
+        <property name="prefix">
+         <string>+ </string>
+        </property>
+        <property name="decimals">
+         <number>6</number>
+        </property>
+        <property name="maximum">
+         <double>999.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QDoubleSpinBox" name="sigma_add">
+        <property name="prefix">
+         <string>+ </string>
+        </property>
+        <property name="decimals">
+         <number>6</number>
+        </property>
+        <property name="maximum">
+         <double>999.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QPushButton" name="range_add_set">
+        <property name="text">
+         <string>Set</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QDoubleSpinBox" name="sigma_mul">
+        <property name="prefix">
+         <string>* </string>
+        </property>
+        <property name="decimals">
+         <number>6</number>
+        </property>
+        <property name="maximum">
+         <double>999.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4">
+       <widget class="QLabel" name="label_15">
+        <property name="text">
+         <string>Constraints</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_16">
+        <property name="text">
+         <string>Sigmata</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="label_17">
+        <property name="text">
+         <string>Ranges</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QPushButton" name="sigma_add_set">
+        <property name="text">
+         <string>Set</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QPushButton" name="range_mul_set">
+        <property name="text">
+         <string>Set</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0" colspan="5">
        <widget class="QTableWidget" name="constraints">
         <attribute name="horizontalHeaderStretchLastSection">
          <bool>true</bool>
@@ -549,10 +633,33 @@
         </column>
        </widget>
       </item>
-      <item row="0" column="4">
-       <widget class="QLabel" name="label_15">
+      <item row="2" column="2">
+       <widget class="QDoubleSpinBox" name="range_mul">
+        <property name="prefix">
+         <string>* </string>
+        </property>
+        <property name="decimals">
+         <number>6</number>
+        </property>
+        <property name="maximum">
+         <double>999.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="4">
+       <widget class="QPushButton" name="constraints_set">
         <property name="text">
-         <string>Constraints</string>
+         <string>Set</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="sigma_mul_set">
+        <property name="text">
+         <string>Set</string>
         </property>
        </widget>
       </item>
@@ -585,110 +692,29 @@
         </item>
        </widget>
       </item>
-      <item row="1" column="2">
-       <widget class="QDoubleSpinBox" name="range_add">
-        <property name="prefix">
-         <string>+ </string>
+      <item row="3" column="4">
+       <widget class="QPushButton" name="fit_range_set">
+        <property name="text">
+         <string>Set</string>
         </property>
-        <property name="decimals">
-         <number>6</number>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QComboBox" name="fits"/>
+      </item>
+      <item row="3" column="3">
+       <widget class="QSpinBox" name="fit_range">
+        <property name="suffix">
+         <string>% pop range</string>
+        </property>
+        <property name="minimum">
+         <number>0</number>
         </property>
         <property name="maximum">
-         <double>999.000000000000000</double>
+         <number>100</number>
         </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QPushButton" name="sigma_mul_set">
-        <property name="text">
-         <string>Set</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="2">
-       <widget class="QLabel" name="label_17">
-        <property name="text">
-         <string>Ranges</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QPushButton" name="sigma_add_set">
-        <property name="text">
-         <string>Set</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QDoubleSpinBox" name="sigma_add">
-        <property name="prefix">
-         <string>+ </string>
-        </property>
-        <property name="decimals">
-         <number>6</number>
-        </property>
-        <property name="maximum">
-         <double>999.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="3">
-       <widget class="QPushButton" name="range_mul_set">
-        <property name="text">
-         <string>Set</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QDoubleSpinBox" name="sigma_mul">
-        <property name="prefix">
-         <string>* </string>
-        </property>
-        <property name="decimals">
-         <number>6</number>
-        </property>
-        <property name="maximum">
-         <double>999.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_16">
-        <property name="text">
-         <string>Sigmata</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="QPushButton" name="range_add_set">
-        <property name="text">
-         <string>Set</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="4">
-       <widget class="QPushButton" name="constraints_set">
-        <property name="text">
-         <string>Set</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
-       <widget class="QDoubleSpinBox" name="range_mul">
-        <property name="prefix">
-         <string>* </string>
-        </property>
-        <property name="decimals">
-         <number>6</number>
-        </property>
-        <property name="maximum">
-         <double>999.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.100000000000000</double>
+        <property name="value">
+         <number>90</number>
         </property>
        </widget>
       </item>

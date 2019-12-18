@@ -20,6 +20,8 @@
 #include "gafittersettingsdialog.h"
 #include "ui_gafittersettingsdialog.h"
 #include <functional>
+#include "populationsaver.h"
+#include "util.h"
 
 GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QWidget *parent) :
     QDialog(parent),
@@ -158,6 +160,34 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
     };
     connect(ui->cl_dmap_lo, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), update_dmap_hi);
     connect(ui->cl_dmap_step, static_cast<void(QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), update_dmap_hi);
+
+    auto addfits = [=](){
+        for ( size_t i = ui->fits->count(); i < session.gaFitter().results().size(); i++ )
+            ui->fits->addItem(QString("Fit %1 (%2)").arg(i).arg(session.gaFitter().results().at(i).resultIndex, 4, 10, QChar('0')));
+    };
+    addfits();
+    connect(&session.gaFitter(), &GAFitter::done, addfits);
+    connect(ui->fit_range_set, &QPushButton::clicked, [=](){
+        if ( ui->fits->currentIndex() < 0 )
+            return;
+        UniversalLibrary lib(session.project, false, true);
+        const GAFitter::Output &fit = session.gaFitter().results().at(ui->fits->currentIndex());
+        QFile basefile(session.resultFilePath(fit.resultIndex));
+        PopLoader loader(basefile, lib);
+        loader.load(fit.epochs-1, lib);
+        std::vector<scalar> values(lib.NMODELS);
+        scalar k = ui->fit_range->value() * 0.01;
+        std::vector<scalar> quantiles({k, 1-k});
+        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+            if ( qobject_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex() != 1 )
+                continue;
+            for ( size_t j = 0; j < lib.NMODELS; j++ )
+                values[j] = lib.adjustableParams[i][j];
+            std::vector<scalar> q = Quantile(values, quantiles);
+            qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(std::min(q[0], q[1]));
+            qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(std::max(q[0], q[1]));
+        }
+    });
 
     importData();
 }
