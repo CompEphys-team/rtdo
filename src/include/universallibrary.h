@@ -382,6 +382,8 @@ private:
     Bubble *dummyBubblePtr = nullptr;
     scalar dummyScalar;
 
+    scalar *lightParams, *lightSummary;
+
 public:
     // Globals
     int &simCycles;

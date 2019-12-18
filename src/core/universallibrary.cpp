@@ -53,6 +53,9 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
     pointers(light ? Pointers() : populate(*this)),
     isLight(light),
 
+    lightParams(light ? static_cast<scalar*>(malloc(adjustableParams.size() * NMODELS * sizeof(scalar))) : nullptr),
+    lightSummary(light ? static_cast<scalar*>(malloc(NMODELS * sizeof(scalar))) : nullptr),
+
     simCycles(light ? dummyInt : *pointers.simCycles),
     integrator(light ? dummyIntegrator : *pointers.integrator),
     assignment(light ? dummyUInt : *pointers.assignment),
@@ -64,7 +67,7 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
 
     target(light ? dummyScalarPtr : *pointers.target),
     output(light ? dummyScalarPtr : *pointers.output),
-    summary(light ? dummyScalarPtr : *pointers.summary),
+    summary(light ? lightSummary : *pointers.summary),
 
     clusters(light ? dummyScalarPtr : *pointers.clusters),
     clusterCurrent(light ? dummyScalarPtr : *pointers.clusterCurrent),
@@ -75,6 +78,10 @@ UniversalLibrary::UniversalLibrary(Project & p, bool compile, bool light) :
 
     PCA_TL(light ? dummyScalarPtr : *pointers.PCA_TL)
 {
+    if ( light ) {
+        for ( size_t i = 0; i < adjustableParams.size(); i++ )
+            adjustableParams[i].v = lightParams + i*NMODELS;
+    }
 }
 
 UniversalLibrary::~UniversalLibrary()
@@ -90,6 +97,8 @@ UniversalLibrary::~UniversalLibrary()
             resetDevice();
     }
     dlclose(lib);
+    free(lightParams);
+    free(lightSummary);
 }
 
 void *UniversalLibrary::compile_and_load()
