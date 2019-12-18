@@ -106,6 +106,7 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
 }
 
 std::ofstream cost_os;
+QDataStream trace_os;
 
 void GAFitter::cl_fit(QFile &file)
 {
@@ -123,6 +124,9 @@ void GAFitter::cl_fit(QFile &file)
 
     QString cost_file = QString("%1.cost.bin").arg(file.fileName());
     cost_os.open(cost_file.toStdString());
+
+    QFile trace_file(QString("%1.traces.bin").arg(file.fileName()));
+    openSaveStream(trace_file, trace_os);
 
     for ( epoch = 0; !finished(); epoch++ ) {
         cl_settle();
@@ -264,8 +268,7 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     iStimulation I = stims[targetStim];
     int nSettleSamples = rd.settleDuration/rd.dt;
 
-    QString epoch_file = QString("%1.%2.stim_%3.trace").arg(file.fileName()).arg(epoch).arg(stimIdx);
-    std::ofstream os(epoch_file.toStdString());
+    trace_os << I << qint32(nSettleSamples);
 
     // Set up library
     lib.setSingularStim();
@@ -280,7 +283,7 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
     for ( int iT = 0; iT < nSettleSamples; iT++ ) {
         daq->next();
         pushToQ(qT + iT*rd.dt, daq->voltage, daq->current, I.baseV);
-        os << iT*rd.dt << '\t' << I.baseV << '\t' << daq->voltage << '\n';
+        trace_os << daq->voltage;
         lib.target[iT] = daq->voltage;
     }
 
@@ -303,7 +306,7 @@ void GAFitter::cl_stimulate(QFile &file, int stimIdx)
         scalar t = rd.settleDuration + iT*rd.dt;
         scalar command = getCommandVoltage(aI, iT*rd.dt);
         pushToQ(qT + t, daq->voltage, daq->current, command);
-        os << t << '\t' << command << '\t' << daq->voltage << '\n';
+        trace_os << daq->voltage;
         lib.target[nSettleSamples + iT] = daq->voltage;
 
         if ( qV2 ) {
