@@ -26,6 +26,7 @@ PopulationPlot::PopulationPlot(QWidget *parent) :
     ui(new Ui::PopulationPlot)
 {
     ui->setupUi(this);
+    setAttribute(Qt::WA_DeleteOnClose);
     connect(ui->slider, SIGNAL(valueChanged(int)), this, SLOT(resizePanel()));
     connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(clearPlotLayout()));
     connect(ui->columns, SIGNAL(valueChanged(int)), this, SLOT(buildPlotLayout()));
@@ -142,6 +143,7 @@ void PopulationPlot::init(Session *session, bool enslave)
 PopulationPlot::~PopulationPlot()
 {
     delete ui;
+    delete lib;
 }
 
 void PopulationPlot::updateCombos()
@@ -233,10 +235,7 @@ void PopulationPlot::replot()
     const GAFitter::Validation *validation = nullptr;
 
     if ( lib == nullptr )
-        lib =& session->project.universal();
-    if ( session->busy() )
-        return;
-//        lib = new UniversalLibrary(session->project, false);
+        lib = new UniversalLibrary(session->project, false, true);
     QFile basefile(session->resultFilePath(session->gaFitter().results().at(fitIdx).resultIndex));
     PopLoader loader(basefile, *lib);
 
