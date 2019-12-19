@@ -423,6 +423,8 @@ void ParameterFitPlotter::clear()
     // Prepare for enslaved plotting through progress()
     ui->panel->clearGraphs();
     ui->panel->clearItems();
+    const GAFitterSettings &gafs = session->gaFitterSettings();
+    int i = 0;
     for ( QCPAxisRect *ar : axRects ) {
         QCPAxis *xAxis = ar->axis(QCPAxis::atBottom);
         QCPAxis *yAxis = ar->axis(QCPAxis::atLeft, 0);
@@ -435,7 +437,12 @@ void ParameterFitPlotter::clear()
         errGraph->setLineStyle(QCPGraph::lsStepLeft);
         errGraph->setPen(QPen(Qt::magenta));
 
-        xAxis->moveRange(-xAxis->range().lower);
+        xAxis->setRange(0, gafs.maxEpochs);
+        if ( gafs.constraints[i] == 1 )
+            yAxis->setRange(gafs.min[i], gafs.max[i]);
+        else
+            yAxis->setRange(session->project.model().adjustableParams[i].min, session->project.model().adjustableParams[i].max);
+        ++i;
     }
     ui->panel->replot();
 }
