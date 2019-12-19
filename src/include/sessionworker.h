@@ -39,16 +39,6 @@ public:
     virtual QString actorName() const = 0;
     virtual bool execute(QString action, QString args, Result *res, QFile &file) = 0;
 
-protected:
-    friend class Session;
-    virtual Result *load(const QString &action, const QString &args, QFile &results, Result r) = 0;
-
-    bool aborted = false;
-    mutable QMutex mutex;
-
-    inline bool isAborted() { QMutexLocker locker(&mutex); return aborted; }
-    inline void clearAbort() { QMutexLocker locker(&mutex); aborted = false; }
-
     /**
      * @brief openSaveStream creates a file for binary results output. @sa openLoadStream()
      * @param file is the file to be created (or truncated).
@@ -68,6 +58,16 @@ protected:
      * @return the version number indicated in the file.
      */
     quint32 openLoadStream(QFile &file, QDataStream &is, quint32 format_magic = 0);
+
+protected:
+    friend class Session;
+    virtual Result *load(const QString &action, const QString &args, QFile &results, Result r) = 0;
+
+    bool aborted = false;
+    mutable QMutex mutex;
+
+    inline bool isAborted() { QMutexLocker locker(&mutex); return aborted; }
+    inline void clearAbort() { QMutexLocker locker(&mutex); aborted = false; }
 };
 
 #endif // SESSIONWORKER_H

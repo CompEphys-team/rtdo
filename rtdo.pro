@@ -91,7 +91,8 @@ SOURCES += \
     src/core/gafitter_validation.cpp \
     src/core/populationsaver.cpp \
     src/gui/pcaplot.cpp \
-    src/gui/populationplot.cpp
+    src/gui/populationplot.cpp \
+    src/drivers/refitdaq.cpp
 
 HEADERS  += \
     src/include/mainwindow.h \
@@ -159,7 +160,8 @@ HEADERS  += \
     src/include/scope.h \
     src/include/populationsaver.h \
     src/include/pcaplot.h \
-    src/include/populationplot.h
+    src/include/populationplot.h \
+    src/include/refitdaq.h
 
 FORMS    += \
     src/gui/mainwindow.ui \
