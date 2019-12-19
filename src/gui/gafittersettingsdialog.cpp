@@ -166,7 +166,7 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
             ui->fits->addItem(QString("Fit %1 (%2)").arg(i).arg(session.gaFitter().results().at(i).resultIndex, 4, 10, QChar('0')));
     };
     addfits();
-    connect(&session.gaFitter(), &GAFitter::done, addfits);
+    connect(&session.gaFitter(), &GAFitter::done, this, addfits);
     connect(ui->fit_range_set, &QPushButton::clicked, [=](){
         if ( ui->fits->currentIndex() < 0 )
             return;
