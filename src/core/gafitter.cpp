@@ -24,7 +24,7 @@
 const QString GAFitter::action = QString("fit");
 const QString GAFitter::cl_action = QString("closedloop");
 const quint32 GAFitter::magic = 0xadb8d269;
-const quint32 GAFitter::version = 111;
+const quint32 GAFitter::version = 112;
 
 GAFitter::GAFitter(Session &session) :
     SessionWorker(session),
@@ -122,12 +122,13 @@ bool GAFitter::execute(QString action, QString, Result *res, QFile &file)
 
     astims = output.stimSource.stimulations();
 
-    daq = new DAQFilter(session, session.getSettings());
+    DAQFilter *fdaq = new DAQFilter(session, session.getSettings());
+    daq = fdaq;
 
     if ( session.daqData().simulate < 0 ) {
-        daq->getCannedDAQ()->assoc = output.assoc;
-        daq->getCannedDAQ()->setRecord(astims, output.VCRecord);
-        output.variance = daq->getCannedDAQ()->variance;
+        fdaq->getCannedDAQ()->assoc = output.assoc;
+        fdaq->getCannedDAQ()->setRecord(astims, output.VCRecord);
+        output.variance = fdaq->getCannedDAQ()->variance;
         std::cout << "Baseline current noise s.d.: " << std::sqrt(output.variance) << " nA" << std::endl;
     }
 
@@ -216,6 +217,7 @@ void GAFitter::save(QFile &file)
             os << d;
         for ( const double &p : output.resume.DEpX )
             os << p;
+        os << output.closedLoop << output.refit_index;
     }
 }
 
@@ -335,6 +337,12 @@ Result *GAFitter::load(const QString &act, const QString &args, QFile &results, 
             is >> d;
         for ( double &d : out.resume.DEpX )
             is >> d;
+    }
+
+    if ( ver < 112 ) {
+        output.refit_index = -1;
+    } else {
+        is >> output.closedLoop >> output.refit_index;
     }
 
     return p_out;

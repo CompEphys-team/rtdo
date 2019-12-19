@@ -14,26 +14,6 @@
    <string>GA fitting</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QComboBox" name="decks"/>
-   </item>
-   <item row="0" column="1">
-    <widget class="QSpinBox" name="repeats">
-     <property name="suffix">
-      <string> repeats</string>
-     </property>
-     <property name="minimum">
-      <number>1</number>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2">
-    <widget class="QPushButton" name="start">
-     <property name="text">
-      <string>Start fitting</string>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="3">
     <widget class="QPushButton" name="finish">
      <property name="text">
@@ -45,23 +25,6 @@
     <widget class="QPushButton" name="abort">
      <property name="text">
       <string>Abort</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2">
-    <widget class="QCheckBox" name="resume">
-     <property name="text">
-      <string>Resume from:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="3">
-    <widget class="QComboBox" name="resumeSrc"/>
-   </item>
-   <item row="1" column="4">
-    <widget class="QPushButton" name="validate">
-     <property name="text">
-      <string>Validate this</string>
      </property>
     </widget>
    </item>
@@ -147,6 +110,16 @@
      </property>
     </widget>
    </item>
+   <item row="0" column="0">
+    <widget class="QComboBox" name="decks"/>
+   </item>
+   <item row="0" column="2">
+    <widget class="QPushButton" name="start">
+     <property name="text">
+      <string>Start fitting</string>
+     </property>
+    </widget>
+   </item>
    <item row="4" column="0" colspan="5">
     <widget class="QWidget" name="widget" native="true">
      <layout class="QGridLayout" name="gridLayout_3">
@@ -176,10 +149,44 @@
      </layout>
     </widget>
    </item>
-   <item row="1" column="0" colspan="2">
+   <item row="0" column="1">
+    <widget class="QSpinBox" name="repeats">
+     <property name="suffix">
+      <string> repeats</string>
+     </property>
+     <property name="minimum">
+      <number>1</number>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
     <widget class="QPushButton" name="cl_run">
      <property name="text">
       <string>Run closed-loop fit</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QCheckBox" name="resume">
+     <property name="text">
+      <string>Resume from:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QComboBox" name="resumeSrc"/>
+   </item>
+   <item row="1" column="3">
+    <widget class="QPushButton" name="validate">
+     <property name="text">
+      <string>Validate this</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="4">
+    <widget class="QPushButton" name="refit">
+     <property name="text">
+      <string>Refit this</string>
      </property>
     </widget>
    </item>

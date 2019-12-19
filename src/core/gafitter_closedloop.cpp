@@ -22,6 +22,7 @@
 #include "supportcode.h"
 #include "populationsaver.h"
 #include <QtConcurrent/QtConcurrent>
+#include "refitdaq.h"
 
 void GAFitter::cl_run(WaveSource src)
 {
@@ -35,6 +36,14 @@ void GAFitter::cl_resume(size_t fitIdx, WaveSource src)
     Output *out = new Output(m_results[fitIdx]);
     out->stimSource = src;
     session.queue(actorName(), cl_action, QString("Resume %1").arg(m_results[fitIdx].resultIndex, 4, 10, QChar('0')), out);
+}
+
+void GAFitter::cl_refit(size_t fitIdx)
+{
+    const Output &fit = m_results[fitIdx];
+    Output *out = new Output(session, fit.stimSource, QString(""));
+    out->refit_index = fitIdx;
+    session.queue(actorName(), cl_action, QString("Refit %1").arg(fit.resultIndex, 4, 10, QChar('0')), out);
 }
 
 bool GAFitter::cl_exec(Result *res, QFile &file)
@@ -61,7 +70,15 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
 
     astims.assign(1, {}); // Required for setup only
 
-    daq = new DAQFilter(session, session.getSettings());
+    std::vector<iStimulation> refitStims;
+    if ( output.refit_index < 0 )
+        daq = new DAQFilter(session, session.getSettings());
+    else {
+        RefitDAQ *rdaq = new RefitDAQ(session, session.getSettings(), m_results[output.refit_index]);
+        daq = rdaq;
+        refitStims = rdaq->getStims();
+        refitStims.insert(refitStims.begin(), iStimulation());
+    }
 
     if ( session.daqData().simulate == 0 )
         for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
@@ -72,11 +89,13 @@ bool GAFitter::cl_exec(Result *res, QFile &file)
 
     setup(true);
     errNorm[0] = 1;
+    if ( output.refit_index >= 0 )
+        stims.swap(refitStims);
     stims[0].baseV = session.stimulationData().baseV;
 
     populate();
 
-    cl_fit(file);
+    cl_fit(file, output.refit_index >= 0);
 
     // Resumability
     output.resume.population.assign(lib.adjustableParams.size(), std::vector<scalar>(lib.NMODELS));
@@ -109,7 +128,7 @@ std::ofstream cost_os;
 QDataStream trace_os;
 bool saveTraces = false;
 
-void GAFitter::cl_fit(QFile &file)
+void GAFitter::cl_fit(QFile &file, bool refit)
 {
     if ( settings.num_populations > 1 )
         std::cerr << "Warning: Multi-population closed loop fitting is not supported and may behave in unexpected ways." << std::endl;
@@ -127,25 +146,31 @@ void GAFitter::cl_fit(QFile &file)
     cost_os.open(cost_file.toStdString());
 
     QFile trace_file(QString("%1.traces.bin").arg(file.fileName()));
-    if ( !session.daqData().simulate ) {
+    if ( refit || session.daqData().simulate != 0 ) {
+        saveTraces = false;
+    } else {
         openSaveStream(trace_file, trace_os);
         saveTraces = true;
-    } else {
-        saveTraces = false;
     }
 
+    std::vector<iStimulation> selectedStims;
     for ( epoch = 0; !finished(); epoch++ ) {
         cl_settle();
 
-        if ( epoch % settings.cl_validation_interval == 0 )
+        if ( epoch % settings.cl_validation_interval == 0 && !refit )
             record_validation(file);
         pop.savePop(lib);
 
         if ( finished() )
             break;
 
-        // Find some stimulations
-        std::vector<iStimulation> selectedStims = cl_findStims(file);
+        if ( refit ) {
+            auto first = stims.begin() + 1 + epoch*settings.cl_nSelect;
+            selectedStims.assign(first, first + settings.cl_nSelect);
+        } else {
+            // Find some stimulations
+            selectedStims = cl_findStims(file);
+        }
 
         int i = 0;
         for ( iStimulation &pick : selectedStims ) {
@@ -171,7 +196,8 @@ void GAFitter::cl_fit(QFile &file)
         emit progress(epoch);
     }
 
-    record_validation(file);
+    if ( !refit )
+        record_validation(file);
 
     cost_os.close();
     if ( saveTraces )

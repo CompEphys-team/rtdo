@@ -85,6 +85,7 @@ public:
         } resume;
 
         bool closedLoop = false;
+        qint32 refit_index = -1;
     };
 
     struct Validation : public Result
@@ -116,6 +117,7 @@ public slots:
 
     void cl_run(WaveSource src);
     void cl_resume(size_t fitIdx, WaveSource src);
+    void cl_refit(size_t fitIdx);
 
     void validate(size_t fitIdx, WaveSource src);
 
@@ -129,7 +131,7 @@ protected:
     friend class Session;
     Result *load(const QString &action, const QString &args, QFile &results, Result r);
 
-    DAQFilter *daq;
+    DAQ *daq;
 
     bool doFinish;
     bool running = false;
@@ -141,7 +143,7 @@ protected:
     void setup(bool ad_hoc_stims = false);
     double fit(QFile &file);
 
-    void cl_fit(QFile &file);
+    void cl_fit(QFile &file, bool refit);
     void cl_settle();
     std::vector<iStimulation> cl_findStims(QFile&);
     void cl_stimulate(QFile &file, int stimIdx);

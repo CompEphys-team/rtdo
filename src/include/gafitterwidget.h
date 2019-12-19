@@ -55,6 +55,8 @@ private slots:
 
     void on_validate_clicked();
 
+    void on_refit_clicked();
+
 private:
     Ui::GAFitterWidget *ui;
     Session &session;

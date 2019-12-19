@@ -278,3 +278,10 @@ void GAFitterWidget::on_validate_clicked()
 
     session.gaFitter().validate(ui->resumeSrc->currentIndex(), src);
 }
+
+void GAFitterWidget::on_refit_clicked()
+{
+    if ( ui->resumeSrc->currentIndex() < 0 )
+        return;
+    session.gaFitter().cl_refit(ui->resumeSrc->currentIndex());
+}
