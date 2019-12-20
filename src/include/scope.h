@@ -35,12 +35,14 @@ public:
     explicit Scope(Session &session, QWidget *parent = 0);
     ~Scope();
 
+public slots:
+    void stop();
+
 protected:
     void closeEvent(QCloseEvent *event);
 
 private slots:
     void on_start_clicked();
-    void on_stop_clicked();
 
 private:
     Ui::Scope *ui;

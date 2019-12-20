@@ -391,6 +391,8 @@ void MainWindow::on_runBtn_clicked()
 {
     ui->runBtn->setText("[[ Run ]]");
     ui->pauseBtn->setText("Pause");
+    if ( scope )
+        scope->stop();
     session->resume();
 }
 

@@ -29,6 +29,7 @@ Scope::Scope(Session &session, QWidget *parent) :
 {
     ui->setupUi(this);
     connect(ui->clear, &QPushButton::clicked, ui->plot, &ResponsePlotter::clear);
+    connect(ui->stop, &QPushButton::clicked, this, &Scope::stop);
     ui->plot->VC =& session.qRunData().VC;
 }
 
@@ -40,7 +41,7 @@ Scope::~Scope()
 
 void Scope::closeEvent(QCloseEvent *event)
 {
-    on_stop_clicked();
+    stop();
     ui->plot->clear();
     event->accept();
 }
@@ -48,7 +49,7 @@ void Scope::closeEvent(QCloseEvent *event)
 void Scope::on_start_clicked()
 {
     if ( daq )
-        on_stop_clicked();
+        stop();
 
     ui->start->setEnabled(false);
     ui->stop->setEnabled(true);
@@ -59,7 +60,7 @@ void Scope::on_start_clicked()
     ui->plot->start();
 }
 
-void Scope::on_stop_clicked()
+void Scope::stop()
 {
     ui->start->setEnabled(true);
     ui->stop->setEnabled(false);
