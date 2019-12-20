@@ -127,6 +127,10 @@ void ResponsePlotter::stop()
 void ResponsePlotter::clear()
 {
     ui->plot->clearGraphs();
+    qI.flush();
+    qV.flush();
+    qV2.flush();
+    qO.flush();
 
     QCPGraph *g = ui->plot->addGraph(0, (VC && !*VC) ? ui->plot->yAxis2 : 0);
     g->setPen(QPen(ui->col_Vcmd->color));
