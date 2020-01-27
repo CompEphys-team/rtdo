@@ -212,7 +212,7 @@ DAQData DAQDialog::getFormData()
         for ( size_t i = 0; i < p.simd.paramValues.size(); i++ )
             p.simd.paramValues[i] = qobject_cast<QDoubleSpinBox*>(ui->targetValues->cellWidget(i, 0))->value();
     } else {
-        p.simd.paramValues.clear();
+        p.simd.paramValues = (historicIndex < 0 ? session.qDaqData() : session.daqData(historicIndex)).simd.paramValues;
     }
 
     p.cache.active = ui->cache->isChecked();
