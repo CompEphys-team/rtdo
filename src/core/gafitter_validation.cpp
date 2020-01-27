@@ -168,6 +168,7 @@ bool GAFitter::exec_validation(Result *res, QFile &file)
     for ( const iStimulation &I : stims )
         nSamples += I.duration;
     lib.resizeTarget(1, nSamples);
+    lib.resizeOutput(nSamples);
 
     for ( epoch = 0; epoch < ancestor.epochs && population.load(epoch, lib); epoch++ ) {
         if ( epoch % cfg.gafs.cl_validation_interval == 0 ) {
