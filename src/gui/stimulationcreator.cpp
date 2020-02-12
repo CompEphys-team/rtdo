@@ -837,8 +837,8 @@ void StimulationCreator::on_cl_magic_clicked()
 
 
         for ( quint32 epoch = firstEpoch, i = 0; epoch < fit.epochs; epoch += nEpochs, i++ ) {
+            loader.load(epoch, *lib);
             if ( bf ) {
-                loader.load(epoch, *lib);
                 size_t idx = std::min_element(lib->summary, lib->summary + lib->NMODELS) - lib->summary;
                 for ( int j = 0; j < nParams; j++ )
                     bestFits[i][j] = lib->adjustableParams[j][idx];
@@ -911,8 +911,8 @@ void StimulationCreator::on_cl_magic_clicked()
                 if ( traces.empty() )
                     continue;
                 tracesRef[i] = QVector<double>::fromStdVector(traces[stimIdx]);
-                if ( tracesRef[i].size() > stim->duration/settings.rund.dt ) // Exclude settling trace
-                    tracesRef[i].remove(0, tracesRef[i].size() - stim->duration/settings.rund.dt);
+                if ( tracesRef[i].size() > stim->duration ) // Exclude settling trace
+                    tracesRef[i].remove(0, tracesRef[i].size() - stim->duration);
             }
         } else if ( settings.daqd.simulate > 0 ) {
             QVector<double> trace(stim->duration);
