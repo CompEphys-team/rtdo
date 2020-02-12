@@ -249,16 +249,16 @@ if ( SINGLETARGET ) {
         scalar sdf2 = get_sdf(t, spiketimes_target, start2, stop2, nSamples, sdf_kernel_width);
         err_sdf += scalarfabs(sdf1 - sdf2);
     }
-    err_partial[NMODELS + modelIdx] = err_sdf * err_weight_sdf;
+    err_sdf *= err_weight_sdf;
+    err_partial[NMODELS + modelIdx] = err_sdf;
 
     err_trace *= err_weight_trace;
     err_partial[modelIdx] = err_trace;
 
-    err_trace += err_sdf;
     if ( cumulative )
-        dd_summary[modelIdx] += err_trace;
+        dd_summary[modelIdx] += err_trace + err_sdf;
     else
-        dd_summary[modelIdx] = err_trace;
+        dd_summary[modelIdx] = err_trace + err_sdf;
 } else {
     for ( int i = 0; i < NSPIKES; i++ ) {
         st_out[i*NMODELS + modelIdx] = spiketimes[i];
