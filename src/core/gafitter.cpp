@@ -252,8 +252,11 @@ Result *GAFitter::load(const QString &act, const QString &args, QFile &results, 
     out.targetStim.resize(out.epochs);
     out.params.resize(out.epochs);
     out.error.resize(out.epochs);
+    size_t nParams = lib.adjustableParams.size();
     for ( quint32 i = 0; i < out.epochs; i++ ) {
         is >> out.targetStim[i] >> out.error[i];
+        if ( out.params[i].size() != nParams )
+            out.params[i].resize(nParams);
         for ( scalar &p : out.params[i] )
             is >> p;
     }
@@ -311,7 +314,6 @@ Result *GAFitter::load(const QString &act, const QString &args, QFile &results, 
     }
 
     if ( ver >= 108 ) {
-        size_t nParams = lib.adjustableParams.size();
         out.resume.population.assign(nParams, std::vector<scalar>(lib.NMODELS));
         out.resume.bias.resize(out.stims.size());
 
