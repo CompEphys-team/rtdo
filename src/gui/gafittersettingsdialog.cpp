@@ -175,17 +175,19 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
         QFile basefile(session.resultFilePath(fit.resultIndex));
         PopLoader loader(basefile, lib);
         loader.load(fit.epochs-1, lib);
-        std::vector<scalar> values(lib.NMODELS);
-        scalar k = ui->fit_range->value() * 0.01;
-        std::vector<scalar> quantiles({k, 1-k});
+        std::vector<double> values(lib.NMODELS);
+        int k = ui->fit_range->value();
+        std::vector<double> quantiles({k*0.01, 1-k*0.01});
         for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-            if ( qobject_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex() != 1 )
-                continue;
-            for ( size_t j = 0; j < lib.NMODELS; j++ )
-                values[j] = lib.adjustableParams[i][j];
-            std::vector<scalar> q = Quantile(values, quantiles);
-            qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(std::min(q[0], q[1]));
-            qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(std::max(q[0], q[1]));
+            if ( k > 0 && qobject_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex() == 1 ) {
+                for ( size_t j = 0; j < lib.NMODELS; j++ )
+                    values[j] = lib.adjustableParams[i][j];
+                std::vector<double> q = Quantile(values, quantiles);
+                qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 3))->setValue(std::min(q[0], q[1]));
+                qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 4))->setValue(std::max(q[0], q[1]));
+            } else if ( k == 0 && qobject_cast<QComboBox*>(ui->constraints->cellWidget(i, 0))->currentIndex() == 2 ) {
+                qobject_cast<QDoubleSpinBox*>(ui->constraints->cellWidget(i, 2))->setValue(fit.final ? fit.finalParams[i] : fit.params[fit.epochs-1][i]);
+            }
         }
     });
 
