@@ -181,37 +181,36 @@ void GAFitter::setup(bool ad_hoc_stims)
 
 void GAFitter::populate()
 {
-    if ( output.resume.population.empty() ) {
-        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
-            if ( settings.constraints[i] == 2 || settings.constraints[i] == 3 ) { // Fixed value
-                scalar value = settings.constraints[i] == 2 ? settings.fixedValue[i] : output.targets[i];
-                for ( size_t j = 0; j < lib.NMODELS; j++ )
-                    lib.adjustableParams[i][j] = value;
+    for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
+        if ( settings.constraints[i] == 2 || settings.constraints[i] == 3 ) { // Fixed value
+            scalar value = settings.constraints[i] == 2 ? settings.fixedValue[i] : output.targets[i];
+            for ( size_t j = 0; j < lib.NMODELS; j++ )
+                lib.adjustableParams[i][j] = value;
+        } else {
+            scalar min, max;
+            if ( settings.constraints[i] == 0 ) {
+                min = lib.adjustableParams[i].min;
+                max = lib.adjustableParams[i].max;
             } else {
-                scalar min, max;
-                if ( settings.constraints[i] == 0 ) {
-                    min = lib.adjustableParams[i].min;
-                    max = lib.adjustableParams[i].max;
-                } else {
-                    min = settings.min[i];
-                    max = settings.max[i];
-                }
+                min = settings.min[i];
+                max = settings.max[i];
+            }
+            if ( output.resume.population.empty() ) {
                 scalar sig = (max-min)/6;
                 scalar mid = min + (max-min)/2;
                 scalar x;
                 for ( size_t j = 0; j < lib.NMODELS; j++ ) {
-//                    lib.adjustableParams[i][j] = session.RNG.uniform<scalar>(min, max);
                     do {
                         x = session.RNG.variate<scalar>(mid, sig);
                     } while ( x < min || x > max );
                     lib.adjustableParams[i][j] = x;
                 }
+            } else {
+                for ( size_t j = 0; j < lib.NMODELS; j++ )
+                    lib.adjustableParams[i][j] =
+                            std::min(max, std::max(min, output.resume.population[i][j]));
             }
         }
-    } else {
-        for ( size_t i = 0; i < lib.adjustableParams.size(); i++ )
-            for ( size_t j = 0; j < lib.NMODELS; j++ )
-                lib.adjustableParams[i][j] = output.resume.population[i][j];
     }
     lib.push();
 }
