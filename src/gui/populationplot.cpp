@@ -356,8 +356,16 @@ void PopulationPlot::replot()
     gradient.setColorStopAt(0, Qt::darkGray);
     gradient.setColorStopAt(__DBL_MIN__, Qt::black);
 
+    QCPRange normRange;
+    for ( size_t i = 0; i < axRects.size(); i++ )
+        if ( settings.constraints[i] < 2 )
+            normRange.expand(maps[i]->data()->dataBounds());
+
     for ( size_t i = 0; i < axRects.size(); i++ ) {
-        maps[i]->rescaleDataRange();
+        if ( settings.constraints[i] < 2 )
+            maps[i]->setDataRange(normRange);
+        else
+            maps[i]->rescaleDataRange();
         maps[i]->setGradient(gradient);
     }
 
