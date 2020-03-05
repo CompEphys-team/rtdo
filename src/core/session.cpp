@@ -263,6 +263,10 @@ void Session::sanitiseSettings(Settings &s)
         s.gafs.max.resize(n);
         s.gafs.fixedValue.resize(n);
     }
+
+    if ( s.daqd.simd.paramValues.size() != n ) {
+        s.daqd.simd.paramValues.resize(n);
+    }
 }
 
 Wavegen &Session::wavegen()
@@ -420,11 +424,7 @@ std::vector<SessionLog::Entry> Session::load(bool dryrun, SessionLog *log, int r
         result.resultIndex = row + rowOffset;
         result.dryrun = dryrun;
         try {
-            if ( entry.actor == wavegen().actorName() )
-                entry.res = wavegen().load(entry.action, entry.args, file, result);
-            else if ( entry.actor == profiler().actorName() )
-                entry.res = profiler().load(entry.action, entry.args, file, result);
-            else if ( entry.actor == "Config" ) {
+            if ( entry.actor == "Config" ) {
                 readConfig(file.fileName());
                 if ( dryrun ) {
                     entry.res = new Settings(q_settings);
@@ -433,7 +433,11 @@ std::vector<SessionLog::Entry> Session::load(bool dryrun, SessionLog *log, int r
                     m_settings = q_settings;
                     entry.res =& hist_settings.back().second;
                 }
-            } else if ( entry.actor == wavesets().actorName() ) {
+            } else if ( entry.actor == wavegen().actorName() )
+                entry.res = wavegen().load(entry.action, entry.args, file, result);
+            else if ( entry.actor == profiler().actorName() )
+                entry.res = profiler().load(entry.action, entry.args, file, result);
+            else if ( entry.actor == wavesets().actorName() ) {
                 entry.res = wavesets().load(entry.action, entry.args, file, result);
             } else if ( entry.actor == gaFitter().actorName() ) {
                 entry.res = gaFitter().load(entry.action, entry.args, file, result);
