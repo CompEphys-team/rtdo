@@ -34,6 +34,7 @@ public:
 
     /// Load project from saved config. Use @a light=true to load a non-functional project for crossloading purposes only
     Project(QString const& projectfile, bool light = false);
+    ~Project();
 
     void loadSettings(QString const& projectfile); //!< Load settings from an existing file (but not the libraries, and not freezing)
 
@@ -90,7 +91,7 @@ protected:
     bool loadExisting;
 
     std::unique_ptr<MetaModel> m_model;
-    std::unique_ptr<UniversalLibrary> unilib;
+    UniversalLibrary *unilib = nullptr;
 
     std::vector<QString> m_extraModelFiles;
     std::vector<MetaModel> m_extraModels;

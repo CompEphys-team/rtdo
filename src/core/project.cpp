@@ -44,9 +44,14 @@ Project::Project(const QString &projectfile, bool light) :
     }
 
     // Load library from existing file
-    unilib.reset(new UniversalLibrary(*this, false, light));
+    unilib = new UniversalLibrary(*this, false, light);
 
     frozen = true;
+}
+
+Project::~Project()
+{
+    delete unilib;
 }
 
 void Project::loadSettings(const QString &projectfile)
@@ -194,7 +199,9 @@ bool Project::compile()
         }
     }
     loadExtraModels();
-    unilib.reset(new UniversalLibrary(*this, true));
+    if ( unilib )
+        delete unilib;
+    unilib = new UniversalLibrary(*this, true);
     std::ofstream proj(p_projectfile.toStdString());
     for ( auto const& p : ap )
         p->write(proj);
