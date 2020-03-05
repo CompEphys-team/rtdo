@@ -60,7 +60,6 @@ protected:
         QPixmap px(width(), height());
         px.fill(color);
         setIcon(px);
-        setIconSize(size());
         if ( ev )
             QToolButton::resizeEvent(ev);
     }
