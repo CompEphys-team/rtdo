@@ -1004,7 +1004,11 @@ void StimulationCreator::on_cl_magic_clicked()
         ax->axis(QCPAxis::atBottom)->setTickLabels(i == nPlots-1);
         ax->axis(QCPAxis::atBottom)->rescale();
         ax->axis(QCPAxis::atLeft)->setLabel(QString("Voltage [mV] - epoch %1").arg(firstEpoch + i*nEpochs));
-        ax->axis(QCPAxis::atLeft)->setRange(ymin, ymax);
+        if ( ui->cl_vmin->value() > -100.0 ) {
+            ax->axis(QCPAxis::atLeft)->setRange(ui->cl_vmin->value(), ui->cl_vmax->value());
+        } else {
+            ax->axis(QCPAxis::atLeft)->setRange(ymin, ymax);
+        }
     }
 
     // Plot spike counts
@@ -1034,6 +1038,14 @@ void StimulationCreator::on_cl_magic_clicked()
         ax->axis(QCPAxis::atLeft)->setLabel("Spikes");
         ax->axis(QCPAxis::atBottom)->rescale();
         ax->axis(QCPAxis::atLeft)->rescale();
+        ax->axis(QCPAxis::atLeft)->setRangeLower(0);
+        if ( ui->cl_nspike_xmax->value() > 0 )
+            ax->axis(QCPAxis::atLeft)->setRangeUpper(ui->cl_nspike_xmax->value());
+
+        QSharedPointer<QCPAxisTickerFixed> fixedTicker(new QCPAxisTickerFixed);
+        ax->axis(QCPAxis::atLeft)->setTicker(fixedTicker);
+        fixedTicker->setTickStep(1.0);
+        fixedTicker->setScaleStrategy(QCPAxisTickerFixed::ssMultiples);
     }
 
     plot->savePdf(outfile, ui->cl_width->value(), (nPlots + (spkCount?1:0)) * ui->cl_height->value(), QCP::epNoCosmetic, windowTitle());
