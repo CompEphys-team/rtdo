@@ -113,11 +113,6 @@ void PopulationPlot::init(Session *session, bool enslave)
         ar->setRangeDragAxes(ar->axes());
         ar->setRangeZoomAxes(ar->axes());
     }
-    ui->panel->legend->setVisible(true);
-    ui->panel->setAutoAddPlottableToLegend(false);
-    ui->panel->legend->setFillOrder(QCPLegend::foColumnsFirst);
-    ui->panel->legend->setWrap(2);
-    ui->panel->axisRect()->insetLayout()->take(ui->panel->legend);
     ui->columns->setMaximum(axRects.size());
 
     scaleBar = new QCPColorScale(ui->panel);
@@ -170,11 +165,7 @@ void PopulationPlot::resizePanel()
     double height = std::max(1, ui->slider->height() * ui->slider->value() / ui->slider->maximum());
     int nRows = (axRects.size() + ui->columns->value()) / ui->columns->value();
     ui->panel->setFixedHeight(height * nRows);
-
-    int legendWidth = 0;
-    if ( ui->panel->plotLayout()->columnCount() > 1 )
-        legendWidth = ui->panel->plotLayout()->element(0, 1)->outerRect().width();
-    ui->panel->setFixedWidth(ui->scrollArea->childrenRect().width() + legendWidth);
+    ui->panel->setFixedWidth(ui->scrollArea->viewport()->width());
 
     ui->panel->replot();
 }
@@ -197,8 +188,6 @@ void PopulationPlot::clearPlotLayout()
                 break;
             }
         }
-        if ( ui->panel->plotLayout()->columnCount() > 1 )
-            qobject_cast<QCPLayoutGrid*>(ui->panel->plotLayout()->element(0, 1))->take(ui->panel->legend);
     }
     ui->panel->plotLayout()->clear();
 }
