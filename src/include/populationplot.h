@@ -60,6 +60,7 @@ private:
     UniversalLibrary *lib = nullptr;
 
     std::vector<QCPAxisRect*> axRects;
+    QCPColorScale *scaleBar;
 
     bool enslaved = false;
 };

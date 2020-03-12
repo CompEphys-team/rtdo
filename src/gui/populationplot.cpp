@@ -120,6 +120,8 @@ void PopulationPlot::init(Session *session, bool enslave)
     ui->panel->axisRect()->insetLayout()->take(ui->panel->legend);
     ui->columns->setMaximum(axRects.size());
 
+    scaleBar = new QCPColorScale(ui->panel);
+
     // Enslave to GAFitterWidget
 //    if ( enslave ) {
 //        ui->fits->setVisible(false);
@@ -166,7 +168,7 @@ void PopulationPlot::resizeEvent(QResizeEvent *event)
 void PopulationPlot::resizePanel()
 {
     double height = std::max(1, ui->slider->height() * ui->slider->value() / ui->slider->maximum());
-    int nRows = (axRects.size() + ui->columns->value() - 1) / ui->columns->value();
+    int nRows = (axRects.size() + ui->columns->value()) / ui->columns->value();
     ui->panel->setFixedHeight(height * nRows);
 
     int legendWidth = 0;
@@ -189,6 +191,12 @@ void PopulationPlot::clearPlotLayout()
                 }
             }
         }
+        for ( int i = 0; i < graphLayout->elementCount(); i++ ) {
+            if ( graphLayout->elementAt(i) == scaleBar ) {
+                graphLayout->takeAt(i);
+                break;
+            }
+        }
         if ( ui->panel->plotLayout()->columnCount() > 1 )
             qobject_cast<QCPLayoutGrid*>(ui->panel->plotLayout()->element(0, 1))->take(ui->panel->legend);
     }
@@ -203,14 +211,16 @@ void PopulationPlot::buildPlotLayout()
     ui->panel->plotLayout()->addElement(0, 0, graphLayout);
 
     size_t i = 0;
-    int n = ui->columns->value();
-    for ( int row = 0; row < std::ceil(double(axRects.size())/n); row++ ) {
-        for ( int col = 0; col < n; col++ ) {
+    int nCols = ui->columns->value();
+    int nRows = std::ceil(double(axRects.size())/nCols);
+    for ( int row = 0; row < nRows; row++ ) {
+        for ( int col = 0; col < nCols; col++ ) {
             graphLayout->addElement(row, col, axRects[i]);
             if ( ++i >= axRects.size() )
                 row = col = axRects.size(); // break
         }
     }
+    graphLayout->addElement(nRows, 0, scaleBar);
     ui->panel->replot(QCustomPlot::rpQueuedRefresh);
     resizePanel();
 }
@@ -351,6 +361,11 @@ void PopulationPlot::replot()
             line->setClipToAxisRect(true);
         }
     }
+
+    // color scale
+    maps[0]->setColorScale(scaleBar);
+    scaleBar->axis()->setLabel("Parameter density");
+    scaleBar->setType(QCPAxis::atBottom);
 
     QCPColorGradient gradient(QCPColorGradient::gpHot);
     gradient.setColorStopAt(0, Qt::darkGray);
