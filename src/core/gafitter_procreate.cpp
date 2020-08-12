@@ -278,7 +278,7 @@ void GAFitter::procreateDE_subpopulation(int modelOffset, int nModels, int offsp
                     P[j][i + offspringOffset] = P[j].min;
                 if ( P[j][i + offspringOffset] > P[j].max )
                     P[j][i + offspringOffset] = P[j].max;
-            } else {
+            } else if ( settings.constraints[j] == 1 ) {
                 if ( P[j][i + offspringOffset] < settings.min[j] )
                     P[j][i + offspringOffset] = settings.min[j];
                 if ( P[j][i + offspringOffset] > settings.max[j] )
