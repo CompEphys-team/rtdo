@@ -61,12 +61,13 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
         sigma->setRange(0, 1e9);
 
         QComboBox *cb = new QComboBox();
+        cb->addItems({"Original", "Range", "Fixed", "Target", "Resume:Final", "Resume:Mean", "Reset"});
         connect(cb, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [=](int idx){
             min->setEnabled(idx==1);
             max->setEnabled(idx==1);
             fixed->setEnabled(idx==2);
             sigma->setEnabled(idx == 1 && i < model.nNormalAdjustableParams);
-            if ( idx == 4 ) { // Reset
+            if ( idx == cb->count()-1 ) { // Reset
                 min->setValue(p.min);
                 max->setValue(p.max);
                 fixed->setValue(p.initial);
@@ -74,7 +75,6 @@ GAFitterSettingsDialog::GAFitterSettingsDialog(Session &s, int historicIndex, QW
                 cb->setCurrentIndex(0);
             }
         });
-        cb->addItems({"Original", "Range", "Fixed", "Target", "Reset"});
 
         QTableWidgetItem *relativeDisplay = new QTableWidgetItem("");
         std::function<void(void)> setRelativeRange;

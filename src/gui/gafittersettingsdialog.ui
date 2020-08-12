@@ -673,6 +673,16 @@
         </item>
         <item>
          <property name="text">
+          <string>Resume:Final</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Resume:Mean</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
           <string>Reset</string>
          </property>
         </item>

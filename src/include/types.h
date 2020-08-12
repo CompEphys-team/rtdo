@@ -456,6 +456,8 @@ struct GAFitterSettings {
      * 1: custom range (using min/max)
      * 2: fixed (manual, using fixedValue)
      * 3: target value (from DAQ; i.e. simulator value; canned .params file value; or model preset for live recording)
+     * 4: Resume: Final value of preceding fit (falls back to last population's best, then to 2)
+     * 5: Resume: Mean value across preceding fit's population (falls back to 2)
      */
     std::vector<int> constraints;
     std::vector<scalar> min, max, fixedValue, sigma;
