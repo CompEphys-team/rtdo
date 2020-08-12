@@ -479,3 +479,10 @@ void MainWindow::on_actionGA_Fitter_2_triggered()
     dlg->setWindowTitle(QString("%1 - %2 : %3").arg(idx,4,10,QChar('0')).arg(dlg->windowTitle(), title));
     dlg->show();
 }
+
+void MainWindow::on_actionLoad_from_file_triggered()
+{
+    QString file = QFileDialog::getOpenFileName(this, "Select config file", QString(), "*.cfg");
+    if ( !file.isEmpty() )
+        session->loadConfig(file);
+}

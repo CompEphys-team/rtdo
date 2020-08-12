@@ -114,6 +114,8 @@ private slots:
 
     void on_actionGA_Fitter_2_triggered();
 
+    void on_actionLoad_from_file_triggered();
+
 private:
     Ui::MainWindow *ui;
     WavegenDialog *wavegenDlg;

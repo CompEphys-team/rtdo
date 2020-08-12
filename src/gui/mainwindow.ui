@@ -145,6 +145,7 @@
     <addaction name="actionGA_Fitter"/>
     <addaction name="separator"/>
     <addaction name="actionCrossload_from_other_session"/>
+    <addaction name="actionLoad_from_file"/>
    </widget>
    <widget class="QMenu" name="menuHistoric_settings">
     <property name="enabled">
@@ -367,6 +368,11 @@
   <action name="actionGA_Fitter_2">
    <property name="text">
     <string>GA Fitter</string>
+   </property>
+  </action>
+  <action name="actionLoad_from_file">
+   <property name="text">
+    <string>Load from file...</string>
    </property>
   </action>
  </widget>
