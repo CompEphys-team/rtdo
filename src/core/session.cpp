@@ -87,13 +87,13 @@ void Session::crossloadConfig(const QString &crossSessionDir)
                       << err.what() << std::endl;
         }
     }
-    m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    m_log.queue("Config", "cfg", crossdir.dirName(), new Settings(q_settings));
 }
 
 void Session::loadConfig(const QString &configFile)
 {
     if ( readConfig(configFile, true) )
-        m_log.queue("Config", "cfg", "", new Settings(q_settings));
+        m_log.queue("Config", "cfg", QFileInfo(configFile).fileName(), new Settings(q_settings));
 }
 
 void Session::addAPs()
@@ -539,7 +539,7 @@ void Session::setRunData(RunData d)
 {
     q_settings.rund = d;
     sanitiseSettings(q_settings);
-    m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    m_log.queue("Config", "cfg", "Run", new Settings(q_settings));
     emit runDataChanged();
 }
 
@@ -547,7 +547,7 @@ void Session::setWavegenData(WavegenData d)
 {
     q_settings.searchd = d;
     sanitiseSettings(q_settings);
-    m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    m_log.queue("Config", "cfg", "Wavegen", new Settings(q_settings));
     emit wavegenDataChanged();
 }
 
@@ -555,7 +555,7 @@ void Session::setStimulationData(StimulationData d)
 {
     q_settings.stimd = d;
     sanitiseSettings(q_settings);
-    m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    m_log.queue("Config", "cfg", "Stimulation", new Settings(q_settings));
     emit stimulationDataChanged();
 }
 
@@ -563,7 +563,7 @@ void Session::setGAFitterSettings(GAFitterSettings d)
 {
     q_settings.gafs = d;
     sanitiseSettings(q_settings);
-    m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    m_log.queue("Config", "cfg", "GAFitter", new Settings(q_settings));
     emit GAFitterSettingsChanged();
 }
 
@@ -571,7 +571,7 @@ void Session::setDAQData(DAQData d)
 {
     q_settings.daqd = d;
     sanitiseSettings(q_settings);
-    m_log.queue("Config", "cfg", "", new Settings(q_settings));
+    m_log.queue("Config", "cfg", "DAQ", new Settings(q_settings));
     emit DAQDataChanged();
 }
 
@@ -650,18 +650,22 @@ void Session::getNextEntry()
     // Consolidate consecutive settings entries into one (the latest):
     if ( dispatcher.nextEntry.actor == "Config" ) {
         Settings *set = static_cast<Settings*>(dispatcher.nextEntry.res);
+        QString args = dispatcher.nextEntry.args;
         while (m_log.queueSize() > 0) {
             if ( m_log.entry(set->resultIndex + 1).actor == "Config" ) {
                 // consolidate:
-                Settings *replacement = static_cast<Settings*>(m_log.dequeue(false).res);
+                SessionLog::Entry next = m_log.dequeue(false);
+                Settings *replacement = static_cast<Settings*>(next.res);
                 replacement->resultIndex = set->resultIndex;
                 using std::swap;
                 swap(set, replacement); // pointer swap
                 delete replacement; // delete no longer used older settings object
+                args += ", " + next.args;
             } else {
                 break;
             }
         }
+        m_log.m_active.args = args;
         dispatcher.nextEntry.res = set;
     }
 }

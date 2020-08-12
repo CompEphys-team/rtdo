@@ -70,13 +70,14 @@ public:
     inline int columnCount(const QModelIndex & = QModelIndex()) const { return 4; }
     inline int rowCount(const QModelIndex & = QModelIndex()) const { return m_data.size() + m_hasActive + m_queue.size(); }
 
+    Entry m_active;
+
 signals:
     void queueAltered();
 
 protected:
     QVector<Entry> m_data;
     QQueue<Entry> m_queue;
-    Entry m_active;
     bool m_hasActive = false;
 
     std::ofstream m_file;
