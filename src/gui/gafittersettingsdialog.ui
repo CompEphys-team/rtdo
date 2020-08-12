@@ -285,7 +285,7 @@
       <item row="10" column="1">
        <widget class="QDoubleSpinBox" name="cl_sdf_threshold">
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Note, the voltage gradient is estimated as (V(t) - V(t-tDelay)) / tDelay, and is thus somewhat sensitive to tDelay below.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Note, the SDF is computed on a filtered version of the trace, and is thus sensitive to the trace filter settings above.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="suffix">
          <string> mV</string>
