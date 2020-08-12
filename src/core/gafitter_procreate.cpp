@@ -35,6 +35,11 @@ std::vector<GAFitter::errTupel> GAFitter::procreate()
         }
     }
 
+    if ( output.params.size() < epoch+1 ) {
+        output.params.resize(2*epoch + 1, std::vector<scalar>(lib.adjustableParams.size()));
+        output.error.resize(2*epoch + 1);
+        output.targetStim.resize(2*epoch + 1);
+    }
     output.error[epoch] = std::sqrt(p_err[bestIdx].err / errNorm[targetStim]); // RMSE
     output.targetStim[epoch] = targetStim;
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
@@ -192,6 +197,11 @@ void GAFitter::procreateDE()
     }
 
     // Populate output
+    if ( output.params.size() < epoch+1 ) {
+        output.params.resize(2*epoch + 1, std::vector<scalar>(nParams));
+        output.error.resize(2*epoch + 1);
+        output.targetStim.resize(2*epoch + 1);
+    }
     for ( int i = 0; i < nParams; i++ )
         output.params[epoch][i] = P[i][bestIdx];
     output.error[epoch] = std::sqrt(bestErr/errNorm[targetStim]);
