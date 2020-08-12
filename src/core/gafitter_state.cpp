@@ -184,13 +184,13 @@ void GAFitter::populate()
     for ( size_t i = 0; i < lib.adjustableParams.size(); i++ ) {
         if ( settings.constraints[i] >= 2 ) { // 2,Fixed, 3,target, 4,resume:final, 5,resume:mean
             double value = settings.constraints[i] == 2 ? settings.fixedValue[i] : output.targets[i];
-            if ( settings.constraints[i] == 4 ) // resume:final
+            if ( settings.constraints[i] == 4 ) { // resume:final
                 if ( output.final ) // If available
                     value = output.finalParams[i];
                 else if ( output.epochs > 0 ) // First fallback: preceding population's best
                     value = output.params[output.epochs-1][i];
                 // Second fallback: target
-            else if ( settings.constraints[i] == 5 && !output.resume.population.empty() ) { // resume:mean, if available. Fallback to target
+            } else if ( settings.constraints[i] == 5 && !output.resume.population.empty() ) { // resume:mean, if available. Fallback to target
                 value = 0;
                 for ( size_t j = 0; j < lib.NMODELS; j++ )
                     value += output.resume.population[i][j];
