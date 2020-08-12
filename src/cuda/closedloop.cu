@@ -417,8 +417,9 @@ int generate_sdf_kernel(double sigma)
         std::vector<scalar> kernel(kernel_width);
         double two_variance = 2.0*sigma*sigma;
         double offset = exp(-(kernel_width+1)*(kernel_width+1) / two_variance);
+        double factor = 1 / (1 - offset);
         for ( int i = 0; i < kernel_width; i++ ) {
-            kernel[i] = exp(-i*i / two_variance) - offset;
+            kernel[i] = factor * (exp(-i*i / two_variance) - offset);
         }
         CHECK_CUDA_ERRORS(cudaMemcpyToSymbol(sdf_kernel, kernel.data(), kernel_width * sizeof(scalar)));
         latest_sdf_kernel_sigma = sigma;
